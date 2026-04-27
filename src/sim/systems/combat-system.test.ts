@@ -143,4 +143,40 @@ describe('combatSystem', () => {
     expect(world.entities.state[shooter]).toBe(EntityState.Idle);
     expect(fireOrders.has(shooter)).toBe(false);
   });
+
+  it('does not fire while marching (velocity above epsilon)', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    // line-infantry moveSpeed is 2.5 m/s — well above the 0.05 m/s gate.
+    world.entities.velX[shooter] = 2.5;
+    world.entities.velY[shooter] = 0;
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
+  it('fires once velocity decays below epsilon (e.g. arrived at destination)', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const target  = spawnLineInfantry(world, 1, 50, 0);
+    // Below the 0.05 m/s gate.
+    world.entities.velX[shooter] = 0.01;
+    world.entities.velY[shooter] = 0;
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(target);
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+  });
 });
