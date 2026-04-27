@@ -15,6 +15,7 @@ import { solveCannonLaunch } from '../fx/ballistics';
 import { emitMuzzleFx } from '../particles/emitters';
 import { getUnitKindByIndex } from '../data/units';
 import { cannon12Shell } from '../data/weapons/cannon-12-shell';
+import { writeFacingIntent } from '../sim/systems/facing-system';
 
 const DUMMY_ROW_X = 30;
 const DUMMY_ROW_Y = 0;
@@ -39,6 +40,7 @@ export function actMarch(world: World, stage: Stage): void {
   const dir = facingDir(world.entities.facing[id]!);
   world.entities.velX[id] = dir.x * kind.baseStats.moveSpeed;
   world.entities.velY[id] = dir.y * kind.baseStats.moveSpeed;
+  writeFacingIntent(world.entities, id, dir.x, dir.y);
   world.entities.state[id] = EntityState.Moving;
 }
 
@@ -56,12 +58,16 @@ export function actFaceL(world: World, stage: Stage): void {
   const id = subject(world, stage);
   if (id === null) return;
   world.entities.facing[id] = 4; // west
+  world.entities.facingIntentX[id] = -1;
+  world.entities.facingIntentY[id] = 0;
 }
 
 export function actFaceR(world: World, stage: Stage): void {
   const id = subject(world, stage);
   if (id === null) return;
   world.entities.facing[id] = 0; // east
+  world.entities.facingIntentX[id] = 1;
+  world.entities.facingIntentY[id] = 0;
 }
 
 export function actFire(world: World, fireOrders: FireOrders, stage: Stage): void {
@@ -72,6 +78,7 @@ export function actFire(world: World, fireOrders: FireOrders, stage: Stage): voi
   // Manual fire always re-triggers — even mid-reload — so the lab can rapid-fire
   // for inspection. Auto-fire callers gate on Idle themselves to avoid stomping.
   triggerFire(world.entities, fireOrders, id, DUMMY_ROW_X, DUMMY_ROW_Y);
+  writeFacingIntent(world.entities, id, DUMMY_ROW_X - world.entities.posX[id]!, DUMMY_ROW_Y - world.entities.posY[id]!);
 }
 
 export function actReload(world: World, stage: Stage): void {
@@ -182,6 +189,7 @@ export function actCharge(world: World, stage: Stage): void {
   const speed = kind.baseStats.moveSpeed * 2; // gallop
   world.entities.velX[id] = dir.x * speed;
   world.entities.velY[id] = dir.y * speed;
+  writeFacingIntent(world.entities, id, dir.x, dir.y);
   world.entities.state[id] = EntityState.Moving;
 }
 

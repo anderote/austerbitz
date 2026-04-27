@@ -1,0 +1,23 @@
+{
+  "id": "british-line-infantry",
+  "label": "British Line Infantry",
+  "baseAtlas": "public/sprites/british-line-infantry.png",
+  "outputAtlas": "public/sprites/british-line-infantry-components.png",
+  "outputPreview": "public/sprites/british-line-infantry-components-preview.png",
+  "facings": {
+    "S": {
+      "cell": [
+        1,
+        1
+      ],
+      "layers": [
+        "shadow-front",
+        "body-front-base",
+        "trousers-front-white",
+        "coat-line-front",
+        "shako-standard",
+        "musket-brown-bess"
+      ]
+    }
+  }
+}

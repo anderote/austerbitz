@@ -3,7 +3,7 @@ import { createWorld } from '../sim/world';
 import { allocEntity } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
 import { createSelection } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove } from './commands';
 
 function spawn(world: ReturnType<typeof createWorld>, x: number, y: number): number {
   const id = allocEntity(world.entities);
@@ -45,6 +45,28 @@ describe('commands', () => {
     expect(q[1]).toMatchObject({ kind: 'move', targetX: 20, targetY: 0 });
   });
 
+  it('issueMove preserves the selection shape via centroid translation', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    // Two units 4 apart. Centroid is (2, 0).
+    const a = spawn(world, 0, 0);
+    const b = spawn(world, 4, 0);
+    const sel = createSelection(); sel.ids.add(a); sel.ids.add(b);
+    // Click at (10, 0). Expect targets (8, 0) and (12, 0) — same shape, translated.
+    const assignments = issueMove(world, sel, { x: 10, y: 0 });
+    const byId = new Map(assignments.map(x => [x.id, x.target]));
+    expect(byId.get(a)).toEqual({ x: 8, y: 0 });
+    expect(byId.get(b)).toEqual({ x: 12, y: 0 });
+    expect(world.orderQueue.get(a)![0]).toMatchObject({ kind: 'move', targetX: 8, targetY: 0 });
+    expect(world.orderQueue.get(b)![0]).toMatchObject({ kind: 'move', targetX: 12, targetY: 0 });
+  });
+
+  it('issueMove returns an empty list for an empty selection', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const sel = createSelection();
+    const out = issueMove(world, sel, { x: 0, y: 0 });
+    expect(out).toEqual([]);
+  });
+
   it('issueAttack writes an attack order with the target id', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const id = spawn(world, 0, 0);
@@ -80,6 +102,24 @@ describe('commands', () => {
     issueAttackMove(world, sel, { x: 1, y: 1 });
     issueStop(world, sel);
     expect(world.orderQueue.size).toBe(0);
+  });
+
+  it('issueRegroup clears active orders, pushedT, and writes restFacing intent', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = spawn(world, 5, 0);
+    const sel = createSelection(); sel.ids.add(id);
+    world.entities.restFacing[id] = 4; // facing -X
+    world.entities.facingIntentX[id] = 1; // currently facing +X (wrong)
+    world.entities.facingIntentY[id] = 0;
+    world.entities.pushedT[id] = 1.5;
+    world.orderQueue.set(id, [{ kind: 'move', targetX: 99, targetY: 99 }]);
+
+    issueRegroup(world, sel);
+
+    expect(world.orderQueue.has(id)).toBe(false);
+    expect(world.entities.pushedT[id]).toBe(0);
+    expect(world.entities.facingIntentX[id]).toBeCloseTo(-1, 4);
+    expect(world.entities.facingIntentY[id]).toBeCloseTo(0, 4);
   });
 });
 

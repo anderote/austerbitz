@@ -3,6 +3,13 @@ import { gridQueryRadius } from '../spatial/grid';
 import { unitKinds } from '../../data/units';
 
 const PUSH_STRENGTH = 0.5;
+// Seconds a unit waits after being shoved before drifting back to its parked
+// position. Reset to this value any tick a meaningful collision push lands.
+const PUSH_RECOVERY_DELAY = 2.5;
+// Below this corrective magnitude (metres) the contact is treated as touch
+// jitter, not a real shove — avoids re-arming the timer every tick on
+// near-rest neighbours.
+const PUSH_NUDGE_EPS = 5e-3;
 
 let MAX_BODY_RADIUS = 0;
 for (const k of unitKinds) {
@@ -52,6 +59,8 @@ export const collisionSystem: System = (world, _dt) => {
       e.posY[i] = e.posY[i]! - ny * corr * wi;
       e.posX[j] = e.posX[j]! + nx * corr * wj;
       e.posY[j] = e.posY[j]! + ny * corr * wj;
+      if (corr * wi > PUSH_NUDGE_EPS) e.pushedT[i] = PUSH_RECOVERY_DELAY;
+      if (corr * wj > PUSH_NUDGE_EPS) e.pushedT[j] = PUSH_RECOVERY_DELAY;
     }
   }
 };

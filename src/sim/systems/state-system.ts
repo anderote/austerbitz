@@ -5,6 +5,7 @@ import type { Puffs } from '../../puffs/puffs';
 import type { Rng } from '../../util/rng';
 import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
+import { writeFacingIntent } from './facing-system';
 
 /** Side-table mapping entity id → aim point. Populated by `triggerFire`. */
 export type FireOrders = Map<number, { tx: number; ty: number }>;
@@ -26,6 +27,7 @@ export function triggerFire(
   e.state[id] = EntityState.Aiming;
   e.stateT[id] = AIMING_WINDUP;
   fireOrders.set(id, { tx: targetX, ty: targetY });
+  writeFacingIntent(e, id, targetX - e.posX[id]!, targetY - e.posY[id]!);
 }
 
 /**
@@ -76,7 +78,8 @@ export function tickStates(
 
           const kind = getUnitKindByIndex(e.kindId[i]!);
           e.state[i] = EntityState.Reloading;
-          e.reloadT[i] = kind.baseStats.weaponReload;
+          // Jitter ±20% so units don't resync into a single volley over time.
+          e.reloadT[i] = kind.baseStats.weaponReload * rng.range(0.8, 1.2);
           e.stateT[i] = 0;
         }
         break;

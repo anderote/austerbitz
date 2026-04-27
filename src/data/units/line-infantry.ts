@@ -15,7 +15,7 @@ export const lineInfantry: UnitKind = {
     sightRange: 120,
     weaponRange: 80,
     weaponDamage: 12,
-    weaponReload: 18,
+    weaponReload: 10,
     weaponAccuracy: 0.4,
     armor: 0,
     massKg: 80,

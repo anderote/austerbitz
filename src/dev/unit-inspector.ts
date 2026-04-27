@@ -39,7 +39,12 @@ const britishInfantryRenderer: UnitRenderer = {
   id: 'line-infantry',
   label: 'British Line Infantry',
   createPreviews: ({ scale }) => {
-    const sheet = generateBritishSoldierSheet();
+    // Bake British defaults so the inspector previews show resolved colors
+    // instead of the runtime magenta/cyan markers.
+    const sheet = generateBritishSoldierSheet({
+      resolvePrimary: [180, 40, 50],
+      resolveSecondary: [50, 60, 140],
+    });
     const previews: HTMLCanvasElement[] = [];
     for (const cell of POSE_CELLS) {
       const data = new Uint8Array(SOLDIER_CELL_W * SOLDIER_CELL_H * 4);

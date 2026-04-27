@@ -31,6 +31,8 @@ function spawnEntity(
   e.posX[id] = x;
   e.posY[id] = y;
   e.facing[id] = facing;
+  e.facingIntentX[id] = Math.cos((facing * Math.PI) / 4);
+  e.facingIntentY[id] = Math.sin((facing * Math.PI) / 4);
   e.kindId[id] = getUnitKindIndex(kindId);
   e.team[id] = team;
   e.hp[id] = kind.baseStats.hp;

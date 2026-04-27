@@ -76,6 +76,17 @@ describe('collisionSystem', () => {
     expect(dist).toBeGreaterThanOrEqual(2 * r - 1e-3);
   });
 
+  it('arms pushedT on both bodies when a meaningful push lands', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawnAt(world, 'line-infantry', 100, 100);
+    const b = spawnAt(world, 'line-infantry', 100.1, 100); // overlapping
+    expect(world.entities.pushedT[a]).toBe(0);
+    expect(world.entities.pushedT[b]).toBe(0);
+    step(world, 1 / 30);
+    expect(world.entities.pushedT[a]).toBeGreaterThan(0);
+    expect(world.entities.pushedT[b]).toBeGreaterThan(0);
+  });
+
   it('skips dead/ragdoll bodies', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const a = spawnAt(world, 'line-infantry', 100, 100);

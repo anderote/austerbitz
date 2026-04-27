@@ -10,6 +10,7 @@ import { tickAmbientClouds, type AmbientCloudConfig } from '../puffs/ambient-clo
 import { createProjectiles } from '../sim/projectiles';
 import { createSelection, createDragRect } from '../input/selection';
 import { movementSystem } from '../sim/systems/movement-system';
+import { facingSystem } from '../sim/systems/facing-system';
 import { tickStates, type FireOrders } from '../sim/systems/state-system';
 import { tickProjectiles } from '../sim/systems/projectile-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
@@ -134,6 +135,7 @@ function frame(t: number) {
   // Sim tick — manually orchestrated since the lab runs its own system order.
   rebuildGrid(world);
   movementSystem(world, dt);
+  facingSystem(world, dt);
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt);
   tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
@@ -160,7 +162,7 @@ function frame(t: number) {
   }
   bs.count = 0;
 
-  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, null, { showHealthBars: false });
+  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, null, { showHealthBars: false, showMovePreview: false });
 
   ui.update({
     fps: smoothedFps,

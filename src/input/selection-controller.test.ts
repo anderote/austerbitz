@@ -165,16 +165,24 @@ describe('selection-controller — RMB commands', () => {
 });
 
 describe('selection-controller — attack-move + stop + esc', () => {
-  it('A key with non-empty selection enters attack-move mode', () => {
+  it('R key with non-empty selection enters attack-move mode', () => {
     const { ctrl, world, selection } = makeDeps();
     const own = spawn(world, 'line-infantry', 0, 0, 0);
     selection.ids.add(own);
-    ctrl._internals.onKeyDown({ key: 'a', code: 'KeyA', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: 'r', code: 'KeyR', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl._internals.getCursorMode()).toBe('attack-move');
   });
 
-  it('A key with empty selection is a no-op', () => {
+  it('R key with empty selection is a no-op', () => {
     const { ctrl } = makeDeps();
+    ctrl._internals.onKeyDown({ key: 'r', code: 'KeyR', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl._internals.getCursorMode()).toBe('normal');
+  });
+
+  it('A key does not enter attack-move (reserved for camera pan)', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const own = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(own);
     ctrl._internals.onKeyDown({ key: 'a', code: 'KeyA', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl._internals.getCursorMode()).toBe('normal');
   });
@@ -183,7 +191,7 @@ describe('selection-controller — attack-move + stop + esc', () => {
     const { ctrl, world, selection } = makeDeps();
     const own = spawn(world, 'line-infantry', 0, 0, 0);
     selection.ids.add(own);
-    ctrl._internals.onKeyDown({ key: 'a', code: 'KeyA', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: 'r', code: 'KeyR', shiftKey: false, ctrlKey: false, metaKey: false });
     click(ctrl, 500, 300);
     expect(world.orderQueue.get(own)?.[0]?.kind).toBe('attack-move');
     expect(ctrl._internals.getCursorMode()).toBe('normal');
@@ -193,7 +201,7 @@ describe('selection-controller — attack-move + stop + esc', () => {
     const { ctrl, world, selection } = makeDeps();
     const own = spawn(world, 'line-infantry', 0, 0, 0);
     selection.ids.add(own);
-    ctrl._internals.onKeyDown({ key: 'a', code: 'KeyA', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: 'r', code: 'KeyR', shiftKey: false, ctrlKey: false, metaKey: false });
     ctrl._internals.onMouseUp({ button: 2, clientX: 500, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl._internals.getCursorMode()).toBe('normal');
     expect(world.orderQueue.has(own)).toBe(false);
@@ -203,18 +211,36 @@ describe('selection-controller — attack-move + stop + esc', () => {
     const { ctrl, world, selection } = makeDeps();
     const own = spawn(world, 'line-infantry', 0, 0, 0);
     selection.ids.add(own);
-    ctrl._internals.onKeyDown({ key: 'a', code: 'KeyA', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: 'r', code: 'KeyR', shiftKey: false, ctrlKey: false, metaKey: false });
     ctrl._internals.onKeyDown({ key: 'Escape', code: 'Escape', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl._internals.getCursorMode()).toBe('normal');
     expect(selection.ids.has(own)).toBe(true);
   });
 
-  it('S key issues stop to all selected', () => {
+  it('S key does not issue stop (reserved for camera pan)', () => {
     const { ctrl, world, selection } = makeDeps();
     const own = spawn(world, 'line-infantry', 0, 0, 0);
     world.orderQueue.set(own, [{ kind: 'move', targetX: 1, targetY: 1 }]);
     selection.ids.add(own);
     ctrl._internals.onKeyDown({ key: 's', code: 'KeyS', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(world.orderQueue.has(own)).toBe(true);
+  });
+
+  it('Delete key issues stop to all selected', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const own = spawn(world, 'line-infantry', 0, 0, 0);
+    world.orderQueue.set(own, [{ kind: 'move', targetX: 1, targetY: 1 }]);
+    selection.ids.add(own);
+    ctrl._internals.onKeyDown({ key: 'Delete', code: 'Delete', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(world.orderQueue.has(own)).toBe(false);
+  });
+
+  it('Backspace key issues stop to all selected', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const own = spawn(world, 'line-infantry', 0, 0, 0);
+    world.orderQueue.set(own, [{ kind: 'move', targetX: 1, targetY: 1 }]);
+    selection.ids.add(own);
+    ctrl._internals.onKeyDown({ key: 'Backspace', code: 'Backspace', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(world.orderQueue.has(own)).toBe(false);
   });
 });
@@ -250,7 +276,7 @@ describe('selection-controller — input suppression', () => {
     ctrl._internals.onMouseDown({ button: 0, clientX: 400, clientY: 300, target: null });
     ctrl._internals.onMouseMove({ clientX: 500, clientY: 400 });
     expect(drag.active).toBe(true);
-    ctrl._internals.onKeyDown({ key: 'a', code: 'KeyA', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: 'r', code: 'KeyR', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl._internals.getCursorMode()).toBe('attack-move');
     ctrl._internals.onBlur();
     expect(drag.active).toBe(false);

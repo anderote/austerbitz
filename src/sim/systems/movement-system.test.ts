@@ -3,7 +3,7 @@ import { createWorld } from '../world';
 import { allocEntity } from '../entities';
 import { ordersSystem } from './orders-system';
 import { movementSystem } from './movement-system';
-import { getUnitKindIndex } from '../../data/units';
+import { getUnitKind, getUnitKindIndex } from '../../data/units';
 
 describe('movement + orders', () => {
   it('moves an entity toward its order target at unit kind speed', () => {
@@ -24,7 +24,7 @@ describe('movement + orders', () => {
     expect(world.entities.posY[id]).toBeCloseTo(0, 4);
   });
 
-  it('clears order and stops when arrived (within snap distance)', () => {
+  it('parks at the final move target on arrival and re-engages if displaced', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const id = allocEntity(world.entities);
     world.entities.kindId[id] = getUnitKindIndex('line-infantry');
@@ -33,10 +33,20 @@ describe('movement + orders', () => {
     world.orderQueue.set(id, [{ kind: 'move', targetX: 0.05, targetY: 0 }]);
     world.systems = [ordersSystem, movementSystem];
 
+    // Arrival tick: velocity zeros, but the order stays parked so a later
+    // collision push can't strand the unit off-slot.
     world.systems.forEach(s => s(world, 1 / 30));
-    expect(world.orderQueue.has(id)).toBe(false);
+    expect(world.orderQueue.get(id)?.length).toBe(1);
     expect(world.entities.velX[id]).toBe(0);
     expect(world.entities.velY[id]).toBe(0);
+
+    // Simulate a collision push displacing the unit, then tick again — it
+    // should re-engage toward the parked target instead of sitting idle.
+    world.entities.posX[id] = 1.5;
+    world.entities.posY[id] = 0.8;
+    world.systems.forEach(s => s(world, 1 / 30));
+    expect(world.entities.velX[id]).toBeLessThan(0);
+    expect(world.entities.velY[id]).toBeLessThan(0);
   });
 
   it('dequeues a completed move and starts the next queued order', () => {
@@ -59,6 +69,86 @@ describe('movement + orders', () => {
     // Second tick should now be moving toward target #2.
     world.systems.forEach(s => s(world, 1 / 30));
     expect(world.entities.velX[id]).toBeGreaterThan(0);
+  });
+
+  it('parked unit waits out pushedT before drifting back, then drifts slowly', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = allocEntity(world.entities);
+    world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+    world.entities.posX[id] = 0;
+    world.entities.posY[id] = 0;
+    world.orderQueue.set(id, [{ kind: 'move', targetX: 0.05, targetY: 0 }]);
+    world.systems = [ordersSystem, movementSystem];
+
+    // Arrival tick — order becomes parked (arrived=true).
+    world.systems.forEach(s => s(world, 1 / 30));
+    expect(world.orderQueue.get(id)?.[0]).toMatchObject({ arrived: true });
+
+    // Simulate a collision push: displace + arm pushedT.
+    world.entities.posX[id] = 1;
+    world.entities.posY[id] = 0;
+    world.entities.pushedT[id] = 2.5;
+
+    // Mid-cooldown tick: vel must stay zero.
+    world.systems.forEach(s => s(world, 1 / 30));
+    expect(world.entities.velX[id]).toBe(0);
+    expect(world.entities.velY[id]).toBe(0);
+    expect(world.entities.pushedT[id]).toBeGreaterThan(0);
+
+    // Burn off the rest of the cooldown.
+    for (let i = 0; i < 90; i++) world.systems.forEach(s => s(world, 1 / 30));
+
+    // Cooldown elapsed: drift speed is base * SETTLE_SPEED_FACTOR (0.3).
+    const baseSpeed = getUnitKind('line-infantry').baseStats.moveSpeed;
+    const speed = Math.hypot(world.entities.velX[id]!, world.entities.velY[id]!);
+    expect(world.entities.pushedT[id]).toBe(0);
+    expect(world.entities.velX[id]).toBeLessThan(0); // toward target at x=0.05
+    expect(speed).toBeCloseTo(baseSpeed * 0.3, 4);
+  });
+
+  it('idle unit (no order queue entry) drifts back to its rest anchor after pushedT cooldown', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = allocEntity(world.entities);
+    world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+    // Spawned at (50, 50) with no orders — restPos anchors here.
+    world.entities.posX[id] = 50;
+    world.entities.posY[id] = 50;
+    world.entities.restPosX[id] = 50;
+    world.entities.restPosY[id] = 50;
+    world.systems = [ordersSystem, movementSystem];
+
+    // Shove the unit and arm pushedT (as collision-system would).
+    world.entities.posX[id] = 51;
+    world.entities.posY[id] = 50;
+    world.entities.pushedT[id] = 2.5;
+
+    // During cooldown it stays still.
+    world.systems.forEach(s => s(world, 1 / 30));
+    expect(world.entities.velX[id]).toBe(0);
+    expect(world.entities.velY[id]).toBe(0);
+
+    // After cooldown it drifts back at SETTLE_SPEED_FACTOR (0.3) * baseSpeed.
+    for (let i = 0; i < 90; i++) world.systems.forEach(s => s(world, 1 / 30));
+    const baseSpeed = getUnitKind('line-infantry').baseStats.moveSpeed;
+    expect(world.entities.velX[id]).toBeLessThan(0); // toward rest x=50
+    const speed = Math.hypot(world.entities.velX[id]!, world.entities.velY[id]!);
+    expect(speed).toBeCloseTo(baseSpeed * 0.3, 4);
+  });
+
+  it('initial trip ignores pushedT and uses full speed', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = allocEntity(world.entities);
+    world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+    world.entities.posX[id] = 0;
+    world.entities.posY[id] = 0;
+    // Arm pushedT but unit hasn't arrived yet — it should still march.
+    world.entities.pushedT[id] = 2.5;
+    world.orderQueue.set(id, [{ kind: 'move', targetX: 100, targetY: 0 }]);
+    world.systems = [ordersSystem, movementSystem];
+
+    world.systems.forEach(s => s(world, 1 / 30));
+    const baseSpeed = getUnitKind('line-infantry').baseStats.moveSpeed;
+    expect(world.entities.velX[id]).toBeCloseTo(baseSpeed, 4);
   });
 
   it('drops an attack order whose target is dead', () => {

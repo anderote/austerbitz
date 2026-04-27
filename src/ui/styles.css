@@ -192,6 +192,90 @@
   text-align: left;
 }
 
+#ui-root .stats-card {
+  position: absolute;
+  right: 8px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 220px;
+}
+
+#ui-root .stats-card-entry {
+  padding: 8px 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#ui-root .stats-card-header {
+  font-weight: bold;
+  color: var(--ui-accent);
+  border-bottom: 1px solid var(--ui-border);
+  padding-bottom: 3px;
+}
+
+#ui-root .stats-card-hp {
+  font-size: 11px;
+}
+
+#ui-root .stats-card-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 1px;
+  font-size: 11px;
+}
+
+#ui-root .stats-card-key {
+  color: #9ca3af;
+}
+
+#ui-root .stats-card-val {
+  text-align: right;
+}
+
+#ui-root .move-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#ui-root .move-preview-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+#ui-root .placement-info {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#ui-root .placement-info-card {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #8cffa3;
+  text-shadow:
+    0 0 6px rgba(102, 255, 140, 0.55),
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 1px #000;
+  letter-spacing: 0.04em;
+  white-space: pre;
+  pointer-events: none;
+}
+
 #ui-root .group-badges {
   position: absolute;
   inset: 0;
