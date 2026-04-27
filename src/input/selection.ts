@@ -39,6 +39,26 @@ export function createDragRect(): DragRect {
   };
 }
 
+export interface FormationDrag {
+  start: Vec2;     // screen-space
+  current: Vec2;   // screen-space
+  active: boolean;
+}
+
+export function createFormationDrag(): FormationDrag {
+  return {
+    start: { x: 0, y: 0 },
+    current: { x: 0, y: 0 },
+    active: false,
+  };
+}
+
+/** World-space preview shown during an active formation drag. */
+export interface FormationPreview {
+  rect: { tl: Vec2; tr: Vec2; br: Vec2; bl: Vec2 };
+  slots: Vec2[];
+}
+
 export function createControlGroups(): ControlGroups {
   return { groups: Array.from({ length: 10 }, () => new Set<number>()) };
 }
