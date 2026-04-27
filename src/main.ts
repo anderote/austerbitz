@@ -83,7 +83,7 @@ const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
-  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount);
+  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
 const projectileSystem: System = (w, dt) =>
   tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);

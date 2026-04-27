@@ -7,6 +7,8 @@ import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
 import { writeFacingIntent } from './facing-system';
 import { Pose, RUN_THRESHOLD_PX_S } from '../../render/poses/pose-config';
+import { writeFireSignal, type FireSignal } from '../fire-signal';
+import type { Grid } from '../spatial/grid';
 
 const RUN_THRESHOLD_SQ = RUN_THRESHOLD_PX_S * RUN_THRESHOLD_PX_S;
 
@@ -50,9 +52,10 @@ export function triggerFire(
   id: number,
   targetX: number,
   targetY: number,
+  windup: number = AIMING_WINDUP,
 ): void {
   e.state[id] = EntityState.Aiming;
-  e.stateT[id] = AIMING_WINDUP;
+  e.stateT[id] = windup;
   fireOrders.set(id, { tx: targetX, ty: targetY });
   writeFacingIntent(e, id, targetX - e.posX[id]!, targetY - e.posY[id]!);
 }
@@ -76,6 +79,8 @@ export function tickStates(
   fireOrders: FireOrders,
   dt: number,
   tick: number,
+  fireSignal: FireSignal,
+  grid: Grid,
 ): void {
   for (let n = 0; n < e.count; n++) {
     const i = e.aliveIds[n]!;
@@ -100,7 +105,10 @@ export function tickStates(
           e.state[i] = EntityState.Firing;
           const order = fireOrders.get(i);
           if (order) {
-            resolveFire(e, projectiles, particles, puffs, rng, i, order.tx, order.ty);
+            const fired = resolveFire(e, projectiles, particles, puffs, rng, i, order.tx, order.ty);
+            if (fired) {
+              writeFireSignal(fireSignal, grid, e.posX[i]!, e.posY[i]!, e.team[i]!, tick);
+            }
           }
           fireOrders.delete(i);
 
@@ -117,6 +125,7 @@ export function tickStates(
         if (e.reloadT[i]! <= 0) {
           e.state[i] = EntityState.Idle;
           e.reloadT[i] = 0;
+          e.stateT[i] = 0;
         }
         break;
       }
@@ -138,6 +147,9 @@ export function tickStates(
       }
       default:
         // Idle, Moving, Firing (transient), Ragdoll, Dead — no transition here.
+        // stateT accumulates while in Idle so combat-system can read it as
+        // "time spent ready" (used by the volley maxHold watchdog).
+        if (e.state[i] === EntityState.Idle) e.stateT[i] = e.stateT[i]! + dt;
         break;
     }
 
