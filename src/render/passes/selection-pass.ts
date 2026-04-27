@@ -15,6 +15,7 @@ export interface SelectionPass {
   // Selected units render green; units inside an active drag rect (preview)
   // render yellow.
   drawDiscs(world: World, cam: Camera, sel: Selection, drag: DragRect): void;
+  drawTeamRange(world: World, cam: Camera, team: number): void;
   // Waypoint chains, drag rectangle, and formation preview — call AFTER sprites so they overlay.
   draw(world: World, cam: Camera, sel: Selection, drag: DragRect, formation: FormationPreview | null): void;
   // Yellow per-soldier destination squares (Total War-style placement preview). Call AFTER sprites.
@@ -120,20 +121,53 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
   const rangeScratch = new Float32Array(RANGE_MAX_VERTS * 2);
+  const ringScratch = new Float32Array((RANGE_PROFILE_SAMPLES + 1) * 2);
+  const overlayIdScratch: number[] = [];
   const overlayPosScratch: number[] = [];
   const overlayForwardScratch: number[] = [];
   const overlayLateralScratch: number[] = [];
   const overlayRangeScratch: number[] = [];
   const overlayFacingX: number[] = [];
   const overlayFacingY: number[] = [];
+  const teamArtilleryScratch: number[] = [];
+  const teamInfantryScratch: number[] = [];
+  const angleScratch: number[] = [];
+  const lengthScratch: number[] = [];
+  const singleIdScratch: number[] = [];
+
+  type RangeColor = readonly [number, number, number, number];
 
   interface RangeOverlay {
     top: number[];
     bottom: number[];
   }
 
-  function computeRangeOverlay(world: World, sel: Selection): RangeOverlay | null {
-    if (sel.ids.size === 0) return null;
+  const COLOR_SELECTED: RangeColor = [1.0, 0.93, 0.2, 0.16];
+  const COLOR_TEAM_WHITE: RangeColor = [1.0, 1.0, 1.0, 0.11];
+  const COLOR_TEAM_ARTILLERY: RangeColor = [1.0, 1.0, 1.0, 0.55];
+
+  function collectTeamRangeIds(
+    world: World,
+    team: number,
+    predicate: ((kind: ReturnType<typeof getUnitKindByIndex>) => boolean) | null,
+    out: number[],
+  ): void {
+    const e = world.entities;
+    out.length = 0;
+    for (let i = 0; i < e.count; i++) {
+      const id = e.aliveIds[i]!;
+      if (e.alive[id] !== 1) continue;
+      if (e.team[id] !== team) continue;
+      const kindIdx = e.kindId[id];
+      const kind = getUnitKindByIndex(kindIdx);
+      if (!kind.weapon || kind.baseStats.weaponRange <= 0) continue;
+      if (predicate && !predicate(kind)) continue;
+      out.push(id);
+    }
+  }
+
+  function computeRangeOverlay(world: World, ids: readonly number[]): RangeOverlay | null {
+    if (ids.length === 0) return null;
     const e = world.entities;
     overlayPosScratch.length = 0;
     overlayForwardScratch.length = 0;
@@ -148,10 +182,11 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
     let maxRange = 0;
     let count = 0;
 
-    for (const id of sel.ids) {
+    for (const id of ids) {
       if (e.alive[id] !== 1) continue;
-      const kind = getUnitKindByIndex(e.kindId[id]!);
-      if (!kind.weapon) continue;
+      const kindIndex = e.kindId[id];
+      const kind = kindIndex !== undefined ? getUnitKindByIndex(kindIndex) : null;
+      if (!kind || !kind.weapon) continue;
       const range = kind.baseStats.weaponRange;
       if (range <= 0) continue;
       const x = e.posX[id]!;
@@ -208,6 +243,8 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       if (right > maxSample) maxSample = right;
     }
 
+    if (count === 0 || maxRange <= 0) return null;
+
     if (!Number.isFinite(minSample) || !Number.isFinite(maxSample)) return null;
 
     if (maxSample - minSample < 1e-4) {
@@ -257,8 +294,16 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
     return { top: topBoundary, bottom: bottomBoundary };
   }
 
-  function renderRangeOverlay(world: World, cam: Camera, sel: Selection): void {
-    const overlay = computeRangeOverlay(world, sel);
+  function renderRangeOverlay(
+    world: World,
+    cam: Camera,
+    ids: readonly number[],
+    color: RangeColor,
+    drawFill: boolean,
+    ringSpacing: number | null,
+  ): void {
+    if (ids.length === 0) return;
+    const overlay = computeRangeOverlay(world, ids);
     if (!overlay) return;
     const { top, bottom } = overlay;
     const sampleCount = top.length / 2;
@@ -279,15 +324,120 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, rangeScratch.subarray(0, vertCount * 2));
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.uniform4f(rangeU.u_color, 1.0, 0.93, 0.2, 0.16);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertCount);
+    if (drawFill) {
+      gl.uniform4f(rangeU.u_color, color[0], color[1], color[2], color[3]);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertCount);
+    }
+    if (ringSpacing && ringSpacing > 0) {
+      let centerX = 0;
+      let centerY = 0;
+      for (let i = 0; i < sampleCount; i++) {
+        centerX += bottom[i * 2 + 0]!;
+        centerY += bottom[i * 2 + 1]!;
+      }
+      centerX /= sampleCount;
+      centerY /= sampleCount;
+
+      angleScratch.length = sampleCount;
+      lengthScratch.length = sampleCount;
+      let prevAngle = 0;
+      for (let i = 0; i < sampleCount; i++) {
+        const tx = top[i * 2 + 0]!;
+        const ty = top[i * 2 + 1]!;
+        const dx = tx - centerX;
+        const dy = ty - centerY;
+        let ang = Math.atan2(dy, dx);
+        if (i === 0) {
+          prevAngle = ang;
+        } else {
+          while (ang - prevAngle > Math.PI) ang -= Math.PI * 2;
+          while (ang - prevAngle < -Math.PI) ang += Math.PI * 2;
+          prevAngle = ang;
+        }
+        angleScratch[i] = ang;
+        lengthScratch[i] = Math.hypot(dx, dy);
+      }
+      const startAngle = angleScratch[0]!;
+      const endAngle = angleScratch[sampleCount - 1]!;
+      let maxLen = 0;
+      for (let i = 0; i < sampleCount; i++) {
+        if (lengthScratch[i]! > maxLen) maxLen = lengthScratch[i]!;
+      }
+      const sampleLengthAt = (angle: number): number => {
+        if (angle <= startAngle) return lengthScratch[0]!;
+        if (angle >= endAngle) return lengthScratch[sampleCount - 1]!;
+        let idx = 0;
+        while (idx + 1 < sampleCount && angleScratch[idx + 1]! < angle) idx++;
+        const a0 = angleScratch[idx]!;
+        const a1 = angleScratch[idx + 1]!;
+        const l0 = lengthScratch[idx]!;
+        const l1 = lengthScratch[idx + 1]!;
+        const span = a1 - a0;
+        if (Math.abs(span) < 1e-6) return Math.max(l0, l1);
+        const t = (angle - a0) / span;
+        return l0 + (l1 - l0) * t;
+      };
+
+      const rayCount: number = 4; // evenly spaced spokes
+      const radialColor: RangeColor = [color[0], color[1], color[2], color[3] * 0.12];
+      const angularSpan = Math.max(endAngle - startAngle, 1e-4);
+      gl.uniform4f(rangeU.u_color, radialColor[0], radialColor[1], radialColor[2], radialColor[3]);
+      for (let i = 0; i < rayCount; i++) {
+        const t = rayCount === 1 ? 0.5 : i / (rayCount - 1);
+        const angle = startAngle + angularSpan * t;
+        const len = sampleLengthAt(angle);
+        if (len <= 0.25) continue;
+        ringScratch[0] = centerX;
+        ringScratch[1] = centerY;
+        ringScratch[2] = centerX + Math.cos(angle) * len;
+        ringScratch[3] = centerY + Math.sin(angle) * len;
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, ringScratch.subarray(0, 4));
+        gl.drawArrays(gl.LINES, 0, 2);
+      }
+
+      const minorSpacing = ringSpacing / 5;
+      const totalRings = Math.min(60, Math.floor(maxLen / minorSpacing));
+      if (totalRings > 0) {
+        const arcStep = Math.max(angularSpan / Math.max(sampleCount * 2, 1), 0.03);
+        for (let r = 1; r <= totalRings; r++) {
+          const radius = r * minorSpacing;
+          const isMajor = (r % 5) === 0;
+          const arcAlpha = isMajor ? color[3] * 0.35 : color[3] * 0.12;
+          const arcTint = isMajor ? 1.0 : 0.9;
+          gl.uniform4f(rangeU.u_color, color[0] * arcTint, color[1] * arcTint, color[2] * arcTint, arcAlpha);
+          let ringPtr = 0;
+          const flush = (): void => {
+            if (ringPtr >= 4) {
+              gl.bufferSubData(gl.ARRAY_BUFFER, 0, ringScratch.subarray(0, ringPtr));
+              gl.drawArrays(gl.LINE_STRIP, 0, ringPtr / 2);
+            }
+            ringPtr = 0;
+          };
+          for (let angle = startAngle; angle <= endAngle + 1e-6; angle += arcStep) {
+            const len = sampleLengthAt(angle);
+            if (len + 0.5 < radius) {
+              flush();
+              continue;
+            }
+            ringScratch[ringPtr++] = centerX + Math.cos(angle) * radius;
+            ringScratch[ringPtr++] = centerY + Math.sin(angle) * radius;
+          }
+          flush();
+        }
+        gl.uniform4f(rangeU.u_color, color[0], color[1], color[2], color[3]);
+      }
+    }
     gl.disable(gl.BLEND);
     gl.bindVertexArray(null);
   }
 
   return {
     drawDiscs(world, cam, sel, drag) {
-      renderRangeOverlay(world, cam, sel);
+      overlayIdScratch.length = 0;
+      for (const id of sel.ids) overlayIdScratch.push(id);
+      if (overlayIdScratch.length > 0) {
+        renderRangeOverlay(world, cam, overlayIdScratch, COLOR_SELECTED, true, null);
+      }
       const e = world.entities;
       const emit = (id: number, r: number, g: number, b: number): void => {
         if (e.alive[id] === 0) return;
@@ -335,6 +485,22 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
       gl.disable(gl.BLEND);
       gl.bindVertexArray(null);
+    },
+    drawTeamRange(world, cam, team) {
+      collectTeamRangeIds(world, team, kind => kind.category === 'artillery', teamArtilleryScratch);
+      if (teamArtilleryScratch.length > 0) {
+        const yardsToMeters = 0.9144;
+        const spacing = 50 * yardsToMeters;
+        for (const id of teamArtilleryScratch) {
+          singleIdScratch.length = 1;
+          singleIdScratch[0] = id;
+          renderRangeOverlay(world, cam, singleIdScratch, COLOR_TEAM_ARTILLERY, false, spacing);
+        }
+      }
+      collectTeamRangeIds(world, team, kind => kind.category !== 'artillery', teamInfantryScratch);
+      if (teamInfantryScratch.length > 0) {
+        renderRangeOverlay(world, cam, teamInfantryScratch, COLOR_TEAM_WHITE, true, null);
+      }
     },
     draw(world, cam, sel, drag, formation) {
       const e = world.entities;

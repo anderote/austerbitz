@@ -11,6 +11,7 @@ import type { World } from '../sim/world';
 import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
 import type { Projectiles } from '../sim/projectiles';
+import { PLAYER_TEAM } from '../sim/player';
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
@@ -71,6 +72,9 @@ export function createRenderer(
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);
+      if (opts.showMovePreview) {
+        selectionPass.drawTeamRange(world, cam, PLAYER_TEAM);
+      }
       selectionPass.drawDiscs(world, cam, sel, drag);
       sprites.draw(world, cam);
       projectilesPass.draw(projectiles, cam);

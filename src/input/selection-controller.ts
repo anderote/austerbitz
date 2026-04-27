@@ -3,11 +3,12 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove } from './commands';
 import { computeFormationSlots, assignFormationSlots, type FormationUnit } from './formation';
 import { getUnitKindByIndex } from '../data/units';
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
+import type { Vec2 } from '../util/math';
 
 export type CursorMode = 'normal' | 'attack-move';
 
@@ -22,6 +23,8 @@ export interface SelectionControllerDeps {
   controlGroups: ControlGroups;
   /** Optional — when present, a small puff is emitted at each issued world point. */
   particles?: Particles;
+  /** Optional — when present, click-move targets are previewed at each unit's destination. */
+  movePreview?: { add(targets: Vec2[]): void };
 }
 
 export interface SelectionController {
@@ -268,8 +271,11 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         issueAttack(world, selection, hit, opts);
         puff(w.x, w.y);
       } else {
-        issueMove(world, selection, w, opts);
+        const assignments = issueMove(world, selection, w, opts);
         puff(w.x, w.y);
+        if (deps.movePreview && assignments.length > 0) {
+          deps.movePreview.add(assignments.map(a => a.target));
+        }
       }
       return;
     }
@@ -319,6 +325,10 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     // Letter hotkeys — guard with code so they're layout-independent and not affected by Shift.
     if (e.code === 'KeyR') {
       if (selection.ids.size > 0 && cursorMode === 'normal') cursorMode = 'attack-move';
+      return;
+    }
+    if (e.code === 'KeyF') {
+      issueRegroup(world, selection);
       return;
     }
     if (e.code === 'Delete' || e.code === 'Backspace') {

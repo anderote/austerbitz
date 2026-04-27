@@ -132,6 +132,10 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
 
   return {
     draw(world, cam) {
+      const UNIT_DOT_ZOOM = 4;
+      const INFANTRY_DOT_PIXELS = 3;
+      const CAVALRY_DOT_PIXELS = 4;
+      const ARTILLERY_DOT_PIXELS = 5;
       const e = world.entities;
       sortIdx.length = 0;
       for (let i = 0; i < e.capacity; i++) {
@@ -143,6 +147,11 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       // so front sprites overwrite back ones (painter's algorithm).
       const posY = e.posY;
       sortIdx.sort((a, b) => posY[a]! - posY[b]!);
+
+      const useDots = cam.zoom < UNIT_DOT_ZOOM;
+      const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
+      const cavalryDot = CAVALRY_DOT_PIXELS / cam.zoom;
+      const artilleryDot = ARTILLERY_DOT_PIXELS / cam.zoom;
 
       for (let k = 0; k < n; k++) {
         const i = sortIdx[k]!;
@@ -166,12 +175,6 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         }
         scratchPos[k * 2 + 0] = e.posX[i]! + e.recoilPeakX[i]! * wave;
         scratchPos[k * 2 + 1] = e.posY[i]! + e.recoilPeakY[i]! * wave;
-        scratchSize[k * 2 + 0] = kind.placeholderSize.w;
-        scratchSize[k * 2 + 1] = kind.placeholderSize.h;
-        scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;
-        scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
-        scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;
-        scratchColor[k * 4 + 3] = 1.0;
         const team = TEAM_COLORS[e.team[i]!] ?? FALLBACK_TEAM;
         scratchPrimary[k * 3 + 0] = team.primary[0] / 255;
         scratchPrimary[k * 3 + 1] = team.primary[1] / 255;
@@ -180,15 +183,43 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         scratchSecondary[k * 3 + 1] = team.secondary[1] / 255;
         scratchSecondary[k * 3 + 2] = team.secondary[2] / 255;
         const meta = KIND_ATLAS[kind.id] ?? SOLDIER_FALLBACK;
-        const facing = e.facing[i]!;
-        const cell = facing >= 1 && facing <= meta.poseCells.length
-          ? meta.poseCells[facing - 1]!
-          : (kind.spriteCell ?? meta.tintCell);
-        const uv = cellUv(meta, cell.col, cell.row);
-        scratchUv[k * 4 + 0] = uv[0];
-        scratchUv[k * 4 + 1] = uv[1];
-        scratchUv[k * 4 + 2] = uv[2];
-        scratchUv[k * 4 + 3] = uv[3];
+        if (useDots) {
+          // Solid tint cell + per-instance color = flat team-colored square.
+          // Tint cell is a single white texel, so col stays (1,1,1) and the
+          // fragment shader outputs v_color directly.
+          const dotSize = kind.category === 'artillery'
+            ? artilleryDot
+            : kind.category === 'cavalry'
+              ? cavalryDot
+              : infantryDot;
+          scratchSize[k * 2 + 0] = dotSize;
+          scratchSize[k * 2 + 1] = dotSize;
+          scratchColor[k * 4 + 0] = team.primary[0] / 255;
+          scratchColor[k * 4 + 1] = team.primary[1] / 255;
+          scratchColor[k * 4 + 2] = team.primary[2] / 255;
+          scratchColor[k * 4 + 3] = 1.0;
+          const uv = cellUv(meta, meta.tintCell.col, meta.tintCell.row);
+          scratchUv[k * 4 + 0] = uv[0];
+          scratchUv[k * 4 + 1] = uv[1];
+          scratchUv[k * 4 + 2] = uv[2];
+          scratchUv[k * 4 + 3] = uv[3];
+        } else {
+          scratchSize[k * 2 + 0] = kind.placeholderSize.w;
+          scratchSize[k * 2 + 1] = kind.placeholderSize.h;
+          scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;
+          scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
+          scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;
+          scratchColor[k * 4 + 3] = 1.0;
+          const facing = e.facing[i]!;
+          const cell = facing >= 1 && facing <= meta.poseCells.length
+            ? meta.poseCells[facing - 1]!
+            : (kind.spriteCell ?? meta.tintCell);
+          const uv = cellUv(meta, cell.col, cell.row);
+          scratchUv[k * 4 + 0] = uv[0];
+          scratchUv[k * 4 + 1] = uv[1];
+          scratchUv[k * 4 + 2] = uv[2];
+          scratchUv[k * 4 + 3] = uv[3];
+        }
       }
 
       gl.useProgram(prog);

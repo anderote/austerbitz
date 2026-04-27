@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Austerbitz — Soldier Component Preview</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0f1115;
+        color: #f3f4f6;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(260px, 320px) 1fr;
+        height: 100vh;
+      }
+      aside {
+        padding: 16px;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(21, 24, 30, 0.9);
+        overflow-y: auto;
+      }
+      aside h1 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      aside h2 {
+        margin: 18px 0 8px;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+      }
+      aside label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        margin-bottom: 6px;
+        cursor: pointer;
+      }
+      select {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: rgba(12, 15, 20, 0.9);
+        color: inherit;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+      button.reset {
+        margin-top: 10px;
+        width: 100%;
+        padding: 6px 10px;
+        background: rgba(56, 76, 110, 0.45);
+        border: 1px solid rgba(113, 153, 204, 0.6);
+        color: inherit;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.reset:hover { background: rgba(73, 104, 150, 0.55); }
+
+      section.preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      canvas {
+        width: 176px;
+        height: 288px;
+        image-rendering: pixelated;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(12, 15, 20, 1);
+      }
+      .info-card {
+        position: absolute;
+        bottom: 24px;
+        left: 24px;
+        padding: 10px 12px;
+        background: rgba(17, 24, 39, 0.85);
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .info-card strong { color: #93c5fd; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <aside>
+        <h1>Soldier Components</h1>
+        <label>
+          Facing
+          <select id="facing-select"></select>
+        </label>
+        <label>
+          Kit
+          <select id="kit-select"></select>
+        </label>
+        <label>
+          Skeleton Overlay
+          <select id="skeleton-select">
+            <option value="none">None</option>
+            <option value="front">Front</option>
+            <option value="side">Side</option>
+            <option value="back">Back</option>
+          </select>
+        </label>
+        <button class="reset" id="reset-button">Reset to Kit</button>
+        <div id="component-groups"></div>
+      </aside>
+      <section class="preview">
+        <canvas id="preview-canvas" width="11" height="18"></canvas>
+        <div class="info-card" id="info-card"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/dev/component-preview.ts"></script>
+  </body>
+</html>

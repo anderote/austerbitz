@@ -133,6 +133,7 @@ void main() {
 export const RANGE_FS = `#version 300 es
 precision highp float;
 uniform vec4 u_color;
+uniform vec2 u_pattern;
 out vec4 outColor;
 void main() {
   outColor = u_color;

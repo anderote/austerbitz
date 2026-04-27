@@ -17,11 +17,14 @@ import './ui/styles.css';
 import { createOverlay } from './ui/overlay';
 import { createHud } from './ui/hud';
 import { createSelectionPanel } from './ui/selection-panel';
+import { createStatsCard } from './ui/stats-card';
 import { createBuildMenu } from './ui/build-menu';
 import { createScaleBar } from './ui/scale-bar';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
 import { createGroupBadges } from './ui/group-badges';
+import { createPlacementInfo } from './ui/placement-info';
+import { createMovePreview } from './ui/move-preview';
 import { createParticles, updateParticles } from './particles/particles';
 import { emitDust } from './particles/emitters';
 import { createProjectiles } from './sim/projectiles';
@@ -60,9 +63,12 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
   const kind = getUnitKind(kindId);
   world.entities.posX[id] = x;
   world.entities.posY[id] = y;
+  world.entities.restPosX[id] = x;
+  world.entities.restPosY[id] = y;
   world.entities.kindId[id] = getUnitKindIndex(kindId);
   world.entities.team[id] = team;
   world.entities.facing[id] = facing;
+  world.entities.restFacing[id] = facing;
   world.entities.facingIntentX[id] = Math.cos((facing * Math.PI) / 4);
   world.entities.facingIntentY[id] = Math.sin((facing * Math.PI) / 4);
   world.entities.hp[id] = kind.baseStats.hp;
@@ -158,26 +164,33 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
+// Three echelons of infantry, each spaced ~2.3 musket-ranges (80 m) apart. Cavalry sits
+// well behind the rear echelon as a reserve; cannons are pushed deep into the back, still
+// within their 600 m range to the enemy front line (60 m battle gap + 520 m = 580 m).
+const INFANTRY_ECHELON_DEPTH = 30;
+const CAVALRY_BACK = 420;
+const CANNON_BACK = 520;
+
+const lineRegiments: RegimentPlan[] = [
+  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: 0 },
+  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH },
+  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH * 2 },
+  { kindId: 'cuirassier',    files: 50,  ranks: 3, count: 6, gap: 30, backOffset: CAVALRY_BACK },
+  { kindId: 'cannon-12',     files: 12,  ranks: 1, count: 6, gap: 50, backOffset: CANNON_BACK },
+];
+
 const friendlyArmy: ArmyPlan = {
   team: 0,
   facing: FACING_W,
   frontCenter: { x: cx + BATTLE_GAP / 2, y: cy },
-  regiments: [
-    { kindId: 'line-infantry', files: 100, ranks: 4, count: 6, gap: 8 },
-    { kindId: 'cuirassier', files: 24, ranks: 3, count: 2, gap: 24, backOffset: 40 },
-    { kindId: 'cannon-12', files: 4, ranks: 1, count: 2, gap: 30, backOffset: 80 },
-  ],
+  regiments: lineRegiments,
 };
 
 const enemyArmy: ArmyPlan = {
   team: 1,
   facing: FACING_E,
   frontCenter: { x: cx - BATTLE_GAP / 2, y: cy },
-  regiments: [
-    { kindId: 'line-infantry', files: 100, ranks: 4, count: 6, gap: 8 },
-    { kindId: 'cuirassier', files: 24, ranks: 3, count: 2, gap: 24, backOffset: 40 },
-    { kindId: 'cannon-12', files: 4, ranks: 1, count: 2, gap: 30, backOffset: 80 },
-  ],
+  regiments: lineRegiments,
 };
 
 spawnArmy(friendlyArmy);
@@ -192,20 +205,23 @@ syncViewport();
 
 camera.center.x = cx;
 camera.center.y = cy;
-camera.zoom = 16;
+camera.zoom = 12;
 
 const overlay = createOverlay();
 const hud = createHud(overlay);
 const selPanel = createSelectionPanel(overlay);
+const statsCard = createStatsCard(overlay);
 const buildMenu = createBuildMenu(overlay);
 const scaleBar = createScaleBar(overlay);
 const minimap = createMinimap(overlay, map.size, camera);
 const cgPanel = createControlGroupsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
+const placementInfo = createPlacementInfo(overlay);
+const movePreview = createMovePreview(overlay);
 
 const controller = createSelectionController({
   canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
-  particles,
+  particles, movePreview,
 });
 
 let lastT = performance.now();
@@ -228,9 +244,13 @@ function frame(t: number) {
   clearBloodSplats(bs);
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
   const showMovePreview = input.state.keys.has('Space');
-  renderer.render(world, projectiles, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars, showMovePreview });
+  const formationPreview = controller.formationPreview();
+  renderer.render(world, projectiles, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
   hud.update(smoothedFps, world, controller.cursorMode);
+  placementInfo.update(world, camera, selection, formationPreview);
+  movePreview.update(camera);
   selPanel.update(world, selection);
+  statsCard.update(world, selection);
   buildMenu.update();
   scaleBar.update(camera);
   minimap.update(world, camera);

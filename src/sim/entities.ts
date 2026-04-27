@@ -27,9 +27,18 @@ export interface Entities {
   posY: Float32Array;
   velX: Float32Array;
   velY: Float32Array;
+  // Anchor position the unit drifts back toward after being shoved with no
+  // active move order. Set at spawn, updated on move/attack-move arrival
+  // and on 'stop'.
+  restPosX: Float32Array;
+  restPosY: Float32Array;
   facing: Uint8Array;       // 0..7
   facingIntentX: Float32Array;
   facingIntentY: Float32Array;
+  // Octant (0..7) the unit returns to when ordered to regroup. Set at spawn,
+  // updated on move/attack-move arrival to whatever direction the unit was
+  // facing as it arrived.
+  restFacing: Uint8Array;
 
   // Combat
   hp: Uint16Array;
@@ -46,6 +55,7 @@ export interface Entities {
   impulseX: Float32Array;   // pending impulse x
   impulseY: Float32Array;   // pending impulse y
   ragdollT: Float32Array;   // countdown while in ragdoll state
+  pushedT: Float32Array;    // settle delay after being shoved by collision; >0 = wait before drifting back
 
   // Identity
   kindId: Uint16Array;
@@ -80,9 +90,12 @@ export function createEntities(capacity: number): Entities {
     posY: new Float32Array(capacity),
     velX: new Float32Array(capacity),
     velY: new Float32Array(capacity),
+    restPosX: new Float32Array(capacity),
+    restPosY: new Float32Array(capacity),
     facing: new Uint8Array(capacity),
     facingIntentX: new Float32Array(capacity),
     facingIntentY: new Float32Array(capacity),
+    restFacing: new Uint8Array(capacity),
     hp: new Uint16Array(capacity),
     morale: new Uint8Array(capacity),
     state: new Uint8Array(capacity),
@@ -95,6 +108,7 @@ export function createEntities(capacity: number): Entities {
     impulseX: new Float32Array(capacity),
     impulseY: new Float32Array(capacity),
     ragdollT: new Float32Array(capacity),
+    pushedT: new Float32Array(capacity),
     kindId: new Uint16Array(capacity),
     team: new Uint8Array(capacity),
     formationId: new Int32Array(capacity).fill(-1),
@@ -119,9 +133,11 @@ export function allocEntity(e: Entities): number {
   // Reset hot fields to deterministic defaults
   e.posX[id] = 0; e.posY[id] = 0;
   e.velX[id] = 0; e.velY[id] = 0;
+  e.restPosX[id] = 0; e.restPosY[id] = 0;
   e.facing[id] = 0;
   e.facingIntentX[id] = 1;
   e.facingIntentY[id] = 0;
+  e.restFacing[id] = 0;
   e.hp[id] = 0;
   e.morale[id] = 200;
   e.state[id] = EntityState.Idle;
@@ -134,6 +150,7 @@ export function allocEntity(e: Entities): number {
   e.impulseX[id] = 0;
   e.impulseY[id] = 0;
   e.ragdollT[id] = 0;
+  e.pushedT[id] = 0;
   e.kindId[id] = 0;
   e.team[id] = 0;
   e.formationId[id] = -1;

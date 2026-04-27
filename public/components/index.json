@@ -1,0 +1,161 @@
+{
+  "components": [
+    {
+      "id": "head-default",
+      "type": "anatomy",
+      "category": "head",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/head/front/default.png",
+      "pivot": [
+        5,
+        4
+      ],
+      "anchors": {
+        "back_hook": [
+          5,
+          11
+        ],
+        "shoulder": [
+          5,
+          10
+        ]
+      },
+      "notes": "Neutral face block for front idle pose."
+    },
+    {
+      "id": "torso-front-slim",
+      "type": "anatomy",
+      "category": "torso",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/torso/front/slim.png",
+      "pivot": [
+        5,
+        13
+      ],
+      "anchors": {
+        "shoulder": [
+          5,
+          10
+        ],
+        "hip": [
+          5,
+          13
+        ]
+      },
+      "notes": "Base torso volume without coat colors."
+    },
+    {
+      "id": "legs-front-idle",
+      "type": "anatomy",
+      "category": "legs",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/legs/front/idle.png",
+      "pivot": [
+        5,
+        16
+      ],
+      "anchors": {
+        "knee_left": [
+          4,
+          14
+        ],
+        "knee_right": [
+          6,
+          14
+        ],
+        "foot_left": [
+          4,
+          16
+        ],
+        "foot_right": [
+          6,
+          16
+        ]
+      },
+      "notes": "Neutral leg silhouette sized for idle stance."
+    },
+    {
+      "id": "coat-line-front",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/coat-line/front/base.png",
+      "anatomy": "torso-front-slim",
+      "palette_layers": [
+        "primary",
+        "secondary",
+        "trim"
+      ],
+      "notes": "British line infantry coatee overlay with crossbelts."
+    },
+    {
+      "id": "trousers-front-white",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers-front.png",
+      "anatomy": "legs-front-idle",
+      "palette_layers": [
+        "cloth",
+        "gaiter"
+      ],
+      "notes": "White breeches and black gaiters for line infantry."
+    },
+    {
+      "id": "shako-standard",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/head/shako-standard.png",
+      "anchors": {
+        "plume_socket": [
+          6,
+          2
+        ]
+      },
+      "notes": "Tall shako with plume and brass plate."
+    },
+    {
+      "id": "musket-brown-bess",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "S"
+      ],
+      "path": "weapon/musket/front/idle.png",
+      "anchors": {
+        "grip": [
+          3,
+          12
+        ],
+        "barrel_tip": [
+          1,
+          0
+        ]
+      },
+      "notes": "Brown Bess musket aligned to idle stance."
+    },
+    {
+      "id": "shadow-front",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "S"
+      ],
+      "path": "shadow/front/default.png",
+      "notes": "Ground shadow strip at idle baseline."
+    }
+  ]
+}
