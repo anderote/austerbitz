@@ -82,3 +82,37 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
 
   return { slots, rect: { tl, tr, br, bl } };
 }
+
+export function assignFormationSlots(units: FormationUnit[], slots: Vec2[]): Vec2[] {
+  if (units.length !== slots.length) {
+    throw new Error(`assignFormationSlots: length mismatch (${units.length} vs ${slots.length})`);
+  }
+  const N = units.length;
+  const taken = new Uint8Array(N);
+  const out: Vec2[] = new Array(N);
+
+  // Pre-sort indices: units farthest from slot centroid pick first.
+  let cx = 0, cy = 0;
+  for (const s of slots) { cx += s.x; cy += s.y; }
+  if (N > 0) { cx /= N; cy /= N; }
+  const order = units.map((_, i) => i).sort((a, b) => {
+    const da = (units[a]!.x - cx) ** 2 + (units[a]!.y - cy) ** 2;
+    const db = (units[b]!.x - cx) ** 2 + (units[b]!.y - cy) ** 2;
+    return db - da;
+  });
+
+  for (const i of order) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let j = 0; j < N; j++) {
+      if (taken[j]) continue;
+      const dx = units[i]!.x - slots[j]!.x;
+      const dy = units[i]!.y - slots[j]!.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = j; }
+    }
+    taken[best] = 1;
+    out[i] = slots[best]!;
+  }
+  return out;
+}

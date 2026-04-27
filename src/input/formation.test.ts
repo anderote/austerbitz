@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeFormationSlots } from './formation';
+import { computeFormationSlots, assignFormationSlots } from './formation';
 
 describe('computeFormationSlots', () => {
   it('single unit, zero-length drag → one slot at midDrag', () => {
@@ -65,5 +65,36 @@ describe('computeFormationSlots', () => {
     });
     expect(r.slots.length).toBe(2);
     expect(r.slots[1]!.x - r.slots[0]!.x).toBeCloseTo(3);
+  });
+});
+
+describe('assignFormationSlots', () => {
+  it('linear units → linear slots produces monotonic mapping', () => {
+    const units = [
+      { id: 10, x: 0, y: 0, spacingX: 1, spacingY: 1 },
+      { id: 11, x: 1, y: 0, spacingX: 1, spacingY: 1 },
+      { id: 12, x: 2, y: 0, spacingX: 1, spacingY: 1 },
+      { id: 13, x: 3, y: 0, spacingX: 1, spacingY: 1 },
+    ];
+    const slots = [
+      { x: 0, y: 5 }, { x: 1, y: 5 }, { x: 2, y: 5 }, { x: 3, y: 5 },
+    ];
+    const out = assignFormationSlots(units, slots);
+    expect(out.length).toBe(4);
+    expect(out[0]).toEqual({ x: 0, y: 5 });
+    expect(out[1]).toEqual({ x: 1, y: 5 });
+    expect(out[2]).toEqual({ x: 2, y: 5 });
+    expect(out[3]).toEqual({ x: 3, y: 5 });
+  });
+
+  it('returns one slot per unit, all distinct', () => {
+    const units = Array.from({ length: 5 }, (_, i) => ({
+      id: i, x: i, y: i, spacingX: 1, spacingY: 1,
+    }));
+    const slots = Array.from({ length: 5 }, (_, i) => ({ x: i + 10, y: i + 10 }));
+    const out = assignFormationSlots(units, slots);
+    expect(out.length).toBe(5);
+    const seen = new Set(out.map(s => `${s.x},${s.y}`));
+    expect(seen.size).toBe(5);
   });
 });
