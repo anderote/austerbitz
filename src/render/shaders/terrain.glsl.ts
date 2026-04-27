@@ -19,7 +19,9 @@ export const TERRAIN_FS = `#version 300 es
 precision highp float;
 in vec2 v_worldPos;
 uniform sampler2D u_tile;
+uniform sampler2D u_blood;
 uniform float u_tileSize;   // world units per tile
+uniform vec2 u_worldSize;   // total world size in metres
 out vec4 outColor;
 
 float hash21(vec2 p) {
@@ -50,7 +52,16 @@ void main() {
   float meso  = vnoise(v_worldPos * 1.0);
   float fine  = vnoise(v_worldPos * 4.0);
   float bright = 0.90 + 0.14 * macro + 0.06 * (meso - 0.5) + 0.04 * (fine - 0.5);
+  vec3 color = base * bright;
 
-  outColor = vec4(base * bright, 1.0);
+  vec2 bloodUv = v_worldPos / u_worldSize;
+  float stain = 0.0;
+  if (bloodUv.x >= 0.0 && bloodUv.x <= 1.0 && bloodUv.y >= 0.0 && bloodUv.y <= 1.0) {
+    stain = texture(u_blood, bloodUv).r;
+  }
+  vec3 bloodCol = vec3(0.18, 0.02, 0.02);
+  color = mix(color, bloodCol, clamp(stain * 0.85, 0.0, 0.85));
+
+  outColor = vec4(color, 1.0);
 }
 `;

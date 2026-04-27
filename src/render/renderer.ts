@@ -6,6 +6,7 @@ import { createSelectionPass } from './passes/selection-pass';
 import { createParticlePass } from './passes/particle-pass';
 import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
+import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
 import type { World } from '../sim/world';
 import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
@@ -34,6 +35,7 @@ export interface Renderer {
     opts: RenderOptions,
   ): void;
   resize(): void;
+  bloodStain: BloodStainPass;
 }
 
 export function createRenderer(
@@ -42,8 +44,12 @@ export function createRenderer(
   capacity: number,
   particleCapacity: number,
   projectileCapacity: number,
+  worldW: number,
+  worldH: number,
 ): Renderer {
   const terrain = createTerrainPass(gl);
+  const bloodStain = createBloodStainPass(gl, worldW, worldH);
+  terrain.setBlood(bloodStain.texture, worldW, worldH);
   const sprites = createSpritePass(gl, capacity);
   const selectionPass = createSelectionPass(gl, capacity);
   const particlesPass = createParticlePass(gl, particleCapacity);
@@ -52,10 +58,15 @@ export function createRenderer(
   const healthBarPass = createHealthBarPass(gl, capacity);
 
   return {
+    bloodStain,
     resize() {
       resizeToDisplay(gl, canvas);
     },
     render(world, projectiles, particlePool, cam, sel, drag, formation, opts) {
+      // Bake any queued blood splats into the persistent stain texture before
+      // terrain samples it.
+      bloodStain.flush();
+
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);

@@ -3,6 +3,7 @@ import { allocEntity, createEntities, EntityState } from '../entities';
 import { createParticles } from '../../particles/particles';
 import { createRng } from '../../util/rng';
 import { getUnitKindIndex } from '../../data/units';
+import { createBloodSplats } from '../blood-splats';
 import {
   applyHit,
   enterFlinch,
@@ -114,6 +115,31 @@ describe('applyHit', () => {
     applyHit(e, particles, rng, id, 2, 12, 0, 'musket');
     // max(1, 2 − 4) = 1
     expect(e.hp[id]).toBe(139);
+  });
+
+  it('lethal hit pushes >=1 stain splat onto the queue when provided', () => {
+    const { e, particles, rng, id } = setupLineInfantry(5);
+    const splats = createBloodSplats(64);
+    applyHit(e, particles, rng, id, 12, 12, 0, 'musket', splats);
+    expect(e.hp[id]).toBe(0);
+    expect(splats.count).toBeGreaterThanOrEqual(1);
+    // Position is the entity's xy, jittered. Radius/intensity are positive.
+    expect(splats.radius[0]!).toBeGreaterThan(0);
+    expect(splats.intensity[0]!).toBeGreaterThan(0);
+  });
+
+  it('non-lethal hit pushes exactly 1 stain splat onto the queue', () => {
+    const { e, particles, rng, id } = setupLineInfantry(60);
+    const splats = createBloodSplats(64);
+    applyHit(e, particles, rng, id, 12, 12, 0, 'musket', splats);
+    expect(e.hp[id]).toBe(48);
+    expect(splats.count).toBe(1);
+  });
+
+  it('omitting splats argument leaves combat behaviour untouched', () => {
+    const { e, particles, rng, id } = setupLineInfantry(60);
+    applyHit(e, particles, rng, id, 12, 12, 0, 'musket');
+    expect(e.state[id]).toBe(EntityState.Flinch);
   });
 });
 

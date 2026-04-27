@@ -24,6 +24,7 @@ import { createGroupBadges } from './ui/group-badges';
 import { createParticles, updateParticles } from './particles/particles';
 import { emitDust } from './particles/emitters';
 import { createProjectiles } from './sim/projectiles';
+import { clearBloodSplats } from './sim/blood-splats';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
@@ -31,7 +32,11 @@ const PROJECTILE_CAPACITY = 2048;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
-const renderer = createRenderer(gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY);
+const map = createDefaultMap();
+const renderer = createRenderer(
+  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
+  map.size.w, map.size.h,
+);
 const camera = createCamera();
 const input = createInputManager(canvas);
 const selection = createSelection();
@@ -39,7 +44,6 @@ const drag = createDragRect();
 const formationDrag = createFormationDrag();
 const controlGroups = createControlGroups();
 
-const map = createDefaultMap();
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
 const particles = createParticles(PARTICLE_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
@@ -143,6 +147,12 @@ function frame(t: number) {
   tickWorld(world, dt);
   emitDust(world, particles, dt);
   updateParticles(particles, dt);
+  // Drain sim-queued blood splats into the GPU stain pass.
+  const bs = world.bloodSplats;
+  for (let i = 0; i < bs.count; i++) {
+    renderer.bloodStain.splat(bs.posX[i]!, bs.posY[i]!, bs.radius[i]!, bs.intensity[i]!);
+  }
+  clearBloodSplats(bs);
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
   renderer.render(world, projectiles, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars });
   hud.update(smoothedFps, world, controller.cursorMode);

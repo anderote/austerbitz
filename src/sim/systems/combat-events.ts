@@ -3,6 +3,7 @@ import { getUnitKindByIndex } from '../../data/units';
 import type { Particles } from '../../particles/particles';
 import { spawnBlood } from '../../particles/emitters';
 import type { Rng } from '../../util/rng';
+import { pushBloodSplat, type BloodSplats } from '../blood-splats';
 
 /** Impulse magnitude (N·s) at or above which a kill ragdolls instead of falling in place. */
 export const KILL_RAGDOLL_THRESHOLD = 8000;
@@ -48,6 +49,7 @@ export function applyHit(
   impY: number,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _kind: HitKind,
+  splats?: BloodSplats,
 ): void {
   if (e.alive[id] === 0) return;
 
@@ -63,6 +65,8 @@ export function applyHit(
   }
 
   const impMag = Math.hypot(impX, impY);
+  const px = e.posX[id]!;
+  const py = e.posY[id]!;
 
   if (e.hp[id] === 0) {
     if (impMag > KILL_RAGDOLL_THRESHOLD) {
@@ -71,7 +75,25 @@ export function applyHit(
     } else {
       enterDying(e, id);
     }
-    spawnBlood(particles, e.posX[id]!, e.posY[id]!, impMag, rng);
+    spawnBlood(particles, px, py, impMag, rng);
+    if (splats) {
+      // Lethal: a primary pool plus a smaller satellite spatter, jittered.
+      const impScale = Math.min(1, 0.4 + impMag * 0.0002);
+      pushBloodSplat(
+        splats,
+        px + rng.range(-0.4, 0.4),
+        py + rng.range(-0.4, 0.4),
+        rng.range(0.6, 1.2),
+        rng.range(0.7, 1.0) * impScale,
+      );
+      pushBloodSplat(
+        splats,
+        px + rng.range(-0.6, 0.6),
+        py + rng.range(-0.6, 0.6),
+        rng.range(0.4, 0.8),
+        rng.range(0.5, 0.8) * impScale,
+      );
+    }
     return;
   }
 
@@ -80,5 +102,14 @@ export function applyHit(
   } else {
     enterFlinch(e, id);
   }
-  spawnBlood(particles, e.posX[id]!, e.posY[id]!, impMag * 0.4, rng);
+  spawnBlood(particles, px, py, impMag * 0.4, rng);
+  if (splats) {
+    pushBloodSplat(
+      splats,
+      px + rng.range(-0.3, 0.3),
+      py + rng.range(-0.3, 0.3),
+      rng.range(0.3, 0.6),
+      rng.range(0.3, 0.5),
+    );
+  }
 }

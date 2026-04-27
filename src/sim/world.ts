@@ -1,6 +1,7 @@
 import { createEntities, type Entities } from './entities';
 import { createGrid, gridRebuild, type Grid } from './spatial/grid';
 import { createRng, type Rng } from '../util/rng';
+import { createBloodSplats, type BloodSplats } from './blood-splats';
 
 export type System = (world: World, dt: number) => void;
 
@@ -27,6 +28,8 @@ export interface World {
   systems: System[];
   /** Per-entity order queue. Front (index 0) is the active order. */
   orderQueue: Map<number, Order[]>;
+  /** Per-frame blood-stain splat queue, drained by the renderer each frame. */
+  bloodSplats: BloodSplats;
 }
 
 export function createWorld(cfg: WorldConfig): World {
@@ -45,6 +48,7 @@ export function createWorld(cfg: WorldConfig): World {
     simTime: 0,
     systems: [],
     orderQueue: new Map(),
+    bloodSplats: createBloodSplats(4096),
   };
 }
 

@@ -4,6 +4,7 @@ import { gridSweptQuery, type Grid } from '../spatial/grid';
 import type { Particles } from '../../particles/particles';
 import type { Rng } from '../../util/rng';
 import { applyHit } from './combat-events';
+import type { BloodSplats } from '../blood-splats';
 import {
   emitCannonballTrail,
   emitImpactDust,
@@ -52,6 +53,7 @@ export function tickProjectiles(
   particles: Particles,
   rng: Rng,
   dt: number,
+  splats?: BloodSplats,
 ): void {
   const p = projectiles;
   for (let i = 0; i < p.capacity; i++) {
@@ -85,6 +87,7 @@ export function tickProjectiles(
           p.posX[i]!, p.posY[i]!,
           cannon12Shell.projectile.explosion!,
           undefined,
+          splats,
         );
         freeProjectile(p, i);
         continue;
@@ -114,6 +117,7 @@ export function tickProjectiles(
           p.prevX[i]!, p.prevY[i]!,
           cannon12Shell.projectile.explosion!,
           undefined,
+          splats,
         );
         freeProjectile(p, i);
         continue;
@@ -193,6 +197,7 @@ export function tickProjectiles(
             ex, ey,
             cannon12Shell.projectile.explosion!,
             undefined,
+            splats,
           );
           freeProjectile(p, i);
           freed = true;
@@ -202,7 +207,7 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind);
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats);
 
         if (kind === ProjectileKind.Musket) {
           freeProjectile(p, i);

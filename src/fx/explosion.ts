@@ -4,6 +4,7 @@ import { ParticleClass, spawnParticle, type Particles } from '../particles/parti
 import type { Rng } from '../util/rng';
 import type { ExplosionProfile } from '../data/weapons/types';
 import { applyHit } from '../sim/systems/combat-events';
+import type { BloodSplats } from '../sim/blood-splats';
 
 const EXPLOSION_BUF = new Int32Array(2048);
 
@@ -26,6 +27,7 @@ export function spawnExplosion(
   y: number,
   profile: ExplosionProfile,
   excludeTeam?: number,
+  splats?: BloodSplats,
 ): void {
   // 1. Flash — one bright additive particle at the centre, snaps out via high drag.
   spawnParticle(particles, {
@@ -104,6 +106,7 @@ export function spawnExplosion(
       dirX * profile.impulse * falloff,
       dirY * profile.impulse * falloff,
       'explosion',
+      splats,
     );
   }
 }

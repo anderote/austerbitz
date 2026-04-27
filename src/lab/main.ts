@@ -31,13 +31,17 @@ const PROJECTILE_CAPACITY = 2_048;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
-const renderer = createRenderer(gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY);
+const LAB_MAP_SIZE = 200;
+const renderer = createRenderer(
+  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
+  LAB_MAP_SIZE, LAB_MAP_SIZE,
+);
 const camera = createCamera();
 const input = createInputManager(canvas);
 const selection = createSelection();
 const drag = createDragRect();
 
-const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: 200 });
+const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: LAB_MAP_SIZE });
 const particles = createParticles(PARTICLE_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 
@@ -121,7 +125,7 @@ function frame(t: number) {
   rebuildGrid(world);
   movementSystem(world, dt);
   tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
-  tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt);
+  tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.
@@ -136,6 +140,13 @@ function frame(t: number) {
 
   applyWind(particles, wind.accelX, dt);
   updateParticles(particles, dt);
+
+  // Drain sim-queued blood splats into the GPU stain pass.
+  const bs = world.bloodSplats;
+  for (let i = 0; i < bs.count; i++) {
+    renderer.bloodStain.splat(bs.posX[i]!, bs.posY[i]!, bs.radius[i]!, bs.intensity[i]!);
+  }
+  bs.count = 0;
 
   renderer.render(world, projectiles, particles, camera, selection, drag, null, { showHealthBars: false });
 
