@@ -6,7 +6,6 @@ import {
   spawnBlood,
   emitRicochetBurst,
   emitImpactDust,
-  emitCannonballTrail,
 } from './emitters';
 import { createRng } from '../util/rng';
 import { musket } from '../data/weapons/musket';
@@ -165,17 +164,3 @@ describe('emitDust merging', () => {
   });
 });
 
-describe('emitCannonballTrail', () => {
-  it('emits exactly 1 Smoke particle with positive sizeGrowth', () => {
-    const p = createParticles(8);
-    const rng = createRng(13);
-    emitCannonballTrail(p, 0, 0, rng);
-    expect(p.count).toBe(1);
-    expect(countByClass(p, ParticleClass.Smoke)).toBe(1);
-    let idx = -1;
-    for (let i = 0; i < p.capacity; i++) {
-      if (p.alive[i] === 1) { idx = i; break; }
-    }
-    expect(p.sizeGrowth[idx]).toBeGreaterThan(0);
-  });
-});

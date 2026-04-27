@@ -6,10 +6,12 @@ import type { Rng } from '../../util/rng';
 import { applyHit } from './combat-events';
 import type { BloodSplats } from '../blood-splats';
 import {
-  emitCannonballTrail,
   emitImpactDust,
   emitRicochetBurst,
 } from '../../particles/emitters';
+import { emitPuff } from '../../puffs/emit';
+import type { Puffs } from '../../puffs/puffs';
+import { CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX } from '../../puffs/profiles/cannonball-trail';
 import { spawnExplosion } from '../../fx/explosion';
 import { getUnitKindByIndex } from '../../data/units';
 import { GAME_GRAVITY } from '../../fx/ballistics';
@@ -50,6 +52,7 @@ export function tickProjectiles(
   projectiles: Projectiles,
   entities: Entities,
   grid: Grid,
+  puffs: Puffs,
   particles: Particles,
   rng: Rng,
   dt: number,
@@ -236,9 +239,9 @@ export function tickProjectiles(
       continue;
     }
 
-    // 9. Trail — solid shots and shells drop a smoke particle each tick.
+    // 9. Trail — solid shots and shells drop a smoke puff each tick.
     if (kind === ProjectileKind.SolidShot || kind === ProjectileKind.Shell) {
-      emitCannonballTrail(particles, p.posX[i]!, p.posY[i]!, rng);
+      emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, p.posX[i]!, p.posY[i]!, 0, 0, rng);
     }
   }
 }

@@ -252,22 +252,3 @@ export function emitImpactDust(
   }
 }
 
-/** Single smoke trail particle — call once per tick from the cannonball's current pos. */
-export function emitCannonballTrail(
-  particles: Particles,
-  x: number, y: number,
-  rng: Rng,
-): void {
-  spawnParticle(particles, {
-    x, y,
-    vx: rng.range(-0.5, 0.5),
-    vy: rng.range(-0.5, 0.5),
-    life: rng.range(0.5, 1.0),
-    size: 0.4,
-    r: 0.7, g: 0.7, b: 0.72,
-    drag: 0.97,
-    accelY: 0.6,
-    sizeGrowth: 1.2,
-    klass: ParticleClass.Smoke,
-  });
-}

@@ -9,6 +9,7 @@ import {
 } from '../projectiles';
 import { createGrid, gridRebuild, type Grid } from '../spatial/grid';
 import { createParticles, type Particles } from '../../particles/particles';
+import { createPuffs, type Puffs } from '../../puffs/puffs';
 import { createRng, type Rng } from '../../util/rng';
 import { getUnitKindIndex } from '../../data/units';
 import { tickProjectiles } from './projectile-system';
@@ -17,6 +18,7 @@ interface Setup {
   entities: Entities;
   projectiles: Projectiles;
   grid: Grid;
+  puffs: Puffs;
   particles: Particles;
   rng: Rng;
 }
@@ -26,6 +28,7 @@ function setup(): Setup {
     entities: createEntities(16),
     projectiles: createProjectiles(64),
     grid: createGrid({ minX: -100, minY: -100, maxX: 100, maxY: 100, cellSize: 5, capacity: 16 }),
+    puffs: createPuffs(512),
     particles: createParticles(512),
     rng: createRng(1),
   };
@@ -53,7 +56,7 @@ describe('tickProjectiles — integration', () => {
     const s = setup();
     const pid = spawnMusketBall(s.projectiles, 0, 0, 1, 0, /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4);
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.01);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.01);
 
     expect(s.projectiles.prevX[pid]).toBe(0);
     expect(s.projectiles.posX[pid]).toBeCloseTo(1.0, 5);
@@ -75,7 +78,7 @@ describe('tickProjectiles — integration', () => {
     let maxZ = s.projectiles.posZ[pid]!;
     let groundedAt = -1;
     for (let step = 0; step < 200; step++) {
-      tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, dt);
+      tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, dt);
       if (s.projectiles.alive[pid] === 0) break;
       if (s.projectiles.posZ[pid]! > maxZ) maxZ = s.projectiles.posZ[pid]!;
       if (groundedAt < 0 && s.projectiles.posZ[pid]! === 0) groundedAt = step;
@@ -96,7 +99,7 @@ describe('tickProjectiles — ricochet & rolling', () => {
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 1 / 60);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 1 / 60);
 
     // Ricochet count should drop by exactly one.
     expect(s.projectiles.ricochets[pid]).toBe(2);
@@ -119,7 +122,7 @@ describe('tickProjectiles — ricochet & rolling', () => {
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 0,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 1 / 60);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 1 / 60);
 
     expect(s.projectiles.alive[pid]).toBe(0);
     expect(s.projectiles.count).toBe(0);
@@ -135,7 +138,7 @@ describe('tickProjectiles — entity collision', () => {
       /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.1);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.1);
 
     expect(s.entities.hp[target]).toBeLessThan(60);
     expect(s.projectiles.alive[pid]).toBe(0);
@@ -149,7 +152,7 @@ describe('tickProjectiles — entity collision', () => {
       /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.1);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.1);
 
     expect(s.entities.hp[friend]).toBe(60);
   });
@@ -165,7 +168,7 @@ describe('tickProjectiles — entity collision', () => {
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.2);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.2);
 
     expect(s.entities.hp[a]).toBeLessThan(60);
     expect(s.entities.hp[b]).toBeLessThan(60);
@@ -183,7 +186,7 @@ describe('tickProjectiles — entity collision', () => {
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.2);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.2);
 
     expect(s.entities.hp[target]).toBe(60);
   });
@@ -199,7 +202,7 @@ describe('tickProjectiles — shell behaviour', () => {
       /*team*/ 1, /*dmg*/ 0, /*mass*/ 6, /*life*/ 6, /*fuse*/ 0.01,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.02);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.02);
 
     expect(s.projectiles.alive[pid]).toBe(0);
     // Explosion should have spawned at least the flash + smoke billow + debris.
@@ -216,7 +219,7 @@ describe('tickProjectiles — shell behaviour', () => {
       /*team*/ 1, /*dmg*/ 0, /*mass*/ 6, /*life*/ 6, /*fuse*/ 1.5,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 0.2);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.2);
 
     expect(s.projectiles.alive[pid]).toBe(0);
     // Splash damage from the explosion radius (target is at the centre).
@@ -225,7 +228,7 @@ describe('tickProjectiles — shell behaviour', () => {
 });
 
 describe('tickProjectiles — trail emission', () => {
-  it('cannonball emits a trail particle each tick', () => {
+  it('cannonball emits a trail puff each tick', () => {
     const s = setup();
     spawnSolidShot(
       s.projectiles,
@@ -234,8 +237,8 @@ describe('tickProjectiles — trail emission', () => {
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
     );
 
-    expect(s.particles.count).toBe(0);
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.particles, s.rng, 1 / 60);
-    expect(s.particles.count).toBeGreaterThanOrEqual(1);
+    expect(s.puffs.count).toBe(0);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 1 / 60);
+    expect(s.puffs.count).toBeGreaterThanOrEqual(1);
   });
 });

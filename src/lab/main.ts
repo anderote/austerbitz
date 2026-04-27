@@ -128,7 +128,7 @@ function frame(t: number) {
   rebuildGrid(world);
   movementSystem(world, dt);
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt);
-  tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
+  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.
