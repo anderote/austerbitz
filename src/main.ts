@@ -24,6 +24,7 @@ import { createGroupBadges } from './ui/group-badges';
 import { createParticles, updateParticles } from './particles/particles';
 import { createPuffs, updatePuffs } from './puffs/puffs';
 import { emitDustForFrame } from './puffs/emit-dust';
+import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clouds';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
 
@@ -47,6 +48,12 @@ const formationDrag = createFormationDrag();
 const controlGroups = createControlGroups();
 
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
+
+const cloudCfg: AmbientCloudConfig = {
+  target: 12,
+  viewport: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
+  windX: 0.6, windY: 0,
+};
 const particles = createParticles(PARTICLE_CAPACITY);
 const puffs = createPuffs(PUFF_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
@@ -149,6 +156,7 @@ function frame(t: number) {
   controller.update(dt);
   tickWorld(world, dt);
   emitDustForFrame(world, puffs, dt);
+  tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
   updatePuffs(puffs, dt);
   updateParticles(particles, dt);
   // Drain sim-queued blood splats into the GPU stain pass.
