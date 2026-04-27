@@ -1,5 +1,5 @@
 import { freeProjectile, ProjectileKind, type Projectiles } from '../projectiles';
-import type { Entities } from '../entities';
+import { isDead, type Entities } from '../entities';
 import { gridSweptQuery, type Grid } from '../spatial/grid';
 import type { Particles } from '../../particles/particles';
 import type { Rng } from '../../util/rng';
@@ -168,6 +168,7 @@ export function tickProjectiles(
       for (let k = 0; k < nCandidates; k++) {
         const id = candidateBuf[k]!;
         if (entities.alive[id] === 0) continue;
+        if (isDead(entities, id)) continue;
         if (entities.team[id] === p.team[i]) continue;
 
         // Point-vs-segment: project entity onto segment, clamp, distance.

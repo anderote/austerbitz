@@ -103,6 +103,34 @@ describe('applyHit', () => {
     expect(particles.count).toBe(countBefore);
   });
 
+  it('Dying entity is a no-op (no state reset, no blood)', () => {
+    const { e, particles, rng, id } = setupLineInfantry(60);
+    e.state[id] = EntityState.Dying;
+    e.stateT[id] = 0.2;
+    e.hp[id] = 0;
+    const countBefore = particles.count;
+
+    applyHit(e, particles, rng, id, 12, 5000, 0, 'cannon');
+
+    expect(e.state[id]).toBe(EntityState.Dying);
+    expect(e.stateT[id]).toBeCloseTo(0.2, 5);
+    expect(e.hp[id]).toBe(0);
+    expect(particles.count).toBe(countBefore);
+  });
+
+  it('Dead entity is a no-op (no state reset, no blood)', () => {
+    const { e, particles, rng, id } = setupLineInfantry(60);
+    e.state[id] = EntityState.Dead;
+    e.hp[id] = 0;
+    const countBefore = particles.count;
+
+    applyHit(e, particles, rng, id, 50, 9000, 0, 'cannon');
+
+    expect(e.state[id]).toBe(EntityState.Dead);
+    expect(e.hp[id]).toBe(0);
+    expect(particles.count).toBe(countBefore);
+  });
+
   it('armor reduces damage (cuirassier armor 4)', () => {
     const { e, particles, rng, id } = setupCuirassier(140);
     applyHit(e, particles, rng, id, 10, 12, 0, 'musket');
@@ -117,23 +145,20 @@ describe('applyHit', () => {
     expect(e.hp[id]).toBe(139);
   });
 
-  it('lethal hit pushes >=1 stain splat onto the queue when provided', () => {
+  // Note: applyHit no longer pushes ground-stain splats at the hit location.
+  // Splats are now stamped by individual Blood particles when they expire
+  // mid-flight (see updateParticles in particles.ts), so the spray itself
+  // determines where blood lands. The test below verifies that integration.
+  it('does not push any stain splats directly — particles are now the source', () => {
     const { e, particles, rng, id } = setupLineInfantry(5);
     const splats = createBloodSplats(64);
     applyHit(e, particles, rng, id, 12, 12, 0, 'musket', splats);
     expect(e.hp[id]).toBe(0);
-    expect(splats.count).toBeGreaterThanOrEqual(1);
-    // Position is the entity's xy, jittered. Radius/intensity are positive.
-    expect(splats.radius[0]!).toBeGreaterThan(0);
-    expect(splats.intensity[0]!).toBeGreaterThan(0);
-  });
-
-  it('non-lethal hit pushes exactly 1 stain splat onto the queue', () => {
-    const { e, particles, rng, id } = setupLineInfantry(60);
-    const splats = createBloodSplats(64);
-    applyHit(e, particles, rng, id, 12, 12, 0, 'musket', splats);
-    expect(e.hp[id]).toBe(48);
-    expect(splats.count).toBe(1);
+    // The splats arg is accepted for API stability but unused — count stays 0.
+    expect(splats.count).toBe(0);
+    // …but blood particles were emitted, and they'll stamp the ground when
+    // they land (verified in particles.test.ts).
+    expect(particles.count).toBeGreaterThan(0);
   });
 
   it('omitting splats argument leaves combat behaviour untouched', () => {

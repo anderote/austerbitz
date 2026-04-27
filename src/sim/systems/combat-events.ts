@@ -1,9 +1,9 @@
-import { type Entities, EntityState } from '../entities';
+import { type Entities, EntityState, isDead } from '../entities';
 import { getUnitKindByIndex } from '../../data/units';
 import type { Particles } from '../../particles/particles';
 import { spawnBlood } from '../../particles/emitters';
 import type { Rng } from '../../util/rng';
-import { pushBloodSplat, type BloodSplats } from '../blood-splats';
+import type { BloodSplats } from '../blood-splats';
 
 /** Impulse magnitude (N·s) at or above which a kill ragdolls instead of falling in place. */
 export const KILL_RAGDOLL_THRESHOLD = 8000;
@@ -38,7 +38,17 @@ export function enterDying(e: Entities, id: number): void {
   e.velY[id] = 0;
 }
 
-/** Single funnel for incoming damage from any source. */
+/**
+ * Single funnel for incoming damage from any source.
+ *
+ * Ground blood-stains are no longer pushed here at the hit location — they're
+ * now stamped by individual Blood particles when they land (see
+ * updateParticles in particles.ts). Direction (impX, impY) is forwarded to
+ * spawnBlood so the spray cones forward along the projectile's travel.
+ *
+ * The trailing `splats` parameter is unused; it's retained for call-site
+ * compatibility (projectile-system / explosion still pass it through).
+ */
 export function applyHit(
   e: Entities,
   particles: Particles,
@@ -49,9 +59,11 @@ export function applyHit(
   impY: number,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _kind: HitKind,
-  splats?: BloodSplats,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _splats?: BloodSplats,
 ): void {
   if (e.alive[id] === 0) return;
+  if (isDead(e, id)) return;
 
   const kind = getUnitKindByIndex(e.kindId[id]!);
   const effDmg = Math.max(1, dmg - kind.baseStats.armor);
@@ -75,25 +87,7 @@ export function applyHit(
     } else {
       enterDying(e, id);
     }
-    spawnBlood(particles, px, py, impMag, rng);
-    if (splats) {
-      // Lethal: a primary pool plus a smaller satellite spatter, jittered.
-      const impScale = Math.min(1, 0.4 + impMag * 0.0002);
-      pushBloodSplat(
-        splats,
-        px + rng.range(-0.4, 0.4),
-        py + rng.range(-0.4, 0.4),
-        rng.range(0.6, 1.2),
-        rng.range(0.7, 1.0) * impScale,
-      );
-      pushBloodSplat(
-        splats,
-        px + rng.range(-0.6, 0.6),
-        py + rng.range(-0.6, 0.6),
-        rng.range(0.4, 0.8),
-        rng.range(0.5, 0.8) * impScale,
-      );
-    }
+    spawnBlood(particles, px, py, impMag, rng, impX, impY);
     return;
   }
 
@@ -102,14 +96,5 @@ export function applyHit(
   } else {
     enterFlinch(e, id);
   }
-  spawnBlood(particles, px, py, impMag * 0.4, rng);
-  if (splats) {
-    pushBloodSplat(
-      splats,
-      px + rng.range(-0.3, 0.3),
-      py + rng.range(-0.3, 0.3),
-      rng.range(0.3, 0.6),
-      rng.range(0.3, 0.5),
-    );
-  }
+  spawnBlood(particles, px, py, impMag * 0.4, rng, impX, impY);
 }

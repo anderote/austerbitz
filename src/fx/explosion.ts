@@ -1,4 +1,4 @@
-import type { Entities } from '../sim/entities';
+import { isDead, type Entities } from '../sim/entities';
 import { type Grid, gridQueryRadius } from '../sim/spatial/grid';
 import { ParticleClass, spawnParticle, type Particles } from '../particles/particles';
 import type { Rng } from '../util/rng';
@@ -84,6 +84,7 @@ export function spawnExplosion(
   for (let i = 0; i < nIds; i++) {
     const id = EXPLOSION_BUF[i]!;
     if (entities.alive[id] === 0) continue;
+    if (isDead(entities, id)) continue;
     if (excludeTeam !== undefined && entities.team[id] === excludeTeam) continue;
 
     const dx = entities.posX[id]! - x;
