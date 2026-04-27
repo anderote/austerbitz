@@ -5,6 +5,8 @@ import type { Rng } from '../util/rng';
 import type { ExplosionProfile } from '../data/weapons/types';
 import { applyHit } from '../sim/systems/combat-events';
 import type { BloodSplats } from '../sim/blood-splats';
+import type { Puffs } from '../puffs/puffs';
+import { emitPuffBurst } from '../puffs/emit';
 
 const EXPLOSION_BUF = new Int32Array(2048);
 
@@ -21,6 +23,7 @@ const EXPLOSION_BUF = new Int32Array(2048);
 export function spawnExplosion(
   entities: Entities,
   grid: Grid,
+  puffs: Puffs,
   particles: Particles,
   rng: Rng,
   x: number,
@@ -42,24 +45,19 @@ export function spawnExplosion(
     klass: ParticleClass.Flash,
   });
 
-  // 2. Smoke billow — radial spray of mid-grey particles that linger and grow.
-  const smoke = profile.smokeBillow;
-  for (let i = 0; i < smoke.count; i++) {
-    const angle = rng.next() * Math.PI * 2;
-    const speed = rng.range(smoke.speedMin, smoke.speedMax);
-    spawnParticle(particles, {
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: rng.range(smoke.lifeMin, smoke.lifeMax),
-      size: smoke.sizeStart,
-      r: 0.6, g: 0.6, b: 0.62,
-      drag: smoke.drag,
-      accelY: smoke.upwardDrift,
-      sizeGrowth: smoke.sizeGrowth,
-      klass: ParticleClass.Smoke,
-    });
-  }
+  // 2. Smoke billow — full-radius puff burst (handled by puff pass with soft falloff).
+  const sb = profile.smokeBillow;
+  emitPuffBurst(
+    puffs,
+    sb.profile,
+    sb.profileIdx,
+    x, y,
+    1, 0,                 // dirX/dirY arbitrary; coneAngle = 2π gives full radial fan
+    sb.count,
+    Math.PI * 2,
+    sb.speed,
+    rng,
+  );
 
   // 3. Debris — fast, short-lived brown-grey fan.
   const debris = profile.debris;

@@ -86,7 +86,7 @@ export function tickProjectiles(
       p.fuseT[i] = p.fuseT[i]! - dt;
       if (p.fuseT[i]! <= 0) {
         spawnExplosion(
-          entities, grid, particles, rng,
+          entities, grid, puffs, particles, rng,
           p.posX[i]!, p.posY[i]!,
           cannon12Shell.projectile.explosion!,
           undefined,
@@ -116,7 +116,7 @@ export function tickProjectiles(
       } else if (kind === ProjectileKind.Shell) {
         // Detonate at the impact point before clamping.
         spawnExplosion(
-          entities, grid, particles, rng,
+          entities, grid, puffs, particles, rng,
           p.prevX[i]!, p.prevY[i]!,
           cannon12Shell.projectile.explosion!,
           undefined,
@@ -196,7 +196,7 @@ export function tickProjectiles(
         if (kind === ProjectileKind.Shell) {
           // Detonate at the candidate's xy; the explosion handles damage.
           spawnExplosion(
-            entities, grid, particles, rng,
+            entities, grid, puffs, particles, rng,
             ex, ey,
             cannon12Shell.projectile.explosion!,
             undefined,
