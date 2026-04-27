@@ -2,8 +2,10 @@ import type { Camera } from '../render/camera';
 import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
-import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop } from './commands';
+import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove } from './commands';
+import { computeFormationSlots, assignFormationSlots, type FormationUnit } from './formation';
+import { getUnitKindByIndex } from '../data/units';
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
 
@@ -16,6 +18,7 @@ export interface SelectionControllerDeps {
   world: World;
   selection: Selection;
   drag: DragRect;
+  formationDrag: FormationDrag;
   controlGroups: ControlGroups;
   /** Optional — when present, a small puff is emitted at each issued world point. */
   particles?: Particles;
@@ -26,6 +29,8 @@ export interface SelectionController {
   /** Called once per frame. Currently a no-op; reserved for per-frame work. */
   update(dt: number): void;
   destroy(): void;
+  /** Live preview of the formation being drawn, or null when no drag is active. */
+  formationPreview(): FormationPreview | null;
   /** Test seam — exposes pure handlers for unit tests. Do not use from app code. */
   readonly _internals: ControllerInternals;
 }
@@ -42,7 +47,7 @@ interface ControllerInternals {
 const DRAG_THRESHOLD_PX = 4;
 
 export function createSelectionController(deps: SelectionControllerDeps): SelectionController {
-  const { canvas, overlayRoot, camera, world, selection, drag, controlGroups } = deps;
+  const { canvas, overlayRoot, camera, world, selection, drag, formationDrag, controlGroups } = deps;
   const groups = controlGroups.groups;
 
   function digitFromCode(code: string): number | null {
@@ -63,6 +68,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
 
   let cursorMode: CursorMode = 'normal';
   let pendingClickStart: { x: number; y: number } | null = null;
+  let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
   const DOUBLE_CLICK_MS = 300;
   const DOUBLE_CLICK_PX = 6;
@@ -89,21 +95,53 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     return target != null && overlayRoot.contains(target as Node);
   }
 
+  function liveFormationUnits(): FormationUnit[] {
+    const out: FormationUnit[] = [];
+    const e = world.entities;
+    for (const id of selection.ids) {
+      if (e.alive[id] !== 1) continue;
+      const kind = getUnitKindByIndex(e.kindId[id]!);
+      out.push({
+        id,
+        x: e.posX[id]!,
+        y: e.posY[id]!,
+        spacingX: kind.baseStats.formationSpacing.x,
+        spacingY: kind.baseStats.formationSpacing.y,
+      });
+    }
+    return out;
+  }
+
   function onMouseDown(e: { button: number; clientX: number; clientY: number; target: EventTarget | null }): void {
-    if (e.button !== 0) return;
     if (isOnHud(e.target)) return;
-    pendingClickStart = { x: e.clientX, y: e.clientY };
-    drag.start = { x: e.clientX, y: e.clientY };
-    drag.current = { x: e.clientX, y: e.clientY };
-    drag.active = false;
+    if (e.button === 0) {
+      pendingClickStart = { x: e.clientX, y: e.clientY };
+      drag.start = { x: e.clientX, y: e.clientY };
+      drag.current = { x: e.clientX, y: e.clientY };
+      drag.active = false;
+      return;
+    }
+    if (e.button === 2) {
+      pendingFormationStart = { x: e.clientX, y: e.clientY };
+      formationDrag.start = { x: e.clientX, y: e.clientY };
+      formationDrag.current = { x: e.clientX, y: e.clientY };
+      formationDrag.active = false;
+    }
   }
 
   function onMouseMove(e: { clientX: number; clientY: number }): void {
-    if (!pendingClickStart) return;
-    drag.current = { x: e.clientX, y: e.clientY };
-    const dx = e.clientX - pendingClickStart.x;
-    const dy = e.clientY - pendingClickStart.y;
-    if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) drag.active = true;
+    if (pendingClickStart) {
+      drag.current = { x: e.clientX, y: e.clientY };
+      const dx = e.clientX - pendingClickStart.x;
+      const dy = e.clientY - pendingClickStart.y;
+      if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) drag.active = true;
+    }
+    if (pendingFormationStart) {
+      formationDrag.current = { x: e.clientX, y: e.clientY };
+      const dx = e.clientX - pendingFormationStart.x;
+      const dy = e.clientY - pendingFormationStart.y;
+      if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) formationDrag.active = true;
+    }
   }
 
   function onMouseUp(e: { button: number; clientX: number; clientY: number; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void {
@@ -197,11 +235,34 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     if (e.button === 2) {
       if (cursorMode === 'attack-move') {
         cursorMode = 'normal';
+        pendingFormationStart = null;
+        formationDrag.active = false;
         return;
       }
-      const w = screenToWorld(camera, { x: e.clientX, y: e.clientY });
       const opts = { queue: e.shiftKey };
-      // Look for an enemy under the cursor (any non-PLAYER_TEAM unit).
+
+      if (formationDrag.active && pendingFormationStart) {
+        const startW = screenToWorld(camera, formationDrag.start);
+        const endW = screenToWorld(camera, formationDrag.current);
+        const units = liveFormationUnits();
+        if (units.length > 0) {
+          const { slots } = computeFormationSlots({ units, startW, endW });
+          const targets = assignFormationSlots(units, slots);
+          const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+          issueFormationMove(world, assignments, opts);
+          const mx = (startW.x + endW.x) / 2;
+          const my = (startW.y + endW.y) / 2;
+          puff(mx, my);
+        }
+        pendingFormationStart = null;
+        formationDrag.active = false;
+        return;
+      }
+
+      pendingFormationStart = null;
+      formationDrag.active = false;
+
+      const w = screenToWorld(camera, { x: e.clientX, y: e.clientY });
       const hit = hitTestPoint(world, w);
       if (hit !== -1 && world.entities.team[hit] !== PLAYER_TEAM) {
         issueAttack(world, selection, hit, opts);
@@ -216,6 +277,11 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
 
   function onKeyDown(e: { key: string; code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void {
     if (e.key === 'Escape') {
+      if (formationDrag.active) {
+        pendingFormationStart = null;
+        formationDrag.active = false;
+        return;
+      }
       if (cursorMode !== 'normal') {
         cursorMode = 'normal';
         return;
@@ -264,6 +330,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   function onBlur(): void {
     pendingClickStart = null;
     drag.active = false;
+    pendingFormationStart = null;
+    formationDrag.active = false;
     cursorMode = 'normal';
   }
 
@@ -282,8 +350,20 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     window.addEventListener('blur', bl);
   }
 
+  function formationPreview(): FormationPreview | null {
+    if (!formationDrag.active) return null;
+    if (cursorMode !== 'normal') return null;
+    const units = liveFormationUnits();
+    if (units.length === 0) return null;
+    const startW = screenToWorld(camera, formationDrag.start);
+    const endW = screenToWorld(camera, formationDrag.current);
+    const { slots, rect } = computeFormationSlots({ units, startW, endW });
+    return { rect, slots };
+  }
+
   return {
     get cursorMode() { return cursorMode; },
+    formationPreview,
     update(_dt) {
       if (cursorMode === 'attack-move' && selection.ids.size === 0) cursorMode = 'normal';
       canvas.style.cursor = cursorMode === 'attack-move' ? 'crosshair' : 'default';

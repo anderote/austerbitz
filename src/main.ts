@@ -5,12 +5,12 @@ import { createInputManager } from './input/input-manager';
 import { createCameraControls } from './input/camera-controls';
 import { createWorld, tickWorld } from './sim/world';
 import { allocEntity } from './sim/entities';
-import { getUnitKindIndex } from './data/units';
+import { getUnitKind, getUnitKindIndex } from './data/units';
 import { createDefaultMap } from './map/world-map';
 import { ordersSystem } from './sim/systems/orders-system';
 import { movementSystem } from './sim/systems/movement-system';
 import { collisionSystem } from './sim/systems/collision-system';
-import { createSelection, createDragRect, createControlGroups } from './input/selection';
+import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
 import './ui/styles.css';
 import { createOverlay } from './ui/overlay';
@@ -36,6 +36,7 @@ const camera = createCamera();
 const input = createInputManager(canvas);
 const selection = createSelection();
 const drag = createDragRect();
+const formationDrag = createFormationDrag();
 const controlGroups = createControlGroups();
 
 const map = createDefaultMap();
@@ -51,11 +52,13 @@ const cameraControls = createCameraControls(camera, input, {
 function spawn(kindId: string, team: number, x: number, y: number, facing = 0): number {
   const id = allocEntity(world.entities);
   if (id === -1) return -1;
+  const kind = getUnitKind(kindId);
   world.entities.posX[id] = x;
   world.entities.posY[id] = y;
   world.entities.kindId[id] = getUnitKindIndex(kindId);
   world.entities.team[id] = team;
   world.entities.facing[id] = facing;
+  world.entities.hp[id] = kind.baseStats.hp;
   return id;
 }
 
@@ -99,7 +102,7 @@ const cgPanel = createControlGroupsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
 
 const controller = createSelectionController({
-  canvas, overlayRoot: overlay, camera, world, selection, drag, controlGroups,
+  canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
   particles,
 });
 
@@ -115,7 +118,8 @@ function frame(t: number) {
   tickWorld(world, dt);
   emitDust(world, particles, dt);
   updateParticles(particles, dt);
-  renderer.render(world, projectiles, particles, camera, selection, drag);
+  const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+  renderer.render(world, projectiles, particles, camera, selection, drag, { showHealthBars });
   hud.update(smoothedFps, world, controller.cursorMode);
   selPanel.update(world, selection);
   buildMenu.update();

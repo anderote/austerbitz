@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createWorld } from '../sim/world';
 import { allocEntity } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
-import { createSelection, createDragRect, createControlGroups } from './selection';
+import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './selection';
 import { createSelectionController } from './selection-controller';
 import { createCamera } from '../render/camera';
 
@@ -14,11 +14,12 @@ function makeDeps() {
   const world = createWorld({ seed: 1, capacity: 32, mapSize: 1000 });
   const selection = createSelection();
   const drag = createDragRect();
+  const formationDrag = createFormationDrag();
   const overlayRoot = { contains: (_n: Node) => false } as unknown as HTMLElement;
   const canvas = {} as unknown as HTMLCanvasElement;
   const controlGroups = createControlGroups();
-  const ctrl = createSelectionController({ canvas, overlayRoot, camera, world, selection, drag, controlGroups });
-  return { ctrl, world, selection, drag, camera };
+  const ctrl = createSelectionController({ canvas, overlayRoot, camera, world, selection, drag, formationDrag, controlGroups });
+  return { ctrl, world, selection, drag, formationDrag, camera };
 }
 
 function spawn(world: ReturnType<typeof createWorld>, kind: string, team: number, x: number, y: number): number {
@@ -233,6 +234,7 @@ describe('selection-controller — input suppression', () => {
     const overlayRoot = { contains: (n: Node) => n === fakeNode } as unknown as HTMLElement;
     const ctrl = createSelectionController({
       canvas: {} as HTMLCanvasElement, overlayRoot, camera, world, selection, drag,
+      formationDrag: createFormationDrag(),
       controlGroups: createControlGroups(),
     });
     ctrl._internals.onMouseDown({ button: 0, clientX: 400, clientY: 300, target: fakeNode });
@@ -306,5 +308,86 @@ describe('selection-controller — control groups', () => {
     selection.ids.clear();
     ctrl._internals.onKeyDown({ key: '4', code: 'Numpad4', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(selection.ids.has(a)).toBe(true);
+  });
+});
+
+describe('selection-controller — formation drag (RMB)', () => {
+  it('RMB drag past threshold issues per-unit move orders to slot positions', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, -10);
+    const b = spawn(world, 'line-infantry', 0, 1, -10);
+    selection.ids.add(a); selection.ids.add(b);
+    ctrl._internals.onMouseDown({ button: 2, clientX: 380, clientY: 300, target: null });
+    ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 420, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
+    const qa = world.orderQueue.get(a)!;
+    const qb = world.orderQueue.get(b)!;
+    expect(qa[0]?.kind).toBe('move');
+    expect(qb[0]?.kind).toBe('move');
+    expect((qa[0] as { kind: 'move'; targetY: number }).targetY).toBeGreaterThanOrEqual(0);
+    expect((qb[0] as { kind: 'move'; targetY: number }).targetY).toBeGreaterThanOrEqual(0);
+  });
+
+  it('RMB click below threshold uses single-point move (existing behavior)', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(a);
+    ctrl._internals.onMouseDown({ button: 2, clientX: 500, clientY: 300, target: null });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 501, clientY: 301, shiftKey: false, ctrlKey: false, metaKey: false });
+    const qa = world.orderQueue.get(a)!;
+    expect(qa.length).toBe(1);
+    expect(qa[0]?.kind).toBe('move');
+  });
+
+  it('Shift + RMB drag queues formation orders', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, -10);
+    selection.ids.add(a);
+    world.orderQueue.set(a, [{ kind: 'move', targetX: 99, targetY: 99 }]);
+    ctrl._internals.onMouseDown({ button: 2, clientX: 380, clientY: 300, target: null });
+    ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 420, clientY: 300, shiftKey: true, ctrlKey: false, metaKey: false });
+    const qa = world.orderQueue.get(a)!;
+    expect(qa.length).toBe(2);
+    expect(qa[0]).toEqual({ kind: 'move', targetX: 99, targetY: 99 });
+  });
+
+  it('Esc cancels in-progress formation drag', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, -10);
+    selection.ids.add(a);
+    ctrl._internals.onMouseDown({ button: 2, clientX: 380, clientY: 300, target: null });
+    ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
+    ctrl._internals.onKeyDown({ key: 'Escape', code: 'Escape', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationPreview()).toBeNull();
+    ctrl._internals.onMouseUp({ button: 2, clientX: 420, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
+    const qa = world.orderQueue.get(a)!;
+    expect(qa.length).toBe(1);
+    expect((qa[0] as { kind: 'move'; targetX: number; targetY: number }).targetY).toBeCloseTo(0);
+  });
+
+  it('formationPreview() is null when not dragging', () => {
+    const { ctrl } = makeDeps();
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('formationPreview() returns rect + slots during active drag', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, -10);
+    selection.ids.add(a);
+    ctrl._internals.onMouseDown({ button: 2, clientX: 380, clientY: 300, target: null });
+    ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
+    const p = ctrl.formationPreview();
+    expect(p).not.toBeNull();
+    expect(p!.slots.length).toBe(1);
+    expect(p!.rect.tl).toBeDefined();
+  });
+
+  it('empty selection + RMB drag does nothing', () => {
+    const { ctrl, world } = makeDeps();
+    ctrl._internals.onMouseDown({ button: 2, clientX: 380, clientY: 300, target: null });
+    ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 420, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(world.orderQueue.size).toBe(0);
   });
 });
