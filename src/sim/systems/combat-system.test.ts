@@ -179,4 +179,68 @@ describe('combatSystem', () => {
     expect(world.entities.targetId[shooter]).toBe(target);
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
   });
+
+  it('fires at an enemy exactly at weaponRange (inclusive boundary)', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const target  = spawnLineInfantry(world, 1, 80, 0); // exactly 80 m
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(target);
+  });
+
+  it('picks the nearer of two enemies in range', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const far     = spawnLineInfantry(world, 1, 70, 0);
+    const near    = spawnLineInfantry(world, 1, 30, 0);
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(near);
+    expect(world.entities.targetId[shooter]).not.toBe(far);
+  });
+
+  it('skips enemies in Dying / Dead / Ragdoll and falls through to the next-nearest', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const corpseNear = spawnLineInfantry(world, 1, 20, 0);
+    const aliveFar   = spawnLineInfantry(world, 1, 60, 0);
+    world.entities.state[corpseNear] = EntityState.Dying;
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(aliveFar);
+  });
+
+  it('skips a Ragdoll target and a Dead target', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const ragdoll = spawnLineInfantry(world, 1, 10, 0);
+    const dead    = spawnLineInfantry(world, 1, 20, 0);
+    const alive   = spawnLineInfantry(world, 1, 30, 0);
+    world.entities.state[ragdoll] = EntityState.Ragdoll;
+    world.entities.state[dead]    = EntityState.Dead;
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(alive);
+  });
 });
