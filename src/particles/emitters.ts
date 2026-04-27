@@ -41,27 +41,47 @@ export function emitMuzzleFx(
   });
 }
 
-/** Single dark-red burst at impact location. Intensity scales count + size. */
+/**
+ * Cartoon-violent blood spray at impact. Intensity scales count + size.
+ *
+ * If (dirX, dirY) is non-zero, the spray is biased into a ~120° cone pointing
+ * the *same* way the projectile was traveling — i.e. blood erupts out the
+ * back of the soldier (exit-wound side). If both are zero, falls back to a
+ * 360° radial burst.
+ */
 export function spawnBlood(
   particles: Particles,
   x: number, y: number,
   intensity: number,
   rng: Rng,
+  dirX: number = 0,
+  dirY: number = 0,
 ): void {
-  // Musket (~12 N·s) → 4-5; cannonball (~1500 N·s) → ~12; clamped to [4, 14].
-  const raw = Math.round(4 + intensity * 0.001);
-  const count = Math.max(4, Math.min(14, raw));
+  // Musket (~12 N·s) → 8; cannonball (~1500 N·s) → ~26; clamped to [8, 30].
+  const raw = Math.round(8 + intensity * 0.012);
+  const count = Math.max(8, Math.min(30, raw));
+
+  const dirMag = Math.hypot(dirX, dirY);
+  const directional = dirMag > 1e-6;
+  const theta = directional ? Math.atan2(dirY, dirX) : 0;
+  const halfCone = Math.PI * 0.55; // ~99° → 198° full cone (nearly half-circle splay)
+
   for (let i = 0; i < count; i++) {
-    const a = rng.range(0, Math.PI * 2);
-    const s = rng.range(0.5, 2.0);
+    // ~25% of droplets are "big drops" — fatter, longer-lived. The mix between
+    // big drops and small spatter is what gives the cartoon-comic look.
+    const big = rng.next() < 0.25;
+    const a = directional
+      ? theta + rng.range(-halfCone, halfCone)
+      : rng.range(0, Math.PI * 2);
+    const s = rng.range(2.5, 6.5);
     spawnParticle(particles, {
       x, y,
       vx: Math.cos(a) * s,
       vy: Math.sin(a) * s,
-      life: rng.range(0.4, 0.8),
-      size: rng.range(0.08, 0.2),
-      r: 0.55, g: 0.05, b: 0.05,
-      drag: 0.85,
+      life: big ? rng.range(1.0, 1.4) : rng.range(0.5, 1.1),
+      size: big ? rng.range(0.40, 0.60) : rng.range(0.20, 0.35),
+      r: 0.45, g: 0.05, b: 0.05,
+      drag: 0.92,
       accelY: 0,
       sizeGrowth: 0,
       klass: ParticleClass.Blood,
