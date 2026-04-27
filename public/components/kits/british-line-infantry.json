@@ -6,14 +6,15 @@
   "outputPreview": "public/sprites/british-line-infantry-components-preview.png",
   "facings": {
     "S": {
-      "cell": [1, 1],
+      "cell": [
+        1,
+        1
+      ],
       "layers": [
         "shadow-front",
-        "legs-front-idle",
+        "body-front-base",
         "trousers-front-white",
-        "torso-front-slim",
         "coat-line-front",
-        "head-default",
         "shako-standard",
         "musket-brown-bess"
       ]
