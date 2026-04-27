@@ -194,18 +194,15 @@ function spawnArmy(plan: ArmyPlan): void {
 }
 
 // Three echelons of infantry, each spaced ~2.3 musket-ranges (80 m) apart. Cavalry sits
-// well behind the rear echelon as a reserve; cannons are pushed deep into the back, still
-// within their 600 m range to the enemy front line (60 m battle gap + 520 m = 580 m).
+// well behind the rear echelon as a reserve.
 const INFANTRY_ECHELON_DEPTH = 30;
 const CAVALRY_BACK = 420;
-const CANNON_BACK = 520;
 
 const lineRegiments: RegimentPlan[] = [
   { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: 0 },
   { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH },
   { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH * 2 },
   { kindId: 'cuirassier',    files: 50,  ranks: 3, count: 6, gap: 30, backOffset: CAVALRY_BACK },
-  { kindId: 'cannon-12',     files: 12,  ranks: 1, count: 6, gap: 50, backOffset: CANNON_BACK },
 ];
 
 const friendlyArmy: ArmyPlan = {
