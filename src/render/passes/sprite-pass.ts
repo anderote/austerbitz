@@ -91,6 +91,12 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   gl.vertexAttribPointer(6, 3, gl.FLOAT, false, 0, 0);
   gl.vertexAttribDivisor(6, 1);
 
+  const patternBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 1 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(7);
+  gl.vertexAttribPointer(7, 1, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(7, 1);
+
   gl.bindVertexArray(null);
 
   // Combined atlas: don't tile-wrap (each cell occupies a sub-rect, sampling
@@ -127,6 +133,7 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   const scratchUv = new Float32Array(capacity * 4);
   const scratchPrimary = new Float32Array(capacity * 3);
   const scratchSecondary = new Float32Array(capacity * 3);
+  const scratchPattern = new Float32Array(capacity);
   // Reused per-frame sort buffer: alive entity ids sorted back-to-front by world Y.
   const sortIdx: number[] = [];
 
@@ -134,8 +141,8 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
     draw(world, cam) {
       const UNIT_DOT_ZOOM = 4;
       const INFANTRY_DOT_PIXELS = 3;
-      const CAVALRY_DOT_PIXELS = 4;
-      const ARTILLERY_DOT_PIXELS = 5;
+      const CAVALRY_DOT_PIXELS = 8;   // 2x2 checker — 4 px per cell
+      const ARTILLERY_DOT_PIXELS = 12; // 3 horizontal bands — 4 px per band
       const e = world.entities;
       sortIdx.length = 0;
       for (let i = 0; i < e.capacity; i++) {
@@ -184,20 +191,37 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         scratchSecondary[k * 3 + 2] = team.secondary[2] / 255;
         const meta = KIND_ATLAS[kind.id] ?? SOLDIER_FALLBACK;
         if (useDots) {
-          // Solid tint cell + per-instance color = flat team-colored square.
-          // Tint cell is a single white texel, so col stays (1,1,1) and the
-          // fragment shader outputs v_color directly.
-          const dotSize = kind.category === 'artillery'
-            ? artilleryDot
-            : kind.category === 'cavalry'
-              ? cavalryDot
-              : infantryDot;
+          // Solid tint cell — fragment shader will either pass v_color through
+          // (infantry: pattern=0, v_color=team primary) or override col based
+          // on v_quadUv (cavalry checker, artillery stripes).
+          let dotSize: number;
+          let pattern: number;
+          let cR: number;
+          let cG: number;
+          let cB: number;
+          if (kind.category === 'cavalry') {
+            dotSize = cavalryDot;
+            pattern = 1;
+            // Patterned: shader picks white vs v_primary, so leave v_color white.
+            cR = 1; cG = 1; cB = 1;
+          } else if (kind.category === 'artillery') {
+            dotSize = artilleryDot;
+            pattern = 2;
+            cR = 1; cG = 1; cB = 1;
+          } else {
+            dotSize = infantryDot;
+            pattern = 0;
+            cR = team.primary[0] / 255;
+            cG = team.primary[1] / 255;
+            cB = team.primary[2] / 255;
+          }
           scratchSize[k * 2 + 0] = dotSize;
           scratchSize[k * 2 + 1] = dotSize;
-          scratchColor[k * 4 + 0] = team.primary[0] / 255;
-          scratchColor[k * 4 + 1] = team.primary[1] / 255;
-          scratchColor[k * 4 + 2] = team.primary[2] / 255;
+          scratchColor[k * 4 + 0] = cR;
+          scratchColor[k * 4 + 1] = cG;
+          scratchColor[k * 4 + 2] = cB;
           scratchColor[k * 4 + 3] = 1.0;
+          scratchPattern[k] = pattern;
           const uv = cellUv(meta, meta.tintCell.col, meta.tintCell.row);
           scratchUv[k * 4 + 0] = uv[0];
           scratchUv[k * 4 + 1] = uv[1];
@@ -210,6 +234,7 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
           scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
           scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;
           scratchColor[k * 4 + 3] = 1.0;
+          scratchPattern[k] = 0;
           const facing = e.facing[i]!;
           const cell = facing >= 1 && facing <= meta.poseCells.length
             ? meta.poseCells[facing - 1]!
@@ -237,6 +262,8 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPrimary.subarray(0, n * 3));
       gl.bindBuffer(gl.ARRAY_BUFFER, secondaryBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSecondary.subarray(0, n * 3));
+      gl.bindBuffer(gl.ARRAY_BUFFER, patternBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPattern.subarray(0, n));
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, atlas);

@@ -8,11 +8,14 @@ layout(location = 3) in vec4 a_color;      // per-instance tint rgba (0..1)
 layout(location = 4) in vec4 a_uvRect;     // (uMin, vMin, uSize, vSize) in atlas
 layout(location = 5) in vec3 a_primary;    // per-instance primary uniform color
 layout(location = 6) in vec3 a_secondary;  // per-instance secondary uniform color
+layout(location = 7) in float a_pattern;   // 0 = none, 1 = check, 2 = h-stripes
 
 out vec2 v_uv;
+out vec2 v_quadUv;
 out vec4 v_color;
 out vec3 v_primary;
 out vec3 v_secondary;
+out float v_pattern;
 
 uniform mat3 u_viewProj;
 
@@ -24,9 +27,11 @@ void main() {
   gl_Position = vec4(clip.xy, 0.0, 1.0);
   vec2 quadUv = a_corner + 0.5;            // 0..1 across quad
   v_uv = a_uvRect.xy + quadUv * a_uvRect.zw;
+  v_quadUv = quadUv;
   v_color = a_color;
   v_primary = a_primary;
   v_secondary = a_secondary;
+  v_pattern = a_pattern;
 }
 `;
 
@@ -34,9 +39,11 @@ export const SPRITE_FS = `#version 300 es
 precision highp float;
 
 in vec2 v_uv;
+in vec2 v_quadUv;
 in vec4 v_color;
 in vec3 v_primary;
 in vec3 v_secondary;
+in float v_pattern;
 out vec4 outColor;
 
 uniform sampler2D u_atlas;
@@ -49,6 +56,20 @@ void main() {
   // through as pure (1,0,1) and (0,1,1) — no interpolation, exact match.
   if (col.r > 0.95 && col.g < 0.05 && col.b > 0.95) col = v_primary;
   else if (col.r < 0.05 && col.g > 0.95 && col.b > 0.95) col = v_secondary;
+  // Dot patterns. Atlas sample is the solid white tint cell, so col=(1,1,1)
+  // here — we override based on local quad coords for category-coded dots.
+  if (v_pattern > 0.5 && v_pattern < 1.5) {
+    // Cavalry: 2x2 checker — alternates white and team primary.
+    vec2 cell = floor(v_quadUv * 2.0);
+    bool teamCell = mod(cell.x + cell.y, 2.0) >= 0.5;
+    col = teamCell ? v_primary : vec3(1.0);
+  } else if (v_pattern > 1.5) {
+    // Artillery: 3 horizontal bands — white | team primary | gray (top→bottom).
+    float band = floor(v_quadUv.y * 3.0);
+    if (band < 0.5) col = vec3(1.0);
+    else if (band < 1.5) col = v_primary;
+    else col = vec3(0.55);
+  }
   outColor = vec4(col, tex.a) * v_color;
 }
 `;

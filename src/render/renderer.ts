@@ -73,7 +73,7 @@ export function createRenderer(
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);
       if (opts.showMovePreview) {
-        selectionPass.drawTeamRange(world, cam, PLAYER_TEAM);
+        selectionPass.drawTeamRange(world, cam, sel, PLAYER_TEAM);
       }
       selectionPass.drawDiscs(world, cam, sel, drag);
       sprites.draw(world, cam);

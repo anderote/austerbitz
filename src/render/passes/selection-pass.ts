@@ -15,7 +15,7 @@ export interface SelectionPass {
   // Selected units render green; units inside an active drag rect (preview)
   // render yellow.
   drawDiscs(world: World, cam: Camera, sel: Selection, drag: DragRect): void;
-  drawTeamRange(world: World, cam: Camera, team: number): void;
+  drawTeamRange(world: World, cam: Camera, sel: Selection, team: number): void;
   // Waypoint chains, drag rectangle, and formation preview — call AFTER sprites so they overlay.
   draw(world: World, cam: Camera, sel: Selection, drag: DragRect, formation: FormationPreview | null): void;
   // Yellow per-soldier destination squares (Total War-style placement preview). Call AFTER sprites.
@@ -144,7 +144,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
   const COLOR_SELECTED: RangeColor = [1.0, 0.93, 0.2, 0.16];
   const COLOR_TEAM_WHITE: RangeColor = [1.0, 1.0, 1.0, 0.11];
-  const COLOR_TEAM_ARTILLERY: RangeColor = [1.0, 1.0, 1.0, 0.55];
+  const COLOR_TEAM_ARTILLERY: RangeColor = [1.0, 1.0, 1.0, 0.35];
 
   function collectTeamRangeIds(
     world: World,
@@ -486,8 +486,17 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       gl.disable(gl.BLEND);
       gl.bindVertexArray(null);
     },
-    drawTeamRange(world, cam, team) {
-      collectTeamRangeIds(world, team, kind => kind.category === 'artillery', teamArtilleryScratch);
+    drawTeamRange(world, cam, sel, team) {
+      teamArtilleryScratch.length = 0;
+      for (const id of sel.ids) {
+        if (!Number.isInteger(id)) continue;
+        if (world.entities.alive[id] !== 1) continue;
+        if (world.entities.team[id] !== team) continue;
+        const kind = getUnitKindByIndex(world.entities.kindId[id]!);
+        if (!kind.weapon || kind.baseStats.weaponRange <= 0) continue;
+        if (kind.category !== 'artillery') continue;
+        teamArtilleryScratch.push(id);
+      }
       if (teamArtilleryScratch.length > 0) {
         const yardsToMeters = 0.9144;
         const spacing = 50 * yardsToMeters;
