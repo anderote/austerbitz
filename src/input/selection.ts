@@ -12,6 +12,16 @@ export interface DragRect {
   active: boolean;
 }
 
+export interface ViewRect {
+  x0: number; y0: number;
+  x1: number; y1: number;
+}
+
+export interface HitOpts {
+  /** If provided, only entities with this team id are considered. */
+  team?: number;
+}
+
 export function createSelection(): Selection {
   return { ids: new Set() };
 }
@@ -24,30 +34,65 @@ export function createDragRect(): DragRect {
   };
 }
 
-export function hitTestPoint(world: World, w: Vec2): number {
+/**
+ * Returns the entity whose AABB contains `w` and whose center is closest to `w`.
+ * Tie-break: lower entity id.
+ */
+export function hitTestPoint(world: World, w: Vec2, opts: HitOpts = {}): number {
   const e = world.entities;
+  let best = -1;
+  let bestD2 = Infinity;
   for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 0) continue;
+    if (e.alive[i] !== 1) continue;
+    if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const kind = getUnitKindByIndex(e.kindId[i]!);
-    const dx = Math.abs(w.x - e.posX[i]!);
-    const dy = Math.abs(w.y - e.posY[i]!);
-    if (dx <= kind.placeholderSize.w / 2 && dy <= kind.placeholderSize.h / 2) {
-      return i;
+    const dx = w.x - e.posX[i]!;
+    const dy = w.y - e.posY[i]!;
+    if (Math.abs(dx) > kind.placeholderSize.w / 2) continue;
+    if (Math.abs(dy) > kind.placeholderSize.h / 2) continue;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2 || (d2 === bestD2 && i < best)) {
+      best = i;
+      bestD2 = d2;
     }
   }
-  return -1;
+  return best;
 }
 
-export function hitTestRect(world: World, x0: number, y0: number, x1: number, y1: number): number[] {
+export function hitTestRect(
+  world: World,
+  x0: number, y0: number, x1: number, y1: number,
+  opts: HitOpts = {},
+): number[] {
   const lo = { x: Math.min(x0, x1), y: Math.min(y0, y1) };
   const hi = { x: Math.max(x0, x1), y: Math.max(y0, y1) };
   const out: number[] = [];
   const e = world.entities;
   for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 0) continue;
+    if (e.alive[i] !== 1) continue;
+    if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const x = e.posX[i]!;
     const y = e.posY[i]!;
     if (x >= lo.x && x <= hi.x && y >= lo.y && y <= hi.y) out.push(i);
+  }
+  return out;
+}
+
+export function findSameKindInView(
+  world: World,
+  kindId: number,
+  view: ViewRect,
+  opts: HitOpts = {},
+): number[] {
+  const out: number[] = [];
+  const e = world.entities;
+  for (let i = 0; i < e.capacity; i++) {
+    if (e.alive[i] !== 1) continue;
+    if (e.kindId[i] !== kindId) continue;
+    if (opts.team !== undefined && e.team[i] !== opts.team) continue;
+    const x = e.posX[i]!;
+    const y = e.posY[i]!;
+    if (x >= view.x0 && x <= view.x1 && y >= view.y0 && y <= view.y1) out.push(i);
   }
   return out;
 }

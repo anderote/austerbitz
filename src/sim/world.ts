@@ -11,6 +11,12 @@ export interface WorldConfig {
   cellSize?: number;
 }
 
+export type Order =
+  | { kind: 'move'; targetX: number; targetY: number }
+  | { kind: 'attack'; targetId: number }
+  | { kind: 'attack-move'; targetX: number; targetY: number }
+  | { kind: 'stop' };
+
 export interface World {
   cfg: WorldConfig;
   entities: Entities;
@@ -19,12 +25,9 @@ export interface World {
   tickCount: number;
   simTime: number;
   systems: System[];
-  /** Single shared orders queue keyed by entity id. */
-  orders: Map<number, Order>;
+  /** Per-entity order queue. Front (index 0) is the active order. */
+  orderQueue: Map<number, Order[]>;
 }
-
-export type Order =
-  | { kind: 'move'; targetX: number; targetY: number };
 
 export function createWorld(cfg: WorldConfig): World {
   const cellSize = cfg.cellSize ?? 16;
@@ -40,7 +43,7 @@ export function createWorld(cfg: WorldConfig): World {
     tickCount: 0,
     simTime: 0,
     systems: [],
-    orders: new Map(),
+    orderQueue: new Map(),
   };
 }
 
