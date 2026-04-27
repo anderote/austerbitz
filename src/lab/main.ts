@@ -141,7 +141,7 @@ function frame(t: number) {
     }
   }
 
-  applyWind(particles, wind.accelX, dt);
+  applyWind(puffs, wind.accelX, dt);
   updatePuffs(puffs, dt);
   updateParticles(particles, dt);
 
