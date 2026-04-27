@@ -58,3 +58,26 @@ export function issueStop(world: World, sel: Selection): void {
     if (world.entities.alive[id] === 1) world.orderQueue.delete(id);
   }
 }
+
+export interface FormationAssignment {
+  id: number;
+  target: Vec2;
+}
+
+export function issueFormationMove(
+  world: World,
+  assignments: FormationAssignment[],
+  opts: OrderOpts = {},
+): void {
+  for (const a of assignments) {
+    if (world.entities.alive[a.id] !== 1) continue;
+    const order: Order = { kind: 'move', targetX: a.target.x, targetY: a.target.y };
+    if (opts.queue) {
+      const q = world.orderQueue.get(a.id);
+      if (q) q.push(order);
+      else world.orderQueue.set(a.id, [order]);
+    } else {
+      world.orderQueue.set(a.id, [order]);
+    }
+  }
+}

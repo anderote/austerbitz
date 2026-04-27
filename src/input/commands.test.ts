@@ -3,11 +3,20 @@ import { createWorld } from '../sim/world';
 import { allocEntity } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
 import { createSelection } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove } from './commands';
 
 function spawn(world: ReturnType<typeof createWorld>, x: number, y: number): number {
   const id = allocEntity(world.entities);
   world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+  world.entities.posX[id] = x;
+  world.entities.posY[id] = y;
+  return id;
+}
+
+function spawnWithKind(world: ReturnType<typeof createWorld>, kind: string, team: number, x: number, y: number): number {
+  const id = allocEntity(world.entities);
+  world.entities.kindId[id] = getUnitKindIndex(kind);
+  world.entities.team[id] = team;
   world.entities.posX[id] = x;
   world.entities.posY[id] = y;
   return id;
@@ -71,5 +80,49 @@ describe('commands', () => {
     issueAttackMove(world, sel, { x: 1, y: 1 });
     issueStop(world, sel);
     expect(world.orderQueue.size).toBe(0);
+  });
+});
+
+describe('issueFormationMove', () => {
+  it('issues one move order per assignment, replacing existing queue', () => {
+    const world = createWorld({ seed: 1, capacity: 8, mapSize: 100 });
+    const sel = createSelection();
+    const a = spawnWithKind(world, 'line-infantry', 0, 0, 0);
+    const b = spawnWithKind(world, 'line-infantry', 0, 1, 0);
+    sel.ids.add(a); sel.ids.add(b);
+    world.orderQueue.set(a, [{ kind: 'move', targetX: 99, targetY: 99 }]);
+
+    issueFormationMove(world, [
+      { id: a, target: { x: 10, y: 20 } },
+      { id: b, target: { x: 11, y: 20 } },
+    ]);
+
+    const qa = world.orderQueue.get(a)!;
+    const qb = world.orderQueue.get(b)!;
+    expect(qa.length).toBe(1);
+    expect(qa[0]).toEqual({ kind: 'move', targetX: 10, targetY: 20 });
+    expect(qb[0]).toEqual({ kind: 'move', targetX: 11, targetY: 20 });
+  });
+
+  it('queue=true appends instead of replacing', () => {
+    const world = createWorld({ seed: 1, capacity: 8, mapSize: 100 });
+    const sel = createSelection();
+    const a = spawnWithKind(world, 'line-infantry', 0, 0, 0);
+    sel.ids.add(a);
+    world.orderQueue.set(a, [{ kind: 'move', targetX: 1, targetY: 1 }]);
+
+    issueFormationMove(world, [{ id: a, target: { x: 5, y: 5 } }], { queue: true });
+
+    const qa = world.orderQueue.get(a)!;
+    expect(qa.length).toBe(2);
+    expect(qa[1]).toEqual({ kind: 'move', targetX: 5, targetY: 5 });
+  });
+
+  it('skips dead units silently', () => {
+    const world = createWorld({ seed: 1, capacity: 8, mapSize: 100 });
+    const a = spawnWithKind(world, 'line-infantry', 0, 0, 0);
+    world.entities.alive[a] = 0;
+    issueFormationMove(world, [{ id: a, target: { x: 5, y: 5 } }]);
+    expect(world.orderQueue.get(a)).toBeUndefined();
   });
 });
