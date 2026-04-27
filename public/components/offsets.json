@@ -1,0 +1,50 @@
+{
+  "british-line-infantry": {
+    "SE": {
+      "body-southeast-base": [
+        -2,
+        0
+      ],
+      "shako-standard-southeast": [
+        -1,
+        0
+      ]
+    },
+    "S": {
+      "body-south-base": [
+        -1,
+        0
+      ],
+      "shako-standard-south": [
+        -1,
+        0
+      ]
+    },
+    "NE": {
+      "body-northeast-base": [
+        -1,
+        0
+      ],
+      "shako-standard-northeast": [
+        -1,
+        0
+      ]
+    },
+    "N": {
+      "body-north-base": [
+        -1,
+        0
+      ],
+      "shako-standard-north": [
+        -1,
+        0
+      ]
+    },
+    "SW": {
+      "body-southwest-base": [
+        1,
+        0
+      ]
+    }
+  }
+}

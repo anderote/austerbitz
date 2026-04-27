@@ -1,18 +1,31 @@
-# Component Catalog – Front Idle (S)
+# Component Catalog – Idle Standing (All Facings)
 
-These modules correspond to the new soldier component system documented in `docs/art/soldier-component-system.md`. Each file aligns to the 11×18 grid skeleton templates.
+These modules correspond to the soldier component system in `docs/art/soldier-component-system.md`. Each PNG aligns with the 11×18 skeleton templates under `memory/sprites/templates/anatomy/` and targets the idle standing pose across all eight compass facings.
 
-| Component | Type | Facing | File | Key Anchors | Notes |
-| --- | --- | --- | --- | --- | --- |
-| head-default | anatomy | S | `public/sprites/components/anatomy/head/front/default.png` | head center (5,4) | Bare face block for swapping headgear |
-| torso-front-slim | anatomy | S | `public/sprites/components/anatomy/torso/front/slim.png` | shoulder (5,10), hip (5,13) | Neutral torso volume |
-| legs-front-idle | anatomy | S | `public/sprites/components/anatomy/legs/front/idle.png` | knee L (4,14), knee R (6,14) | Idle leg silhouette |
-| coat-line-front | uniform | S | `public/sprites/components/uniform/coat-line/front/base.png` | -- | British red coat + belts |
-| trousers-front-white | uniform | S | `public/sprites/components/uniform/lower/trousers-front.png` | -- | White breeches & black gaiters |
-| shako-standard | uniform | S | `public/sprites/components/uniform/head/shako-standard.png` | plume socket (6,2) | Tall shako & plume |
-| musket-brown-bess | weapon | S | `public/sprites/components/weapon/musket/front/idle.png` | grip (3,12) | Brown Bess musket |
-| shadow-front | fx | S | `public/sprites/components/shadow/front/default.png` | -- | Ground contact shadow |
+## Body
+- `body-north-base` → `public/sprites/components/anatomy/body/north/base.png`
+- `body-northeast-base` → `public/sprites/components/anatomy/body/northeast/base.png`
+- `body-east-base` → `public/sprites/components/anatomy/body/east/base.png`
+- `body-southeast-base` → `public/sprites/components/anatomy/body/southeast/base.png`
+- `body-south-base` → `public/sprites/components/anatomy/body/south/base.png`
+- `body-southwest-base` → `public/sprites/components/anatomy/body/southwest/base.png`
+- `body-west-base` → `public/sprites/components/anatomy/body/west/base.png`
+- `body-northwest-base` → `public/sprites/components/anatomy/body/northwest/base.png`
 
-Use the skeleton templates in `memory/sprites/templates/anatomy/` as the alignment reference before drawing new overlays or anatomy variants.
+## Uniform — Upper (Coat)
+- `coat-line-<dir>` → `public/sprites/components/uniform/coat-line/<dir>/base.png`
+  - `<dir>` ∈ {`north`, `northeast`, `east`, `southeast`, `south`, `southwest`, `west`, `northwest`}
 
-Preview these layers interactively via `components.html` (run `npm run dev` and open `http://localhost:5173/components.html`) and rebuild the atlas with `node scripts/build-soldier-components.mjs --kit british-line-infantry` when ready for export.
+## Uniform — Lower (Trousers & Gaiters)
+- `trousers-<dir>` → `public/sprites/components/uniform/lower/trousers/<dir>.png`
+
+## Headgear
+- `shako-standard-<dir>` → `public/sprites/components/uniform/head/shako-standard/<dir>.png`
+
+## Weapon
+- `musket-brown-bess-<dir>` → `public/sprites/components/weapon/musket/<dir>/idle.png`
+
+## Shadow
+- `shadow-<dir>` → `public/sprites/components/shadow/<dir>/default.png`
+
+Preview these layers interactively via `components.html` (`npm run dev` → `http://localhost:5173/components.html`) and rebuild the atlas with `node scripts/build-soldier-components.mjs --kit british-line-infantry` when you update component art.

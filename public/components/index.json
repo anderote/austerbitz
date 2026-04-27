@@ -1,197 +1,752 @@
 {
   "components": [
     {
-      "id": "body-front-base",
+      "id": "body-north-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/body/north/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-north",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/coat-line/north/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-north",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-north",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/head/shako-standard/north.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-north",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "N"
+      ],
+      "path": "weapon/musket/north/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-north",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "N"
+      ],
+      "path": "shadow/north/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "body-northeast-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/body/northeast/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-northeast",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/coat-line/northeast/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-northeast",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-northeast",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/head/shako-standard/northeast.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-northeast",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "NE"
+      ],
+      "path": "weapon/musket/northeast/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-northeast",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "NE"
+      ],
+      "path": "shadow/northeast/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "body-east-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/body/east/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-east",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/coat-line/east/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-east",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-east",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/head/shako-standard/east.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-east",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "E"
+      ],
+      "path": "weapon/musket/east/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-east",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "E"
+      ],
+      "path": "shadow/east/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "body-southeast-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/body/southeast/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-southeast",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/coat-line/southeast/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-southeast",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-southeast",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/head/shako-standard/southeast.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-southeast",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "SE"
+      ],
+      "path": "weapon/musket/southeast/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-southeast",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "SE"
+      ],
+      "path": "shadow/southeast/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "body-south-base",
       "type": "anatomy",
       "category": "body",
       "facings": [
         "S"
       ],
-      "path": "anatomy/body/front/base.png",
+      "path": "anatomy/body/south/base.png",
       "pivot": [
-        5,
-        13
+        8,
+        28
       ],
       "anchors": {
         "head_center": [
-          5,
-          4
+          8,
+          11
         ],
         "shoulder": [
-          5,
-          10
+          8,
+          17
         ],
         "hip": [
-          5,
-          13
+          8,
+          22
         ],
         "foot_left": [
-          4,
-          16
+          6,
+          28
         ],
         "foot_right": [
-          6,
-          16
+          10,
+          28
         ]
       },
-      "notes": "Combined neutral head/torso/legs base for layering uniforms."
+      "notes": "Combined neutral base body for idle stance."
     },
     {
-      "id": "coat-line-front",
+      "id": "coat-line-south",
       "type": "uniform",
       "category": "upper",
       "facings": [
         "S"
       ],
-      "path": "uniform/coat-line/front/base.png",
-      "anatomy": "torso-front-slim",
-      "palette_layers": [
-        "primary",
-        "secondary",
-        "trim"
-      ],
-      "notes": "British line infantry coatee overlay with crossbelts."
+      "path": "uniform/coat-line/south/base.png",
+      "notes": "Coat overlay with crossbelts."
     },
     {
-      "id": "head-default",
-      "type": "anatomy",
-      "category": "head",
-      "facings": [
-        "S"
-      ],
-      "path": "anatomy/head/front/default.png",
-      "pivot": [
-        5,
-        4
-      ],
-      "anchors": {
-        "back_hook": [
-          5,
-          11
-        ],
-        "shoulder": [
-          5,
-          10
-        ]
-      },
-      "notes": "Neutral face block for front idle pose."
-    },
-    {
-      "id": "legs-front-idle",
-      "type": "anatomy",
-      "category": "legs",
-      "facings": [
-        "S"
-      ],
-      "path": "anatomy/legs/front/idle.png",
-      "pivot": [
-        5,
-        16
-      ],
-      "anchors": {
-        "knee_left": [
-          4,
-          14
-        ],
-        "knee_right": [
-          6,
-          14
-        ],
-        "foot_left": [
-          4,
-          16
-        ],
-        "foot_right": [
-          6,
-          16
-        ]
-      },
-      "notes": "Neutral leg silhouette sized for idle stance."
-    },
-    {
-      "id": "musket-brown-bess",
-      "type": "weapon",
-      "category": "primary",
-      "facings": [
-        "S"
-      ],
-      "path": "weapon/musket/front/idle.png",
-      "anchors": {
-        "grip": [
-          3,
-          12
-        ],
-        "barrel_tip": [
-          1,
-          0
-        ]
-      },
-      "notes": "Brown Bess musket aligned to idle stance."
-    },
-    {
-      "id": "shadow-front",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "S"
-      ],
-      "path": "shadow/front/default.png",
-      "notes": "Ground shadow strip at idle baseline."
-    },
-    {
-      "id": "shako-standard",
-      "type": "uniform",
-      "category": "headgear",
-      "facings": [
-        "S"
-      ],
-      "path": "uniform/head/shako-standard.png",
-      "anchors": {
-        "plume_socket": [
-          6,
-          2
-        ]
-      },
-      "notes": "Tall shako with plume and brass plate."
-    },
-    {
-      "id": "torso-front-slim",
-      "type": "anatomy",
-      "category": "torso",
-      "facings": [
-        "S"
-      ],
-      "path": "anatomy/torso/front/slim.png",
-      "pivot": [
-        5,
-        13
-      ],
-      "anchors": {
-        "shoulder": [
-          5,
-          10
-        ],
-        "hip": [
-          5,
-          13
-        ]
-      },
-      "notes": "Base torso volume without coat colors."
-    },
-    {
-      "id": "trousers-front-white",
+      "id": "trousers-south",
       "type": "uniform",
       "category": "lower",
       "facings": [
         "S"
       ],
-      "path": "uniform/lower/trousers-front.png",
-      "anatomy": "legs-front-idle",
-      "palette_layers": [
-        "cloth",
-        "gaiter"
+      "path": "uniform/lower/trousers/south.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-south",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "S"
       ],
-      "notes": "White breeches and black gaiters for line infantry."
+      "path": "uniform/head/shako-standard/south.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-south",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "S"
+      ],
+      "path": "weapon/musket/south/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-south",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "S"
+      ],
+      "path": "shadow/south/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "coat-line-south-make-ready",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/coat-line/south/make-ready.png",
+      "notes": "Coat overlay, make-ready firing pose (musket vertical at centerline)."
+    },
+    {
+      "id": "coat-line-south-present",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/coat-line/south/present.png",
+      "notes": "Coat overlay, present firing pose (butt to shoulder, barrel angled)."
+    },
+    {
+      "id": "coat-line-south-fire",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/coat-line/south/fire.png",
+      "notes": "Coat overlay, fire pose (recoil hop, geometry shifted -1y from present)."
+    },
+    {
+      "id": "musket-brown-bess-south-make-ready",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "S"
+      ],
+      "path": "weapon/musket/south/make-ready.png",
+      "notes": "Brown Bess musket vertical at centerline, hammer cocked."
+    },
+    {
+      "id": "musket-brown-bess-south-present",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "S"
+      ],
+      "path": "weapon/musket/south/present.png",
+      "notes": "Brown Bess musket angled forward-right, butt under chin."
+    },
+    {
+      "id": "musket-brown-bess-south-fire",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "S"
+      ],
+      "path": "weapon/musket/south/fire.png",
+      "notes": "Brown Bess musket at fire frame (recoil hop)."
+    },
+    {
+      "id": "body-southwest-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/body/southwest/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-southwest",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/coat-line/southwest/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-southwest",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-southwest",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/head/shako-standard/southwest.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-southwest",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "SW"
+      ],
+      "path": "weapon/musket/southwest/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-southwest",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "SW"
+      ],
+      "path": "shadow/southwest/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "body-west-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/body/west/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-west",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/coat-line/west/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-west",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-west",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/head/shako-standard/west.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-west",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "W"
+      ],
+      "path": "weapon/musket/west/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-west",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "W"
+      ],
+      "path": "shadow/west/default.png",
+      "notes": "Ground shadow strip."
+    },
+    {
+      "id": "body-northwest-base",
+      "type": "anatomy",
+      "category": "body",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/body/northwest/base.png",
+      "pivot": [
+        8,
+        28
+      ],
+      "anchors": {
+        "head_center": [
+          8,
+          11
+        ],
+        "shoulder": [
+          8,
+          17
+        ],
+        "hip": [
+          8,
+          22
+        ],
+        "foot_left": [
+          6,
+          28
+        ],
+        "foot_right": [
+          10,
+          28
+        ]
+      },
+      "notes": "Combined neutral base body for idle stance."
+    },
+    {
+      "id": "coat-line-northwest",
+      "type": "uniform",
+      "category": "upper",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/coat-line/northwest/base.png",
+      "notes": "Coat overlay with crossbelts."
+    },
+    {
+      "id": "trousers-northwest",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest.png",
+      "notes": "Lower garment and gaiters."
+    },
+    {
+      "id": "shako-standard-northwest",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/head/shako-standard/northwest.png",
+      "notes": "Standard shako with plume."
+    },
+    {
+      "id": "musket-brown-bess-northwest",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "NW"
+      ],
+      "path": "weapon/musket/northwest/idle.png",
+      "notes": "Brown Bess musket in idle pose."
+    },
+    {
+      "id": "shadow-northwest",
+      "type": "fx",
+      "category": "shadow",
+      "facings": [
+        "NW"
+      ],
+      "path": "shadow/northwest/default.png",
+      "notes": "Ground shadow strip."
     }
   ]
 }

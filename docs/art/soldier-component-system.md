@@ -8,20 +8,20 @@ This guide defines how we hand-craft a reusable pixel soldier kit that matches t
 - Enable rapid manual authoring of new outfits (e.g. kilts, greatcoats) and alternate views without redrawing the entire sprite.
 
 ## Base Grid & Anchors
-- Coordinate system: origin `(0,0)` at the top-left of each 11×18 cell, `x` rightward, `y` downward.
-- Reuse the ground shadow strip on row `17`; row `16` is the ankle line where both feet anchor.
-- Keep anatomy and overlays inside the safe 9 px wide column (`x = 1…9`) unless silhouettes intentionally flare (e.g. backpack, plume).
+- Coordinate system: origin `(0,0)` at the top-left of each 16×36 cell, `x` rightward, `y` downward.
+- Reuse the ground shadow strip across rows `30…35`; row `31` is the ankle line where both feet anchor.
+- Keep anatomy and overlays inside the safe 12 px wide column (`x = 2…13`) unless silhouettes intentionally flare (e.g. backpack, plume).
 
 | Anchor | Front View `(x,y)` | Notes |
 | --- | --- | --- |
-| Head center | `(5,4)` | Midpoint of shako; head module spans rows 2–8. |
-| Shoulder pivot | `(5,10)` | Arms hinge here; belt crosses align at this height. |
-| Elbow relaxed | `(4,12)` left / `(6,12)` right | When arms hang, wrists fall at row 14. |
-| Hip pivot | `(5,13)` | Torso taper meets legs; belts cross here. |
-| Knee line | `(4,14)` left / `(6,14)` right | Determines stride length for marching loops. |
-| Foot center | `(4,16)` left / `(6,16)` right | Feet occupy 4×2 px blocks. |
-| Musket grip | `(3,12)` | Forward hand grips stock; keep consistent across facings. |
-| Back equipment hook | `(5,11)` | Bedroll/backpack straps anchor here. |
+| Head center | `(8,7)` | Midpoint of shako; chin rests on row 12 within the 16×36 cell. |
+| Shoulder pivot | `(8,18)` | Arms hinge here; belt crosses align at this height. |
+| Elbow relaxed | `(6,22)` left / `(10,22)` right | When arms hang, wrists fall at row 27. |
+| Hip pivot | `(8,26)` | Torso taper meets legs; belts cross here. |
+| Knee line | `(6,28)` left / `(10,28)` right | Determines stride length for marching loops. |
+| Foot center | `(6,32)` left / `(10,32)` right | Feet occupy 6×3 px blocks with 1 px heel cut. |
+| Musket grip | `(5,22)` | Forward hand grips stock; keep consistent across facings. |
+| Back equipment hook | `(8,20)` | Bedroll/backpack straps anchor here. |
 
 **Template files** (create once, reuse):
 - `templates/anatomy/front-skeleton.png` – blocking of the above anchors.
@@ -37,22 +37,20 @@ This guide defines how we hand-craft a reusable pixel soldier kit that matches t
 ## Anatomy Modules
 Author neutral anatomy parts once per facing and reuse across uniforms.
 
-- **Head** (`head/front/default.png`): includes face, shako base, plume socket. Variant heads (bearskin, bonnet) split into separate uniform modules but share face proportions.
-- **Torso Core** (`torso/front/slim.png`, `torso/front/broad.png`): contains underlying chest volume, belt anchors, and musket contact point but no uniform color. Shade using neutral desaturated tones (`k` gradients) so coats overlay cleanly.
-- **Arms** (`arm-left/front/idle.png`, `arm-right/front/idle.png`): store as separate layers for idle pose plus alternate angles for march, reload, melee. Include the attached hand; weapon overlays slot between arms and torso where needed.
-- **Legs** (`legs/front/idle.png`, `legs/front/march-A.png`, `legs/front/march-B.png`): neutral breeches volume without gaiter detail. Keep stride variations separated so uniform overlays can inherit motion.
-- **Shadow** (`shadow/front/default.png`): 9×1 strip at row 17; stays constant for most stances.
+- **Body Base** (`body/<dir>/base.png`): combined neutral volume (head, torso, legs) used beneath uniforms. Provides consistent pivots and footwear baseline.
+- **Optional Breakouts**: When animation requires independent limbs, extract arms/legs from the body template into `anatomy/<part>/<dir>/…` files while keeping anchor coordinates consistent.
+- **Shadow** (`shadow/<dir>/default.png`): 9×1 strip at row 17; stays constant for most stances.
 
 Each anatomy file should include a metadata note (e.g. layer comment or sidecar JSON) listing: `pivot`, `compatible_facing`, and `default_sequence` (which animations reference it).
 
 ## Uniform & Pattern Modules
 Build clothing as additive overlays aligned to anatomy pivots.
 
-- **Upper Body Coats** (`uniform/coat-line/front/base.png`): replace torso neutral shading with coat colors. Use `P` marker for main cloth, `S` for facings. Maintain button and lapel highlights in coat-specific palette swaps.
-- **Lower Body Variants** (`uniform/lower/kilt-front.png`, `uniform/lower/trousers-front.png`): extend from hip pivot to feet. Patterns like tartan should be authored on a separate `_pattern.png` overlay to allow recolor scripts to cycle through approved palettes.
-- **Headgear** (`uniform/head/shako-standard.png`, `uniform/head/bears…`): stack on top of head anatomy; include plume or badge details. If silhouette changes width, document the offsets so side/back facings match.
-- **Equipment** (`equipment/backpack/front/idle.png`, `equipment/canteen/side.png`): attach at `back equipment hook`. Provide both front and back views to prevent popping when the soldier rotates.
-- **Weapon Attachments** (`weapon/musket/front/idle.png`, `weapon/musket/front/fire.png`): keep the musket separate from arms so alternate equipment (pikes, rifles) can reuse arm animations. Note the hand contact coordinates to align hands during redraws.
+- **Upper Body Coats** (`uniform/coat-line/<dir>/base.png`): replace torso neutral shading with coat colors. Use `P` marker for main cloth, `S` for facings. Maintain button and lapel highlights in coat-specific palette swaps.
+- **Lower Body Variants** (`uniform/lower/<variant>/<dir>.png`): extend from hip pivot to feet. Patterns like tartan should be authored on a separate `_pattern.png` overlay to allow recolor scripts to cycle through approved palettes.
+- **Headgear** (`uniform/head/<style>/<dir>.png`): stack on top of the body base; include plume or badge details. If silhouette changes width, document the offsets so side/back facings match.
+- **Equipment** (`equipment/<item>/<dir>/…`): attach at `back equipment hook`. Provide both front and back views to prevent popping when the soldier rotates.
+- **Weapon Attachments** (`weapon/<type>/<dir>/…`): keep the musket separate from arms so alternate equipment (pikes, rifles) can reuse arm animations. Note the hand contact coordinates to align hands during redraws.
 
 Document each module with a spec card (thumbnail, notes) in `docs/art/modules/` for quick reference.
 
@@ -81,15 +79,15 @@ Maintain consistent layer names in Aseprite (`00_shadow`, `05_legs`, etc.) so ex
 7. Record any custom offsets or dependencies in a `.notes` layer and mirror them to the documentation table.
 
 ## Multi-View & Animation Expansion
-- Start every new uniform in the **front** view. Once approved, propagate to diagonal (`SE`, `SW`) by copying the front anatomy modules and adjusting only the edge pixels that reveal more of the side torso.
-- For mirrored facings (`W`, `NW`), flip the front/diagonal base, then repaint highlights to maintain top-left lighting. Do **not** rely on auto-mirror; re-shade manually around plumes, musket, and sash edges.
+- Start every new uniform in the **south** (front-facing) view. Once approved, propagate to diagonal (`SE`, `SW`) by copying the front anatomy modules and adjusting only the edge pixels that reveal more of the side torso.
+- For mirrored facings (`W`, `NW`), flip the appropriate southeast/southwest base, then repaint highlights to maintain the top-left lighting. Do **not** rely on auto-mirror; re-shade manually around plumes, musket, and sash edges.
 - Establish shared arm/leg frame libraries: e.g. `legs/march/frame-01.png` works for `SE`, `S`, `SW` facings with only toe highlight tweaks.
 - When adding new actions (reload, melee), first rough the motion with anatomy-only layers. Lock the timing, then project uniform overlays frame-by-frame to avoid garment lag.
 
 ## File Naming & Metadata
 - Use lowercase kebab-case path segments: `components/<category>/<facing>/<variant>.ase`.
 - Prefix animation frames with `00`, `01`, … to keep chronological ordering.
-- Maintain a `public/components/index.json` registry with entries: `{ "id": "coat-line", "category": "upper", "facings": ["S","SE","SW"], "anatomy": "torso/front/slim" }`. This powers future tooling and ensures we track coverage gaps.
+- Maintain a `public/components/index.json` registry with entries like `{ "id": "body-north-base", "category": "body", "facings": ["N"], "path": "anatomy/body/north/base.png" }`. This powers future tooling and ensures we track coverage gaps.
 - Keep exports under `public/sprites/components/` with atlas-ready PNGs plus layered source files in `memory/sprites/` (following current repo conventions).
 
 ## QA Checklist (Component-Level)
