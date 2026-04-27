@@ -7,7 +7,7 @@ import { createParticlePass } from './passes/particle-pass';
 import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
 import type { World } from '../sim/world';
-import type { Selection, DragRect } from '../input/selection';
+import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
 import type { Projectiles } from '../sim/projectiles';
 
@@ -30,6 +30,7 @@ export interface Renderer {
     cam: Camera,
     sel: Selection,
     drag: DragRect,
+    formation: FormationPreview | null,
     opts: RenderOptions,
   ): void;
   resize(): void;
@@ -54,7 +55,7 @@ export function createRenderer(
     resize() {
       resizeToDisplay(gl, canvas);
     },
-    render(world, projectiles, particlePool, cam, sel, drag, opts) {
+    render(world, projectiles, particlePool, cam, sel, drag, formation, opts) {
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);
@@ -65,7 +66,7 @@ export function createRenderer(
       projectilesPass.draw(projectiles, cam);
       // Above-soldier FX (smoke, flash, blood, debris) draw on top of sprites.
       particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK);
-      selectionPass.draw(world, cam, sel, drag, null);
+      selectionPass.draw(world, cam, sel, drag, formation);
       if (opts.showHealthBars) healthBarPass.draw(world, cam);
     },
   };

@@ -129,7 +129,7 @@ function frame(t: number) {
   applyWind(particles, wind.accelX, dt);
   updateParticles(particles, dt);
 
-  renderer.render(world, projectiles, particles, camera, selection, drag);
+  renderer.render(world, projectiles, particles, camera, selection, drag, null, { showHealthBars: false });
 
   ui.update({
     fps: smoothedFps,

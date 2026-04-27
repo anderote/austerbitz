@@ -65,19 +65,28 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-// 100 line-infantry in formation: 25 files wide × 4 ranks deep, all facing south.
-const FILES = 25;
-const RANKS = 4;
+// Six regiments of 300 line-infantry each, deployed in 2-rank line formations
+// (British Napoleonic convention) and stacked N→S, all facing south.
+const REGIMENTS = 6;
+const SOLDIERS_PER_REGIMENT = 300;
+const RANKS = 2;
+const FILES = SOLDIERS_PER_REGIMENT / RANKS; // 150
 const FILE_GAP = 1.2;
 const RANK_GAP = 1.6;
+const REGIMENT_GAP = 6; // metres between adjacent regiments (rear-to-front)
 const FRONT_FACING = 2; // POSE_CELLS index 1 = S front
-const formW = (FILES - 1) * FILE_GAP;
-const formH = (RANKS - 1) * RANK_GAP;
-for (let r = 0; r < RANKS; r++) {
-  for (let f = 0; f < FILES; f++) {
-    const x = cx - formW / 2 + f * FILE_GAP;
-    const y = cy - formH / 2 + r * RANK_GAP;
-    spawn('line-infantry', 0, x, y, FRONT_FACING);
+const regW = (FILES - 1) * FILE_GAP;
+const regH = (RANKS - 1) * RANK_GAP;
+const blockH = REGIMENTS * regH + (REGIMENTS - 1) * REGIMENT_GAP;
+const y0 = cy - blockH / 2;
+for (let g = 0; g < REGIMENTS; g++) {
+  const regY = y0 + g * (regH + REGIMENT_GAP);
+  for (let r = 0; r < RANKS; r++) {
+    for (let f = 0; f < FILES; f++) {
+      const x = cx - regW / 2 + f * FILE_GAP;
+      const y = regY + r * RANK_GAP;
+      spawn('line-infantry', 0, x, y, FRONT_FACING);
+    }
   }
 }
 
@@ -119,7 +128,7 @@ function frame(t: number) {
   emitDust(world, particles, dt);
   updateParticles(particles, dt);
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
-  renderer.render(world, projectiles, particles, camera, selection, drag, { showHealthBars });
+  renderer.render(world, projectiles, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars });
   hud.update(smoothedFps, world, controller.cursorMode);
   selPanel.update(world, selection);
   buildMenu.update();
