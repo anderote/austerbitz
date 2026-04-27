@@ -22,19 +22,21 @@ import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createParticles, updateParticles } from './particles/particles';
-import { emitDust } from './particles/emitters';
+import { createPuffs, updatePuffs } from './puffs/puffs';
+import { emitDustForFrame } from './puffs/emit-dust';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
+const PUFF_CAPACITY = 1024;
 const PROJECTILE_CAPACITY = 2048;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
 const map = createDefaultMap();
 const renderer = createRenderer(
-  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
+  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   map.size.w, map.size.h,
 );
 const camera = createCamera();
@@ -46,6 +48,7 @@ const controlGroups = createControlGroups();
 
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
 const particles = createParticles(PARTICLE_CAPACITY);
+const puffs = createPuffs(PUFF_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 world.systems = [ordersSystem, movementSystem, collisionSystem];
 
@@ -145,7 +148,8 @@ function frame(t: number) {
   cameraControls.update(dt);
   controller.update(dt);
   tickWorld(world, dt);
-  emitDust(world, particles, dt);
+  emitDustForFrame(world, puffs, dt);
+  updatePuffs(puffs, dt);
   updateParticles(particles, dt);
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;
@@ -154,7 +158,7 @@ function frame(t: number) {
   }
   clearBloodSplats(bs);
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
-  renderer.render(world, projectiles, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars });
+  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars });
   hud.update(smoothedFps, world, controller.cursorMode);
   selPanel.update(world, selection);
   buildMenu.update();
