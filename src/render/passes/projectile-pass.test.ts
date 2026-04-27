@@ -68,7 +68,7 @@ describe('computeProjectileInstances', () => {
     expect(buckets.musket.count).toBe(0);
   });
 
-  it('a musket ball renders as a small lead-grey pixel square at its current position', () => {
+  it('a musket ball renders as a small light-grey 4px square at its current position', () => {
     const projectiles = createProjectiles(8);
     const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
     expect(id).toBeGreaterThanOrEqual(0);
@@ -86,15 +86,41 @@ describe('computeProjectileInstances', () => {
 
     expect(buckets.musket.centerWorld[0]).toBeCloseTo(10);
     expect(buckets.musket.centerWorld[1]).toBeCloseTo(0);
-    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(0.10);
-    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(0.10);
+    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(4 / 12);
+    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(4 / 12);
     expect(buckets.musket.rotation[0]).toBeCloseTo(0);
     expect(buckets.musket.kind[0]).toBe(0);
-    // Lead-grey color.
-    expect(buckets.musket.color[0]).toBeCloseTo(0.13);
-    expect(buckets.musket.color[1]).toBeCloseTo(0.13);
-    expect(buckets.musket.color[2]).toBeCloseTo(0.14);
+    // Light-grey color.
+    expect(buckets.musket.color[0]).toBeCloseTo(0.78);
+    expect(buckets.musket.color[1]).toBeCloseTo(0.78);
+    expect(buckets.musket.color[2]).toBeCloseTo(0.78);
     expect(buckets.musket.color[3]).toBeCloseTo(1.0);
+  });
+
+  it('a moving musket ball emits a translucent white streak oriented along velocity', () => {
+    const projectiles = createProjectiles(8);
+    // Direction +x, muzzle 380 → velX=380, velY=0.
+    const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
+    projectiles.posX[id] = 10;
+    projectiles.posY[id] = 0;
+
+    const buckets = createProjectileInstanceBuckets(32);
+    computeProjectileInstances(projectiles, buckets);
+
+    expect(buckets.streak.count).toBe(1);
+    // Streak is 1 px wide, 8 px long, oriented along +x → rotation 0.
+    expect(buckets.streak.sizeOrLen[0]).toBeCloseTo(8 / 12);
+    expect(buckets.streak.sizeOrLen[1]).toBeCloseTo(1 / 12);
+    expect(buckets.streak.rotation[0]).toBeCloseTo(0);
+    expect(buckets.streak.kind[0]).toBe(3);
+    // Trails behind the ball: center shifted back by half-length along -x.
+    expect(buckets.streak.centerWorld[0]).toBeCloseTo(10 - (8 / 12) * 0.5);
+    expect(buckets.streak.centerWorld[1]).toBeCloseTo(0);
+    // White, transparent.
+    expect(buckets.streak.color[0]).toBeCloseTo(1.0);
+    expect(buckets.streak.color[1]).toBeCloseTo(1.0);
+    expect(buckets.streak.color[2]).toBeCloseTo(1.0);
+    expect(buckets.streak.color[3]).toBeCloseTo(0.4);
   });
 
   it('a stationary musket ball still renders as a square at its position', () => {
@@ -111,8 +137,8 @@ describe('computeProjectileInstances', () => {
     expect(buckets.musket.count).toBe(1);
     expect(buckets.musket.centerWorld[0]).toBeCloseTo(3);
     expect(buckets.musket.centerWorld[1]).toBeCloseTo(4);
-    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(0.10);
-    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(0.10);
+    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(4 / 12);
+    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(4 / 12);
   });
 
   it('three projectiles of different kinds populate all three buckets', () => {

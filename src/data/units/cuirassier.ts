@@ -18,7 +18,7 @@ export const cuirassier: UnitKind = {
     weaponAccuracy: 0.9,
     armor: 4,
     massKg: 600,
-    formationSpacing: { x: 2.0, y: 3.0 },
+    formationSpacing: { x: 1.6, y: 2.2 },
     bodyRadius: 0.7,
   },
   bodyZ: { low: 0, high: 2.2 },

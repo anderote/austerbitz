@@ -8,7 +8,7 @@ export const MUSKET_SMOKE: PuffProfile = {
   edgeGrowth: 0.10, sizeMax: 2.5,
   sizeMaxJitter: 0.30,
   aspectAtMax: 2.4, aspectJitter: 0.5,
-  drag: 0.985, buoyancy: -0.7,
+  drag: 0.985, buoyancy: -0.7, buoyancyJitter: 0.18,
   inertiaExp: 2, inertiaWeight: 0.20,
   color: [0.86, 0.84, 0.82], colorJitter: 0.02,
   alpha: 0.75, softness: 0.9,

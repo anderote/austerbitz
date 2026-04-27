@@ -132,7 +132,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 75;      // metres between the two armies' front ranks (within 80m musket range)
+const BATTLE_GAP = 100;     // metres between the two armies' front ranks
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 
@@ -223,9 +223,11 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// 2000 line-infantry per side, 8 ranks deep, split into five 50-file regiments.
+// Two parallel lines per side, 50m apart along the facing axis.
+// Each line is 2000 line-infantry, 8 ranks deep, split into five 50-file regiments.
 const lineRegiments: RegimentPlan[] = [
   { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8 },
+  { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8, backOffset: 50 },
 ];
 
 const friendlyArmy: ArmyPlan = {

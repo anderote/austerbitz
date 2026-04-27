@@ -28,7 +28,7 @@ function writeProfile(
   p.aspectMax[i] = (profile.aspectAtMax ?? 1) + jitter(rng, profile.aspectJitter ?? 0);
   p.edgeGrowth[i] = profile.edgeGrowth;
   p.drag[i] = profile.drag;
-  p.buoyancy[i] = profile.buoyancy;
+  p.buoyancy[i] = profile.buoyancy + jitter(rng, profile.buoyancyJitter ?? 0);
   p.inertiaExp[i] = profile.inertiaExp;
   p.inertiaWeight[i] = profile.inertiaWeight;
   p.r[i] = clamp01(profile.color[0] + jitter(rng, profile.colorJitter));
@@ -87,8 +87,11 @@ export function emitPuffBurst(
 }
 
 /** Muzzle spray: one stationary puff hangs at the gun tip; the rest shoot out
- *  in a tight forward cone, drag handles deceleration so they settle into a
- *  string at varying distances. No spawn-time coalesce; drift-merging happens
+ *  in a tight forward cone along a deterministic velocity gradient — speed.min
+ *  for the puff nearest the muzzle, speed.max at the front of the trail, with
+ *  the cone angle still randomized per puff. Drag handles deceleration so the
+ *  spray settles into a visible string at varying distances rather than
+ *  overlapping at the muzzle. No spawn-time coalesce; drift-merging happens
  *  later. */
 export function emitPuffMuzzleSpray(
   p: Puffs, profile: PuffProfile, profileIdx: number,
@@ -99,11 +102,14 @@ export function emitPuffMuzzleSpray(
 ): void {
   if (count <= 0) return;
   emitPuff(p, profile, profileIdx, x, y, 0, 0, rng);
+  if (count === 1) return;
   const theta = Math.atan2(dirY, dirX);
   const half = coneAngle * 0.5;
+  const denom = count > 2 ? count - 2 : 1;
   for (let n = 1; n < count; n++) {
+    const t = (n - 1) / denom;
+    const s = speed.min + (speed.max - speed.min) * t;
     const a = theta + rng.range(-half, half);
-    const s = rng.range(speed.min, speed.max);
     const vx = Math.cos(a) * s;
     const vy = Math.sin(a) * s;
     emitPuff(p, profile, profileIdx, x, y, vx, vy, rng);

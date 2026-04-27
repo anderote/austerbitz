@@ -30,6 +30,9 @@ export interface PuffProfile {
   aspectAtMax?: number;
   /** Symmetric additive jitter applied to per-puff aspectAtMax (default 0). */
   aspectJitter?: number;
+  /** Symmetric additive jitter on per-puff buoyancy (default 0). Small values
+   *  break up lockstep rising of co-emitted puffs without changing the mean. */
+  buoyancyJitter?: number;
   coalesce: null | {
     radius: number;
     sizePerMerge: number;

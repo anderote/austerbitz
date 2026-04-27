@@ -11,15 +11,15 @@ export const musket: WeaponProfile = {
       profileIdx: MUSKET_SMOKE_INDEX,
       count: 9,
       coneAngle: 0.14,
-      speed: { min: 3, max: 6 },
+      speed: { min: 0, max: 6 },
     },
     recoilFirer: 0.5,
   },
   projectile: {
     mass: 0.03,
-    muzzleVelocity: 200,
+    muzzleVelocity: 80,
     damage: 12,
     accuracySpreadRad: (4 * Math.PI) / 180,
-    maxLife: 0.8,
+    maxLife: 1.5,
   },
 };
