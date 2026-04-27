@@ -7,7 +7,7 @@ import {
   spawnSolidShot,
   type Projectiles,
 } from '../projectiles';
-import { createGrid, gridInsert, type Grid } from '../spatial/grid';
+import { createGrid, gridRebuild, type Grid } from '../spatial/grid';
 import { createParticles, type Particles } from '../../particles/particles';
 import { createRng, type Rng } from '../../util/rng';
 import { getUnitKindIndex } from '../../data/units';
@@ -25,7 +25,7 @@ function setup(): Setup {
   return {
     entities: createEntities(16),
     projectiles: createProjectiles(64),
-    grid: createGrid({ minX: -100, minY: -100, maxX: 100, maxY: 100, cellSize: 5 }),
+    grid: createGrid({ minX: -100, minY: -100, maxX: 100, maxY: 100, cellSize: 5, capacity: 16 }),
     particles: createParticles(512),
     rng: createRng(1),
   };
@@ -44,7 +44,7 @@ function placeLineInfantry(
   s.entities.posY[id] = y;
   s.entities.team[id] = team;
   s.entities.hp[id] = hp;
-  gridInsert(s.grid, id, x, y);
+  gridRebuild(s.grid, s.entities.aliveIds, s.entities.count, s.entities.posX, s.entities.posY);
   return id;
 }
 

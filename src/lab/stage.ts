@@ -34,6 +34,8 @@ function spawnEntity(
   e.kindId[id] = getUnitKindIndex(kindId);
   e.team[id] = team;
   e.hp[id] = kind.baseStats.hp;
+  e.bodyRadius[id] = kind.baseStats.bodyRadius;
+  e.massKg[id] = kind.baseStats.massKg;
   e.state[id] = EntityState.Idle;
   return id;
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { allocEntity, createEntities, type Entities } from '../sim/entities';
-import { createGrid, gridInsert, type Grid } from '../sim/spatial/grid';
+import { createGrid, gridRebuild, type Grid } from '../sim/spatial/grid';
 import { createParticles, ParticleClass, type Particles } from '../particles/particles';
 import { createRng } from '../util/rng';
 import { getUnitKindIndex } from '../data/units';
@@ -18,7 +18,7 @@ interface Setup {
 
 function setup(): Setup {
   const e = createEntities(8);
-  const grid = createGrid({ minX: -50, minY: -50, maxX: 50, maxY: 50, cellSize: 10 });
+  const grid = createGrid({ minX: -50, minY: -50, maxX: 50, maxY: 50, cellSize: 10, capacity: 8 });
   const particles = createParticles(256);
   const rng = createRng(1);
   return { e, grid, particles, rng };
@@ -37,7 +37,7 @@ function placeEntity(
   s.e.team[id] = opts.team ?? 0;
   s.e.hp[id] = opts.hp ?? 200;
   if (opts.alive === false) s.e.alive[id] = 0;
-  gridInsert(s.grid, id, x, y);
+  gridRebuild(s.grid, s.e.aliveIds, s.e.count, s.e.posX, s.e.posY);
   return id;
 }
 

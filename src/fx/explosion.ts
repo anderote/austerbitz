@@ -5,6 +5,8 @@ import type { Rng } from '../util/rng';
 import type { ExplosionProfile } from '../data/weapons/types';
 import { applyHit } from '../sim/systems/combat-events';
 
+const EXPLOSION_BUF = new Int32Array(2048);
+
 /**
  * Detonate an explosion at (x, y): one bright flash, a billowing smoke spray,
  * a debris fan, and area damage + impulse to entities inside `damageRadius`.
@@ -78,9 +80,9 @@ export function spawnExplosion(
 
   // 4. Area damage + impulse — AABB candidates, then circle test, then applyHit.
   const radius = profile.damageRadius;
-  const ids = gridQueryRadius(grid, x, y, radius);
-  for (let i = 0; i < ids.length; i++) {
-    const id = ids[i]!;
+  const nIds = gridQueryRadius(grid, x, y, radius, EXPLOSION_BUF);
+  for (let i = 0; i < nIds; i++) {
+    const id = EXPLOSION_BUF[i]!;
     if (entities.alive[id] === 0) continue;
     if (excludeTeam !== undefined && entities.team[id] === excludeTeam) continue;
 

@@ -1,5 +1,5 @@
 import { createEntities, type Entities } from './entities';
-import { createGrid, gridClear, gridInsert, type Grid } from './spatial/grid';
+import { createGrid, gridRebuild, type Grid } from './spatial/grid';
 import { createRng, type Rng } from '../util/rng';
 
 export type System = (world: World, dt: number) => void;
@@ -30,7 +30,7 @@ export interface World {
 }
 
 export function createWorld(cfg: WorldConfig): World {
-  const cellSize = cfg.cellSize ?? 16;
+  const cellSize = cfg.cellSize ?? 2;
   return {
     cfg,
     entities: createEntities(cfg.capacity),
@@ -38,6 +38,7 @@ export function createWorld(cfg: WorldConfig): World {
       minX: 0, minY: 0,
       maxX: cfg.mapSize, maxY: cfg.mapSize,
       cellSize,
+      capacity: cfg.capacity,
     }),
     rng: createRng(cfg.seed),
     tickCount: 0,
@@ -48,11 +49,8 @@ export function createWorld(cfg: WorldConfig): World {
 }
 
 export function rebuildGrid(world: World): void {
-  gridClear(world.grid);
   const e = world.entities;
-  for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 1) gridInsert(world.grid, i, e.posX[i]!, e.posY[i]!);
-  }
+  gridRebuild(world.grid, e.aliveIds, e.count, e.posX, e.posY);
 }
 
 export function tickWorld(world: World, dt: number): void {

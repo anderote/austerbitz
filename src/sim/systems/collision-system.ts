@@ -1,7 +1,6 @@
 import type { System } from '../world';
-import { rebuildGrid } from '../world';
 import { gridQueryRadius } from '../spatial/grid';
-import { getUnitKindByIndex, unitKinds } from '../../data/units';
+import { unitKinds } from '../../data/units';
 
 const PUSH_STRENGTH = 0.5;
 
@@ -10,25 +9,24 @@ for (const k of unitKinds) {
   if (k.baseStats.bodyRadius > MAX_BODY_RADIUS) MAX_BODY_RADIUS = k.baseStats.bodyRadius;
 }
 
+const NEIGHBOR_BUF = new Int32Array(1024);
+
 export const collisionSystem: System = (world, _dt) => {
-  rebuildGrid(world);
   const e = world.entities;
-  for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] !== 1) continue;
+  for (let n = 0; n < e.count; n++) {
+    const i = e.aliveIds[n]!;
     if (e.state[i]! >= 4) continue; // ragdoll/dead bodies don't push
-    const ki = getUnitKindByIndex(e.kindId[i]!);
-    const ri = ki.baseStats.bodyRadius;
-    const mi = ki.baseStats.massKg;
+    const ri = e.bodyRadius[i]!;
+    const mi = e.massKg[i]!;
     const xi = e.posX[i]!;
     const yi = e.posY[i]!;
-    const neighbors = gridQueryRadius(world.grid, xi, yi, ri + MAX_BODY_RADIUS);
-    for (let n = 0; n < neighbors.length; n++) {
-      const j = neighbors[n]!;
+    const nNeighbors = gridQueryRadius(world.grid, xi, yi, ri + MAX_BODY_RADIUS, NEIGHBOR_BUF);
+    for (let k = 0; k < nNeighbors; k++) {
+      const j = NEIGHBOR_BUF[k]!;
       if (j <= i) continue;
       if (e.alive[j] !== 1) continue;
       if (e.state[j]! >= 4) continue;
-      const kj = getUnitKindByIndex(e.kindId[j]!);
-      const rj = kj.baseStats.bodyRadius;
+      const rj = e.bodyRadius[j]!;
       const sumR = ri + rj;
       const dx = e.posX[j]! - e.posX[i]!;
       const dy = e.posY[j]! - e.posY[i]!;
@@ -46,8 +44,8 @@ export const collisionSystem: System = (world, _dt) => {
         ny = dy / dist;
       }
       const penetration = sumR - dist;
-      const totalM = mi + kj.baseStats.massKg;
-      const wi = kj.baseStats.massKg / totalM;
+      const totalM = mi + e.massKg[j]!;
+      const wi = e.massKg[j]! / totalM;
       const wj = mi / totalM;
       const corr = penetration * PUSH_STRENGTH;
       e.posX[i] = e.posX[i]! - nx * corr * wi;

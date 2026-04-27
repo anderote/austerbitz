@@ -59,6 +59,8 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
   world.entities.team[id] = team;
   world.entities.facing[id] = facing;
   world.entities.hp[id] = kind.baseStats.hp;
+  world.entities.bodyRadius[id] = kind.baseStats.bodyRadius;
+  world.entities.massKg[id] = kind.baseStats.massKg;
   return id;
 }
 

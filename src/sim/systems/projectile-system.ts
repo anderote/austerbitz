@@ -34,9 +34,11 @@ const SOLID_SHOT_FREE_BELOW_DAMAGE = 5;
 
 /**
  * Module-level scratch buffer for swept-grid candidate ids. `gridSweptQuery`
- * clears it on entry, so reuse across calls is safe and avoids per-tick alloc.
+ * writes from index 0 each call and returns a count, so reuse across calls is
+ * safe and avoids per-tick alloc. 1024 is generous: a single segment crossing
+ * a tightly packed 2 m grid can't realistically yield more than a few hundred.
  */
-const candidateBuf: number[] = [];
+const candidateBuf = new Int32Array(1024);
 
 /**
  * Integrate, ground-collide, ricochet/roll, swept entity-collide, and emit
@@ -142,9 +144,9 @@ export function tickProjectiles(
 
     // 7. Swept entity collision. Walk the grid cells the segment crosses, then
     // do per-candidate point-vs-segment + Z-range refinement.
-    gridSweptQuery(grid, p.prevX[i]!, p.prevY[i]!, p.posX[i]!, p.posY[i]!, candidateBuf);
+    const nCandidates = gridSweptQuery(grid, p.prevX[i]!, p.prevY[i]!, p.posX[i]!, p.posY[i]!, candidateBuf);
 
-    if (candidateBuf.length > 0) {
+    if (nCandidates > 0) {
       const ax = p.prevX[i]!;
       const ay = p.prevY[i]!;
       const bx = p.posX[i]!;
@@ -156,7 +158,7 @@ export function tickProjectiles(
       const zMax = Math.max(pZ0, p.posZ[i]!);
 
       let freed = false;
-      for (let k = 0; k < candidateBuf.length; k++) {
+      for (let k = 0; k < nCandidates; k++) {
         const id = candidateBuf[k]!;
         if (entities.alive[id] === 0) continue;
         if (entities.team[id] === p.team[i]) continue;

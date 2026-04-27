@@ -35,6 +35,54 @@ describe('Entities SoA', () => {
     expect(e.posX.length).toBe(16);
     expect(e.team.length).toBe(16);
     expect(e.kindId.length).toBe(16);
+    expect(e.bodyRadius).toBeInstanceOf(Float32Array);
+    expect(e.bodyRadius.length).toBe(16);
+    expect(e.massKg).toBeInstanceOf(Float32Array);
+    expect(e.massKg.length).toBe(16);
+    expect(e.aliveIds).toBeInstanceOf(Int32Array);
+    expect(e.aliveIds.length).toBe(16);
+    expect(e.aliveIdx).toBeInstanceOf(Int32Array);
+    expect(e.aliveIdx.length).toBe(16);
+  });
+
+  it('maintains a packed aliveIds list via swap-pop', () => {
+    const e = createEntities(8);
+    const a = allocEntity(e); // id 0
+    const b = allocEntity(e); // id 1
+    const c = allocEntity(e); // id 2
+    expect(e.count).toBe(3);
+    // Packed [a, b, c] in some allocation order; check via aliveIdx.
+    expect(e.aliveIdx[a]).toBe(0);
+    expect(e.aliveIdx[b]).toBe(1);
+    expect(e.aliveIdx[c]).toBe(2);
+    expect(e.aliveIds[0]).toBe(a);
+    expect(e.aliveIds[1]).toBe(b);
+    expect(e.aliveIds[2]).toBe(c);
+
+    // Free the middle id; swap-pop should move c into b's slot.
+    freeEntity(e, b);
+    expect(e.count).toBe(2);
+    expect(e.aliveIdx[b]).toBe(-1);
+    expect(e.aliveIdx[a]).toBe(0);
+    expect(e.aliveIdx[c]).toBe(1);
+    expect(e.aliveIds[0]).toBe(a);
+    expect(e.aliveIds[1]).toBe(c);
+
+    // Walking [0..count) should yield exactly the live ids, in some order.
+    const seen = new Set<number>();
+    for (let n = 0; n < e.count; n++) seen.add(e.aliveIds[n]!);
+    expect(seen).toEqual(new Set([a, c]));
+  });
+
+  it('packed aliveIds tail removal does not need a swap', () => {
+    const e = createEntities(4);
+    const a = allocEntity(e);
+    const b = allocEntity(e);
+    freeEntity(e, b); // tail
+    expect(e.count).toBe(1);
+    expect(e.aliveIds[0]).toBe(a);
+    expect(e.aliveIdx[a]).toBe(0);
+    expect(e.aliveIdx[b]).toBe(-1);
   });
 
   it('count tracks live entities', () => {

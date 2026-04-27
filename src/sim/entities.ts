@@ -13,8 +13,14 @@ export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
 export interface Entities {
   capacity: number;
-  count: number;            // live count
+  count: number;            // live count (also length of packed aliveIds)
   alive: Uint8Array;        // 1 = alive, 0 = free
+
+  // Packed alive index — aliveIds[0..count) are the live entity ids,
+  // aliveIdx[id] is the slot of `id` in aliveIds (or -1 if not alive).
+  // Maintained via swap-pop on free.
+  aliveIds: Int32Array;
+  aliveIdx: Int32Array;
 
   // Transform
   posX: Float32Array;
@@ -44,6 +50,10 @@ export interface Entities {
   team: Uint8Array;
   formationId: Int32Array;  // -1 if none
 
+  // Per-entity body cache (populated at spawn from unit kind).
+  bodyRadius: Float32Array;
+  massKg: Float32Array;
+
   // Animation
   frame: Uint8Array;
   frameTime: Float32Array;
@@ -62,6 +72,8 @@ export function createEntities(capacity: number): Entities {
     capacity,
     count: 0,
     alive: new Uint8Array(capacity),
+    aliveIds: new Int32Array(capacity),
+    aliveIdx: new Int32Array(capacity).fill(-1),
     posX: new Float32Array(capacity),
     posY: new Float32Array(capacity),
     velX: new Float32Array(capacity),
@@ -82,6 +94,8 @@ export function createEntities(capacity: number): Entities {
     kindId: new Uint16Array(capacity),
     team: new Uint8Array(capacity),
     formationId: new Int32Array(capacity).fill(-1),
+    bodyRadius: new Float32Array(capacity),
+    massKg: new Float32Array(capacity),
     frame: new Uint8Array(capacity),
     frameTime: new Float32Array(capacity),
     freeListHead: 0,
@@ -94,6 +108,9 @@ export function allocEntity(e: Entities): number {
   if (id === -1) return -1;
   e.freeListHead = e.freeListNext[id]!;
   e.alive[id] = 1;
+  // Append to packed alive list, then bump count.
+  e.aliveIds[e.count] = id;
+  e.aliveIdx[id] = e.count;
   e.count++;
   // Reset hot fields to deterministic defaults
   e.posX[id] = 0; e.posY[id] = 0;
@@ -114,6 +131,8 @@ export function allocEntity(e: Entities): number {
   e.kindId[id] = 0;
   e.team[id] = 0;
   e.formationId[id] = -1;
+  e.bodyRadius[id] = 0;
+  e.massKg[id] = 0;
   e.frame[id] = 0;
   e.frameTime[id] = 0;
   return id;
@@ -122,6 +141,15 @@ export function allocEntity(e: Entities): number {
 export function freeEntity(e: Entities, id: number): void {
   if (!e.alive[id]) return;
   e.alive[id] = 0;
+  // Swap-pop out of the packed alive list.
+  const slot = e.aliveIdx[id]!;
+  const last = e.count - 1;
+  if (slot !== last) {
+    const lastId = e.aliveIds[last]!;
+    e.aliveIds[slot] = lastId;
+    e.aliveIdx[lastId] = slot;
+  }
+  e.aliveIdx[id] = -1;
   e.count--;
   e.freeListNext[id] = e.freeListHead;
   e.freeListHead = id;
