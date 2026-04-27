@@ -2,8 +2,8 @@ export const SELECTION_VS = `#version 300 es
 precision highp float;
 
 layout(location = 0) in vec2 a_corner;
-layout(location = 1) in vec2 a_pos;
-layout(location = 2) in float a_radius;
+layout(location = 1) in vec2 a_pos;   // disc center in world space
+layout(location = 2) in vec2 a_size;  // disc width, height (ellipse)
 layout(location = 3) in vec3 a_color;
 out vec2 v_local;
 out vec3 v_color;
@@ -11,14 +11,17 @@ out vec3 v_color;
 uniform mat3 u_viewProj;
 
 void main() {
-  vec2 wp = a_pos + a_corner * a_radius * 2.0;
+  vec2 wp = a_pos + a_corner * a_size;
   vec3 clip = u_viewProj * vec3(wp, 1.0);
   gl_Position = vec4(clip.xy, 0.0, 1.0);
-  v_local = a_corner * 2.0;
+  v_local = a_corner * 2.0; // -1..1 across quad
   v_color = a_color;
 }
 `;
 
+// Pixelated tin-soldier base: quantize the local quad coords into a chunky
+// grid, then test the unit circle. Outer cell ring is a darker rim painted
+// edge; interior is the team color, semi-transparent.
 export const SELECTION_FS = `#version 300 es
 precision highp float;
 in vec2 v_local;
@@ -26,10 +29,16 @@ in vec3 v_color;
 out vec4 outColor;
 
 void main() {
-  float d = length(v_local);
-  float a = smoothstep(0.85, 0.9, d) - smoothstep(0.98, 1.0, d);
-  if (a <= 0.0) discard;
-  outColor = vec4(v_color, a);
+  const float N = 6.0; // 12 chunky pixels across the disc
+  vec2 q = (floor(v_local * N) + 0.5) / N;
+  float d2 = dot(q, q);
+  if (d2 > 1.0) discard;
+  float rim = step(0.55, d2);
+  vec3 light = v_color * 1.05;
+  vec3 dark = v_color * 0.65;
+  vec3 col = mix(light, dark, rim);
+  float alpha = mix(0.22, 0.55, rim);
+  outColor = vec4(col, alpha);
 }
 `;
 
@@ -50,4 +59,28 @@ precision highp float;
 uniform vec4 u_color;
 out vec4 outColor;
 void main() { outColor = u_color; }
+`;
+
+export const DRAG_VS = `#version 300 es
+precision highp float;
+layout(location = 0) in vec2 a_pos;
+uniform mat3 u_viewProj;
+void main() {
+  vec3 clip = u_viewProj * vec3(a_pos, 1.0);
+  gl_Position = vec4(clip.xy, 0.0, 1.0);
+}
+`;
+
+// Marching-ants: alternating on/off pixels along a screen-space diagonal axis,
+// animated by u_time so the dashes appear to crawl around the rectangle.
+export const DRAG_FS = `#version 300 es
+precision highp float;
+uniform float u_time;
+out vec4 outColor;
+void main() {
+  float p = gl_FragCoord.x + gl_FragCoord.y;
+  float phase = mod(p - u_time * 24.0, 8.0);
+  if (phase >= 4.0) discard;
+  outColor = vec4(1.0, 1.0, 1.0, 1.0);
+}
 `;

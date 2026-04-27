@@ -2,7 +2,7 @@ import type { Camera } from '../render/camera';
 import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
-import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect } from './selection';
+import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups } from './selection';
 import { issueMove, issueAttack, issueAttackMove, issueStop } from './commands';
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
@@ -16,6 +16,7 @@ export interface SelectionControllerDeps {
   world: World;
   selection: Selection;
   drag: DragRect;
+  controlGroups: ControlGroups;
   /** Optional — when present, a small puff is emitted at each issued world point. */
   particles?: Particles;
 }
@@ -41,9 +42,8 @@ interface ControllerInternals {
 const DRAG_THRESHOLD_PX = 4;
 
 export function createSelectionController(deps: SelectionControllerDeps): SelectionController {
-  const { canvas, overlayRoot, camera, world, selection, drag } = deps;
-
-  const groups: Set<number>[] = Array.from({ length: 10 }, () => new Set<number>());
+  const { canvas, overlayRoot, camera, world, selection, drag, controlGroups } = deps;
+  const groups = controlGroups.groups;
 
   function digitFromCode(code: string): number | null {
     if (code.startsWith('Digit')) {

@@ -1,10 +1,10 @@
-// 33x54 atlas: 3x3 cells of 11x18, with 5 poses arranged in a cross plus a
-// solid-white "tint" cell that placeholder units sample (white * tintColor).
+// 33x54 atlas: 3x3 cells of 11x18, covering all eight facings plus a
+// solid-white "tint" cell (sample here to tint placeholders).
 //
 // Layout (cells):
 //   (0,0) NW back-3/4 mirrored   (1,0) WHITE TINT       (2,0) NE back-3/4
-//   (0,1) empty                  (1,1) FRONT            (2,1) empty
-//   (0,2) SW front-3/4 mirrored  (1,2) empty            (2,2) SE front-3/4
+//   (0,1) W side mirrored        (1,1) S front          (2,1) E side
+//   (0,2) SW front-3/4 mirrored  (1,2) N back           (2,2) SE front-3/4
 //
 // Keep in sync with scripts/draw-british-soldier.mjs (preview PNG generator).
 
@@ -21,45 +21,49 @@ export const SOLDIER_TINT_CELL = { col: 1, row: 0 } as const;
 /** Cell with the front-facing British line-infantry pose. */
 export const SOLDIER_FRONT_CELL = { col: 1, row: 1 } as const;
 
-/** All distinct soldier poses, ordered SW → S → SE → NE → NW. */
+/** Compass-ordered soldier poses starting at north and proceeding clockwise. */
 export const POSE_CELLS = [
-  { col: 0, row: 2 }, // SW front-3/4 mirrored
-  { col: 1, row: 1 }, // S  front
-  { col: 2, row: 2 }, // SE front-3/4
+  { col: 1, row: 2 }, // N  back
   { col: 2, row: 0 }, // NE back-3/4
+  { col: 2, row: 1 }, // E  side
+  { col: 2, row: 2 }, // SE front-3/4
+  { col: 1, row: 1 }, // S  front
+  { col: 0, row: 2 }, // SW front-3/4 mirrored
+  { col: 0, row: 1 }, // W  side mirrored
   { col: 0, row: 0 }, // NW back-3/4 mirrored
 ] as const;
 
 const PALETTE: Record<string, [number, number, number, number]> = {
   '.': [0, 0, 0, 0],
   'k': [22, 18, 28, 255],
-  'r': [40, 86, 50, 255],
-  'd': [22, 50, 30, 255],
-  'h': [86, 134, 92, 255],
+  'r': [178, 48, 56, 255],
+  'd': [120, 28, 36, 255],
+  'B': [54, 76, 162, 255],
+  'D': [30, 44, 108, 255],
   'w': [236, 232, 222, 255],
   'f': [228, 188, 156, 255],
   'F': [186, 142, 108, 255],
   'y': [232, 188, 72, 255],
-  'b': [180, 156, 120, 255],
+  'p': [220, 60, 64, 255],
   'm': [86, 56, 36, 255],
   's': [60, 56, 52, 110],
   'W': [255, 255, 255, 255],
 };
 
 const POSE_FRONT = [
-  '....kkk....',
+  '....p......',
   '..mkkkkk...',
   '..mkkykk...',
   '..mkkkkk...',
+  '..mkkkkk...',
   '..kkkkkkk..',
   '..m.fFf....',
-  '..m.fff....',
-  '..myrrry...',
-  '..mrwrwr...',
-  '..mrrwrr...',
-  '..mrwrwr...',
   '..mrrrrr...',
-  '..mdyryd...',
+  '..mrBBBr...',
+  '..mrwBwr...',
+  '..mrBwBr...',
+  '..mrwBwr...',
+  '..mrryrr...',
   '..mdrrrd...',
   '..mww.ww...',
   '..mww.ww...',
@@ -68,19 +72,19 @@ const POSE_FRONT = [
 ];
 
 const POSE_FRONT_DIAG = [
-  '....kkk....',
+  '....p......',
   '..mkkkkk...',
   '..mkkyky...',
   '..mkkkkk...',
+  '..mkkkkk...',
   '..kkkkkkk..',
   '..m.fFFf...',
-  '..m.ffFf...',
-  '..myrrryy..',
-  '..mrrwrwr..',
-  '..mrwrwrr..',
-  '..mrrwrrr..',
   '..mrrrrrr..',
-  '..mdrryrd..',
+  '..mrBBBBr..',
+  '..mrwBBwr..',
+  '..mrBwBBr..',
+  '..mrwBBwr..',
+  '..mrryrr...',
   '..mdrrrrd..',
   '..mww.ww...',
   '..mww.ww...',
@@ -89,23 +93,65 @@ const POSE_FRONT_DIAG = [
 ];
 
 const POSE_BACK_DIAG = [
-  '....kkk....',
+  '......p....',
   '...kkkkkm..',
   '...kkkkkm..',
   '...kkkkkm..',
-  '..kkkkkkk..',
-  '....fff.m..',
-  '....fff.m..',
-  '...yrrrym..',
+  '...kkkkkm..',
+  '..kkkkkkm..',
+  '....FFF.m..',
   '...rrrrrm..',
-  '...rbbbrm..',
-  '...rbwbrm..',
-  '...rbbbrm..',
+  '...rBBBrm..',
+  '...rwBwrm..',
+  '...rBwBrm..',
+  '...rwBwrm..',
   '...rrrrrm..',
   '...drrrdm..',
   '...ww.wwm..',
   '...ww.wwm..',
   '...kk.kkm..',
+  '..sssssss..',
+];
+
+const POSE_BACK = [
+  '....p......',
+  '..kkkkkkm..',
+  '..kkkkkkm..',
+  '..kkkkkkm..',
+  '..kkkkkkm..',
+  '.kkkkkkkkm.',
+  '...w.w..m..',
+  '..rrrrrrm..',
+  '..rBBBBrm..',
+  '..rwBBwrm..',
+  '..rwwBwrm..',
+  '..rwBBwrm..',
+  '..rrrrrrm..',
+  '..drrrrdm..',
+  '..ww..wwm..',
+  '..ww..wwm..',
+  '..kk..kkm..',
+  '..sssssss..',
+];
+
+const POSE_SIDE = [
+  '....p......',
+  '..mkkkkk...',
+  '..mkkykk...',
+  '..mkkkkk...',
+  '..mkkkkk...',
+  '..kkkkkkk..',
+  '...fFFfm...',
+  '..rrrrrrm..',
+  '..rwBBBrm..',
+  '..rBwBBmm..',
+  '..rwBBBrm..',
+  '..rBBBBmm..',
+  '..rryrrm...',
+  '..drrrrm...',
+  '..ww.wwm...',
+  '..ww.wwm...',
+  '..kk.kkm...',
   '..sssssss..',
 ];
 
@@ -141,8 +187,11 @@ export function generateBritishSoldierSheet(): Uint8Array {
   blit(buf, SOLDIER_SHEET_W, 0,     0,     POSE_BACK_DIAG,  true);
   blit(buf, SOLDIER_SHEET_W, W,     0,     TINT_CELL,       false);
   blit(buf, SOLDIER_SHEET_W, 2 * W, 0,     POSE_BACK_DIAG,  false);
+  blit(buf, SOLDIER_SHEET_W, 0,     H,     POSE_SIDE,       true);
   blit(buf, SOLDIER_SHEET_W, W,     H,     POSE_FRONT,      false);
+  blit(buf, SOLDIER_SHEET_W, 2 * W, H,     POSE_SIDE,       false);
   blit(buf, SOLDIER_SHEET_W, 0,     2 * H, POSE_FRONT_DIAG, true);
+  blit(buf, SOLDIER_SHEET_W, W,     2 * H, POSE_BACK,       false);
   blit(buf, SOLDIER_SHEET_W, 2 * W, 2 * H, POSE_FRONT_DIAG, false);
   return buf;
 }

@@ -1,6 +1,6 @@
 // Generates a British line-infantry sprite sheet in the chunky retro style of
-// classic RTS unit art (95th Rifles green coat, black shako with brass plate,
-// white crossbelts, tan knapsack).
+// classic RTS unit art (red coatee with blue facings, white crossbelts, white
+// trousers, tall black shako with red plume and gold plate).
 //
 // Outputs:
 //   public/sprites/british-line-infantry.png          (native, 33x54)
@@ -18,16 +18,18 @@ const OUT_DIR = `${__dirname}/../public/sprites`;
 const PALETTE = {
   '.': [0, 0, 0, 0],         // transparent
   'k': [22, 18, 28, 255],    // shako / boots / outline
-  'r': [40, 86, 50, 255],    // rifleman green coat
-  'd': [22, 50, 30, 255],    // green shadow
-  'h': [86, 134, 92, 255],   // green highlight (unused but reserved)
+  'r': [178, 48, 56, 255],   // line-infantry red coat
+  'd': [120, 28, 36, 255],   // red shadow / coat tail
+  'B': [54, 76, 162, 255],   // blue facings (lapels, back panel)
+  'D': [30, 44, 108, 255],   // blue shadow (reserved)
   'w': [236, 232, 222, 255], // white (crossbelts, trousers)
   'f': [228, 188, 156, 255], // skin
   'F': [186, 142, 108, 255], // skin shadow
-  'y': [232, 188, 72, 255],  // gold (epaulettes, plate, buttons)
-  'b': [180, 156, 120, 255], // tan (knapsack)
+  'y': [232, 188, 72, 255],  // gold (shako plate, belt buckle)
+  'p': [220, 60, 64, 255],   // shako plume (slightly brighter than coat)
   'm': [86, 56, 36, 255],    // dark wood (musket stock)
   's': [60, 56, 52, 110],    // ground shadow (semi-transparent)
+  'W': [255, 255, 255, 255], // tint sample cell
 };
 
 // --- Pose grids (11 wide x 18 tall) -------------------------------------------
@@ -36,19 +38,19 @@ const PALETTE = {
 // Where the shako brim is wider than the musket column, the brim covers the
 // musket — matching the reference's "order arms" silhouette.
 const POSE_FRONT = [
-  '....kkk....',
+  '....p......',
   '..mkkkkk...',
   '..mkkykk...',
   '..mkkkkk...',
+  '..mkkkkk...',
   '..kkkkkkk..',
   '..m.fFf....',
-  '..m.fff....',
-  '..myrrry...',
-  '..mrwrwr...',
-  '..mrrwrr...',
-  '..mrwrwr...',
   '..mrrrrr...',
-  '..mdyryd...',
+  '..mrBBBr...',
+  '..mrwBwr...',
+  '..mrBwBr...',
+  '..mrwBwr...',
+  '..mrryrr...',
   '..mdrrrd...',
   '..mww.ww...',
   '..mww.ww...',
@@ -59,19 +61,19 @@ const POSE_FRONT = [
 // Front 3/4 right: head/plate offset right, asymmetric crossbelt.
 // Musket still on the soldier's right (viewer's left), passing behind the brim.
 const POSE_FRONT_DIAG = [
-  '....kkk....',
+  '....p......',
   '..mkkkkk...',
   '..mkkyky...',
   '..mkkkkk...',
+  '..mkkkkk...',
   '..kkkkkkk..',
   '..m.fFFf...',
-  '..m.ffFf...',
-  '..myrrryy..',
-  '..mrrwrwr..',
-  '..mrwrwrr..',
-  '..mrrwrrr..',
   '..mrrrrrr..',
-  '..mdrryrd..',
+  '..mrBBBBr..',
+  '..mrwBBwr..',
+  '..mrBwBBr..',
+  '..mrwBBwr..',
+  '..mrryrr...',
   '..mdrrrrd..',
   '..mww.ww...',
   '..mww.ww...',
@@ -79,26 +81,68 @@ const POSE_FRONT_DIAG = [
   '..sssssss..',
 ];
 
-// Back 3/4 right: no face plate, knapsack visible. Musket on the
-// soldier's right side, which from the back-3/4 sits on viewer's right.
+// Back 3/4 right: no face plate; blue back panel with white X crossbelts.
+// Musket on the soldier's right side, which from the back-3/4 sits on viewer's right.
 const POSE_BACK_DIAG = [
-  '....kkk....',
+  '......p....',
   '...kkkkkm..',
   '...kkkkkm..',
   '...kkkkkm..',
-  '..kkkkkkk..',
-  '....fff.m..',
-  '....fff.m..',
-  '...yrrrym..',
+  '...kkkkkm..',
+  '..kkkkkkm..',
+  '....FFF.m..',
   '...rrrrrm..',
-  '...rbbbrm..',
-  '...rbwbrm..',
-  '...rbbbrm..',
+  '...rBBBrm..',
+  '...rwBwrm..',
+  '...rBwBrm..',
+  '...rwBwrm..',
   '...rrrrrm..',
   '...drrrdm..',
   '...ww.wwm..',
   '...ww.wwm..',
   '...kk.kkm..',
+  '..sssssss..',
+];
+
+const POSE_BACK = [
+  '....p......',
+  '..kkkkkkm..',
+  '..kkkkkkm..',
+  '..kkkkkkm..',
+  '..kkkkkkm..',
+  '.kkkkkkkkm.',
+  '...w.w..m..',
+  '..rrrrrrm..',
+  '..rBBBBrm..',
+  '..rwBBwrm..',
+  '..rwwBwrm..',
+  '..rwBBwrm..',
+  '..rrrrrrm..',
+  '..drrrrdm..',
+  '..ww..wwm..',
+  '..ww..wwm..',
+  '..kk..kkm..',
+  '..sssssss..',
+];
+
+const POSE_SIDE = [
+  '....p......',
+  '..mkkkkk...',
+  '..mkkykk...',
+  '..mkkkkk...',
+  '..mkkkkk...',
+  '..kkkkkkk..',
+  '...fFFfm...',
+  '..rrrrrrm..',
+  '..rwBBBrm..',
+  '..rBwBBmm..',
+  '..rwBBBrm..',
+  '..rBBBBmm..',
+  '..rryrrm...',
+  '..drrrrm...',
+  '..ww.wwm...',
+  '..ww.wwm...',
+  '..kk.kkm...',
   '..sssssss..',
 ];
 
@@ -113,6 +157,8 @@ for (const [name, p] of [
   ['POSE_FRONT', POSE_FRONT],
   ['POSE_FRONT_DIAG', POSE_FRONT_DIAG],
   ['POSE_BACK_DIAG', POSE_BACK_DIAG],
+  ['POSE_BACK', POSE_BACK],
+  ['POSE_SIDE', POSE_SIDE],
 ]) {
   if (p.length !== CELL_H) throw new Error(`${name}: expected ${CELL_H} rows, got ${p.length}`);
   for (let i = 0; i < p.length; i++) {
@@ -121,6 +167,8 @@ for (const [name, p] of [
     }
   }
 }
+
+const TINT_CELL = Array.from({ length: CELL_H }, () => 'W'.repeat(CELL_W));
 
 function blitCell(buf, bufW, cellX, cellY, pose, mirror) {
   for (let y = 0; y < CELL_H; y++) {
@@ -138,14 +186,18 @@ function blitCell(buf, bufW, cellX, cellY, pose, mirror) {
 }
 
 const sheet = new Uint8Array(SHEET_W * SHEET_H * 4);
-// Layout matches the reference image:
-//   [NW back-3/4 mirrored] [          ] [NE back-3/4]
-//   [                    ] [center=front] [          ]
-//   [SW front-3/4 mirrored] [          ] [SE front-3/4]
+// Layout:
+//   [NW back-3/4] [Tint] [NE back-3/4]
+//   [W side]      [S front] [E side]
+//   [SW front-3/4] [N back] [SE front-3/4]
 blitCell(sheet, SHEET_W, 0,           0,           POSE_BACK_DIAG,  true);
+blitCell(sheet, SHEET_W, CELL_W,      0,           TINT_CELL,       false);
 blitCell(sheet, SHEET_W, 2 * CELL_W,  0,           POSE_BACK_DIAG,  false);
+blitCell(sheet, SHEET_W, 0,           CELL_H,      POSE_SIDE,       true);
 blitCell(sheet, SHEET_W, CELL_W,      CELL_H,      POSE_FRONT,      false);
+blitCell(sheet, SHEET_W, 2 * CELL_W,  CELL_H,      POSE_SIDE,       false);
 blitCell(sheet, SHEET_W, 0,           2 * CELL_H,  POSE_FRONT_DIAG, true);
+blitCell(sheet, SHEET_W, CELL_W,      2 * CELL_H,  POSE_BACK,       false);
 blitCell(sheet, SHEET_W, 2 * CELL_W,  2 * CELL_H,  POSE_FRONT_DIAG, false);
 
 // Nearest-neighbor scale for the preview.

@@ -19,8 +19,8 @@ export function emitDust(world: World, particles: Particles, dt: number): void {
       y: e.posY[i]! + jitter() + 0.2,
       vx: -vx * 0.1 + jitter() * 0.5,
       vy: -vy * 0.1 + jitter() * 0.5,
-      life: 0.4 + world.rng.next() * 0.4,
-      size: 0.4 + Math.min(speed * 0.05, 0.4),
+      life: 0.5 + world.rng.next() * 0.5,
+      size: 0.7 + Math.min(speed * 0.06, 0.5),
       r: 0.65, g: 0.55, b: 0.42,
     });
   }

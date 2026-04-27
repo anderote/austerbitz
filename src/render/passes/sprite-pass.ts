@@ -89,36 +89,45 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   const scratchSize = new Float32Array(capacity * 2);
   const scratchColor = new Float32Array(capacity * 4);
   const scratchUv = new Float32Array(capacity * 4);
+  // Reused per-frame sort buffer: alive entity ids sorted back-to-front by world Y.
+  const sortIdx: number[] = [];
 
   return {
     draw(world, cam) {
       const e = world.entities;
-      let n = 0;
+      sortIdx.length = 0;
       for (let i = 0; i < e.capacity; i++) {
-        if (e.alive[i] === 0) continue;
+        if (e.alive[i] === 1) sortIdx.push(i);
+      }
+      const n = sortIdx.length;
+      if (n === 0) return;
+      // World Y grows downward, so larger Y = in front. Draw ascending by Y
+      // so front sprites overwrite back ones (painter's algorithm).
+      const posY = e.posY;
+      sortIdx.sort((a, b) => posY[a]! - posY[b]!);
+
+      for (let k = 0; k < n; k++) {
+        const i = sortIdx[k]!;
         const kind = getUnitKindByIndex(e.kindId[i]!);
-        scratchPos[n * 2 + 0] = e.posX[i]!;
-        scratchPos[n * 2 + 1] = e.posY[i]!;
-        scratchSize[n * 2 + 0] = kind.placeholderSize.w;
-        scratchSize[n * 2 + 1] = kind.placeholderSize.h;
-        scratchColor[n * 4 + 0] = kind.placeholderColor[0] / 255;
-        scratchColor[n * 4 + 1] = kind.placeholderColor[1] / 255;
-        scratchColor[n * 4 + 2] = kind.placeholderColor[2] / 255;
-        scratchColor[n * 4 + 3] = 1.0;
-        // facing in [1..POSE_CELLS.length] overrides the kind's default cell.
+        scratchPos[k * 2 + 0] = e.posX[i]!;
+        scratchPos[k * 2 + 1] = e.posY[i]!;
+        scratchSize[k * 2 + 0] = kind.placeholderSize.w;
+        scratchSize[k * 2 + 1] = kind.placeholderSize.h;
+        scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;
+        scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
+        scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;
+        scratchColor[k * 4 + 3] = 1.0;
         const facing = e.facing[i]!;
         const overrideCell = facing >= 1 && facing <= POSE_CELLS.length
           ? POSE_CELLS[facing - 1]!
           : undefined;
         const cell = overrideCell ?? kind.spriteCell;
         const uv = cell ? cellUv(cell.col, cell.row) : tintUv;
-        scratchUv[n * 4 + 0] = uv[0];
-        scratchUv[n * 4 + 1] = uv[1];
-        scratchUv[n * 4 + 2] = uv[2];
-        scratchUv[n * 4 + 3] = uv[3];
-        n++;
+        scratchUv[k * 4 + 0] = uv[0];
+        scratchUv[k * 4 + 1] = uv[1];
+        scratchUv[k * 4 + 2] = uv[2];
+        scratchUv[k * 4 + 3] = uv[3];
       }
-      if (n === 0) return;
 
       gl.useProgram(prog);
       gl.bindVertexArray(vao);

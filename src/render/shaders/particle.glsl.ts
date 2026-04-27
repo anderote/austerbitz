@@ -26,8 +26,8 @@ in vec4 v_color;
 out vec4 outColor;
 
 void main() {
-  float d = length(v_local);
-  float a = smoothstep(1.0, 0.4, d) * v_color.a;
+  // Flat square — no falloff. Alpha is the life-ratio fade, premultiplied.
+  float a = v_color.a;
   if (a <= 0.0) discard;
   outColor = vec4(v_color.rgb * a, a);
 }

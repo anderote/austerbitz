@@ -32,6 +32,7 @@ export function createRenderer(
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);
+      selectionPass.drawDiscs(world, cam, sel, drag);
       sprites.draw(world, cam);
       particles.draw(particlePool, cam);
       selectionPass.draw(world, cam, sel, drag);

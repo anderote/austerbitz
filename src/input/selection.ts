@@ -12,6 +12,11 @@ export interface DragRect {
   active: boolean;
 }
 
+// Ten control groups indexed by digit 0..9.
+export interface ControlGroups {
+  groups: Set<number>[];
+}
+
 export interface ViewRect {
   x0: number; y0: number;
   x1: number; y1: number;
@@ -32,6 +37,10 @@ export function createDragRect(): DragRect {
     current: { x: 0, y: 0 },
     active: false,
   };
+}
+
+export function createControlGroups(): ControlGroups {
+  return { groups: Array.from({ length: 10 }, () => new Set<number>()) };
 }
 
 /**

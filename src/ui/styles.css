@@ -146,3 +146,70 @@
   margin-top: 4px;
   font-size: 11px;
 }
+
+#ui-root .control-groups {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  padding: 4px;
+  border: none;
+  background: transparent;
+}
+
+#ui-root .control-groups .cg-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: rgba(20, 24, 28, 0.85);
+  border: 1px solid var(--ui-border);
+  border-radius: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+}
+
+#ui-root .control-groups .cg-num {
+  font-weight: bold;
+  color: var(--ui-accent);
+  width: 8px;
+  text-align: center;
+}
+
+#ui-root .control-groups .cg-icon {
+  width: 22px;
+  height: 36px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#ui-root .control-groups .cg-count {
+  color: var(--ui-text);
+  min-width: 18px;
+  text-align: left;
+}
+
+#ui-root .group-badges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#ui-root .group-badges .group-badge {
+  position: absolute;
+  transform: translate(-100%, -100%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  color: #fffbcc;
+  background: rgba(20, 24, 28, 0.85);
+  border: 1px solid #2c343c;
+  padding: 1px 3px;
+  border-radius: 2px;
+  text-shadow: 0 0 2px #000;
+}

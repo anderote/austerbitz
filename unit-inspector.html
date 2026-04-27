@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Unit Inspector — Austerbitz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #11131a;
+        --panel: #1d2029;
+        --panel-2: #252934;
+        --line: #323748;
+        --ink: #f1f3f8;
+        --muted: #8c91a3;
+        --accent: #7cb3ff;
+        --accent-2: #ffd166;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+        font: 13px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+      body { display: grid; grid-template-columns: 280px 1fr; }
+
+      aside {
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 20px 16px;
+      }
+
+      h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+      p { margin: 0; }
+
+      #unit-search {
+        width: 100%;
+        padding: 7px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+        font: inherit;
+      }
+
+      #unit-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        overflow-y: auto;
+      }
+
+      #unit-list button {
+        width: 100%;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 10px 12px;
+        text-align: left;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        transition: background 0.12s, border-color 0.12s;
+      }
+
+      #unit-list button:hover { background: rgba(124, 179, 255, 0.12); border-color: rgba(124, 179, 255, 0.35); }
+      #unit-list button[aria-pressed="true"] { background: rgba(124, 179, 255, 0.18); border-color: var(--accent); }
+
+      main {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: radial-gradient(circle at top left, rgba(124, 179, 255, 0.08), transparent 45%), var(--bg);
+        min-height: 100%;
+      }
+
+      header {
+        padding: 20px 24px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      header h2 { margin: 0; font-size: 26px; }
+      header .meta { margin-top: 6px; color: var(--muted); font-size: 13px; display: flex; gap: 18px; align-items: center; }
+      header .badge { padding: 2px 8px; border-radius: 999px; background: rgba(255, 209, 102, 0.15); border: 1px solid rgba(255, 209, 102, 0.4); color: var(--accent-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+
+      #detail {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 24px;
+        padding: 24px;
+      }
+
+      section.card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      section.card h3 {
+        margin: 0;
+        font-size: 15px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      #sprite-preview {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+
+      canvas.pixel-preview {
+        image-rendering: pixelated;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        background: var(--panel-2);
+      }
+
+      .placeholder-chip {
+        width: 54px;
+        height: 54px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      table.stats { width: 100%; border-collapse: collapse; font-size: 13px; }
+      table.stats tr { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+      table.stats td { padding: 6px 0; }
+      table.stats td:first-child { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+
+      .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+      .stat-pair { background: var(--panel-2); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+      .stat-label { color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .stat-value { font-size: 15px; font-weight: 600; }
+
+      .paired-swatches { display: flex; gap: 12px; align-items: center; }
+      .paired-swatches span { font-size: 12px; color: var(--muted); }
+
+      #no-selection { margin: 0 auto; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 16px; }
+
+      @media (max-width: 1040px) {
+        body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        aside { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--line); }
+        #unit-list { flex-direction: row; flex-wrap: wrap; max-height: 160px; }
+        main { grid-template-rows: auto auto; }
+        #detail { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <div>
+        <h1>Unit Inspector</h1>
+        <p>Browse structured stats, sprite atlases, and tint previews for every unit kind.</p>
+      </div>
+      <input id="unit-search" type="search" placeholder="Search units…" autocomplete="off" />
+      <ul id="unit-list"></ul>
+    </aside>
+    <main>
+      <div id="no-selection">Select a unit to begin.</div>
+      <section id="detail" hidden>
+        <header>
+          <h2 id="detail-name"></h2>
+          <div class="meta">
+            <span class="badge" id="detail-category"></span>
+            <span id="detail-id"></span>
+            <span id="detail-size"></span>
+          </div>
+        </header>
+        <section class="card" id="sprite-card">
+          <h3>Sprite Preview</h3>
+          <div id="sprite-preview"></div>
+        </section>
+        <section class="card" id="stats-card">
+          <h3>Base Stats</h3>
+          <div id="stats-grid" class="stat-grid"></div>
+        </section>
+        <section class="card" id="notes-card">
+          <h3>Details</h3>
+          <div class="paired-swatches">
+            <div class="placeholder-chip" id="placeholder-chip"></div>
+            <span id="placeholder-meta"></span>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="/src/dev/unit-inspector.ts"></script>
+  </body>
+</html>

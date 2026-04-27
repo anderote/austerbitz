@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createWorld } from '../sim/world';
 import { allocEntity } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
-import { createSelection, createDragRect } from './selection';
+import { createSelection, createDragRect, createControlGroups } from './selection';
 import { createSelectionController } from './selection-controller';
 import { createCamera } from '../render/camera';
 
@@ -16,7 +16,8 @@ function makeDeps() {
   const drag = createDragRect();
   const overlayRoot = { contains: (_n: Node) => false } as unknown as HTMLElement;
   const canvas = {} as unknown as HTMLCanvasElement;
-  const ctrl = createSelectionController({ canvas, overlayRoot, camera, world, selection, drag });
+  const controlGroups = createControlGroups();
+  const ctrl = createSelectionController({ canvas, overlayRoot, camera, world, selection, drag, controlGroups });
   return { ctrl, world, selection, drag, camera };
 }
 
@@ -232,6 +233,7 @@ describe('selection-controller — input suppression', () => {
     const overlayRoot = { contains: (n: Node) => n === fakeNode } as unknown as HTMLElement;
     const ctrl = createSelectionController({
       canvas: {} as HTMLCanvasElement, overlayRoot, camera, world, selection, drag,
+      controlGroups: createControlGroups(),
     });
     ctrl._internals.onMouseDown({ button: 0, clientX: 400, clientY: 300, target: fakeNode });
     ctrl._internals.onMouseUp({ button: 0, clientX: 400, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
