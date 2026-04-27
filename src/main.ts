@@ -22,6 +22,7 @@ import { createScaleBar } from './ui/scale-bar';
 import { createMinimap } from './ui/minimap';
 import { createParticles, updateParticles } from './particles/particles';
 import { emitDust } from './particles/emitters';
+import { POSE_CELLS } from './render/british-soldier-sprite';
 
 const CAPACITY = 4096;
 const PARTICLE_CAPACITY = 4096;
@@ -43,20 +44,33 @@ const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
 });
 
-function spawn(kindId: string, team: number, x: number, y: number) {
+function spawn(kindId: string, team: number, x: number, y: number, facing = 0): number {
   const id = allocEntity(world.entities);
-  if (id === -1) return;
+  if (id === -1) return -1;
   world.entities.posX[id] = x;
   world.entities.posY[id] = y;
   world.entities.kindId[id] = getUnitKindIndex(kindId);
   world.entities.team[id] = team;
+  world.entities.facing[id] = facing;
+  return id;
 }
 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
-for (let i = 0; i < 16; i++) spawn('line-infantry', 0, cx - 10 + i * 1.3, cy - 30);
-for (let i = 0; i < 4; i++) spawn('cuirassier', 0, cx - 6 + i * 3, cy - 50);
-spawn('cannon-12', 0, cx, cy - 70);
+
+// Pose-showcase grid: one column per soldier pose, repeated across rows.
+const POSE_ROWS = 3;
+const COL_GAP = 3;
+const ROW_GAP = 3;
+const gridW = (POSE_CELLS.length - 1) * COL_GAP;
+const gridH = (POSE_ROWS - 1) * ROW_GAP;
+for (let row = 0; row < POSE_ROWS; row++) {
+  for (let col = 0; col < POSE_CELLS.length; col++) {
+    const x = cx - gridW / 2 + col * COL_GAP;
+    const y = cy - gridH / 2 + row * ROW_GAP;
+    spawn('line-infantry', 0, x, y, col + 1);
+  }
+}
 
 function syncViewport() {
   renderer.resize();
@@ -65,10 +79,10 @@ function syncViewport() {
 window.addEventListener('resize', syncViewport);
 syncViewport();
 
-// Center the view on the front line of infantry.
+// Center the view on the pose-showcase grid.
 camera.center.x = cx;
-camera.center.y = cy - 30;
-camera.zoom = 4;
+camera.center.y = cy;
+camera.zoom = 16;
 
 // Selection input handlers (left mouse button)
 const DRAG_THRESHOLD_PX = 4;
@@ -140,7 +154,7 @@ function frame(t: number) {
   emitDust(world, particles, dt);
   updateParticles(particles, dt);
   renderer.render(world, particles, camera, selection, drag);
-  hud.update(smoothedFps, world, camera, input);
+  hud.update(smoothedFps, world);
   selPanel.update(world, selection);
   buildMenu.update();
   scaleBar.update(camera);

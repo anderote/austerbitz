@@ -13,6 +13,7 @@ import {
   SOLDIER_CELL_W,
   SOLDIER_CELL_H,
   SOLDIER_TINT_CELL,
+  POSE_CELLS,
 } from '../british-soldier-sprite';
 
 export interface SpritePass {
@@ -104,7 +105,13 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         scratchColor[n * 4 + 1] = kind.placeholderColor[1] / 255;
         scratchColor[n * 4 + 2] = kind.placeholderColor[2] / 255;
         scratchColor[n * 4 + 3] = 1.0;
-        const uv = kind.spriteCell ? cellUv(kind.spriteCell.col, kind.spriteCell.row) : tintUv;
+        // facing in [1..POSE_CELLS.length] overrides the kind's default cell.
+        const facing = e.facing[i]!;
+        const overrideCell = facing >= 1 && facing <= POSE_CELLS.length
+          ? POSE_CELLS[facing - 1]!
+          : undefined;
+        const cell = overrideCell ?? kind.spriteCell;
+        const uv = cell ? cellUv(cell.col, cell.row) : tintUv;
         scratchUv[n * 4 + 0] = uv[0];
         scratchUv[n * 4 + 1] = uv[1];
         scratchUv[n * 4 + 2] = uv[2];

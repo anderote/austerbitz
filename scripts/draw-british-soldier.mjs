@@ -1,5 +1,6 @@
 // Generates a British line-infantry sprite sheet in the chunky retro style of
-// classic RTS unit art (red coat, shako, white crossbelts, gold epaulettes).
+// classic RTS unit art (95th Rifles green coat, black shako with brass plate,
+// white crossbelts, tan knapsack).
 //
 // Outputs:
 //   public/sprites/british-line-infantry.png          (native, 33x54)
@@ -17,81 +18,87 @@ const OUT_DIR = `${__dirname}/../public/sprites`;
 const PALETTE = {
   '.': [0, 0, 0, 0],         // transparent
   'k': [22, 18, 28, 255],    // shako / boots / outline
-  'r': [196, 46, 54, 255],   // red coat
-  'd': [128, 28, 38, 255],   // red shadow
-  'h': [232, 108, 100, 255], // red highlight (unused but reserved)
+  'r': [40, 86, 50, 255],    // rifleman green coat
+  'd': [22, 50, 30, 255],    // green shadow
+  'h': [86, 134, 92, 255],   // green highlight (unused but reserved)
   'w': [236, 232, 222, 255], // white (crossbelts, trousers)
   'f': [228, 188, 156, 255], // skin
   'F': [186, 142, 108, 255], // skin shadow
   'y': [232, 188, 72, 255],  // gold (epaulettes, plate, buttons)
-  'b': [42, 44, 80, 255],    // dark blue (knapsack)
+  'b': [180, 156, 120, 255], // tan (knapsack)
+  'm': [86, 56, 36, 255],    // dark wood (musket stock)
   's': [60, 56, 52, 110],    // ground shadow (semi-transparent)
 };
 
 // --- Pose grids (11 wide x 18 tall) -------------------------------------------
-// Front: facing viewer.
+// Front: facing viewer. Musket held in soldier's right hand (viewer's left),
+// barrel running up alongside the shoulder, butt resting at the right foot.
+// Where the shako brim is wider than the musket column, the brim covers the
+// musket — matching the reference's "order arms" silhouette.
 const POSE_FRONT = [
   '....kkk....',
-  '...kkkkk...',
-  '...kykyk...',
-  '...kkkkk...',
+  '..mkkkkk...',
+  '..mkkykk...',
+  '..mkkkkk...',
   '..kkkkkkk..',
-  '....fFf....',
-  '....fff....',
-  '...yrrry...',
-  '...rwrwr...',
-  '...rrwrr...',
-  '...rwrwr...',
-  '...rrrrr...',
-  '...dyryd...',
-  '...drrrd...',
-  '...ww.ww...',
-  '...ww.ww...',
-  '...kk.kk...',
+  '..m.fFf....',
+  '..m.fff....',
+  '..myrrry...',
+  '..mrwrwr...',
+  '..mrrwrr...',
+  '..mrwrwr...',
+  '..mrrrrr...',
+  '..mdyryd...',
+  '..mdrrrd...',
+  '..mww.ww...',
+  '..mww.ww...',
+  '..mkk.kk...',
   '..sssssss..',
 ];
 
 // Front 3/4 right: head/plate offset right, asymmetric crossbelt.
+// Musket still on the soldier's right (viewer's left), passing behind the brim.
 const POSE_FRONT_DIAG = [
   '....kkk....',
-  '...kkkkk...',
-  '...kkyky...',
-  '...kkkkk...',
+  '..mkkkkk...',
+  '..mkkyky...',
+  '..mkkkkk...',
   '..kkkkkkk..',
-  '....fFFf...',
-  '....ffFf...',
-  '...yrrryy..',
-  '...rrwrwr..',
-  '...rwrwrr..',
-  '...rrwrrr..',
-  '...rrrrrr..',
-  '...drryrd..',
-  '...drrrrd..',
-  '...ww.ww...',
-  '...ww.ww...',
-  '...kk.kk...',
+  '..m.fFFf...',
+  '..m.ffFf...',
+  '..myrrryy..',
+  '..mrrwrwr..',
+  '..mrwrwrr..',
+  '..mrrwrrr..',
+  '..mrrrrrr..',
+  '..mdrryrd..',
+  '..mdrrrrd..',
+  '..mww.ww...',
+  '..mww.ww...',
+  '..mkk.kk...',
   '..sssssss..',
 ];
 
-// Back 3/4 right: no face features, knapsack visible, plate hidden.
+// Back 3/4 right: no face plate, knapsack visible. Musket on the
+// soldier's right side, which from the back-3/4 sits on viewer's right.
 const POSE_BACK_DIAG = [
   '....kkk....',
-  '...kkkkk...',
-  '...kkkkk...',
-  '...kkkkk...',
+  '...kkkkkm..',
+  '...kkkkkm..',
+  '...kkkkkm..',
   '..kkkkkkk..',
-  '....fff....',
-  '....fff....',
-  '...yrrry...',
-  '...rrrrr...',
-  '...rbbbr...',
-  '...rbwbr...',
-  '...rbbbr...',
-  '...rrrrr...',
-  '...drrrd...',
-  '...ww.ww...',
-  '...ww.ww...',
-  '...kk.kk...',
+  '....fff.m..',
+  '....fff.m..',
+  '...yrrrym..',
+  '...rrrrrm..',
+  '...rbbbrm..',
+  '...rbwbrm..',
+  '...rbbbrm..',
+  '...rrrrrm..',
+  '...drrrdm..',
+  '...ww.wwm..',
+  '...ww.wwm..',
+  '...kk.kkm..',
   '..sssssss..',
 ];
 
