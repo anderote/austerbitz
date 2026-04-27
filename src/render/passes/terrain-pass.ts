@@ -28,10 +28,10 @@ export function createTerrainPass(gl: WebGL2RenderingContext): TerrainPass {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
 
-  const tileSize = 32;
+  const tileSize = 3072;
   const tile = createTextureRGBA(gl, tileSize, tileSize, generateGrassTile(tileSize));
 
-  const tileWorldUnits = 4; // 4 world meters per repeat — visible at zoom
+  const tileWorldUnits = 2048; // ~1 tile across the 2000m map
 
   return {
     draw(cam) {
