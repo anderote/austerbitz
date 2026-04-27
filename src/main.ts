@@ -11,6 +11,11 @@ import { ordersSystem } from './sim/systems/orders-system';
 import { movementSystem } from './sim/systems/movement-system';
 import { collisionSystem } from './sim/systems/collision-system';
 import { facingSystem } from './sim/systems/facing-system';
+import { tickStates, type FireOrders } from './sim/systems/state-system';
+import { tickProjectiles } from './sim/systems/projectile-system';
+import { tickRagdoll } from './sim/systems/ragdoll-system';
+import { createCombatSystem } from './sim/systems/combat-system';
+import type { System } from './sim/world';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
 import './ui/styles.css';
@@ -51,7 +56,24 @@ const controlGroups = createControlGroups();
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
 const particles = createParticles(PARTICLE_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
-world.systems = [ordersSystem, movementSystem, facingSystem, collisionSystem];
+const fireOrders: FireOrders = new Map();
+const combatSystem = createCombatSystem(fireOrders);
+const stateSystem: System = (w, dt) =>
+  tickStates(w.entities, projectiles, particles, w.rng, fireOrders, dt);
+const projectileSystem: System = (w, dt) =>
+  tickProjectiles(projectiles, w.entities, w.grid, particles, w.rng, dt, w.bloodSplats);
+const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
+
+world.systems = [
+  ordersSystem,
+  combatSystem,
+  movementSystem,
+  facingSystem,
+  collisionSystem,
+  stateSystem,
+  projectileSystem,
+  ragdollSystem,
+];
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
