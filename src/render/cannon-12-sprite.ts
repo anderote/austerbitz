@@ -52,89 +52,93 @@ const PALETTE_BASE: Record<string, [number, number, number, number]> = {
 // wheels stacked center. P = primary (carriage trim), S = secondary (wheel
 // rims / barrel furniture).
 
+// Side view shows ONE prominent wheel centered with barrel above pointing
+// right and the long trail extending left. Front and back show TWO wheels
+// splayed left and right around a centered carriage / muzzle ring.
+
 const POSE_FRONT = [
   '.................', //  0
-  '.................', //  1
-  '.......ggg.......', //  2 barrel mouth (small ring)
-  '......gGGGg......', //  3 barrel
-  '......gGGGg......', //  4 barrel
-  '......gSgSg......', //  5 barrel base + reinforce ring
-  '.....mPPPPPm.....', //  6 carriage face
-  '....mPPmPmPPm....', //  7 carriage shoulders w/ knee
-  '...kSwSmmmSwSk...', //  8 wheel tops left + right
-  '..SwwwSmkmSwwwS..', //  9 wheel hubs
-  '..SwwwSmkmSwwwS..', // 10 wheel hubs
-  '...kSwSmmmSwSk...', // 11 wheel bottoms
+  '.......mmm.......', //  1 trail visible going up/away
+  '......mPPPm......', //  2 carriage rear
+  '.....mPPPPPm.....', //  3 carriage
+  '....mPPPmPPPm....', //  4 carriage with seam
+  '.....mPgggPm.....', //  5 carriage w/ barrel emerging
+  '......gGGGg......', //  6 barrel face
+  '......gGgGg......', //  7 muzzle ring
+  '..kkSSk...kSSkk..', //  8 wheels top
+  '.kSwwwS...SwwwSk.', //  9 wheels
+  '.kSwkwS...SwkwSk.', // 10 wheels + hub
+  '..kkSSk...kSSkk..', // 11 wheels bottom
   '.................', // 12
-  '....sssssssss....', // 13 ground shadow
+  '..ssssssssssss...', // 13 ground shadow
 ];
 
 const POSE_FRONT_DIAG = [
   '.................', //  0
-  '.................', //  1
-  '...........gg....', //  2 barrel angled toward viewer-right
-  '..........gGGg...', //  3
-  '.........gGGGg...', //  4
-  '....mmmmgGggSg...', //  5 carriage seam + barrel
-  '...mPPPPmgSg.....', //  6 carriage angled
-  '..mPPPPPPmm......', //  7
-  '..kSwSmkmkmm.....', //  8 left wheel + axle line
-  '.SwwwSmmkmm......', //  9
-  '.SwwwSmkSwSm.....', // 10 right wheel partially behind
-  '..kSwSmSwwwS.....', // 11
-  '.......kSwSk.....', // 12
-  '...sssssssss.....', // 13 ground shadow
+  '......mmm........', //  1 trail nudged left of center
+  '.....mPPPm.......', //  2
+  '....mPPPPPm......', //  3 carriage shifted slightly left
+  '...mPPPmPPPm.....', //  4
+  '....mPgggPmm.....', //  5 carriage w/ barrel angled right
+  '.....gGGGggm.....', //  6 barrel emerging toward viewer-right
+  '.....gGgGgg......', //  7 muzzle nudged right
+  '..kkSSk.kSSkk....', //  8 both wheels visible, near pair on right
+  '.kSwwwS.SwwwSk...', //  9
+  '.kSwkwS.SwkwSk...', // 10
+  '..kkSSk.kSSkk....', // 11
+  '.................', // 12
+  '..ssssssssssss...', // 13
 ];
 
 const POSE_SIDE = [
   '.................', //  0
   '.................', //  1
-  '..............gG.', //  2 barrel muzzle tip
-  '......PPPP...gGG.', //  3 carriage cheek + barrel
-  '....PPPPPPPP.gGGg', //  4 carriage trim + barrel
-  'mmmPPPPPPPPPPgGgg', //  5 trail + carriage trim + barrel + breech ring
-  '.mMMMMMMMMmmmgggg', //  6 carriage shadow + barrel
-  '..mmmkkkkmmm.....', //  7 axle bracket
-  '..kSwSk.kSwSk....', //  8 wheel tops
-  '.SwwwwS.SwwwwS...', //  9 wheel middle
-  '.SwwwwS.SwwwwS...', // 10 wheel middle
-  '..kSwSk.kSwSk....', // 11 wheel bottoms
-  '.................', // 12
-  '...sssssssssss...', // 13 ground shadow
+  '..............ggG', //  2 muzzle tip + reinforce
+  '.........ggggggGG', //  3 barrel
+  'mmmm.....ggggggGg', //  4 trail extending left + barrel
+  'mPPPmmmmmgggggGgg', //  5 trail trim + cheek + barrel + breech ring
+  '.mMMmmmmmmgggggg.', //  6 carriage shadow + breech
+  '.....mmkmm.......', //  7 axle bracket
+  '....kkSSSkk......', //  8 wheel top
+  '...kSwwwwwSk.....', //  9 wheel
+  '...kSwkSkwSk.....', // 10 wheel + hub + spoke detail
+  '...kSwwwwwSk.....', // 11 wheel
+  '....kkSSSkk......', // 12 wheel bottom
+  '....sssssss......', // 13 ground shadow
 ];
 
 const POSE_BACK = [
   '.................', //  0
-  '.................', //  1
-  '.......PPP.......', //  2 trail tip
-  '.....SSPPPSS.....', //  3 trail spade
-  '....SSPPPPPSS....', //  4 trail spade
-  '....mPPPPPPPm....', //  5 carriage rear
-  '...mPPmmmmmPPm...', //  6 carriage cheeks
-  '...mPmmgggmmPm...', //  7 breech + carriage
-  '...kSwSmmmSwSk...', //  8 wheel tops left + right
-  '..SwwwSmkmSwwwS..', //  9 wheel hubs + axle bar
-  '..SwwwSmkmSwwwS..', // 10 wheel hubs
-  '...kSwSmmmSwSk...', // 11 wheel bottoms
+  '.......PPP.......', //  1 trail tip (red spade)
+  '......PPPPP......', //  2 trail spade
+  '.....PPPPPPP.....', //  3 trail spade widening
+  '....mPPPPPPPm....', //  4 trail meeting carriage
+  '...mPPmmmmmPPm...', //  5 carriage rear w/ breech bulge
+  '...mmmgggggmmm...', //  6 breech of barrel
+  '...mkmGGGGGmkm...', //  7 axle ends + breech ring
+  '..kkSSk...kSSkk..', //  8 wheels (mirror of front)
+  '.kSwwwS...SwwwSk.', //  9
+  '.kSwkwS...SwkwSk.', // 10
+  '..kkSSk...kSSkk..', // 11
   '.................', // 12
-  '....sssssssss....', // 13 ground shadow
+  '..ssssssssssss...', // 13 ground shadow
 ];
 
 const POSE_BACK_DIAG = [
   '.................', //  0
-  '.................', //  1
-  '....PPP..........', //  2 trail tip nudged left
-  '...SPPPSS........', //  3 trail spade
-  '..SSPPPPPSS......', //  4
-  '..mPPPPPPPmm.....', //  5 carriage rear angled
-  '...mmPPmmmmmm....', //  6
-  '...mPmmgggmm.....', //  7 breech visible
-  '...kSwSmmm.......', //  8 left wheel
-  '..SwwwSmkSwSk....', //  9 right wheel emerging
-  '..SwwwSmSwwwS....', // 10
-  '...kSwSmkSwSk....', // 11
+  '.....PPP.........', //  1 trail nudged toward viewer-left (cannon turned away-right)
+  '....PPPPP........', //  2
+  '...PPPPPPP.......', //  3
+  '..mPPPPPPPm......', //  4
+  '..mPPmmmPPmm.....', //  5 carriage rear angled
+  '..mmgggggmmm.....', //  6 breech
+  '..mkGGGGGmkm.....', //  7 axle / breech ring
+  '..kkSSk.kSSkk....', //  8 both wheels visible, near pair on right
+  '.kSwwwS.SwwwSk...', //  9
+  '.kSwkwS.SwkwSk...', // 10
+  '..kkSSk.kSSkk....', // 11
   '.................', // 12
-  '...sssssssss.....', // 13 ground shadow
+  '..ssssssssssss...', // 13
 ];
 
 const TINT_CELL = Array.from({ length: CANNON_CELL_H }, () =>
