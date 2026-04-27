@@ -139,31 +139,25 @@ Recruit (rank 0) is **not in the atlas** — no icon drawn at all.
 New `src/render/passes/rank-pass.ts` mirroring `health-bar-pass.ts`:
 
 - One quad instance per non-Recruit alive entity.
-- Position: `(posX, posY + footYFromCenter + h/2 + ICON_GAP)` — i.e., directly below the foot line, where `footYFromCenter` already accounts for sprite padding. `ICON_GAP = 0.05 m`.
-- World size: `0.6 m × 0.15 m` (Veteran) up to `0.6 m × 0.55 m` for Captain — the cell-height grows with rank so 3-chevron Sgt. Major reads as taller than 1-chevron Veteran. Concretely: width is fixed 0.6 m; height is `cell-pixels / 16 * 0.6 * (16/16) = cell-pixels / 16 * 0.6 m` per chevron-row, stacking from the foot line upward — wait no, *downward* (below feet). See "Layout" below.
+- Quad world size: a fixed `0.6 m × 0.6 m` for every rank. Apparent icon height is determined by transparent padding inside each atlas cell (see "Layout" below) so we don't need per-rank quad dimensions.
+- Quad placement: anchored so the **bottom of the quad** sits at the soldier's foot line plus a small gap — i.e., quad center y = `posY + footYFromCenter + ICON_GAP + 0.3 m`, where `ICON_GAP = 0.05 m`. Quad center x = `posX`.
 - Texture: the rank-icon atlas, sampled by rank index.
 - Hard pixel edges (`gl.NEAREST` min+mag filter) per the global pixel-art rule.
 - Culling: skip entities at `cam.zoomPxPerWorld < 6` (icon would be sub-pixel anyway).
 
 ### Layout precision
 
-Foot line on a soldier sprite sits at `entity.posY + footYFromCenter` (note: existing `footYFromCenter` is *from* the sprite center — for line-infantry, +0.625 m below center). The icon is placed:
+Foot line on a soldier sprite sits at `entity.posY + footYFromCenter` (existing `footYFromCenter` is *from* the sprite center — for line-infantry, +0.625 m below center, putting the foot at the visual bottom of the figure).
 
-```
-iconCenterY = posY + footYFromCenter + ICON_GAP + iconHalfHeight
-```
+Apparent icon heights, by rank:
+- Veteran (1 chevron): ~3 px tall in atlas → ~0.11 m apparent.
+- Sergeant (2 chevrons): ~7 px → ~0.26 m apparent.
+- Sgt. Major (3 chevrons): ~11 px → ~0.41 m apparent.
+- Captain (star): ~7 px → ~0.26 m apparent.
 
-So the icon sits flush below the feet, centered on `posX`. Width 0.6 m, height per rank:
-- Veteran (1 chevron): 0.15 m tall.
-- Sergeant (2 chevrons): 0.25 m tall.
-- Sgt. Major (3 chevrons): 0.35 m tall.
-- Captain (star): 0.25 m tall.
+These are achieved by packing each rank's drawing into the **bottom rows** of its 16-px-tall atlas cell and leaving the upper rows transparent. The world quad stays a uniform 0.6 × 0.6 m, so the shader just samples the cell by rank and the transparent top of the quad becomes invisible at draw time. No per-rank quad-size logic needed.
 
-These heights are tuned so the icon doesn't crowd the next rank below in dense formations (formation y-spacing for line-infantry is 1.2 m; max icon height 0.35 m + gap 0.05 m fits comfortably).
-
-Atlas cell selection in the shader: a uniform `u_iconCellHeight` per draw is overkill. Simpler: pack each rank's variable-height image into the **bottom** of its 16-px-tall cell, sample by rank, and let the unused top rows be transparent. Then a fixed 0.6 × 0.6 m world quad per icon works for every rank and the visual heights above are achieved purely by the transparent padding in the texture. Way fewer moving parts.
-
-So: **all icons are drawn at fixed 0.6 m × 0.6 m world quads, anchored so the cell bottom is at the foot line + ICON_GAP**. The atlas itself encodes the apparent height.
+Apparent heights are tuned so the icon doesn't crowd the next rank's sprite below in dense formations: line-infantry formation y-spacing is 1.2 m, max apparent icon height 0.41 m plus 0.05 m gap leaves ~0.7 m clearance to the next rank's sprite top.
 
 ### Promotion sparkle
 
