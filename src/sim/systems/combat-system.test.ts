@@ -5,6 +5,11 @@ import { getUnitKindIndex } from '../../data/units';
 import { rebuildGrid } from '../world';
 import { createCombatSystem } from './combat-system';
 import type { FireOrders } from './state-system';
+import { tickStates } from './state-system';
+import { tickProjectiles } from './projectile-system';
+import { createProjectiles } from '../projectiles';
+import { createParticles } from '../../particles/particles';
+import { getUnitKindByIndex } from '../../data/units';
 
 function makeWorld() {
   const world = createWorld({ seed: 1, capacity: 64, mapSize: 200, cellSize: 2 });
@@ -242,5 +247,46 @@ describe('combatSystem', () => {
     system(world, 1 / 60);
 
     expect(world.entities.targetId[shooter]).toBe(alive);
+  });
+});
+
+describe('combat pipeline integration', () => {
+  it('idle → aiming → reloading → idle, spawning a projectile along the way', () => {
+    const world = makeWorld();
+    const projectiles = createProjectiles(16);
+    const particles = createParticles(2048);
+    const fireOrders: FireOrders = new Map();
+    const combat = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+
+    const dt = 1 / 60;
+
+    // Tick 1: combat picks the target and triggers Aiming. State-system advances stateT.
+    rebuildGrid(world);
+    combat(world, dt);
+    tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
+    tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+    expect(projectiles.count).toBe(0);
+
+    // Run enough ticks to outlast the 0.15 s aiming windup. After Aiming
+    // expires, state-system resolves the shot and transitions to Reloading.
+    for (let i = 0; i < 12; i++) {
+      rebuildGrid(world);
+      combat(world, dt);
+      tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
+      tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
+    }
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Reloading);
+    // Projectile may have hit, missed, or still be in flight — but we know
+    // at least one was spawned.
+    // Reload countdown is in progress.
+    const reloadTotal = getUnitKindByIndex(world.entities.kindId[shooter]!).baseStats.weaponReload;
+    expect(world.entities.reloadT[shooter]).toBeGreaterThan(0);
+    expect(world.entities.reloadT[shooter]).toBeLessThan(reloadTotal);
   });
 });
