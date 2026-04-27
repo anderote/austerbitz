@@ -5,6 +5,7 @@ import { createInputManager } from '../input/input-manager';
 import { createCameraControls } from '../input/camera-controls';
 import { createWorld, rebuildGrid } from '../sim/world';
 import { createParticles, updateParticles } from '../particles/particles';
+import { createPuffs, updatePuffs } from '../puffs/puffs';
 import { createProjectiles } from '../sim/projectiles';
 import { createSelection, createDragRect } from '../input/selection';
 import { movementSystem } from '../sim/systems/movement-system';
@@ -27,13 +28,14 @@ import { createLabUi, type ActionHandlers, type GridToggle, type TimeScaleState,
 
 const CAPACITY = 256;
 const PARTICLE_CAPACITY = 50_000;
+const PUFF_CAPACITY = 1024;
 const PROJECTILE_CAPACITY = 2_048;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
 const LAB_MAP_SIZE = 200;
 const renderer = createRenderer(
-  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
+  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   LAB_MAP_SIZE, LAB_MAP_SIZE,
 );
 const camera = createCamera();
@@ -43,6 +45,7 @@ const drag = createDragRect();
 
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: LAB_MAP_SIZE });
 const particles = createParticles(PARTICLE_CAPACITY);
+const puffs = createPuffs(PUFF_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 
 // Camera bounds: lab is small, anchored around origin. Map size is 200, but we
@@ -139,6 +142,7 @@ function frame(t: number) {
   }
 
   applyWind(particles, wind.accelX, dt);
+  updatePuffs(puffs, dt);
   updateParticles(particles, dt);
 
   // Drain sim-queued blood splats into the GPU stain pass.
@@ -148,7 +152,7 @@ function frame(t: number) {
   }
   bs.count = 0;
 
-  renderer.render(world, projectiles, particles, camera, selection, drag, null, { showHealthBars: false });
+  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, null, { showHealthBars: false });
 
   ui.update({
     fps: smoothedFps,
