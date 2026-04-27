@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeFormationSlots, assignFormationSlots, type FormationUnit } from './formation';
+import { computeFormationSlots, assignFormationSlots, syntheticFormationDrag, type FormationUnit } from './formation';
 import type { Vec2 } from '../util/math';
 
 describe('computeFormationSlots', () => {
@@ -251,5 +251,74 @@ describe('assignFormationSlots', () => {
     // Each slot used exactly once.
     const seen = new Set(out.map(s => `${s.x},${s.y}`));
     expect(seen.size).toBe(slots.length);
+  });
+});
+
+describe('computeFormationSlots — spacingMult', () => {
+  it('doubles slot spacing when spacingMult=2', () => {
+    const units = Array.from({ length: 4 }, (_, i) => ({
+      id: i, x: 0, y: 0, spacingX: 1, spacingY: 1,
+    }));
+    const a = computeFormationSlots({
+      units, startW: { x: 0, y: 0 }, endW: { x: 4, y: 0 },
+    });
+    const b = computeFormationSlots({
+      units, startW: { x: 0, y: 0 }, endW: { x: 4, y: 0 }, spacingMult: 2,
+    });
+    // Distance between adjacent slots in front rank doubles.
+    const da = Math.hypot(a.slots[1]!.x - a.slots[0]!.x, a.slots[1]!.y - a.slots[0]!.y);
+    const db = Math.hypot(b.slots[1]!.x - b.slots[0]!.x, b.slots[1]!.y - b.slots[0]!.y);
+    expect(db).toBeCloseTo(da * 2);
+  });
+});
+
+describe('computeFormationSlots — ranksOverride', () => {
+  it('forces N=20, ranks=4 → frontCount=5', () => {
+    const units = Array.from({ length: 20 }, (_, i) => ({
+      id: i, x: 0, y: 0, spacingX: 1, spacingY: 1,
+    }));
+    const r = computeFormationSlots({
+      units, startW: { x: 0, y: 0 }, endW: { x: 0.5, y: 0 }, ranksOverride: 4,
+    });
+    expect(r.slots).toHaveLength(20);
+    // First rank: 5 slots, all at depth 0; check depth groups.
+    const fwd = r.forward;
+    const px = -fwd.y, py = fwd.x;
+    // Project each slot onto perp axis to get depth, group by depth bucket.
+    const depths = new Set(r.slots.map(s => Math.round((s.x * px + s.y * py) * 1000) / 1000));
+    expect(depths.size).toBe(4);
+  });
+
+  it('ranksOverride=1 yields a single line (depth=0 for all)', () => {
+    const units = Array.from({ length: 6 }, (_, i) => ({
+      id: i, x: 0, y: 0, spacingX: 1, spacingY: 1,
+    }));
+    const r = computeFormationSlots({
+      units, startW: { x: 0, y: 0 }, endW: { x: 1, y: 0 }, ranksOverride: 1,
+    });
+    const fwd = r.forward;
+    const px = -fwd.y, py = fwd.x;
+    const depths = new Set(r.slots.map(s => Math.round((s.x * px + s.y * py) * 1000) / 1000));
+    expect(depths.size).toBe(1);
+  });
+});
+
+describe('syntheticFormationDrag', () => {
+  it('lays drag perpendicular to forward, centered on centroid', () => {
+    const units = Array.from({ length: 10 }, (_, i) => ({
+      id: i, x: i, y: 0, spacingX: 1, spacingY: 1,
+    }));
+    const { startW, endW } = syntheticFormationDrag(units, { x: 1, y: 0 }, 2, 1);
+    // forward = (1,0), perp = (0,1) → drag axis is along Y.
+    // Centroid X = 4.5, Y = 0; midpoint of (startW, endW) should equal centroid.
+    expect((startW.x + endW.x) / 2).toBeCloseTo(4.5);
+    expect((startW.y + endW.y) / 2).toBeCloseTo(0);
+    expect(startW.x).toBeCloseTo(endW.x); // same X = no movement along forward
+  });
+
+  it('returns nonzero offset even when single-column to preserve facing', () => {
+    const units = [{ id: 0, x: 0, y: 0, spacingX: 1, spacingY: 1 }];
+    const { startW, endW } = syntheticFormationDrag(units, { x: 1, y: 0 }, 1, 1);
+    expect(Math.hypot(endW.x - startW.x, endW.y - startW.y)).toBeGreaterThan(0);
   });
 });

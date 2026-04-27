@@ -29,6 +29,7 @@ export interface ProjectileInstanceBuckets {
   shadow: ProjectileBucket;
   ball: ProjectileBucket;
   musket: ProjectileBucket;
+  streak: ProjectileBucket;
 }
 
 function makeBucket(capacity: number): ProjectileBucket {
@@ -72,22 +73,47 @@ function pushBall(b: ProjectileBucket, cx: number, cy: number): void {
   b.count = i + 1;
 }
 
-function pushMusket(
-  b: ProjectileBucket,
-  cx: number, cy: number,
-  length: number, rotation: number,
-): void {
+// Sizes are tuned for the default zoom of 12 px / world unit.
+const MUSKET_BALL_SIZE = 4 / 12;       // 4 px square
+const MUSKET_STREAK_LEN = 8 / 12;      // 8 px trailing streak
+const MUSKET_STREAK_WIDTH = 1 / 12;    // 1 px wide
+
+function pushMusket(b: ProjectileBucket, cx: number, cy: number): void {
   const i = b.count;
   b.centerWorld[i * 2 + 0] = cx;
   b.centerWorld[i * 2 + 1] = cy;
-  b.sizeOrLen[i * 2 + 0] = length;
-  b.sizeOrLen[i * 2 + 1] = 0.05;
-  b.rotation[i] = rotation;
+  b.sizeOrLen[i * 2 + 0] = MUSKET_BALL_SIZE;
+  b.sizeOrLen[i * 2 + 1] = MUSKET_BALL_SIZE;
+  b.rotation[i] = 0;
   b.kind[i] = 0;
-  b.color[i * 4 + 0] = 1.0;
-  b.color[i * 4 + 1] = 0.95;
-  b.color[i * 4 + 2] = 0.7;
+  b.color[i * 4 + 0] = 0.78;
+  b.color[i * 4 + 1] = 0.78;
+  b.color[i * 4 + 2] = 0.78;
   b.color[i * 4 + 3] = 1.0;
+  b.count = i + 1;
+}
+
+function pushStreak(
+  b: ProjectileBucket,
+  cx: number, cy: number,
+  vx: number, vy: number,
+): void {
+  const speed = Math.hypot(vx, vy);
+  if (speed < 1e-3) return;
+  const dirX = vx / speed;
+  const dirY = vy / speed;
+  const i = b.count;
+  // Trail behind the ball: shift center back along velocity by half-length.
+  b.centerWorld[i * 2 + 0] = cx - dirX * (MUSKET_STREAK_LEN * 0.5);
+  b.centerWorld[i * 2 + 1] = cy - dirY * (MUSKET_STREAK_LEN * 0.5);
+  b.sizeOrLen[i * 2 + 0] = MUSKET_STREAK_LEN;
+  b.sizeOrLen[i * 2 + 1] = MUSKET_STREAK_WIDTH;
+  b.rotation[i] = Math.atan2(dirY, dirX);
+  b.kind[i] = 3;
+  b.color[i * 4 + 0] = 1.0;
+  b.color[i * 4 + 1] = 1.0;
+  b.color[i * 4 + 2] = 1.0;
+  b.color[i * 4 + 3] = 0.4;
   b.count = i + 1;
 }
 
@@ -106,6 +132,7 @@ export function computeProjectileInstances(
   buckets.shadow.count = 0;
   buckets.ball.count = 0;
   buckets.musket.count = 0;
+  buckets.streak.count = 0;
 
   const p = projectiles;
   for (let i = 0; i < p.capacity; i++) {
@@ -121,15 +148,9 @@ export function computeProjectileInstances(
       // Ball is lifted by Z.
       pushBall(buckets.ball, px, py - pz);
     } else if (kind === ProjectileKind.Musket) {
-      const prevX = p.prevX[i]!;
-      const prevY = p.prevY[i]!;
-      const dx = px - prevX;
-      const dy = py - prevY;
-      const len = Math.max(Math.hypot(dx, dy), 0.05);
-      const cx = (px + prevX) * 0.5;
-      const cy = (py + prevY) * 0.5;
-      const rot = Math.atan2(dy, dx);
-      pushMusket(buckets.musket, cx, cy, len, rot);
+      const cy = py - pz;
+      pushStreak(buckets.streak, px, cy, p.velX[i]!, p.velY[i]!);
+      pushMusket(buckets.musket, px, cy);
     }
   }
 }
@@ -139,6 +160,7 @@ export function createProjectileInstanceBuckets(capacity: number): ProjectileIns
     shadow: makeBucket(capacity),
     ball: makeBucket(capacity),
     musket: makeBucket(capacity),
+    streak: makeBucket(capacity),
   };
 }
 
@@ -216,36 +238,34 @@ export function createProjectilePass(
   return {
     draw(projectiles, cam) {
       computeProjectileInstances(projectiles, buckets);
-      const total = buckets.shadow.count + buckets.ball.count + buckets.musket.count;
+      const total =
+        buckets.shadow.count +
+        buckets.ball.count +
+        buckets.musket.count +
+        buckets.streak.count;
       if (total === 0) return;
 
       gl.useProgram(prog);
       gl.bindVertexArray(vao);
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
 
-      // Render order: shadows under everything; opaque balls; additive streaks on top.
+      // Render order: shadows under everything; streaks behind balls; opaque balls on top.
 
-      // Shadows: standard alpha blend.
-      if (buckets.shadow.count > 0) {
+      // Shadows + streaks: standard alpha blend.
+      if (buckets.shadow.count > 0 || buckets.streak.count > 0) {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         uploadAndDraw(buckets.shadow);
+        uploadAndDraw(buckets.streak);
       }
 
-      // Cannonballs: opaque (FS writes alpha=1; rim highlight is colour-only).
-      if (buckets.ball.count > 0) {
+      // Cannonballs and musket balls: opaque hard-edged pixels.
+      if (buckets.ball.count > 0 || buckets.musket.count > 0) {
         gl.disable(gl.BLEND);
         uploadAndDraw(buckets.ball);
-      }
-
-      // Musket tracers: additive over the scene.
-      if (buckets.musket.count > 0) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
         uploadAndDraw(buckets.musket);
       }
 
-      gl.disable(gl.BLEND);
       gl.bindVertexArray(null);
     },
   };

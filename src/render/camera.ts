@@ -33,15 +33,20 @@ export function worldToScreen(cam: Camera, w: Vec2): Vec2 {
  * Layout: [m00,m01,m02, m10,m11,m12, m20,m21,m22] passed as Float32Array(9).
  *
  * Y axis is flipped so increasing world-y maps to decreasing clip-y (i.e. screen-down).
+ *
+ * The returned Float32Array is a shared buffer reused across calls — callers must
+ * upload synchronously (e.g. via `gl.uniformMatrix3fv`) and not retain the reference
+ * past frame boundaries.
  */
+const VIEW_PROJ_BUF = new Float32Array(9);
 export function viewProjection(cam: Camera): Float32Array {
   const sx = (2 * cam.zoom) / cam.viewport.w;
   const sy = -(2 * cam.zoom) / cam.viewport.h;
   const tx = -cam.center.x * sx;
   const ty = -cam.center.y * sy;
-  return new Float32Array([
-    sx, 0,  0,
-    0,  sy, 0,
-    tx, ty, 1,
-  ]);
+  const m = VIEW_PROJ_BUF;
+  m[0] = sx; m[1] = 0;  m[2] = 0;
+  m[3] = 0;  m[4] = sy; m[5] = 0;
+  m[6] = tx; m[7] = ty; m[8] = 1;
+  return m;
 }

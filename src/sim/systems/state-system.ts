@@ -1,10 +1,38 @@
 import { type Entities, EntityState } from '../entities';
 import type { Projectiles } from '../projectiles';
 import type { Particles } from '../../particles/particles';
+import type { Puffs } from '../../puffs/puffs';
 import type { Rng } from '../../util/rng';
 import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
 import { writeFacingIntent } from './facing-system';
+import { Pose, RUN_THRESHOLD_PX_S } from '../../render/poses/pose-config';
+
+const RUN_THRESHOLD_SQ = RUN_THRESHOLD_PX_S * RUN_THRESHOLD_PX_S;
+
+function poseFor(state: EntityState, speedSq: number): Pose {
+  switch (state) {
+    case EntityState.Idle:      return Pose.idle;
+    case EntityState.Moving:    return speedSq > RUN_THRESHOLD_SQ ? Pose.running : Pose.walking;
+    case EntityState.Aiming:    return Pose.aiming;
+    case EntityState.Firing:    return Pose.firing;
+    case EntityState.Reloading: return Pose.reloading;
+    case EntityState.Flinch:    return Pose.flinch;
+    case EntityState.Ragdoll:   return Pose.ragdoll;
+    case EntityState.Dying:     return Pose.dying;
+    case EntityState.Dead:      return Pose.dead;
+    default:                    return Pose.idle;
+  }
+}
+
+function pickClip(id: number, tick: number, n: number): number {
+  if (n <= 1) return 0;
+  let h = (Math.imul(id, 2654435761) ^ Math.imul(tick, 1597334677)) | 0;
+  h ^= h >>> 16; h = Math.imul(h, 2246822507);
+  h ^= h >>> 13; h = Math.imul(h, 3266489909);
+  h ^= h >>> 16;
+  return (h >>> 0) % n;
+}
 
 /** Side-table mapping entity id → aim point. Populated by `triggerFire`. */
 export type FireOrders = Map<number, { tx: number; ty: number }>;
@@ -43,12 +71,14 @@ export function tickStates(
   e: Entities,
   projectiles: Projectiles,
   particles: Particles,
+  puffs: Puffs,
   rng: Rng,
   fireOrders: FireOrders,
   dt: number,
+  tick: number,
 ): void {
-  for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 0) continue;
+  for (let n = 0; n < e.count; n++) {
+    const i = e.aliveIds[n]!;
 
     // Visual recoil timer always counts down regardless of state. When it
     // hits zero the render-only peak vector is cleared so the entity
@@ -70,7 +100,7 @@ export function tickStates(
           e.state[i] = EntityState.Firing;
           const order = fireOrders.get(i);
           if (order) {
-            resolveFire(e, projectiles, particles, rng, i, order.tx, order.ty);
+            resolveFire(e, projectiles, particles, puffs, rng, i, order.tx, order.ty);
           }
           fireOrders.delete(i);
 
@@ -109,6 +139,18 @@ export function tickStates(
       default:
         // Idle, Moving, Firing (transient), Ragdoll, Dead — no transition here.
         break;
+    }
+
+    const vx = e.velX[i]!;
+    const vy = e.velY[i]!;
+    const speedSq = vx * vx + vy * vy;
+    const desired = poseFor(e.state[i] as EntityState, speedSq);
+    if (e.pose[i] !== desired) {
+      e.pose[i] = desired;
+      e.poseT[i] = 0;
+      e.clipIndex[i] = pickClip(i, tick, 256) & 0xff;
+    } else {
+      e.poseT[i] = e.poseT[i]! + dt;
     }
   }
 }

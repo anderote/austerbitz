@@ -25,26 +25,42 @@ import { createSelectionPanel } from './ui/selection-panel';
 import { createStatsCard } from './ui/stats-card';
 import { createBuildMenu } from './ui/build-menu';
 import { createScaleBar } from './ui/scale-bar';
+import { createWindIndicator } from './ui/wind-indicator';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
+import { createFormationControlsPanel } from './ui/formation-controls-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
 import { createParticles, updateParticles } from './particles/particles';
-import { emitDust } from './particles/emitters';
+import { createPuffs, updatePuffs } from './puffs/puffs';
+import { coalesceStep } from './puffs/coalesce';
+import { getProfileByIndex } from './puffs/profile';
+import { applyWindToPuffs, windAt, createWindState, tickWind } from './puffs/wind';
+import { emitDustForFrame } from './puffs/emit-dust';
+import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clouds';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
+import { loadPoseAtlas } from './render/poses/atlas';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
+const PUFF_CAPACITY = 65536;
 const PROJECTILE_CAPACITY = 2048;
 
+async function start(): Promise<void> {
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
 const map = createDefaultMap();
+let poseAtlas = null;
+try {
+  poseAtlas = await loadPoseAtlas(gl);
+} catch (err) {
+  console.warn('[main] pose atlas load failed; continuing without it:', err);
+}
 const renderer = createRenderer(
-  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
-  map.size.w, map.size.h,
+  gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
+  map.size.w, map.size.h, poseAtlas,
 );
 const camera = createCamera();
 const input = createInputManager(canvas);
@@ -54,14 +70,22 @@ const formationDrag = createFormationDrag();
 const controlGroups = createControlGroups();
 
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
+
+const cloudCfg: AmbientCloudConfig = {
+  target: 12,
+  viewport: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
+  windX: 0.6, windY: 0,
+};
 const particles = createParticles(PARTICLE_CAPACITY);
+const puffs = createPuffs(PUFF_CAPACITY);
+const windState = createWindState();
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
-  tickStates(w.entities, projectiles, particles, w.rng, fireOrders, dt);
+  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount);
 const projectileSystem: System = (w, dt) =>
-  tickProjectiles(projectiles, w.entities, w.grid, particles, w.rng, dt, w.bloodSplats);
+  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
 
 world.systems = [
@@ -109,7 +133,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 60;      // metres between the two armies' front ranks (within musket range, 80m)
+const BATTLE_GAP = 100;     // metres between the two armies' front ranks
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 
@@ -120,6 +144,9 @@ interface RegimentPlan {
   count: number;
   gap?: number;
   backOffset?: number;
+  // Metres north of the army's frontCenter (positive = north / -Y world).
+  // Independent of facing so both armies share one coordinate.
+  northOffset?: number;
 }
 
 interface ArmyPlan {
@@ -172,12 +199,16 @@ function spawnArmy(plan: ArmyPlan): void {
     const gap = reg.gap ?? spacingX * 6;
     const totalSpan = reg.count * blockWidth + Math.max(0, reg.count - 1) * gap;
     const firstCenterOffset = reg.count === 0 ? 0 : -totalSpan / 2 + blockWidth / 2;
+    const backShift = reg.backOffset ?? 0;
+    const northShift = reg.northOffset ?? 0;
+    // northShift is facing-independent: +north always means -Y in world space.
+    const anchorX = plan.frontCenter.x - forwardX * backShift;
+    const anchorY = plan.frontCenter.y - forwardY * backShift - northShift;
     for (let i = 0; i < reg.count; i++) {
       const centerLateral = firstCenterOffset + i * (blockWidth + gap);
-      const backShift = reg.backOffset ?? 0;
       const frontCenter = {
-        x: plan.frontCenter.x + lateralX * centerLateral - forwardX * backShift,
-        y: plan.frontCenter.y + lateralY * centerLateral - forwardY * backShift,
+        x: anchorX + lateralX * centerLateral,
+        y: anchorY + lateralY * centerLateral,
       };
       spawnFormationBlock({
         kindId: reg.kindId,
@@ -193,29 +224,24 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// Three echelons of infantry, each spaced ~2.3 musket-ranges (80 m) apart. Cavalry sits
-// well behind the rear echelon as a reserve.
-const INFANTRY_ECHELON_DEPTH = 30;
-const CAVALRY_BACK = 420;
-
+// Two parallel lines per side, 50m apart along the facing axis.
+// Each line is 2000 line-infantry, 8 ranks deep, split into five 50-file regiments.
 const lineRegiments: RegimentPlan[] = [
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: 0 },
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH },
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH * 2 },
-  { kindId: 'cuirassier',    files: 50,  ranks: 3, count: 6, gap: 30, backOffset: CAVALRY_BACK },
+  { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8 },
+  { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8, backOffset: 50 },
 ];
 
 const friendlyArmy: ArmyPlan = {
   team: 0,
-  facing: FACING_W,
-  frontCenter: { x: cx + BATTLE_GAP / 2, y: cy },
+  facing: FACING_E,
+  frontCenter: { x: cx - BATTLE_GAP / 2, y: cy },
   regiments: lineRegiments,
 };
 
 const enemyArmy: ArmyPlan = {
   team: 1,
-  facing: FACING_E,
-  frontCenter: { x: cx - BATTLE_GAP / 2, y: cy },
+  facing: FACING_W,
+  frontCenter: { x: cx + BATTLE_GAP / 2, y: cy },
   regiments: lineRegiments,
 };
 
@@ -239,8 +265,10 @@ const selPanel = createSelectionPanel(overlay);
 const statsCard = createStatsCard(overlay);
 const buildMenu = createBuildMenu(overlay);
 const scaleBar = createScaleBar(overlay);
+const windIndicator = createWindIndicator(overlay);
 const minimap = createMinimap(overlay, map.size, camera);
 const cgPanel = createControlGroupsPanel(overlay);
+const fcPanel = createFormationControlsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
 const placementInfo = createPlacementInfo(overlay);
 const movePreview = createMovePreview(overlay);
@@ -252,16 +280,25 @@ const controller = createSelectionController({
 
 let lastT = performance.now();
 let smoothedFps = 60;
+let simElapsed = 0;
 function frame(t: number) {
   const dt = Math.min(0.1, (t - lastT) / 1000);
   lastT = t;
+  simElapsed += dt;
   smoothedFps = smoothedFps * 0.9 + (1 / Math.max(dt, 1e-3)) * 0.1;
   input.beginFrame();
   cameraControls.update(dt);
   controller.update(dt);
   tickWorld(world, dt);
-  emitDust(world, particles, dt);
-  updateParticles(particles, dt);
+  emitDustForFrame(world, puffs, dt);
+  tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
+  updatePuffs(puffs, dt);
+  tickWind(windState, simElapsed, world.rng);
+  const currentWind = windAt(windState, simElapsed);
+  applyWindToPuffs(puffs, currentWind, dt);
+  windIndicator.update(currentWind);
+  coalesceStep(puffs, dt, world.rng, getProfileByIndex);
+  updateParticles(particles, dt, world.bloodSplats);
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;
   for (let i = 0; i < bs.count; i++) {
@@ -271,7 +308,7 @@ function frame(t: number) {
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
   const showMovePreview = input.state.keys.has('Space');
   const formationPreview = controller.formationPreview();
-  renderer.render(world, projectiles, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
+  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
   hud.update(smoothedFps, world, controller.cursorMode);
   placementInfo.update(world, camera, selection, formationPreview);
   movePreview.update(camera);
@@ -281,7 +318,11 @@ function frame(t: number) {
   scaleBar.update(camera);
   minimap.update(world, camera);
   cgPanel.update(world, controlGroups);
+  fcPanel.update(selection, controller.formationParams);
   groupBadges.update(world, camera, selection, controlGroups);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+}
+
+void start();

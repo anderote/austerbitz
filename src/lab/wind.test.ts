@@ -1,74 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { createParticles, spawnParticle, ParticleClass } from '../particles/particles';
+import { createPuffs, allocPuff } from '../puffs/puffs';
 import { applyWind } from './wind';
+import { DUST_INDEX } from '../puffs/profiles/dust';
+import { CANNON_SMOKE_INDEX } from '../puffs/profiles/cannon-smoke';
 
-describe('applyWind', () => {
-  it('drifts smoke at full strength and dust at a damped fraction; leaves blood/flash/debris alone', () => {
-    const p = createParticles(16);
-
-    const smokeId = spawnParticle(p, {
-      x: 0, y: 0, vx: 1, vy: 0,
-      life: 1, size: 0.5, r: 0.8, g: 0.8, b: 0.8,
-      klass: ParticleClass.Smoke,
-    });
-    const dustId = spawnParticle(p, {
-      x: 0, y: 0, vx: 1, vy: 0,
-      life: 1, size: 0.5, r: 0.6, g: 0.5, b: 0.4,
-      klass: ParticleClass.Dust,
-    });
-    const flashId = spawnParticle(p, {
-      x: 0, y: 0, vx: 1, vy: 0,
-      life: 1, size: 0.5, r: 1, g: 1, b: 1,
-      klass: ParticleClass.Flash,
-    });
-    const bloodId = spawnParticle(p, {
-      x: 0, y: 0, vx: 1, vy: 0,
-      life: 1, size: 0.5, r: 0.5, g: 0, b: 0,
-      klass: ParticleClass.Blood,
-    });
-    const debrisId = spawnParticle(p, {
-      x: 0, y: 0, vx: 1, vy: 0,
-      life: 1, size: 0.5, r: 0.5, g: 0.4, b: 0.3,
-      klass: ParticleClass.Debris,
-    });
-
-    const accel = 0.5; // m/s²
-    const dt = 0.5;
-    applyWind(p, accel, dt);
-
-    expect(p.velX[smokeId]).toBeCloseTo(1 + accel * dt, 6);
-    // Dust drifts at 0.35x of smoke.
-    expect(p.velX[dustId]).toBeCloseTo(1 + accel * 0.35 * dt, 6);
-    // Other kinds are untouched.
-    expect(p.velX[flashId]).toBe(1);
-    expect(p.velX[bloodId]).toBe(1);
-    expect(p.velX[debrisId]).toBe(1);
-    // velY is never touched.
-    expect(p.velY[smokeId]).toBe(0);
-    expect(p.velY[dustId]).toBe(0);
-  });
-
-  it('does nothing when accel is 0 (early-out)', () => {
-    const p = createParticles(4);
-    const id = spawnParticle(p, {
-      x: 0, y: 0, vx: 2, vy: 3,
-      life: 1, size: 0.5, r: 1, g: 1, b: 1,
-      klass: ParticleClass.Smoke,
-    });
-    applyWind(p, 0, 1.0);
-    expect(p.velX[id]).toBe(2);
-    expect(p.velY[id]).toBe(3);
-  });
-
-  it('skips dead particles', () => {
-    const p = createParticles(4);
-    const id = spawnParticle(p, {
-      x: 0, y: 0, vx: 1, vy: 0,
-      life: 1, size: 0.5, r: 1, g: 1, b: 1,
-      klass: ParticleClass.Smoke,
-    });
-    p.alive[id] = 0; // simulate death
+describe('lab applyWind', () => {
+  it('lighter puffs (high |buoyancy|) drift faster than heavier ones', () => {
+    const p = createPuffs(4);
+    const dust = allocPuff(p);
+    p.profileIdx[dust] = DUST_INDEX; p.velX[dust] = 0; p.buoyancy[dust] = -0.1;
+    const smoke = allocPuff(p);
+    p.profileIdx[smoke] = CANNON_SMOKE_INDEX; p.velX[smoke] = 0; p.buoyancy[smoke] = -0.6;
     applyWind(p, 1.0, 1.0);
-    expect(p.velX[id]).toBe(1);
+    expect(Math.abs(p.velX[smoke]!)).toBeGreaterThan(Math.abs(p.velX[dust]!));
+  });
+
+  it('zero acceleration leaves velocities unchanged', () => {
+    const p = createPuffs(2);
+    const i = allocPuff(p);
+    p.velX[i] = 5;
+    applyWind(p, 0, 1);
+    expect(p.velX[i]).toBe(5);
   });
 });

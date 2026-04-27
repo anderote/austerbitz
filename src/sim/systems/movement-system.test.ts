@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from '../world';
-import { allocEntity } from '../entities';
+import { allocEntity, EntityState } from '../entities';
 import { ordersSystem } from './orders-system';
 import { movementSystem } from './movement-system';
 import { getUnitKind, getUnitKindIndex } from '../../data/units';
@@ -149,6 +149,37 @@ describe('movement + orders', () => {
     world.systems.forEach(s => s(world, 1 / 30));
     const baseSpeed = getUnitKind('line-infantry').baseStats.moveSpeed;
     expect(world.entities.velX[id]).toBeCloseTo(baseSpeed, 4);
+  });
+
+  it('movementSystem does not integrate velocity for a Dying unit', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = allocEntity(world.entities);
+    world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+    world.entities.posX[id] = 0;
+    world.entities.posY[id] = 0;
+    world.entities.velX[id] = 5;
+    world.entities.velY[id] = 0;
+    world.entities.state[id] = EntityState.Dying;
+
+    movementSystem(world, 0.1);
+
+    expect(world.entities.posX[id]).toBe(0);
+    expect(world.entities.posY[id]).toBe(0);
+  });
+
+  it('movementSystem does not integrate velocity for a Dead unit', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = allocEntity(world.entities);
+    world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+    world.entities.posX[id] = 0;
+    world.entities.posY[id] = 0;
+    world.entities.velX[id] = 5;
+    world.entities.velY[id] = 0;
+    world.entities.state[id] = EntityState.Dead;
+
+    movementSystem(world, 0.1);
+
+    expect(world.entities.posX[id]).toBe(0);
   });
 
   it('drops an attack order whose target is dead', () => {

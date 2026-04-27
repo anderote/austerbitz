@@ -27,6 +27,11 @@ export interface UnitKind {
   placeholderColor: [number, number, number];
   /** Sprite size in world units (≈ meters). */
   placeholderSize: { w: number; h: number };
+  /** Vertical offset from sprite center to foot line, in world units.
+   *  Defaults to placeholderSize.h * 0.5 (bottom of quad), which is correct
+   *  when the texture has minimal empty padding below the figure. Override
+   *  this for textures whose figure ends well above the bottom of the cell. */
+  footYFromCenter?: number;
   /** Atlas cell for this kind. If omitted, the white tint cell is used. */
   spriteCell?: { col: number; row: number };
   baseStats: BaseStats;

@@ -3,7 +3,12 @@ import type { Entities } from '../entities';
 
 const SPEED_EPS = 0.05;          // m/s — ignore jitter below this speed
 const SPEED_EPS_SQ = SPEED_EPS * SPEED_EPS;
-const HYSTERESIS_RAD = (10 * Math.PI) / 180; // (≈10°) prevents flicker between neighboring octants
+const HALF_OCTANT = Math.PI / 8; // 22.5° — distance from an octant center to its boundary
+// (≈10°) — extra margin past the octant boundary an intent must travel before
+// a transition fires. Without this the facing flips on every tick where the
+// intent angle wobbles across a boundary.
+const HYSTERESIS_RAD = (10 * Math.PI) / 180;
+const SWITCH_THRESHOLD_RAD = HALF_OCTANT + HYSTERESIS_RAD;
 
 export function writeFacingIntent(e: Entities, id: number, dirX: number, dirY: number): void {
   const lenSq = dirX * dirX + dirY * dirY;
@@ -56,9 +61,13 @@ export const facingSystem: System = (world, _dt) => {
     const newFacing = quantizeDirectionToFacing(ix, iy);
     const prevFacing = e.facing[id]!;
     if (prevFacing !== newFacing) {
+      // Compare the actual intent angle to the *current* octant's center: only
+      // switch once the intent has crossed the boundary by more than the
+      // hysteresis margin. Comparing octant centers (the old behaviour) was a
+      // no-op because adjacent centers are always 45° apart.
+      const intentAngle = Math.atan2(iy, ix);
       const prevAngle = (prevFacing * Math.PI) / 4;
-      const newAngle = (newFacing * Math.PI) / 4;
-      if (angleDifference(newAngle, prevAngle) > HYSTERESIS_RAD) {
+      if (angleDifference(intentAngle, prevAngle) > SWITCH_THRESHOLD_RAD) {
         e.facing[id] = newFacing;
       }
     }

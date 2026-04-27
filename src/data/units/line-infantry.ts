@@ -6,7 +6,10 @@ export const lineInfantry: UnitKind = {
   category: 'infantry',
   name: 'British Line Infantry',
   placeholderColor: [255, 255, 255],
-  placeholderSize: { w: 1.1, h: 1.8 },
+  placeholderSize: { w: 1.0, h: 2.25 },
+  // Texture is 16×36 with the figure ending at row ~28 (shadow rows 29–30,
+  // empty padding rows 31–35). Foot line ≈ (28/36 - 0.5) * 2.25 = 0.625.
+  footYFromCenter: 0.625,
   spriteCell: { col: 1, row: 1 },
   baseStats: {
     hp: 60,
@@ -19,7 +22,7 @@ export const lineInfantry: UnitKind = {
     weaponAccuracy: 0.4,
     armor: 0,
     massKg: 80,
-    formationSpacing: { x: 0.9, y: 1.6 },
+    formationSpacing: { x: 1.0, y: 1.2 },
     bodyRadius: 0.45,
   },
   bodyZ: { low: 0, high: 1.8 },

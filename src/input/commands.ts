@@ -1,6 +1,7 @@
 import type { World, Order } from '../sim/world';
 import type { Selection } from './selection';
 import type { Vec2 } from '../util/math';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits, syntheticFormationDrag } from './formation';
 
 export interface OrderOpts {
   /** Append to the end of each unit's queue instead of replacing it. */
@@ -124,4 +125,30 @@ export function issueFormationMove(
       world.orderQueue.set(a.id, [order]);
     }
   }
+}
+
+/**
+ * Re-form the current selection in place: keep centroid, face `forwardW`,
+ * lay out into `ranks` ranks (or sqrt-N if null) at the given spacing.
+ * Always replaces the unit's order queue (queue=false), since this is an
+ * immediate reposition.
+ */
+export function issueReformInPlace(
+  world: World,
+  sel: Selection,
+  forwardW: Vec2,
+  spacingMult: number,
+  ranks: number | null,
+): void {
+  const units = liveFormationUnits(world, sel.ids);
+  if (units.length === 0) return;
+  const N = units.length;
+  const chosenRanks = ranks ?? Math.max(1, Math.ceil(Math.sqrt(N)));
+  const { startW, endW } = syntheticFormationDrag(units, forwardW, chosenRanks, spacingMult);
+  const { slots, forward } = computeFormationSlots({
+    units, startW, endW, spacingMult, ranksOverride: chosenRanks,
+  });
+  const targets = assignFormationSlots(units, slots, forward);
+  const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+  issueFormationMove(world, assignments, { queue: false });
 }

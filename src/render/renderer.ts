@@ -7,11 +7,14 @@ import { createParticlePass } from './passes/particle-pass';
 import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
 import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
+import { createPuffPass } from './passes/puff-pass';
 import type { World } from '../sim/world';
 import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
 import type { Projectiles } from '../sim/projectiles';
+import type { Puffs } from '../puffs/puffs';
 import { PLAYER_TEAM } from '../sim/player';
+import type { PoseAtlas } from './poses/atlas';
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
@@ -29,6 +32,7 @@ export interface Renderer {
   render(
     world: World,
     projectiles: Projectiles,
+    puffs: Puffs,
     particles: Particles,
     cam: Camera,
     sel: Selection,
@@ -45,16 +49,19 @@ export function createRenderer(
   canvas: HTMLCanvasElement,
   capacity: number,
   particleCapacity: number,
+  puffCapacity: number,
   projectileCapacity: number,
   worldW: number,
   worldH: number,
+  poseAtlas: PoseAtlas | null,
 ): Renderer {
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
   terrain.setBlood(bloodStain.texture, worldW, worldH);
-  const sprites = createSpritePass(gl, capacity);
+  const sprites = createSpritePass(gl, capacity, poseAtlas);
   const selectionPass = createSelectionPass(gl, capacity);
   const particlesPass = createParticlePass(gl, particleCapacity);
+  const puffsPass = createPuffPass(gl, puffCapacity);
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
   const healthBarPass = createHealthBarPass(gl, capacity);
@@ -64,7 +71,7 @@ export function createRenderer(
     resize() {
       resizeToDisplay(gl, canvas);
     },
-    render(world, projectiles, particlePool, cam, sel, drag, formation, opts) {
+    render(world, projectiles, puffs, particlePool, cam, sel, drag, formation, opts) {
       // Bake any queued blood splats into the persistent stain texture before
       // terrain samples it.
       bloodStain.flush();
@@ -78,7 +85,8 @@ export function createRenderer(
       selectionPass.drawDiscs(world, cam, sel, drag);
       sprites.draw(world, cam);
       projectilesPass.draw(projectiles, cam);
-      // Particle FX draw on top of sprites so dust clouds aren't hidden behind soldiers.
+      // Puffs first (under), sparks after (over).
+      puffsPass.draw(puffs, cam);
       particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK);
       selectionPass.draw(world, cam, sel, drag, formation);
       if (opts.showMovePreview) selectionPass.drawMovePreview(world, cam, sel);

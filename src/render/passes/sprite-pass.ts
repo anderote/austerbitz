@@ -14,8 +14,15 @@ import {
   generateCombinedAtlas,
   type KindAtlasMeta,
 } from '../sprite-atlas';
+import { type PoseAtlas, pickPoseUv } from '../poses/atlas';
+import { composeCombinedAtlas } from '../poses/combined-atlas';
 
 const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
+
+// Module-scoped sort state so the comparator closure isn't re-allocated each
+// frame. `sortPosY` is set just before each `sortIdx.sort(sortByY)` call.
+let sortPosY: Float32Array | null = null;
+const sortByY = (a: number, b: number) => sortPosY![a]! - sortPosY![b]!;
 
 export interface SpritePass {
   draw(world: World, cam: Camera): void;
@@ -89,7 +96,11 @@ async function loadRegimentsAsync(): Promise<void> {
   }
 }
 
-export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): SpritePass {
+export function createSpritePass(
+  gl: WebGL2RenderingContext,
+  capacity: number,
+  poseAtlas: PoseAtlas | null,
+): SpritePass {
   // Fire-and-forget regiment load; falls back to the hardcoded defaults until
   // the fetch resolves. Validation + warning live inside loadRegimentsAsync.
   void loadRegimentsAsync();
@@ -159,31 +170,44 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
 
   gl.bindVertexArray(null);
 
+  // Compose procedural + pose atlas into one combined RGBA sheet.
+  const procedural = {
+    pixels: generateCombinedAtlas(),
+    width: COMBINED_SHEET_W,
+    height: COMBINED_SHEET_H,
+  };
+  const combined = composeCombinedAtlas(procedural, poseAtlas);
+  const sheetW = combined.width;
+  const sheetH = combined.height;
+  const poseAtlasY = combined.poseAtlasY;
+
   // Combined atlas: don't tile-wrap (each cell occupies a sub-rect, sampling
   // outside the cell would bleed into neighbours).
   const atlas = createTextureRGBA(
     gl,
-    COMBINED_SHEET_W,
-    COMBINED_SHEET_H,
-    generateCombinedAtlas(),
+    sheetW,
+    sheetH,
+    combined.pixels,
     { wrap: gl.CLAMP_TO_EDGE },
   );
 
-  // Cell UV rect for a given kind. `col`/`row` are local to that kind's
-  // 3x3 region; we add the region's pixel offset before normalizing.
+  // Cell UV rect for a procedural kind. `col`/`row` are local to that kind's
+  // 3x3 region; we add the region's pixel offset before normalizing against
+  // the combined sheet dimensions (which may be larger than the procedural
+  // region alone if a pose atlas is present).
   const cellUv = (
     meta: KindAtlasMeta,
     col: number,
     row: number,
   ): [number, number, number, number] => {
-    const halfTexelU = 0.5 / COMBINED_SHEET_W;
-    const halfTexelV = 0.5 / COMBINED_SHEET_H;
+    const halfTexelU = 0.5 / sheetW;
+    const halfTexelV = 0.5 / sheetH;
     const px = meta.region.x + col * meta.cellW;
     const py = meta.region.y + row * meta.cellH;
-    const u0 = px / COMBINED_SHEET_W + halfTexelU;
-    const v0 = py / COMBINED_SHEET_H + halfTexelV;
-    const us = meta.cellW / COMBINED_SHEET_W - 2 * halfTexelU;
-    const vs = meta.cellH / COMBINED_SHEET_H - 2 * halfTexelV;
+    const u0 = px / sheetW + halfTexelU;
+    const v0 = py / sheetH + halfTexelV;
+    const us = meta.cellW / sheetW - 2 * halfTexelU;
+    const vs = meta.cellH / sheetH - 2 * halfTexelV;
     return [u0, v0, us, vs];
   };
 
@@ -210,15 +234,13 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       const PATTERN_FEATURE_PIXELS = 4;
       const e = world.entities;
       sortIdx.length = 0;
-      for (let i = 0; i < e.capacity; i++) {
-        if (e.alive[i] === 1) sortIdx.push(i);
-      }
+      for (let n = 0; n < e.count; n++) sortIdx.push(e.aliveIds[n]!);
       const n = sortIdx.length;
       if (n === 0) return;
       // World Y grows downward, so larger Y = in front. Draw ascending by Y
       // so front sprites overwrite back ones (painter's algorithm).
-      const posY = e.posY;
-      sortIdx.sort((a, b) => posY[a]! - posY[b]!);
+      sortPosY = e.posY;
+      sortIdx.sort(sortByY);
 
       const useDots = cam.zoom < UNIT_DOT_ZOOM;
       const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
@@ -304,10 +326,18 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
           scratchColor[k * 4 + 3] = 1.0;
           scratchPattern[k] = 0;
           const facing = e.facing[i]!;
-          const cell = facing >= 1 && facing <= meta.poseCells.length
-            ? meta.poseCells[facing - 1]!
-            : (kind.spriteCell ?? meta.tintCell);
-          const uv = cellUv(meta, cell.col, cell.row);
+          const pose = e.pose[i]!;
+          const poseT = e.poseT[i]!;
+          const clipIdx = e.clipIndex[i]!;
+          let uv: readonly [number, number, number, number] | null = null;
+          if (poseAtlas) {
+            uv = pickPoseUv(poseAtlas, kind.id, pose, facing, clipIdx, poseT, poseAtlasY, sheetW, sheetH);
+          }
+          if (!uv) {
+            // Same facing→slot mapping as pickPoseUv (see atlas.ts).
+            const cell = meta.poseCells[(facing + 2) & 7] ?? kind.spriteCell ?? meta.tintCell;
+            uv = cellUv(meta, cell.col, cell.row);
+          }
           scratchUv[k * 4 + 0] = uv[0];
           scratchUv[k * 4 + 1] = uv[1];
           scratchUv[k * 4 + 2] = uv[2];

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createWorld } from '../sim/world';
 import { createProjectiles, ProjectileKind } from '../sim/projectiles';
 import { createParticles } from '../particles/particles';
+import { createPuffs } from '../puffs/puffs';
 import { EntityState } from '../sim/entities';
 import { type FireOrders } from '../sim/systems/state-system';
 import { setupStage } from './stage';
@@ -16,9 +17,10 @@ function harness(kind: string) {
   const world = createWorld({ seed: 1, capacity: 64, mapSize: 200 });
   const projectiles = createProjectiles(32);
   const particles = createParticles(512);
+  const puffs = createPuffs(64);
   const stage = setupStage(world, projectiles, particles, kind);
   const fireOrders: FireOrders = new Map();
-  return { world, projectiles, particles, stage, fireOrders };
+  return { world, projectiles, particles, puffs, stage, fireOrders };
 }
 
 describe('actFire', () => {
@@ -84,10 +86,10 @@ describe('actCharge', () => {
 
 describe('actExplosiveShell', () => {
   it('cannon-12 subject spawns one Shell projectile', () => {
-    const { world, projectiles, particles, stage } = harness('cannon-12');
+    const { world, projectiles, particles, puffs, stage } = harness('cannon-12');
     expect(projectiles.count).toBe(0);
 
-    actExplosiveShell(world, projectiles, particles, stage);
+    actExplosiveShell(world, projectiles, particles, puffs, stage);
 
     expect(projectiles.count).toBe(1);
     // Find the alive shell.
@@ -101,8 +103,8 @@ describe('actExplosiveShell', () => {
   });
 
   it('is a no-op when subject is not cannon-12', () => {
-    const { world, projectiles, particles, stage } = harness('line-infantry');
-    actExplosiveShell(world, projectiles, particles, stage);
+    const { world, projectiles, particles, puffs, stage } = harness('line-infantry');
+    actExplosiveShell(world, projectiles, particles, puffs, stage);
     expect(projectiles.count).toBe(0);
   });
 });

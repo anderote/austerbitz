@@ -1,14 +1,18 @@
 import type { World } from '../sim/world';
 import type { Vec2 } from '../util/math';
 import { getUnitKindByIndex } from '../data/units';
+import { isDead } from '../sim/entities';
 
 export interface Selection {
   ids: Set<number>;
 }
 
 export interface DragRect {
-  start: Vec2;       // screen
-  current: Vec2;     // screen
+  // World-anchored start point: captured once at mousedown so panning leaves it on the ground.
+  startWorld: Vec2;
+  // Live mouse position in screen space; converted to world at consumption time so panning
+  // re-maps the cursor to whatever world cell it's currently over.
+  currentScreen: Vec2;
   active: boolean;
 }
 
@@ -33,22 +37,24 @@ export function createSelection(): Selection {
 
 export function createDragRect(): DragRect {
   return {
-    start: { x: 0, y: 0 },
-    current: { x: 0, y: 0 },
+    startWorld: { x: 0, y: 0 },
+    currentScreen: { x: 0, y: 0 },
     active: false,
   };
 }
 
 export interface FormationDrag {
-  start: Vec2;     // screen-space
-  current: Vec2;   // screen-space
+  // World-anchored start point: stays put on the ground as the camera pans.
+  startWorld: Vec2;
+  // Live mouse position in screen space; converted to world at consumption time.
+  currentScreen: Vec2;
   active: boolean;
 }
 
 export function createFormationDrag(): FormationDrag {
   return {
-    start: { x: 0, y: 0 },
-    current: { x: 0, y: 0 },
+    startWorld: { x: 0, y: 0 },
+    currentScreen: { x: 0, y: 0 },
     active: false,
   };
 }
@@ -73,6 +79,7 @@ export function hitTestPoint(world: World, w: Vec2, opts: HitOpts = {}): number 
   let bestD2 = Infinity;
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] !== 1) continue;
+    if (isDead(e, i)) continue;
     if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const kind = getUnitKindByIndex(e.kindId[i]!);
     const dx = w.x - e.posX[i]!;
@@ -99,6 +106,7 @@ export function hitTestRect(
   const e = world.entities;
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] !== 1) continue;
+    if (isDead(e, i)) continue;
     if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const x = e.posX[i]!;
     const y = e.posY[i]!;
@@ -117,6 +125,7 @@ export function findSameKindInView(
   const e = world.entities;
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] !== 1) continue;
+    if (isDead(e, i)) continue;
     if (e.kindId[i] !== kindId) continue;
     if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const x = e.posX[i]!;

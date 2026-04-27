@@ -9,6 +9,7 @@ import { tickStates } from './state-system';
 import { tickProjectiles } from './projectile-system';
 import { createProjectiles } from '../projectiles';
 import { createParticles } from '../../particles/particles';
+import { createPuffs } from '../../puffs/puffs';
 
 function makeWorld() {
   const world = createWorld({ seed: 1, capacity: 64, mapSize: 200, cellSize: 2 });
@@ -274,6 +275,7 @@ describe('combat pipeline integration', () => {
     const world = makeWorld();
     const projectiles = createProjectiles(16);
     const particles = createParticles(2048);
+    const puffs = createPuffs(256);
     const fireOrders: FireOrders = new Map();
     const combat = createCombatSystem(fireOrders);
 
@@ -285,8 +287,8 @@ describe('combat pipeline integration', () => {
     // Tick 1: combat picks the target and triggers Aiming. State-system advances stateT.
     rebuildGrid(world);
     combat(world, dt);
-    tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
-    tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
+    tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0);
+    tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
 
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
     expect(projectiles.count).toBe(0);
@@ -298,8 +300,8 @@ describe('combat pipeline integration', () => {
     for (let i = 0; i < 12; i++) {
       rebuildGrid(world);
       combat(world, dt);
-      tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
-      tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
+      tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0);
+      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
       peakProjectiles = Math.max(peakProjectiles, projectiles.count);
     }
 

@@ -1,15 +1,17 @@
 import { freeProjectile, ProjectileKind, type Projectiles } from '../projectiles';
-import type { Entities } from '../entities';
+import { isDead, type Entities } from '../entities';
 import { gridSweptQuery, type Grid } from '../spatial/grid';
 import type { Particles } from '../../particles/particles';
 import type { Rng } from '../../util/rng';
 import { applyHit } from './combat-events';
 import type { BloodSplats } from '../blood-splats';
 import {
-  emitCannonballTrail,
   emitImpactDust,
   emitRicochetBurst,
 } from '../../particles/emitters';
+import { emitPuff } from '../../puffs/emit';
+import type { Puffs } from '../../puffs/puffs';
+import { CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX } from '../../puffs/profiles/cannonball-trail';
 import { spawnExplosion } from '../../fx/explosion';
 import { getUnitKindByIndex } from '../../data/units';
 import { GAME_GRAVITY } from '../../fx/ballistics';
@@ -17,11 +19,13 @@ import { cannon12Shell } from '../../data/weapons/cannon-12-shell';
 
 /** Half-width (m) of the per-entity body footprint used for swept-segment hits. */
 export const PROJECTILE_HIT_RADIUS = 0.5;
+const PROJECTILE_HIT_RADIUS_SQ = PROJECTILE_HIT_RADIUS * PROJECTILE_HIT_RADIUS;
 
 /** Ground friction applied to a rolling solid shot (per-second). */
 const GROUND_FRICTION = 1.5;
 /** Speed (m/s) below which a rolling solid shot is freed. */
 const ROLL_STOP_SPEED = 3;
+const ROLL_STOP_SPEED_SQ = ROLL_STOP_SPEED * ROLL_STOP_SPEED;
 /** Restitution applied to vertical velocity on a solid-shot ricochet. */
 const RICOCHET_RESTITUTION_Z = 0.5;
 /** Per-ricochet horizontal velocity damping. */
@@ -50,6 +54,7 @@ export function tickProjectiles(
   projectiles: Projectiles,
   entities: Entities,
   grid: Grid,
+  puffs: Puffs,
   particles: Particles,
   rng: Rng,
   dt: number,
@@ -83,7 +88,7 @@ export function tickProjectiles(
       p.fuseT[i] = p.fuseT[i]! - dt;
       if (p.fuseT[i]! <= 0) {
         spawnExplosion(
-          entities, grid, particles, rng,
+          entities, grid, puffs, particles, rng,
           p.posX[i]!, p.posY[i]!,
           cannon12Shell.projectile.explosion!,
           undefined,
@@ -113,7 +118,7 @@ export function tickProjectiles(
       } else if (kind === ProjectileKind.Shell) {
         // Detonate at the impact point before clamping.
         spawnExplosion(
-          entities, grid, particles, rng,
+          entities, grid, puffs, particles, rng,
           p.prevX[i]!, p.prevY[i]!,
           cannon12Shell.projectile.explosion!,
           undefined,
@@ -139,8 +144,10 @@ export function tickProjectiles(
       const fric = 1 - GROUND_FRICTION * dt;
       p.velX[i] = p.velX[i]! * fric;
       p.velY[i] = p.velY[i]! * fric;
-      const speed = Math.hypot(p.velX[i]!, p.velY[i]!);
-      if (speed < ROLL_STOP_SPEED) {
+      const vxR = p.velX[i]!;
+      const vyR = p.velY[i]!;
+      const speedSq = vxR * vxR + vyR * vyR;
+      if (speedSq < ROLL_STOP_SPEED_SQ) {
         freeProjectile(p, i);
         continue;
       }
@@ -165,6 +172,7 @@ export function tickProjectiles(
       for (let k = 0; k < nCandidates; k++) {
         const id = candidateBuf[k]!;
         if (entities.alive[id] === 0) continue;
+        if (isDead(entities, id)) continue;
         if (entities.team[id] === p.team[i]) continue;
 
         // Point-vs-segment: project entity onto segment, clamp, distance.
@@ -182,8 +190,8 @@ export function tickProjectiles(
         const closestY = ay + t * sdy;
         const dCloseX = ex - closestX;
         const dCloseY = ey - closestY;
-        const dist = Math.hypot(dCloseX, dCloseY);
-        if (dist > PROJECTILE_HIT_RADIUS) continue;
+        const distSq = dCloseX * dCloseX + dCloseY * dCloseY;
+        if (distSq > PROJECTILE_HIT_RADIUS_SQ) continue;
 
         // Z-range: tick range must overlap the entity's body height.
         const body = getUnitKindByIndex(entities.kindId[id]!).bodyZ;
@@ -193,7 +201,7 @@ export function tickProjectiles(
         if (kind === ProjectileKind.Shell) {
           // Detonate at the candidate's xy; the explosion handles damage.
           spawnExplosion(
-            entities, grid, particles, rng,
+            entities, grid, puffs, particles, rng,
             ex, ey,
             cannon12Shell.projectile.explosion!,
             undefined,
@@ -236,9 +244,9 @@ export function tickProjectiles(
       continue;
     }
 
-    // 9. Trail — solid shots and shells drop a smoke particle each tick.
+    // 9. Trail — solid shots and shells drop a smoke puff each tick.
     if (kind === ProjectileKind.SolidShot || kind === ProjectileKind.Shell) {
-      emitCannonballTrail(particles, p.posX[i]!, p.posY[i]!, rng);
+      emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, p.posX[i]!, p.posY[i]!, 0, 0, rng);
     }
   }
 }

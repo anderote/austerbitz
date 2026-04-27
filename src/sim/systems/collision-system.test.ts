@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld, rebuildGrid } from '../world';
-import { allocEntity } from '../entities';
+import { allocEntity, EntityState } from '../entities';
 import { collisionSystem } from './collision-system';
 import { getUnitKind, getUnitKindIndex } from '../../data/units';
 
@@ -87,15 +87,27 @@ describe('collisionSystem', () => {
     expect(world.entities.pushedT[b]).toBeGreaterThan(0);
   });
 
-  it('skips dead/ragdoll bodies', () => {
+  it('skips ragdoll/dying/dead bodies', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const a = spawnAt(world, 'line-infantry', 100, 100);
     const b = spawnAt(world, 'line-infantry', 100.1, 100);
-    world.entities.state[a] = 5; // dead
+    world.entities.state[a] = EntityState.Dead;
     const ax = world.entities.posX[a]!;
     const bx = world.entities.posX[b]!;
     step(world, 1 / 30);
     expect(world.entities.posX[a]).toBe(ax);
     expect(world.entities.posX[b]).toBe(bx);
+  });
+
+  it('reloading soldiers still collide (so marching formations do not stack)', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawnAt(world, 'line-infantry', 100, 100);
+    const b = spawnAt(world, 'line-infantry', 100.1, 100);
+    world.entities.state[a] = EntityState.Reloading;
+    world.entities.state[b] = EntityState.Reloading;
+    for (let i = 0; i < 30; i++) step(world, 1 / 30);
+    const dx = world.entities.posX[b]! - world.entities.posX[a]!;
+    const r = getUnitKind('line-infantry').baseStats.bodyRadius;
+    expect(dx).toBeGreaterThanOrEqual(2 * r - 1e-3);
   });
 });

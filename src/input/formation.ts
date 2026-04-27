@@ -1,4 +1,7 @@
 import type { Vec2 } from '../util/math';
+import type { World } from '../sim/world';
+import { getUnitKindByIndex } from '../data/units';
+import { isDead } from '../sim/entities';
 
 export interface FormationUnit {
   id: number;
@@ -12,6 +15,10 @@ export interface FormationInput {
   units: FormationUnit[];
   startW: Vec2;
   endW: Vec2;
+  /** Multiplier on each unit's per-axis spacing. Default 1. */
+  spacingMult?: number;
+  /** When non-null, fix rank count and derive frontage from N/ranks instead of dragLen. Default null. */
+  ranksOverride?: number | null;
 }
 
 export interface FormationSlots {
@@ -33,6 +40,10 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
   if (spacingX <= 0) spacingX = 1;
   if (spacingY <= 0) spacingY = 1;
 
+  const mult = input.spacingMult ?? 1;
+  spacingX *= mult;
+  spacingY *= mult;
+
   // Forward = drag direction, perpA = 90° left of forward.
   const dx = endW.x - startW.x;
   const dy = endW.y - startW.y;
@@ -44,8 +55,15 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
   const py = fx;
 
   // Front rank size and depth.
-  const frontCount = Math.max(1, Math.min(N, Math.floor(dragLen / spacingX) + 1));
-  const ranks = Math.ceil(N / frontCount);
+  let frontCount: number;
+  let ranks: number;
+  if (input.ranksOverride != null && N > 0) {
+    ranks = Math.min(Math.max(1, input.ranksOverride), N);
+    frontCount = Math.ceil(N / ranks);
+  } else {
+    frontCount = Math.max(1, Math.min(N, Math.floor(dragLen / spacingX) + 1));
+    ranks = Math.ceil(N / frontCount);
+  }
 
   // Drag midpoint; depth direction is fixed by drag direction (TW-style).
   const midX = (startW.x + endW.x) / 2;
@@ -223,4 +241,71 @@ export function assignFormationSlots(
   if (N === 0) return [];
   if (N <= HUNGARIAN_MAX_N) return assignByHungarian(units, slots);
   return assignByLateralSort(units, slots, forward);
+}
+
+/**
+ * Build a synthetic (startW, endW) for re-forming a selection in place at its
+ * current centroid, facing `forwardW`, with frontage chosen so all N units
+ * fit in `ranks` ranks at `spacingX * spacingMult`.
+ *
+ * `computeFormationSlots` interprets drag direction as the front-rank axis;
+ * the perpendicular is depth. So the synthetic drag lies along perp(forwardW).
+ */
+export function syntheticFormationDrag(
+  units: FormationUnit[],
+  forwardW: Vec2,
+  ranks: number,
+  spacingMult: number,
+): { startW: Vec2; endW: Vec2 } {
+  const N = units.length;
+  if (N === 0) return { startW: { x: 0, y: 0 }, endW: { x: 0, y: 0 } };
+
+  let cx = 0, cy = 0;
+  for (const u of units) { cx += u.x; cy += u.y; }
+  cx /= N; cy /= N;
+
+  let spacingX = 0;
+  for (const u of units) if (u.spacingX > spacingX) spacingX = u.spacingX;
+  if (spacingX <= 0) spacingX = 1;
+  spacingX *= spacingMult;
+
+  const r = Math.max(1, Math.min(ranks, N));
+  const frontCount = Math.ceil(N / r);
+  const halfFront = ((frontCount - 1) * spacingX) / 2;
+
+  const dx = -forwardW.y;
+  const dy = forwardW.x;
+
+  // When frontCount == 1, halfFront == 0 → both endpoints collapse to the
+  // centroid, and computeFormationSlots' dragLen<eps fallback would lose our
+  // facing. Emit a tiny offset along dragDir to preserve `forward`.
+  const eps = 1e-3;
+  const off = halfFront < eps ? eps : halfFront;
+
+  return {
+    startW: { x: cx - dx * off, y: cy - dy * off },
+    endW:   { x: cx + dx * off, y: cy + dy * off },
+  };
+}
+
+/**
+ * Materialize the alive selection into FormationUnit records, pulling per-kind
+ * spacing from `data/units`. Pure read of world state.
+ */
+export function liveFormationUnits(world: World, ids: Iterable<number>): FormationUnit[] {
+  const out: FormationUnit[] = [];
+  const e = world.entities;
+  for (const id of ids) {
+    if (e.alive[id] !== 1) continue;
+    if (isDead(e, id)) continue;
+    const kind = getUnitKindByIndex(e.kindId[id]!);
+    out.push({
+      id,
+      x: e.posX[id]!,
+      y: e.posY[id]!,
+      spacingX: kind.baseStats.formationSpacing.x,
+      spacingY: kind.baseStats.formationSpacing.y,
+    });
+  }
+  return out;
 }

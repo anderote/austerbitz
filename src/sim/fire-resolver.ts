@@ -7,6 +7,8 @@ import {
 } from './projectiles';
 import type { Particles } from '../particles/particles';
 import { emitMuzzleFx } from '../particles/emitters';
+import { emitPuffMuzzleSpray } from '../puffs/emit';
+import type { Puffs } from '../puffs/puffs';
 import type { Rng } from '../util/rng';
 import { barrelTip } from '../fx/barrel';
 import { solveCannonLaunch } from '../fx/ballistics';
@@ -34,6 +36,7 @@ export function resolveFire(
   e: Entities,
   projectiles: Projectiles,
   particles: Particles,
+  puffs: Puffs,
   rng: Rng,
   id: number,
   targetX: number,
@@ -55,7 +58,9 @@ export function resolveFire(
     let dirX = dx / d;
     let dirY = dy / d;
 
-    const spreadRad = weapon.projectile.accuracySpreadRad;
+    const baseSpread = weapon.projectile.accuracySpreadRad ?? 0;
+    const accuracy = kind.baseStats.weaponAccuracy;
+    const spreadRad = Math.max(0, baseSpread * (1 - accuracy));
     if (spreadRad) {
       const spread = (rng.next() - 0.5) * 2 * spreadRad;
       const cs = Math.cos(spread);
@@ -79,6 +84,16 @@ export function resolveFire(
 
     if (weapon.muzzle) {
       emitMuzzleFx(particles, weapon.muzzle, tip.x, tip.y, dirX, dirY, rng);
+      emitPuffMuzzleSpray(
+        puffs,
+        weapon.muzzle.smoke.profile,
+        weapon.muzzle.smoke.profileIdx,
+        tip.x, tip.y, dirX, dirY,
+        weapon.muzzle.smoke.count,
+        weapon.muzzle.smoke.coneAngle,
+        weapon.muzzle.smoke.speed,
+        rng,
+      );
     }
 
     e.recoilT[id] = RECOIL_T;
@@ -138,6 +153,16 @@ export function resolveFire(
 
     if (weapon.muzzle) {
       emitMuzzleFx(particles, weapon.muzzle, tip.x, tip.y, dirX, dirY, rng);
+      emitPuffMuzzleSpray(
+        puffs,
+        weapon.muzzle.smoke.profile,
+        weapon.muzzle.smoke.profileIdx,
+        tip.x, tip.y, dirX, dirY,
+        weapon.muzzle.smoke.count,
+        weapon.muzzle.smoke.coneAngle,
+        weapon.muzzle.smoke.speed,
+        rng,
+      );
     }
 
     e.recoilT[id] = RECOIL_T;

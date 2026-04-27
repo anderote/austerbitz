@@ -47,11 +47,12 @@ describe('particle pool', () => {
     expect(p.velY[id]).toBeCloseTo(5, 5);
   });
 
-  it('sizeGrowth scales size per second', () => {
+  it('sizeGrowth scales size per second (multiplicative)', () => {
     const p = createParticles(4);
     const id = spawnParticle(p, {
       x: 0, y: 0, vx: 0, vy: 0, life: 10, size: 1, r: 1, g: 1, b: 1,
       sizeGrowth: 1.0,
+      klass: ParticleClass.Smoke,
     });
     updateParticles(p, 1.0);
     // size *= 1 + 1.0 * 1.0 = 2

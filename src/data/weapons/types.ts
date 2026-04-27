@@ -1,29 +1,27 @@
+import type { PuffProfile } from '../../puffs/profile';
+
 export type Color3 = readonly [number, number, number];
 
 export interface MuzzleProfile {
   flash: { size: number; life: number; color: Color3 };
   smoke: {
+    profile: PuffProfile;
+    profileIdx: number;
     count: number;
-    coneAngle: number;        // radians
+    coneAngle: number;          // radians
     speed: { min: number; max: number };
-    life:  { min: number; max: number };
-    sizeStart: number;
-    sizeGrowth: number;       // size multiplier per second
-    upwardDrift: number;      // m/s² upward bias
-    drag: number;             // per-tick velocity multiplier
-    color: Color3;
   };
   recoilFirer: number;        // meters of one-time positional shove backward on the shooter
 }
 
 export interface ExplosionProfile {
   flash: { size: number; life: number; color: Color3 };
+  // coneAngle is omitted — explosions are always radial (2π); hardcoded in spawnExplosion.
   smokeBillow: {
+    profile: PuffProfile;
+    profileIdx: number;
     count: number;
-    speedMin: number; speedMax: number;
-    lifeMin: number; lifeMax: number;
-    sizeStart: number; sizeGrowth: number;
-    drag: number; upwardDrift: number;
+    speed: { min: number; max: number };
   };
   debris: { count: number; speedMin: number; speedMax: number; life: number; size: number };
   damage: number;

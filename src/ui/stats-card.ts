@@ -53,11 +53,48 @@ export function createStatsCard(root: HTMLElement): StatsCard {
       }
       el.style.display = '';
       el.replaceChildren();
+      const hist = renderHealthHistogram(world, sel);
+      if (hist) el.appendChild(hist);
       for (const g of groups.values()) {
         el.appendChild(renderKindEntry(g));
       }
     },
   };
+}
+
+const HISTOGRAM_BINS = 10;
+
+function renderHealthHistogram(world: World, sel: Selection): HTMLDivElement | null {
+  const bins = new Array<number>(HISTOGRAM_BINS).fill(0);
+  let total = 0;
+  for (const id of sel.ids) {
+    if (world.entities.alive[id] === 0) continue;
+    const kIdx = world.entities.kindId[id]!;
+    const maxHp = getUnitKindByIndex(kIdx).baseStats.hp;
+    if (maxHp <= 0) continue;
+    const hp = world.entities.hp[id]!;
+    const pct = Math.max(0, Math.min(1, hp / maxHp));
+    const bin = Math.min(HISTOGRAM_BINS - 1, Math.floor(pct * HISTOGRAM_BINS));
+    bins[bin]!++;
+    total++;
+  }
+  if (total === 0) return null;
+  const maxBin = Math.max(1, ...bins);
+  const wrap = panel('stats-card-histogram');
+  wrap.title = `Health distribution (${total})`;
+  for (let i = 0; i < HISTOGRAM_BINS; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'histogram-slot';
+    const bar = document.createElement('div');
+    bar.className = 'histogram-bar';
+    const count = bins[i]!;
+    bar.style.height = `${(count / maxBin) * 100}%`;
+    const hue = Math.round((i / (HISTOGRAM_BINS - 1)) * 120);
+    bar.style.background = `hsl(${hue}, 65%, 50%)`;
+    slot.appendChild(bar);
+    wrap.appendChild(slot);
+  }
+  return wrap;
 }
 
 function renderKindEntry(g: KindAggregate): HTMLDivElement {

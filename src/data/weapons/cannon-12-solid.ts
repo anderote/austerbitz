@@ -1,21 +1,14 @@
 import type { MuzzleProfile, WeaponProfile } from './types';
+import { CANNON_SMOKE, CANNON_SMOKE_INDEX } from '../../puffs/profiles/cannon-smoke';
 
 export const cannon12Muzzle: MuzzleProfile = {
-  flash: {
-    size: 3.0,
-    life: 0.15,
-    color: [1.0, 0.86, 0.59],
-  },
+  flash: { size: 3.0, life: 0.15, color: [1.0, 0.86, 0.59] },
   smoke: {
-    count: 40,
-    coneAngle: 0.8,
-    speed: { min: 8, max: 15 },
-    life: { min: 2.5, max: 4.0 },
-    sizeStart: 1.2,
-    sizeGrowth: 0.6,
-    upwardDrift: 0.6,
-    drag: 0.985,
-    color: [0.78, 0.80, 0.84],
+    profile: CANNON_SMOKE,
+    profileIdx: CANNON_SMOKE_INDEX,
+    count: 24,
+    coneAngle: 0.18,
+    speed: { min: 7, max: 13 },
   },
   recoilFirer: 4.0,
 };

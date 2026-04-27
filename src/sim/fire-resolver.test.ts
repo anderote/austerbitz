@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { allocEntity, createEntities } from './entities';
 import { createProjectiles, ProjectileKind } from './projectiles';
 import { createParticles } from '../particles/particles';
+import { createPuffs } from '../puffs/puffs';
 import { createRng } from '../util/rng';
 import { getUnitKindIndex } from '../data/units';
 import { resolveFire, RECOIL_T } from './fire-resolver';
@@ -11,6 +12,7 @@ describe('resolveFire', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
+    const puffs = createPuffs(64);
     const rng = createRng(42);
 
     const id = allocEntity(e);
@@ -20,7 +22,7 @@ describe('resolveFire', () => {
     e.facing[id] = 0; // east
     e.team[id] = 1;
 
-    const ok = resolveFire(e, projectiles, particles, rng, id, 50, 0);
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 50, 0);
 
     expect(ok).toBe(true);
     expect(projectiles.count).toBe(1);
@@ -33,6 +35,7 @@ describe('resolveFire', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
+    const puffs = createPuffs(64);
     const rng = createRng(7);
 
     const id = allocEntity(e);
@@ -42,7 +45,7 @@ describe('resolveFire', () => {
     e.facing[id] = 0; // east
     e.team[id] = 0;
 
-    const ok = resolveFire(e, projectiles, particles, rng, id, 100, 0);
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 100, 0);
 
     expect(ok).toBe(true);
     expect(projectiles.count).toBe(1);
@@ -59,6 +62,7 @@ describe('resolveFire', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
+    const puffs = createPuffs(64);
     const rng = createRng(1);
 
     const id = allocEntity(e);
@@ -67,7 +71,7 @@ describe('resolveFire', () => {
     e.posY[id] = 0;
     e.facing[id] = 0;
 
-    const ok = resolveFire(e, projectiles, particles, rng, id, 10, 0);
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 10, 0);
 
     expect(ok).toBe(false);
     expect(projectiles.count).toBe(0);
@@ -79,6 +83,7 @@ describe('resolveFire', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
+    const puffs = createPuffs(64);
     const rng = createRng(1);
 
     const id = allocEntity(e);
@@ -89,7 +94,7 @@ describe('resolveFire', () => {
 
     // line-infantry barrel offset is (forward 0.4, side 0, height 1.4).
     // Aim exactly at the tip — zero horizontal range → no shot.
-    const ok = resolveFire(e, projectiles, particles, rng, id, 0.4, 0);
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 0.4, 0);
 
     expect(ok).toBe(false);
     expect(projectiles.count).toBe(0);
@@ -101,6 +106,7 @@ describe('resolveFire', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
+    const puffs = createPuffs(64);
     const rng = createRng(1);
 
     const id = allocEntity(e);
@@ -111,7 +117,7 @@ describe('resolveFire', () => {
     e.team[id] = 0;
 
     // 250 m/s muzzle speed, gravity 18 → max range ≈ v²/g ≈ 3472 m. Pick way past.
-    const ok = resolveFire(e, projectiles, particles, rng, id, 100_000, 0);
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 100_000, 0);
 
     expect(ok).toBe(false);
     expect(projectiles.count).toBe(0);
@@ -122,6 +128,7 @@ describe('resolveFire', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
+    const puffs = createPuffs(64);
     const rng = createRng(1);
 
     const id = allocEntity(e);
@@ -131,7 +138,7 @@ describe('resolveFire', () => {
     e.facing[id] = 0; // east
     e.team[id] = 1;
 
-    const ok = resolveFire(e, projectiles, particles, rng, id, 100, 0);
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 100, 0);
     expect(ok).toBe(true);
     // Shot is roughly east → recoil peak points west (negative X).
     expect(e.recoilPeakX[id]!).toBeLessThan(0);
