@@ -65,27 +65,41 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-// Six regiments of 300 line-infantry each, deployed in 2-rank line formations
-// (British Napoleonic convention) and stacked N→S, all facing south.
+// Two opposing armies: block regiments running N→S, 4 ranks deep × 100 across.
+// Friendly (team 0) to the east facing W; enemy (team 1) to the west facing E.
 const REGIMENTS = 6;
-const SOLDIERS_PER_REGIMENT = 300;
-const RANKS = 2;
-const FILES = SOLDIERS_PER_REGIMENT / RANKS; // 150
-const FILE_GAP = 1.2;
-const RANK_GAP = 1.6;
-const REGIMENT_GAP = 6; // metres between adjacent regiments (rear-to-front)
-const FRONT_FACING = 2; // POSE_CELLS index 1 = S front
-const regW = (FILES - 1) * FILE_GAP;
-const regH = (RANKS - 1) * RANK_GAP;
-const blockH = REGIMENTS * regH + (REGIMENTS - 1) * REGIMENT_GAP;
-const y0 = cy - blockH / 2;
+const FILES = 100;          // soldiers across the N-S frontage
+const RANKS = 4;            // soldiers deep along the E-W axis
+const FILE_GAP = 1.2;       // metres between files (N-S)
+const RANK_GAP = 1.6;       // metres between ranks (E-W)
+const REGIMENT_GAP = 8;     // metres between adjacent regiments (N-S)
+const BATTLE_GAP = 200;     // metres between the two armies' front ranks
+const FACING_W = 7;         // POSE_CELLS index 6 = W side mirrored
+const FACING_E = 3;         // POSE_CELLS index 2 = E side
+const regLenNS = (FILES - 1) * FILE_GAP;
+const armyLenNS = REGIMENTS * regLenNS + (REGIMENTS - 1) * REGIMENT_GAP;
+const y0 = cy - armyLenNS / 2;
+
+const friendlyFrontX = cx + BATTLE_GAP / 2;
 for (let g = 0; g < REGIMENTS; g++) {
-  const regY = y0 + g * (regH + REGIMENT_GAP);
-  for (let r = 0; r < RANKS; r++) {
-    for (let f = 0; f < FILES; f++) {
-      const x = cx - regW / 2 + f * FILE_GAP;
-      const y = regY + r * RANK_GAP;
-      spawn('line-infantry', 0, x, y, FRONT_FACING);
+  const regY0 = y0 + g * (regLenNS + REGIMENT_GAP);
+  for (let f = 0; f < FILES; f++) {
+    for (let r = 0; r < RANKS; r++) {
+      const x = friendlyFrontX + r * RANK_GAP;
+      const y = regY0 + f * FILE_GAP;
+      spawn('line-infantry', 0, x, y, FACING_W);
+    }
+  }
+}
+
+const enemyFrontX = cx - BATTLE_GAP / 2;
+for (let g = 0; g < REGIMENTS; g++) {
+  const regY0 = y0 + g * (regLenNS + REGIMENT_GAP);
+  for (let f = 0; f < FILES; f++) {
+    for (let r = 0; r < RANKS; r++) {
+      const x = enemyFrontX - r * RANK_GAP;
+      const y = regY0 + f * FILE_GAP;
+      spawn('line-infantry', 1, x, y, FACING_E);
     }
   }
 }

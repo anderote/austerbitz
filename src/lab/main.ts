@@ -11,6 +11,7 @@ import { movementSystem } from '../sim/systems/movement-system';
 import { tickStates, type FireOrders } from '../sim/systems/state-system';
 import { tickProjectiles } from '../sim/systems/projectile-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
+import { EntityState } from '../sim/entities';
 import '../ui/styles.css';
 
 import { setupStage, resetStage, spawnSubject } from './stage';
@@ -124,7 +125,14 @@ function frame(t: number) {
   tickRagdoll(world.entities, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.
-  if (isAutoFire()) handlers.fire();
+  // (Manual `actFire` no longer self-gates, so auto-fire must check here.)
+  if (isAutoFire()) {
+    const sid = stage.subjectId;
+    if (sid !== null && world.entities.alive[sid] === 1
+        && world.entities.state[sid] === EntityState.Idle) {
+      handlers.fire();
+    }
+  }
 
   applyWind(particles, wind.accelX, dt);
   updateParticles(particles, dt);

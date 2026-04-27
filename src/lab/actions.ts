@@ -67,9 +67,8 @@ export function actFire(world: World, fireOrders: FireOrders, stage: Stage): voi
   if (id === null) return;
   const kind = getUnitKindByIndex(world.entities.kindId[id]!);
   if (!kind.weapon) return;
-  // Only allow re-triggering when idle so the auto-fire flag doesn't stomp
-  // an in-flight aiming/reloading cycle.
-  if (world.entities.state[id] !== EntityState.Idle) return;
+  // Manual fire always re-triggers — even mid-reload — so the lab can rapid-fire
+  // for inspection. Auto-fire callers gate on Idle themselves to avoid stomping.
   triggerFire(world.entities, fireOrders, id, DUMMY_ROW_X, DUMMY_ROW_Y);
 }
 

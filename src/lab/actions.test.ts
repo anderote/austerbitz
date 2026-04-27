@@ -36,7 +36,7 @@ describe('actFire', () => {
     expect(order.ty).toBe(0);
   });
 
-  it('does nothing when subject is mid-reload (state != Idle)', () => {
+  it('interrupts an in-flight reload and re-enters Aiming', () => {
     const { world, stage, fireOrders } = harness('line-infantry');
     const id = stage.subjectId!;
     world.entities.state[id] = EntityState.Reloading;
@@ -44,8 +44,8 @@ describe('actFire', () => {
 
     actFire(world, fireOrders, stage);
 
-    expect(world.entities.state[id]).toBe(EntityState.Reloading);
-    expect(fireOrders.has(id)).toBe(false);
+    expect(world.entities.state[id]).toBe(EntityState.Aiming);
+    expect(fireOrders.has(id)).toBe(true);
   });
 });
 

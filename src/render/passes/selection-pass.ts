@@ -166,7 +166,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const arrowLen = 7 / cam.zoom;
       const arrowHalf = 5 / cam.zoom;
 
-      const renderChains = (chains: number[][], alpha: number): void => {
+      const renderChains = (chains: number[][], alpha: number, rgb?: readonly [number, number, number]): void => {
         if (chains.length === 0) return;
         let wpN = 0;
         const writeVert = (x: number, y: number): void => {
@@ -215,7 +215,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         gl.bindBuffer(gl.ARRAY_BUFFER, wpBuf);
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, wpScratch.subarray(0, wpN * 2));
         gl.uniformMatrix3fv(wpU.u_viewProj, false, viewProjection(cam));
-        gl.uniform4f(wpU.u_color, 1.0, 1.0, 1.0, alpha);
+        gl.uniform4f(wpU.u_color, rgb?.[0] ?? 1.0, rgb?.[1] ?? 1.0, rgb?.[2] ?? 1.0, alpha);
         if (alpha < 1) {
           gl.enable(gl.BLEND);
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -412,6 +412,24 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
           gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, m);
           gl.disable(gl.BLEND);
           gl.bindVertexArray(null);
+        }
+
+        // Transparent facing-direction arrow: from rect center along the
+        // depth axis (bl - tl), extending slightly past the back rank.
+        const cx = (rect.tl.x + rect.tr.x + rect.bl.x + rect.br.x) * 0.25;
+        const cy = (rect.tl.y + rect.tr.y + rect.bl.y + rect.br.y) * 0.25;
+        const dx = rect.bl.x - rect.tl.x;
+        const dy = rect.bl.y - rect.tl.y;
+        const depthLen = Math.hypot(dx, dy);
+        if (depthLen > 1e-6) {
+          const ux = dx / depthLen;
+          const uy = dy / depthLen;
+          const half = Math.max(depthLen * 0.5 + 2, 4);
+          const tailX = cx - ux * half;
+          const tailY = cy - uy * half;
+          const tipX = cx + ux * half;
+          const tipY = cy + uy * half;
+          renderChains([[tailX, tailY, tipX, tipY]], 0.45, [0.55, 1.0, 0.6]);
         }
       }
     },
