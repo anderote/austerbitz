@@ -9,9 +9,9 @@ export const musket: WeaponProfile = {
     smoke: {
       profile: MUSKET_SMOKE,
       profileIdx: MUSKET_SMOKE_INDEX,
-      count: 10,
+      count: 6,
       coneAngle: 0.10,
-      speed: { min: 6, max: 11 },
+      speed: { min: 3, max: 6 },
     },
     recoilFirer: 0.5,
   },
