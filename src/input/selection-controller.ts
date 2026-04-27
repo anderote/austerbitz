@@ -3,12 +3,13 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueReformInPlace } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueReformInPlace, issueReformAtTarget } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits } from './formation';
-import { isDead } from '../sim/entities';
+import { isDead, EntityState } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
   bumpSpacing, bumpRanks, spacingMultiplier,
+  MARCH_FLOOR_MULT, isTightStance,
   type FormationParams,
 } from './formation-params';
 import type { Particles } from '../particles/particles';
@@ -35,6 +36,8 @@ export interface SelectionControllerDeps {
 export interface SelectionController {
   readonly cursorMode: CursorMode;
   readonly formationParams: FormationParams;
+  /** True when units are packed (or about to pack) at a sub-march-floor spacing. */
+  readonly tightHeld: boolean;
   /** Called once per frame. Currently a no-op; reserved for per-frame work. */
   update(dt: number): void;
   destroy(): void;
@@ -77,6 +80,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
 
   let cursorMode: CursorMode = 'normal';
   const formationParams = createFormationParams();
+  let tightHeld = false;
   let lastSelectionSig = 0;
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
@@ -165,6 +169,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         const w = screenToWorld(camera, { x: e.clientX, y: e.clientY });
         issueAttackMove(world, selection, w, { queue: e.shiftKey });
         puff(w.x, w.y);
+        tightHeld = false;
         cursorMode = 'normal';
         drag.active = false;
         pendingClickStart = null;
@@ -261,7 +266,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         if (units.length > 0) {
           const { slots, forward } = computeFormationSlots({
             units, startW, endW,
-            spacingMult: spacingMultiplier(formationParams),
+            spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
             ranksOverride: formationParams.ranks,
           });
           const targets = assignFormationSlots(units, slots, forward);
@@ -270,6 +275,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
           const mx = (startW.x + endW.x) / 2;
           const my = (startW.y + endW.y) / 2;
           puff(mx, my);
+          tightHeld = false;
         }
         pendingFormationStart = null;
         formationDrag.active = false;
@@ -284,12 +290,20 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (hit !== -1 && world.entities.team[hit] !== PLAYER_TEAM) {
         issueAttack(world, selection, hit, opts);
         puff(w.x, w.y);
+        tightHeld = false;
       } else {
-        const assignments = issueMove(world, selection, w, opts);
+        let assignments;
+        if (isTightStance(formationParams)) {
+          const fwd = averageFacing();
+          assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, formationParams.ranks, opts);
+        } else {
+          assignments = issueMove(world, selection, w, opts);
+        }
         puff(w.x, w.y);
         if (deps.movePreview && assignments.length > 0) {
           deps.movePreview.add(assignments.map(a => a.target));
         }
+        tightHeld = false;
       }
       return;
     }
@@ -343,6 +357,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (selection.ids.size === 0) return;
       bumpSpacing(formationParams, e.code === 'BracketLeft' ? -1 : +1);
       reformNow();
+      tightHeld = isTightStance(formationParams);
       return;
     }
     if (e.code === 'Comma' || e.code === 'Period') {
@@ -352,6 +367,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (selection.ids.size === 0) return;
       bumpRanks(formationParams, e.code === 'Comma' ? -1 : +1);
       reformNow();
+      tightHeld = isTightStance(formationParams);
       return;
     }
 
@@ -402,7 +418,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     const endW = screenToWorld(camera, formationDrag.currentScreen);
     const { slots, rect } = computeFormationSlots({
       units, startW, endW,
-      spacingMult: spacingMultiplier(formationParams),
+      spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
       ranksOverride: formationParams.ranks,
     });
     return { rect, slots };
@@ -411,6 +427,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   return {
     get cursorMode() { return cursorMode; },
     get formationParams() { return formationParams; },
+    get tightHeld() { return tightHeld; },
     formationPreview,
     update(_dt) {
       const e = world.entities;
@@ -428,7 +445,24 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       sig = (sig * 2654435761) ^ first ^ (last << 1);
       if (sig !== lastSelectionSig) {
         resetFormationParams(formationParams);
+        tightHeld = false;
         lastSelectionSig = sig;
+      }
+
+      // Auto-pack on idle when in tight stance.
+      if (selection.ids.size > 0 && isTightStance(formationParams) && !tightHeld) {
+        let allIdle = true;
+        for (const id of selection.ids) {
+          if (e.alive[id] !== 1) continue;
+          const q = world.orderQueue.get(id);
+          if (q && q.length > 0) { allIdle = false; break; }
+          if (e.state[id] === EntityState.Moving) { allIdle = false; break; }
+        }
+        if (allIdle) {
+          const fwd = averageFacing();
+          issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), formationParams.ranks);
+          tightHeld = true;
+        }
       }
     },
     destroy() {

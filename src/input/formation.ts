@@ -256,13 +256,20 @@ export function syntheticFormationDrag(
   forwardW: Vec2,
   ranks: number,
   spacingMult: number,
+  centroid?: Vec2,
 ): { startW: Vec2; endW: Vec2 } {
   const N = units.length;
   if (N === 0) return { startW: { x: 0, y: 0 }, endW: { x: 0, y: 0 } };
 
-  let cx = 0, cy = 0;
-  for (const u of units) { cx += u.x; cy += u.y; }
-  cx /= N; cy /= N;
+  let cx: number, cy: number;
+  if (centroid) {
+    cx = centroid.x;
+    cy = centroid.y;
+  } else {
+    cx = 0; cy = 0;
+    for (const u of units) { cx += u.x; cy += u.y; }
+    cx /= N; cy /= N;
+  }
 
   let spacingX = 0;
   for (const u of units) if (u.spacingX > spacingX) spacingX = u.spacingX;
@@ -286,6 +293,28 @@ export function syntheticFormationDrag(
     startW: { x: cx - dx * off, y: cy - dy * off },
     endW:   { x: cx + dx * off, y: cy + dy * off },
   };
+}
+
+/**
+ * Estimate how many ranks the current unit positions form, by projecting onto
+ * the facing direction (depth axis) and clustering at half-spacingY tolerance.
+ * Used so changing spacing preserves the current rank ratio when the player
+ * has not set an explicit rank count.
+ */
+export function inferRanksFromPositions(units: FormationUnit[], forwardW: Vec2): number {
+  const N = units.length;
+  if (N === 0) return 1;
+  let spacingY = 0;
+  for (const u of units) if (u.spacingY > spacingY) spacingY = u.spacingY;
+  if (spacingY <= 0) spacingY = 1;
+  const fx = forwardW.x, fy = forwardW.y;
+  const depths = units.map(u => u.x * fx + u.y * fy).sort((a, b) => a - b);
+  const tol = spacingY * 0.5;
+  let ranks = 1;
+  for (let i = 1; i < depths.length; i++) {
+    if (depths[i]! - depths[i - 1]! > tol) ranks++;
+  }
+  return Math.max(1, Math.min(ranks, N));
 }
 
 /**

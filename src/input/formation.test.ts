@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeFormationSlots, assignFormationSlots, syntheticFormationDrag, type FormationUnit } from './formation';
+import { computeFormationSlots, assignFormationSlots, syntheticFormationDrag, inferRanksFromPositions, type FormationUnit } from './formation';
 import type { Vec2 } from '../util/math';
 
 describe('computeFormationSlots', () => {
@@ -320,5 +320,36 @@ describe('syntheticFormationDrag', () => {
     const units = [{ id: 0, x: 0, y: 0, spacingX: 1, spacingY: 1 }];
     const { startW, endW } = syntheticFormationDrag(units, { x: 1, y: 0 }, 1, 1);
     expect(Math.hypot(endW.x - startW.x, endW.y - startW.y)).toBeGreaterThan(0);
+  });
+
+  it('centroid override anchors endpoints at the override point', () => {
+    const units = Array.from({ length: 6 }, (_, i) => ({
+      id: i, x: i, y: i, spacingX: 1, spacingY: 1,
+    }));
+    const { startW, endW } = syntheticFormationDrag(
+      units, { x: 1, y: 0 }, 2, 1, { x: 100, y: 200 },
+    );
+    expect((startW.x + endW.x) / 2).toBeCloseTo(100);
+    expect((startW.y + endW.y) / 2).toBeCloseTo(200);
+  });
+});
+
+describe('inferRanksFromPositions', () => {
+  it('groups units by depth projection at half-spacingY tolerance', () => {
+    // forward = (0,1) so depth = y-projection. Spacing Y = 1.2 → tol = 0.6.
+    // Three depth clusters at y = 0, 1.2, 2.4 → 3 ranks.
+    const units: FormationUnit[] = [
+      { id: 0, x: 0, y: 0,   spacingX: 1, spacingY: 1.2 },
+      { id: 1, x: 1, y: 0,   spacingX: 1, spacingY: 1.2 },
+      { id: 2, x: 0, y: 1.2, spacingX: 1, spacingY: 1.2 },
+      { id: 3, x: 1, y: 1.2, spacingX: 1, spacingY: 1.2 },
+      { id: 4, x: 0, y: 2.4, spacingX: 1, spacingY: 1.2 },
+      { id: 5, x: 1, y: 2.4, spacingX: 1, spacingY: 1.2 },
+    ];
+    expect(inferRanksFromPositions(units, { x: 0, y: 1 })).toBe(3);
+  });
+
+  it('returns 1 for an empty selection', () => {
+    expect(inferRanksFromPositions([], { x: 1, y: 0 })).toBe(1);
   });
 });

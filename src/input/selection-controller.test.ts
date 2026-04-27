@@ -478,10 +478,10 @@ describe('formation hotkeys', () => {
     selection.ids.add(id);
 
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(2); // default 1 → 2
+    expect(ctrl.formationParams.spacingIndex).toBe(7); // default 6 → 7
 
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(1);
+    expect(ctrl.formationParams.spacingIndex).toBe(6);
   });
 
   it(', and . cycle ranks', () => {
@@ -499,7 +499,7 @@ describe('formation hotkeys', () => {
   it('hotkeys are no-op when selection is empty', () => {
     const { ctrl } = makeDeps();
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(1); // unchanged
+    expect(ctrl.formationParams.spacingIndex).toBe(6); // unchanged
   });
 
   it('issues a move order on hotkey press with non-empty selection', () => {
@@ -520,11 +520,76 @@ describe('formation hotkeys', () => {
     ctrl.update(0);                     // bind initial signature
 
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(2);
+    expect(ctrl.formationParams.spacingIndex).toBe(7);
 
     selection.ids.clear();
     selection.ids.add(id2);
     ctrl.update(0);                     // detect change → reset
-    expect(ctrl.formationParams.spacingIndex).toBe(1);
+    expect(ctrl.formationParams.spacingIndex).toBe(6);
+  });
+});
+
+describe('selection-controller — tight stance', () => {
+  it('auto-packs idle units when in tight stance', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(id);
+    ctrl.update(0); // bind selection signature
+    expect(ctrl.tightHeld).toBe(false);
+
+    // Set a sub-march-floor spacing.
+    ctrl.formationParams.spacingIndex = 0;
+    // Ensure unit is idle and has no orders.
+    world.orderQueue.delete(id);
+    world.entities.state[id] = EntityState.Idle;
+
+    ctrl.update(0);
+    expect(world.orderQueue.has(id)).toBe(true);
+    expect(ctrl.tightHeld).toBe(true);
+  });
+
+  it('single right-click in tight stance reforms at march-floor spacing', () => {
+    const { ctrl, world, selection } = makeDeps();
+    // Four line-infantry units in a row; spacingX = 1 (line-infantry default).
+    const ids = [
+      spawn(world, 'line-infantry', 0, 0, 0),
+      spawn(world, 'line-infantry', 0, 1, 0),
+      spawn(world, 'line-infantry', 0, 2, 0),
+      spawn(world, 'line-infantry', 0, 3, 0),
+    ];
+    for (const i of ids) selection.ids.add(i);
+    ctrl.update(0);
+
+    // Set tight stance via spacing index 0 (mult 0.05).
+    ctrl.formationParams.spacingIndex = 0;
+
+    // Single right-click (no drag) at world (50, 50). Camera center is (0,0),
+    // viewport 800x600 → screen (450, 350) maps to world (50, 50).
+    ctrl._internals.onMouseDown({ button: 2, clientX: 450, clientY: 350, target: null });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 450, clientY: 350, shiftKey: false, ctrlKey: false, metaKey: false });
+
+    // Collect the issued targets.
+    const targets: Array<{ x: number; y: number }> = [];
+    for (const i of ids) {
+      const q = world.orderQueue.get(i);
+      expect(q).toBeDefined();
+      const o = q![0]!;
+      expect(o.kind).toBe('move');
+      const m = o as { kind: 'move'; targetX: number; targetY: number };
+      targets.push({ x: m.targetX, y: m.targetY });
+    }
+
+    // Nearest-neighbor distance must be at least MARCH_FLOOR_MULT * spacingX
+    // (0.85 * 1.0 = 0.85m), proving the floor clamp kicked in.
+    let minD = Infinity;
+    for (let i = 0; i < targets.length; i++) {
+      for (let j = i + 1; j < targets.length; j++) {
+        const dx = targets[i]!.x - targets[j]!.x;
+        const dy = targets[i]!.y - targets[j]!.y;
+        const d = Math.hypot(dx, dy);
+        if (d < minD) minD = d;
+      }
+    }
+    expect(minD).toBeGreaterThanOrEqual(0.85 - 1e-6);
   });
 });

@@ -1,7 +1,7 @@
 import type { World, Order } from '../sim/world';
 import type { Selection } from './selection';
 import type { Vec2 } from '../util/math';
-import { computeFormationSlots, assignFormationSlots, liveFormationUnits, syntheticFormationDrag } from './formation';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits, syntheticFormationDrag, inferRanksFromPositions } from './formation';
 
 export interface OrderOpts {
   /** Append to the end of each unit's queue instead of replacing it. */
@@ -142,8 +142,7 @@ export function issueReformInPlace(
 ): void {
   const units = liveFormationUnits(world, sel.ids);
   if (units.length === 0) return;
-  const N = units.length;
-  const chosenRanks = ranks ?? Math.max(1, Math.ceil(Math.sqrt(N)));
+  const chosenRanks = ranks ?? inferRanksFromPositions(units, forwardW);
   const { startW, endW } = syntheticFormationDrag(units, forwardW, chosenRanks, spacingMult);
   const { slots, forward } = computeFormationSlots({
     units, startW, endW, spacingMult, ranksOverride: chosenRanks,
@@ -151,4 +150,31 @@ export function issueReformInPlace(
   const targets = assignFormationSlots(units, slots, forward);
   const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
   issueFormationMove(world, assignments, { queue: false });
+}
+
+/**
+ * Re-form the current selection at a target world point: face `forwardW`,
+ * lay out into `ranks` ranks (or inferred from current positions if null) at
+ * the given spacing. Anchored at `target` rather than the selection centroid.
+ */
+export function issueReformAtTarget(
+  world: World,
+  sel: Selection,
+  target: Vec2,
+  forwardW: Vec2,
+  spacingMult: number,
+  ranks: number | null,
+  opts: OrderOpts = {},
+): MoveAssignment[] {
+  const units = liveFormationUnits(world, sel.ids);
+  if (units.length === 0) return [];
+  const chosenRanks = ranks ?? inferRanksFromPositions(units, forwardW);
+  const { startW, endW } = syntheticFormationDrag(units, forwardW, chosenRanks, spacingMult, target);
+  const { slots, forward } = computeFormationSlots({
+    units, startW, endW, spacingMult, ranksOverride: chosenRanks,
+  });
+  const targets = assignFormationSlots(units, slots, forward);
+  const assignments: MoveAssignment[] = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+  issueFormationMove(world, assignments, opts);
+  return assignments;
 }

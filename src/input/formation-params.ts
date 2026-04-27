@@ -4,16 +4,31 @@ export interface SpacingStep {
 }
 
 export const SPACING_STEPS: readonly SpacingStep[] = [
-  { mult: 0.5, label: 'Tight' },
-  { mult: 1.0, label: 'Close' },
-  { mult: 2.0, label: 'Open' },
-  { mult: 4.0, label: 'Loose' },
-  { mult: 8.0, label: 'Skirmish' },
+  { mult: 0.05, label: 'Hold' },
+  { mult: 0.20, label: 'Hold' },
+  { mult: 0.35, label: 'Hold' },
+  { mult: 0.50, label: 'Hold' },
+  { mult: 0.70, label: 'Hold' },
+  { mult: 0.85, label: 'Close' },
+  { mult: 1.00, label: 'Close' },
+  { mult: 1.15, label: 'Close' },
+  { mult: 1.30, label: 'Close' },
+  { mult: 1.50, label: 'Open' },
+  { mult: 1.75, label: 'Open' },
+  { mult: 2.00, label: 'Open' },
+  { mult: 2.50, label: 'Open' },
+  { mult: 3.50, label: 'Skirmish' },
+  { mult: 5.00, label: 'Skirmish' },
+  { mult: 8.00, label: 'Skirmish' },
 ] as const;
 
-export const DEFAULT_SPACING_INDEX = 1;
+export const DEFAULT_SPACING_INDEX = 6;
 export const MIN_RANKS = 1;
 export const MAX_RANKS = 16;
+
+/** Below this multiplier, the formation is in "tight stance" — units pack
+ *  while idle but auto-loosen to march at this floor while moving. */
+export const MARCH_FLOOR_MULT = 0.85;
 
 export type RankOverride = number | null;
 
@@ -59,4 +74,8 @@ export function spacingMultiplier(p: FormationParams): number {
 
 export function spacingLabel(p: FormationParams): string {
   return SPACING_STEPS[p.spacingIndex]!.label;
+}
+
+export function isTightStance(p: FormationParams): boolean {
+  return spacingMultiplier(p) < MARCH_FLOOR_MULT;
 }

@@ -40,7 +40,7 @@ export function createFormationControlsPanel(root: HTMLElement): FormationContro
       }
       el.style.display = '';
       if (params.spacingIndex !== lastSpacing) {
-        spacingVal.textContent = SPACING_STEPS[params.spacingIndex]!.label;
+        spacingVal.textContent = `${SPACING_STEPS[params.spacingIndex]!.mult.toFixed(2)}× ${SPACING_STEPS[params.spacingIndex]!.label}`;
         lastSpacing = params.spacingIndex;
       }
       if (params.ranks !== lastRanks) {
