@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang='en'>
+  <head>
+    <meta charset='utf-8' />
+    <title>Component Offset Editor</title>
+    <style>
+      :root {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #d1d5db;
+        color: #111827;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 24px; line-height: 1.5; background: #d1d5db; }
+      h1 { margin: 0; font-size: 18px; letter-spacing: 0.06em; text-transform: uppercase; color: #1f2937; }
+      .header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 16px; padding: 16px 20px; background: #ffffff;
+        border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      }
+      .header-actions { display: flex; gap: 8px; }
+      .note { max-width: 720px; margin: 12px 0 16px; color: #4b5563; font-size: 13px; }
+      .facings {
+        display: flex; gap: 6px; padding: 12px 16px; margin-top: 16px;
+        background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2);
+        border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        align-items: center;
+      }
+      .facings-label {
+        font-size: 12px; color: #4b5563; letter-spacing: 0.08em;
+        text-transform: uppercase; margin-right: 8px;
+      }
+      .layout {
+        display: grid; grid-template-columns: 280px 1fr; gap: 16px; margin-top: 16px;
+      }
+      .panel {
+        padding: 16px; background: #ffffff;
+        border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      }
+      .panel h2 {
+        margin: 0 0 10px; font-size: 12px; text-transform: uppercase;
+        letter-spacing: 0.06em; color: #4b5563;
+      }
+      .layers { display: flex; flex-direction: column; gap: 4px; }
+      .layer-item {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 10px; border-radius: 6px; cursor: pointer;
+        font-size: 13px; color: #1f2937; border: 1px solid transparent;
+        background: #f3f4f6;
+      }
+      .layer-item:hover { background: #e5e7eb; }
+      .layer-item.selected {
+        background: #2563eb; color: #ffffff; border-color: #1d4ed8;
+      }
+      .layer-name { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; }
+      .layer-offset { font-size: 11px; opacity: 0.85; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+      .offset-controls {
+        margin-top: 14px; padding-top: 14px;
+        border-top: 1px solid rgba(55, 65, 81, 0.15);
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .offset-row {
+        display: flex; align-items: center; justify-content: space-between;
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px;
+      }
+      button {
+        font: inherit; padding: 6px 12px; border-radius: 6px;
+        border: 1px solid rgba(55, 65, 81, 0.3); background: #f9fafb; color: #1f2937;
+        cursor: pointer;
+      }
+      button:hover { background: #e5e7eb; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.primary { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
+      button.primary:hover { background: #1d4ed8; }
+      button.facing-btn { min-width: 44px; }
+      button.facing-btn.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
+      .stage {
+        background: #ffffff; padding: 16px;
+        border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      }
+      .stage-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 12px;
+      }
+      .stage-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #4b5563; }
+      .selected-info {
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+        font-size: 12px; color: #374151;
+      }
+      canvas {
+        image-rendering: pixelated;
+        background: #e5e7eb;
+        border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 4px;
+        display: block; max-width: 100%; height: auto;
+      }
+      .keys-help {
+        margin-top: 10px; font-size: 12px; color: #6b7280;
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+      }
+      .toast {
+        position: fixed; bottom: 24px; right: 24px;
+        background: #1f2937; color: #ffffff; padding: 10px 16px;
+        border-radius: 6px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        opacity: 0; transform: translateY(8px); transition: opacity 160ms ease, transform 160ms ease;
+        pointer-events: none;
+      }
+      .toast.show { opacity: 1; transform: translateY(0); }
+      .toast.error { background: #b91c1c; }
+      img.layer-img { image-rendering: pixelated; }
+    </style>
+  </head>
+  <body>
+    <div class='header'>
+      <h1>Component Offset Editor</h1>
+      <div class='header-actions'>
+        <button id='save-btn'>Save</button>
+        <button id='save-rebuild-btn' class='primary'>Save &amp; Rebuild</button>
+      </div>
+    </div>
+
+    <p class='note'>
+      Edits live in your browser. Use Save to persist to <code>public/components/offsets.json</code>.
+      Save &amp; Rebuild also regenerates the atlas.
+    </p>
+
+    <div class='facings' id='facings'>
+      <span class='facings-label'>Facing:</span>
+    </div>
+
+    <div class='layout'>
+      <div class='panel'>
+        <h2>Layers (bottom &rarr; top)</h2>
+        <div class='layers' id='layers'></div>
+        <div class='offset-controls'>
+          <div class='offset-row'><span>dx</span><span id='dx-value'>0</span></div>
+          <div class='offset-row'><span>dy</span><span id='dy-value'>0</span></div>
+          <button id='reset-btn'>Reset offset</button>
+        </div>
+      </div>
+
+      <div class='panel stage'>
+        <div class='stage-header'>
+          <span class='stage-title'>Composite (16x scale)</span>
+          <span class='selected-info' id='selected-info'>Selected: &mdash;</span>
+        </div>
+        <canvas id='preview' width='256' height='576'></canvas>
+        <div class='keys-help'>Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px</div>
+      </div>
+    </div>
+
+    <div class='toast' id='toast'></div>
+
+    <script>
+      'use strict';
+
+      const KIT_ID = 'british-line-infantry';
+      const FACINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      const CELL_W = 16;
+      const CELL_H = 36;
+      const SCALE = 16;
+      const STORAGE_KEY = 'componentOffsets';
+      const COMPONENT_BASE = 'sprites/components/';
+
+      const state = {
+        kit: null,
+        registry: null,
+        componentsById: new Map(),
+        offsets: { [KIT_ID]: {} },
+        facing: 'S',
+        selectedLayerId: null,
+        cacheBust: 0,
+        imageCache: new Map(),
+      };
+
+      const facingsEl = document.getElementById('facings');
+      const layersEl = document.getElementById('layers');
+      const selectedInfoEl = document.getElementById('selected-info');
+      const dxValueEl = document.getElementById('dx-value');
+      const dyValueEl = document.getElementById('dy-value');
+      const resetBtn = document.getElementById('reset-btn');
+      const saveBtn = document.getElementById('save-btn');
+      const saveRebuildBtn = document.getElementById('save-rebuild-btn');
+      const previewCanvas = document.getElementById('preview');
+      const previewCtx = previewCanvas.getContext('2d');
+      previewCtx.imageSmoothingEnabled = false;
+      const toastEl = document.getElementById('toast');
+
+      function showToast(message, opts) {
+        toastEl.textContent = message;
+        toastEl.classList.toggle('error', Boolean(opts && opts.error));
+        toastEl.classList.add('show');
+        if (showToast._timer) clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+      }
+
+      async function fetchJson(url) {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch ' + url + ': ' + res.status);
+        return res.json();
+      }
+
+      function loadImage(src) {
+        const cached = state.imageCache.get(src);
+        if (cached) return cached;
+        const promise = new Promise((resolvePromise, rejectPromise) => {
+          const img = new Image();
+          img.onload = () => resolvePromise(img);
+          img.onerror = () => rejectPromise(new Error('Failed to load ' + src));
+          img.src = src;
+        });
+        state.imageCache.set(src, promise);
+        return promise;
+      }
+
+      function getKitOffsets() {
+        if (!state.offsets[KIT_ID]) state.offsets[KIT_ID] = {};
+        return state.offsets[KIT_ID];
+      }
+
+      function getFacingOffsets(facing) {
+        const kit = getKitOffsets();
+        if (!kit[facing]) kit[facing] = {};
+        return kit[facing];
+      }
+
+      function getOffset(facing, componentId) {
+        const facingMap = state.offsets[KIT_ID] && state.offsets[KIT_ID][facing];
+        if (!facingMap) return [0, 0];
+        const v = facingMap[componentId];
+        return Array.isArray(v) ? [v[0] | 0, v[1] | 0] : [0, 0];
+      }
+
+      function setOffset(facing, componentId, dx, dy) {
+        const map = getFacingOffsets(facing);
+        if (dx === 0 && dy === 0) {
+          delete map[componentId];
+          if (Object.keys(map).length === 0) delete getKitOffsets()[facing];
+        } else {
+          map[componentId] = [dx, dy];
+        }
+        persistLocal();
+      }
+
+      function persistLocal() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.offsets));
+        } catch (_err) { /* ignore */ }
+      }
+
+      function getCurrentLayers() {
+        const facingConfig = state.kit && state.kit.facings && state.kit.facings[state.facing];
+        if (!facingConfig || !Array.isArray(facingConfig.layers)) return [];
+        return facingConfig.layers;
+      }
+
+      function buildFacingButtons() {
+        for (const f of FACINGS) {
+          const btn = document.createElement('button');
+          btn.textContent = f;
+          btn.className = 'facing-btn';
+          btn.dataset.facing = f;
+          btn.addEventListener('click', () => switchFacing(f));
+          facingsEl.appendChild(btn);
+        }
+        updateFacingButtons();
+      }
+
+      function updateFacingButtons() {
+        for (const btn of facingsEl.querySelectorAll('button.facing-btn')) {
+          btn.classList.toggle('active', btn.dataset.facing === state.facing);
+        }
+      }
+
+      function switchFacing(facing) {
+        state.facing = facing;
+        const layers = getCurrentLayers();
+        if (!state.selectedLayerId || !layers.includes(state.selectedLayerId)) {
+          state.selectedLayerId = layers[0] || null;
+        }
+        updateFacingButtons();
+        renderLayersList();
+        renderOffsetReadout();
+        redraw();
+      }
+
+      function renderLayersList() {
+        // Display top-to-bottom: topmost (drawn last) first, bottom (drawn first) last.
+        const layers = [...getCurrentLayers()].reverse();
+        layersEl.innerHTML = '';
+        for (const id of layers) {
+          const item = document.createElement('div');
+          item.className = 'layer-item' + (id === state.selectedLayerId ? ' selected' : '');
+          const name = document.createElement('span');
+          name.className = 'layer-name';
+          name.textContent = id;
+          const off = getOffset(state.facing, id);
+          const offsetTag = document.createElement('span');
+          offsetTag.className = 'layer-offset';
+          offsetTag.textContent = (off[0] || off[1]) ? '[' + off[0] + ',' + off[1] + ']' : '';
+          item.appendChild(name);
+          item.appendChild(offsetTag);
+          item.addEventListener('click', () => {
+            state.selectedLayerId = id;
+            renderLayersList();
+            renderOffsetReadout();
+          });
+          layersEl.appendChild(item);
+        }
+      }
+
+      function renderOffsetReadout() {
+        if (!state.selectedLayerId) {
+          selectedInfoEl.textContent = 'Selected: -';
+          dxValueEl.textContent = '0';
+          dyValueEl.textContent = '0';
+          return;
+        }
+        selectedInfoEl.textContent = 'Selected: ' + state.selectedLayerId;
+        const [dx, dy] = getOffset(state.facing, state.selectedLayerId);
+        dxValueEl.textContent = String(dx);
+        dyValueEl.textContent = String(dy);
+      }
+
+      function componentSrc(id) {
+        const entry = state.componentsById.get(id);
+        if (!entry) return null;
+        const cb = state.cacheBust ? '?cb=' + state.cacheBust : '';
+        return COMPONENT_BASE + entry.path + cb;
+      }
+
+      async function redraw() {
+        const layers = getCurrentLayers();
+        // 1x offscreen
+        const off = document.createElement('canvas');
+        off.width = CELL_W;
+        off.height = CELL_H;
+        const offCtx = off.getContext('2d');
+        offCtx.imageSmoothingEnabled = false;
+        offCtx.clearRect(0, 0, CELL_W, CELL_H);
+
+        for (const id of layers) {
+          const src = componentSrc(id);
+          if (!src) continue;
+          let img;
+          try {
+            img = await loadImage(src);
+          } catch (_err) { continue; }
+          const [dx, dy] = getOffset(state.facing, id);
+          // Composite onto a layer canvas the same size, then drawImage to clip to cell.
+          const layerCanvas = document.createElement('canvas');
+          layerCanvas.width = CELL_W;
+          layerCanvas.height = CELL_H;
+          const lctx = layerCanvas.getContext('2d');
+          lctx.imageSmoothingEnabled = false;
+          lctx.drawImage(img, dx, dy);
+          offCtx.drawImage(layerCanvas, 0, 0);
+        }
+
+        previewCtx.imageSmoothingEnabled = false;
+        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
+      }
+
+      function nudge(ddx, ddy) {
+        if (!state.selectedLayerId) return;
+        const [dx, dy] = getOffset(state.facing, state.selectedLayerId);
+        setOffset(state.facing, state.selectedLayerId, dx + ddx, dy + ddy);
+        renderLayersList();
+        renderOffsetReadout();
+        redraw();
+      }
+
+      function onKey(e) {
+        const target = e.target;
+        const tag = target && target.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        if (e.key === 'ArrowLeft') { nudge(-1, 0); e.preventDefault(); }
+        else if (e.key === 'ArrowRight') { nudge(1, 0); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { nudge(0, -1); e.preventDefault(); }
+        else if (e.key === 'ArrowDown') { nudge(0, 1); e.preventDefault(); }
+      }
+
+      function resetSelected() {
+        if (!state.selectedLayerId) return;
+        setOffset(state.facing, state.selectedLayerId, 0, 0);
+        renderLayersList();
+        renderOffsetReadout();
+        redraw();
+      }
+
+      async function saveOffsets() {
+        const res = await fetch('/api/offsets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state.offsets),
+        });
+        if (!res.ok) throw new Error('Save failed: HTTP ' + res.status);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save failed');
+      }
+
+      async function rebuildAtlas() {
+        const res = await fetch('/api/build', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Rebuild failed');
+        return data;
+      }
+
+      async function onSave() {
+        saveBtn.disabled = true; saveRebuildBtn.disabled = true;
+        try {
+          await saveOffsets();
+          showToast('Saved');
+        } catch (err) {
+          showToast(String(err.message || err), { error: true });
+        } finally {
+          saveBtn.disabled = false; saveRebuildBtn.disabled = false;
+        }
+      }
+
+      async function onSaveAndRebuild() {
+        saveBtn.disabled = true; saveRebuildBtn.disabled = true;
+        try {
+          await saveOffsets();
+          showToast('Rebuilding...');
+          await rebuildAtlas();
+          // Cache bust to refetch component PNGs (in case underlying art changed too).
+          state.cacheBust = Date.now();
+          state.imageCache.clear();
+          await redraw();
+          showToast('Rebuilt');
+        } catch (err) {
+          showToast(String(err.message || err), { error: true });
+        } finally {
+          saveBtn.disabled = false; saveRebuildBtn.disabled = false;
+        }
+      }
+
+      async function init() {
+        try {
+          const [kit, registry] = await Promise.all([
+            fetchJson('/components/kits/' + KIT_ID + '.json'),
+            fetchJson('/components/index.json'),
+          ]);
+          state.kit = kit;
+          state.registry = registry;
+          state.componentsById = new Map(registry.components.map((e) => [e.id, e]));
+
+          // Load offsets: prefer localStorage, else server file.
+          let loaded = null;
+          try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) loaded = JSON.parse(stored);
+          } catch (_err) { /* ignore */ }
+          if (!loaded || typeof loaded !== 'object') {
+            try { loaded = await fetchJson('/components/offsets.json'); } catch (_err) { loaded = {}; }
+          }
+          if (!loaded || typeof loaded !== 'object') loaded = {};
+          if (!loaded[KIT_ID] || typeof loaded[KIT_ID] !== 'object') loaded[KIT_ID] = {};
+          state.offsets = loaded;
+
+          buildFacingButtons();
+          switchFacing('S');
+
+          window.addEventListener('keydown', onKey);
+          resetBtn.addEventListener('click', resetSelected);
+          saveBtn.addEventListener('click', onSave);
+          saveRebuildBtn.addEventListener('click', onSaveAndRebuild);
+        } catch (err) {
+          showToast('Init failed: ' + (err.message || err), { error: true });
+          // eslint-disable-next-line no-console
+          console.error(err);
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>

@@ -5,16 +5,16 @@
 - Prioritize clarity at 1x zoom: each frame must immediately communicate facing, action, and allegiance through silhouette and color blocking.
 
 ## Canvas & Grid
-- Final render: 33×54 px bounding box, transparent background (matches current `british-line-infantry.png`).
-- Safe silhouette: keep the body within 24 px width; musket can break silhouette up to 6 px on either side for readability.
+- Final render: 48×108 px bounding box, transparent background (3×3 cells of 16×36). Each individual cell is 16 px wide by 36 px tall.
+- Safe silhouette: keep the body within 30 px width; musket can break silhouette up to 6 px on either side for readability.
 - Snap all elements to full pixels; avoid sub-pixel offsets or semi-transparent anti-aliasing.
-- Maintain a consistent ground shadow strip 4 px tall using 40% opacity neutral gray; aligns characters to the same baseline.
+- Maintain a consistent ground shadow strip 6 px tall (rows 30–35) using 40% opacity neutral gray; aligns characters to the same baseline.
 
 ## Proportions & Posing
-- Head: 6×6 px with shako 6 px tall; eyes implied via 1–2 px highlight (no outlines inside face).
-- Torso: taper from 8 px at shoulders to 6 px at waist; emphasize chest buttons with 1 px highlights alternating gold/white.
-- Arms: 3 px wide at bicep, taper to 2 px at forearm; in idle, elbows rest just outside torso silhouette.
-- Legs: 3 px width each, separated by 1 px gap when standing. Feet: 4×2 px blocks angled per facing direction.
+- Head: 8×10 px with shako 10 px tall; eyes implied via 1–2 px highlight (no outlines inside face). Chin sits on row 12 inside the 16×36 cell.
+- Torso: taper from 14 px at shoulders (rows 13–18) to 9 px at waist (row 24); emphasize chest buttons with 1 px highlights alternating brass/white.
+- Arms: 4 px wide at bicep, taper to 3 px at forearm; in idle, elbows rest one pixel outside the torso silhouette.
+- Legs: 4 px width each, separated by a 2 px gap when standing. Knees sit at row 27; feet are 6×3 px blocks (rows 31–33) angled per facing direction with a 1 px heel cut.
 
 ## Palette Strategy
 - Base uniform colors (keep hex references, convert to palette file for tooling):
@@ -45,7 +45,7 @@ For each direction produce the following sequences:
 5. **Reload** – 5 frames, 8 fps. Motions: return musket vertical, reach cartridge box, ramrod insertion, prime, ready.
 6. **Melee / Bayonet** – 4 frames, 10 fps. Extend musket; add 6 px bayonet glint.
 7. **Hit Reaction** – 2 frames, 12 fps. Quick knock-back and recovery.
-8. **Death** – 6 frames, 10 fps. Collapse to ground while maintaining silhouette readability; final frame flattened 33×20 px footprint.
+8. **Death** – 6 frames, 10 fps. Collapse to ground while maintaining silhouette readability; final frame flattened 48×40 px footprint.
 
 ## Variant Philosophy
 - Each state should support at least two micro-variants to prevent repetition in large formations (e.g., alternate idle breathing with plume sway vs. shoulder shift).
@@ -62,4 +62,3 @@ For each direction produce the following sequences:
 - Check that all directions share identical ground contact pixel and vertical alignment.
 - Ensure lighting consistency: top-left highlights, bottom-right shadows even on mirrored frames.
 - Review animation loops for foot sliding; adjust stride length or frame timing as needed.
-

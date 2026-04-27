@@ -5,18 +5,137 @@
   "outputAtlas": "public/sprites/british-line-infantry-components.png",
   "outputPreview": "public/sprites/british-line-infantry-components-preview.png",
   "facings": {
+    "N": {
+      "cell": [
+        1,
+        2
+      ],
+      "layers": [
+        "body-north-base",
+        "trousers-north",
+        "coat-line-north",
+        "shako-standard-north",
+        "musket-brown-bess-north"
+      ]
+    },
+    "NE": {
+      "cell": [
+        2,
+        0
+      ],
+      "layers": [
+        "body-northeast-base",
+        "trousers-northeast",
+        "coat-line-northeast",
+        "shako-standard-northeast",
+        "musket-brown-bess-northeast"
+      ]
+    },
+    "E": {
+      "cell": [
+        2,
+        1
+      ],
+      "layers": [
+        "body-east-base",
+        "trousers-east",
+        "coat-line-east",
+        "shako-standard-east",
+        "musket-brown-bess-east"
+      ]
+    },
+    "SE": {
+      "cell": [
+        2,
+        2
+      ],
+      "layers": [
+        "body-southeast-base",
+        "trousers-southeast",
+        "coat-line-southeast",
+        "shako-standard-southeast",
+        "musket-brown-bess-southeast"
+      ]
+    },
     "S": {
       "cell": [
         1,
         1
       ],
       "layers": [
-        "shadow-front",
-        "body-front-base",
-        "trousers-front-white",
-        "coat-line-front",
-        "shako-standard",
-        "musket-brown-bess"
+        "body-south-base",
+        "trousers-south",
+        "coat-line-south",
+        "shako-standard-south",
+        "musket-brown-bess-south"
+      ]
+    },
+    "SW": {
+      "cell": [
+        0,
+        2
+      ],
+      "layers": [
+        "body-southwest-base",
+        "trousers-southwest",
+        "coat-line-southwest",
+        "shako-standard-southwest",
+        "musket-brown-bess-southwest"
+      ]
+    },
+    "W": {
+      "cell": [
+        0,
+        1
+      ],
+      "layers": [
+        "body-west-base",
+        "trousers-west",
+        "coat-line-west",
+        "shako-standard-west",
+        "musket-brown-bess-west"
+      ]
+    },
+    "NW": {
+      "cell": [
+        0,
+        0
+      ],
+      "layers": [
+        "body-northwest-base",
+        "trousers-northwest",
+        "coat-line-northwest",
+        "shako-standard-northwest",
+        "musket-brown-bess-northwest"
+      ]
+    }
+  },
+  "poses": {
+    "make-ready": {
+      "S": [
+        "body-south-base",
+        "trousers-south",
+        "coat-line-south-make-ready",
+        "shako-standard-south",
+        "musket-brown-bess-south-make-ready"
+      ]
+    },
+    "present": {
+      "S": [
+        "body-south-base",
+        "trousers-south",
+        "coat-line-south-present",
+        "shako-standard-south",
+        "musket-brown-bess-south-present"
+      ]
+    },
+    "fire": {
+      "S": [
+        "body-south-base",
+        "trousers-south",
+        "coat-line-south-fire",
+        "shako-standard-south",
+        "musket-brown-bess-south-fire"
       ]
     }
   }

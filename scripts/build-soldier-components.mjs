@@ -9,9 +9,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const REGISTRY_PATH = resolve(ROOT, 'public/components/index.json');
 const COMPONENT_ROOT = resolve(ROOT, 'public/sprites/components');
+const OFFSETS_PATH = resolve(ROOT, 'public/components/offsets.json');
 
-const CELL_W = 11;
-const CELL_H = 18;
+const CELL_W = 16;
+const CELL_H = 36;
 
 function parseArgs(argv) {
   const result = new Map();
@@ -27,6 +28,17 @@ function parseArgs(argv) {
 
 function loadJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function loadOffsets(path) {
+  try {
+    const raw = readFileSync(path, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') return parsed;
+    return {};
+  } catch (_err) {
+    return {};
+  }
 }
 
 function getCellOffset(col, row, sheetWidth) {
@@ -46,19 +58,26 @@ function clearCell(png, col, row) {
   }
 }
 
-function blitComponent(target, col, row, componentPng) {
+function blitComponent(target, col, row, componentPng, offset = [0, 0]) {
   if (componentPng.width !== CELL_W || componentPng.height !== CELL_H) {
     throw new Error(
       `Component PNG size mismatch (expected ${CELL_W}x${CELL_H}, got ${componentPng.width}x${componentPng.height})`
     );
   }
+  const dx = Number.isFinite(offset?.[0]) ? Math.trunc(offset[0]) : 0;
+  const dy = Number.isFinite(offset?.[1]) ? Math.trunc(offset[1]) : 0;
   const { x: baseX, y: baseY, sheetWidth } = getCellOffset(col, row, target.width);
   for (let y = 0; y < CELL_H; y++) {
     for (let x = 0; x < CELL_W; x++) {
       const srcIdx = (y * CELL_W + x) * 4;
       const alpha = componentPng.data[srcIdx + 3];
       if (alpha === 0) continue;
-      const dstIdx = ((baseY + y) * sheetWidth + (baseX + x)) * 4;
+      const shiftedX = x + dx;
+      const shiftedY = y + dy;
+      // Clip the shifted pixel to its own cell so it cannot bleed into a neighbor.
+      if (shiftedX < 0 || shiftedX >= CELL_W) continue;
+      if (shiftedY < 0 || shiftedY >= CELL_H) continue;
+      const dstIdx = ((baseY + shiftedY) * sheetWidth + (baseX + shiftedX)) * 4;
       target.data[dstIdx + 0] = componentPng.data[srcIdx + 0];
       target.data[dstIdx + 1] = componentPng.data[srcIdx + 1];
       target.data[dstIdx + 2] = componentPng.data[srcIdx + 2];
@@ -97,6 +116,9 @@ async function main() {
   const registry = loadJson(REGISTRY_PATH);
   const componentsById = new Map(registry.components.map((entry) => [entry.id, entry]));
 
+  const allOffsets = loadOffsets(OFFSETS_PATH);
+  const kitOffsets = (allOffsets && typeof allOffsets[kitId] === 'object' && allOffsets[kitId]) || {};
+
   const baseAtlasPath = resolve(ROOT, args.get('base') ?? kit.baseAtlas ?? 'public/sprites/british-line-infantry.png');
   const outputAtlasPath = resolve(
     ROOT,
@@ -110,42 +132,71 @@ async function main() {
   const scale = args.has('scale') ? Number(args.get('scale')) : 6;
 
   const baseAtlas = PNG.sync.read(readFileSync(baseAtlasPath));
-  const outputAtlas = new PNG({ width: baseAtlas.width, height: baseAtlas.height });
-  outputAtlas.data.set(baseAtlas.data);
 
   console.log(`Using base atlas: ${baseAtlasPath}`);
   console.log(`Writing output atlas: ${outputAtlasPath}`);
 
-  for (const [facing, config] of Object.entries(kit.facings)) {
-    if (!config.cell) {
-      throw new Error(`Kit ${kitId} facing ${facing} is missing a cell coordinate.`);
-    }
-    const [col, row] = config.cell;
-    console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
-    clearCell(outputAtlas, col, row);
-    for (const id of config.layers) {
-      const entry = componentsById.get(id);
-      if (!entry) {
-        throw new Error(`Unknown component "${id}" referenced by kit ${kitId}.`);
+  const previewScale = clampScale(scale);
+
+  function compositeAndWrite(layerOverrides, atlasPath, previewPath, headerLabel) {
+    const target = new PNG({ width: baseAtlas.width, height: baseAtlas.height });
+    target.data.set(baseAtlas.data);
+
+    if (headerLabel) console.log(`\n${headerLabel}`);
+
+    for (const [facing, config] of Object.entries(kit.facings)) {
+      if (!config.cell) {
+        throw new Error(`Kit ${kitId} facing ${facing} is missing a cell coordinate.`);
       }
-      const componentPath = resolve(COMPONENT_ROOT, entry.path);
-      const componentPng = PNG.sync.read(readFileSync(componentPath));
-      blitComponent(outputAtlas, col, row, componentPng);
-      console.log(`  + ${id}`);
+      const [col, row] = config.cell;
+      const layers = (layerOverrides && layerOverrides[facing]) || config.layers;
+      const facingOffsets = (kitOffsets[facing] && typeof kitOffsets[facing] === 'object') ? kitOffsets[facing] : {};
+      console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
+      clearCell(target, col, row);
+      for (const id of layers) {
+        const entry = componentsById.get(id);
+        if (!entry) {
+          throw new Error(`Unknown component "${id}" referenced by kit ${kitId}.`);
+        }
+        const componentPath = resolve(COMPONENT_ROOT, entry.path);
+        const componentPng = PNG.sync.read(readFileSync(componentPath));
+        const offset = Array.isArray(facingOffsets[id]) ? facingOffsets[id] : [0, 0];
+        blitComponent(target, col, row, componentPng, offset);
+        const tag = (offset[0] || offset[1]) ? ` (offset ${offset[0]},${offset[1]})` : '';
+        console.log(`  + ${id}${tag}`);
+      }
+    }
+
+    mkdirSync(dirname(atlasPath), { recursive: true });
+    writeFileSync(atlasPath, PNG.sync.write(target));
+    console.log(`✔ Atlas written: ${atlasPath}`);
+
+    if (previewPath) {
+      const preview = scaleNearest(target, previewScale);
+      mkdirSync(dirname(previewPath), { recursive: true });
+      writeFileSync(previewPath, PNG.sync.write(preview));
+      console.log(`✔ Preview written (${previewScale}x): ${previewPath}`);
     }
   }
 
-  mkdirSync(dirname(outputAtlasPath), { recursive: true });
-  writeFileSync(outputAtlasPath, PNG.sync.write(outputAtlas));
-  console.log('✔ Atlas written.');
+  // Base composite (idle pose).
+  compositeAndWrite(null, outputAtlasPath, outputPreviewPath, 'Compositing base (idle)');
 
-  if (outputPreviewPath) {
-    const previewScale = clampScale(scale);
-    const preview = scaleNearest(outputAtlas, previewScale);
-    mkdirSync(dirname(outputPreviewPath), { recursive: true });
-    writeFileSync(outputPreviewPath, PNG.sync.write(preview));
-    console.log(`✔ Preview written (${previewScale}x): ${outputPreviewPath}`);
+  // Per-pose composites (S-only overrides for now; other facings fall back to base layers).
+  if (kit.poses && typeof kit.poses === 'object') {
+    for (const [poseId, override] of Object.entries(kit.poses)) {
+      const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}`);
+      const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}`) : null;
+      compositeAndWrite(override, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId}`);
+    }
   }
+}
+
+function withSuffix(filePath, suffix) {
+  if (filePath.toLowerCase().endsWith('.png')) {
+    return `${filePath.slice(0, -4)}${suffix}.png`;
+  }
+  return `${filePath}${suffix}`;
 }
 
 function clampScale(value) {
