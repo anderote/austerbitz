@@ -49,20 +49,20 @@ describe('emitMuzzleFx', () => {
 });
 
 describe('spawnBlood', () => {
-  it('produces 4 particles at the low-end clamp (intensity=12)', () => {
+  it('produces 8 particles at the low-end clamp (intensity=12)', () => {
     const p = createParticles(64);
     const rng = createRng(7);
     spawnBlood(p, 0, 0, 12, rng);
-    expect(p.count).toBe(4);
-    expect(countByClass(p, ParticleClass.Blood)).toBe(4);
+    expect(p.count).toBe(8);
+    expect(countByClass(p, ParticleClass.Blood)).toBe(8);
   });
 
-  it('produces 14 particles at the high-end clamp (intensity=10000)', () => {
+  it('produces 30 particles at the high-end clamp (intensity=10000)', () => {
     const p = createParticles(64);
     const rng = createRng(11);
     spawnBlood(p, 0, 0, 10000, rng);
-    expect(p.count).toBe(14);
-    expect(countByClass(p, ParticleClass.Blood)).toBe(14);
+    expect(p.count).toBe(30);
+    expect(countByClass(p, ParticleClass.Blood)).toBe(30);
   });
 });
 
