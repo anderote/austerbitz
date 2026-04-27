@@ -101,6 +101,19 @@ function offsetsApiPlugin(): Plugin {
           return;
         }
 
+        if (method === 'POST' && url === '/api/regiments') {
+          try {
+            const body = await readJsonBody(req);
+            const target = resolve(PROJECT_ROOT, 'public/regiments.json');
+            await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
+            sendJson(res, 200, { ok: true });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 400, { ok: false, error: message });
+          }
+          return;
+        }
+
         if (method === 'POST' && url === '/api/build') {
           try {
             const result = await new Promise<{ stdout: string; stderr: string }>(

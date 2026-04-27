@@ -225,7 +225,11 @@
         transition: border-color 0.1s, transform 0.1s;
         padding: 0;
       }
-      .facing-cell:hover { border-color: #94a3b8; }
+      .facing-cell:hover {
+        border-color: #94a3b8;
+        background-color: #f9fafb;
+        background-size: 288px 324px;
+      }
       .facing-cell.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
       .facing-cell .label {
         position: absolute; top: 2px; left: 4px;
@@ -265,8 +269,8 @@
         background: transparent; cursor: pointer;
         transition: border-color 0.1s, background 0.1s;
       }
-      .pose-strip-btn:hover { background: #f3f4f6; }
-      .pose-strip-btn.active { border-color: #2563eb; background: #eff6ff; }
+      .pose-strip-btn:hover { background-color: #f3f4f6; }
+      .pose-strip-btn.active { border-color: #2563eb; background-color: #eff6ff; }
       .pose-strip-btn .crop {
         width: 128px; height: 144px;
         background-size: 384px 432px; /* native 96x108 atlas at 4x */
@@ -279,6 +283,17 @@
         font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
         text-transform: lowercase;
       }
+
+      .autosave-indicator {
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+        font-size: 11px; padding: 4px 10px; border-radius: 999px;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        background: #e5e7eb; color: #4b5563;
+        transition: background 0.15s, color 0.15s;
+      }
+      .autosave-indicator.saving { background: #fef3c7; color: #92400e; }
+      .autosave-indicator.saved { background: #d1fae5; color: #047857; }
+      .autosave-indicator.error { background: #fee2e2; color: #b91c1c; }
     </style>
   </head>
   <body>
@@ -297,8 +312,7 @@
           <span>Regiment:</span>
           <select id='regiment-select' class='header-select'></select>
         </span>
-        <button id='save-btn'>Save</button>
-        <button id='save-rebuild-btn' class='primary'>Save &amp; Rebuild</button>
+        <span id='autosave-indicator' class='autosave-indicator'>idle</span>
       </div>
     </div>
 
@@ -322,6 +336,23 @@
           <div class='offset-row'><span>dx</span><span id='dx-value'>0</span></div>
           <div class='offset-row'><span>dy</span><span id='dy-value'>0</span></div>
           <button id='reset-btn'>Reset offset</button>
+        </div>
+
+        <div class='regiment-palette' id='regiment-palette' style='margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(55, 65, 81, 0.15);'>
+          <h2 style='margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#4b5563;'>Regiment palette</h2>
+          <div class='regiment-row' style='display:flex;align-items:center;gap:8px;margin-bottom:4px;'>
+            <label style='flex:1;font-size:12px;'>Coat (primary)</label>
+            <input type='color' id='reg-primary' style='width:32px;height:24px;padding:0;border:1px solid #d1d5db;border-radius:4px;'>
+          </div>
+          <div class='regiment-row' style='display:flex;align-items:center;gap:8px;margin-bottom:4px;'>
+            <label style='flex:1;font-size:12px;'>Belts/pants (secondary)</label>
+            <input type='color' id='reg-secondary' style='width:32px;height:24px;padding:0;border:1px solid #d1d5db;border-radius:4px;'>
+          </div>
+          <div class='regiment-row' style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>
+            <label style='flex:1;font-size:12px;'>Boots/hat (tertiary)</label>
+            <input type='color' id='reg-tertiary' style='width:32px;height:24px;padding:0;border:1px solid #d1d5db;border-radius:4px;'>
+          </div>
+          <button id='save-regiments-btn' style='width:100%;font-size:12px;padding:6px;'>Save Regiment Palette</button>
         </div>
 
         <div class='tools-panel'>
@@ -450,6 +481,10 @@
         regiment: null,
       };
 
+      // Per-pose, per-regiment recolored atlas data-URL cache.
+      // keyed: poseId|regimentId -> dataURL
+      const recoloredAtlasCache = new Map();
+
       const facingsEl = document.getElementById('facings');
       const layersEl = document.getElementById('layers');
       const unitSelectEl = document.getElementById('unit-select');
@@ -460,8 +495,6 @@
       const dxValueEl = document.getElementById('dx-value');
       const dyValueEl = document.getElementById('dy-value');
       const resetBtn = document.getElementById('reset-btn');
-      const saveBtn = document.getElementById('save-btn');
-      const saveRebuildBtn = document.getElementById('save-rebuild-btn');
       const previewCanvas = document.getElementById('preview');
       const previewCtx = previewCanvas.getContext('2d');
       previewCtx.imageSmoothingEnabled = false;
@@ -717,10 +750,10 @@
         refreshFacingGridArtwork();
       }
 
-      function refreshFacingGridArtwork() {
-        const url = poseAtlasPath(state.poseId);
+      async function refreshFacingGridArtwork() {
+        const url = await getRecoloredPoseAtlasUrl(state.poseId);
         document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
-          cell.style.backgroundImage = "url('" + url + "?v=" + Date.now() + "')";
+          cell.style.backgroundImage = "url('" + url + "')";
         });
       }
 
@@ -841,6 +874,116 @@
         }
       }
 
+      function rgbToHex(rgb) {
+        if (!Array.isArray(rgb) || rgb.length < 3) return '#000000';
+        return '#' + rgb.slice(0, 3).map(function (v) {
+          return Math.max(0, Math.min(255, v | 0)).toString(16).padStart(2, '0');
+        }).join('');
+      }
+
+      function hexToRgb(hex) {
+        const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+        return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+      }
+
+      async function getRecoloredPoseAtlasUrl(poseId) {
+        if (!state.regiment) return poseAtlasPath(poseId);
+        const key = poseId + '|' + state.regiment.id;
+        const hit = recoloredAtlasCache.get(key);
+        if (hit) return hit;
+        const base = 'sprites/' + state.kitId + '-components';
+        const markersPath = poseId === 'idle'
+          ? (base + '-markers.png')
+          : (base + '-' + poseId + '-markers.png');
+        let img;
+        try {
+          img = await loadImage(markersPath);
+        } catch (_err) {
+          // Fall back to baked atlas if markers atlas is missing for this pose.
+          return poseAtlasPath(poseId);
+        }
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const cctx = c.getContext('2d', { willReadFrequently: true });
+        cctx.imageSmoothingEnabled = false;
+        cctx.drawImage(img, 0, 0);
+        const data = cctx.getImageData(0, 0, c.width, c.height);
+        recolorImageData(data, state.regiment);
+        cctx.putImageData(data, 0, 0);
+        const url = c.toDataURL('image/png');
+        recoloredAtlasCache.set(key, url);
+        return url;
+      }
+
+      const regPrimaryEl = document.getElementById('reg-primary');
+      const regSecondaryEl = document.getElementById('reg-secondary');
+      const regTertiaryEl = document.getElementById('reg-tertiary');
+      const saveRegimentsBtn = document.getElementById('save-regiments-btn');
+
+      function syncRegimentPaletteInputs() {
+        if (!state.regiment) return;
+        if (regPrimaryEl) regPrimaryEl.value = rgbToHex(state.regiment.primary);
+        if (regSecondaryEl) regSecondaryEl.value = rgbToHex(state.regiment.secondary);
+        if (regTertiaryEl) regTertiaryEl.value = rgbToHex(state.regiment.tertiary);
+      }
+
+      function onRegimentColorInput(slot, hex) {
+        if (!state.regiment) return;
+        const rgb = hexToRgb(hex);
+        if (!rgb) return;
+        state.regiment[slot] = rgb;
+        state.layerCanvasCache.clear();
+        recoloredAtlasCache.clear();
+        redraw().catch(function (err) {
+          showToast('Redraw failed: ' + (err.message || err), { error: true });
+        });
+        refreshFacingGridArtwork().catch(function (_err) { /* ignore */ });
+        buildPoseStrip();
+      }
+
+      async function onSaveRegiments() {
+        if (saveRegimentsBtn) saveRegimentsBtn.disabled = true;
+        try {
+          const res = await fetch('/api/regiments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state.regiments),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || 'Save failed');
+          showToast('Saved regiments');
+        } catch (err) {
+          showToast('Save regiments failed: ' + (err.message || err), { error: true });
+        } finally {
+          if (saveRegimentsBtn) saveRegimentsBtn.disabled = false;
+        }
+      }
+
+      function wireRegimentPalette() {
+        if (regPrimaryEl) {
+          regPrimaryEl.addEventListener('input', function () {
+            onRegimentColorInput('primary', regPrimaryEl.value);
+          });
+        }
+        if (regSecondaryEl) {
+          regSecondaryEl.addEventListener('input', function () {
+            onRegimentColorInput('secondary', regSecondaryEl.value);
+          });
+        }
+        if (regTertiaryEl) {
+          regTertiaryEl.addEventListener('input', function () {
+            onRegimentColorInput('tertiary', regTertiaryEl.value);
+          });
+        }
+        if (saveRegimentsBtn) {
+          saveRegimentsBtn.addEventListener('click', function () {
+            onSaveRegiments();
+          });
+        }
+      }
+
       function buildRegimentDropdown() {
         regimentSelectEl.innerHTML = '';
         for (const r of state.regiments) {
@@ -939,6 +1082,7 @@
         renderLayersList();
         renderOffsetReadout();
         redraw();
+        scheduleAutoSave();
       }
 
       function onKey(e) {
@@ -957,6 +1101,7 @@
         renderLayersList();
         renderOffsetReadout();
         redraw();
+        scheduleAutoSave();
       }
 
       async function saveOffsets() {
@@ -1070,6 +1215,7 @@
         const color = state.tool === 'erase' ? 'clear' : state.activeColor;
         appendPixelEdit(state.poseId, state.facing, state.selectedLayerId, { x: cx, y: cy, color });
         redraw();
+        scheduleAutoSave();
       }
 
       function onCanvasMove(event) {
@@ -1107,7 +1253,7 @@
         const popped = popPixelEdit(state.poseId, state.facing, state.selectedLayerId);
         if (popped) {
           redraw();
-          showToast('Undone');
+          scheduleAutoSave();
         } else {
           showToast('Nothing to undo');
         }
@@ -1120,36 +1266,51 @@
         return data;
       }
 
-      async function onSave() {
-        saveBtn.disabled = true; saveRebuildBtn.disabled = true;
-        try {
-          await Promise.all([saveOffsets(), savePixelEdits()]);
-          showToast('Saved');
-        } catch (err) {
-          showToast(String(err.message || err), { error: true });
-        } finally {
-          saveBtn.disabled = false; saveRebuildBtn.disabled = false;
-        }
+      // --- Autosave (debounced) ---
+      const autoIndicator = document.getElementById('autosave-indicator');
+      function setAutoStatus(label, cls) {
+        if (!autoIndicator) return;
+        autoIndicator.textContent = label;
+        autoIndicator.classList.remove('saving', 'saved', 'error');
+        if (cls) autoIndicator.classList.add(cls);
       }
-
-      async function onSaveAndRebuild() {
-        saveBtn.disabled = true; saveRebuildBtn.disabled = true;
-        try {
-          await Promise.all([saveOffsets(), savePixelEdits()]);
-          showToast('Rebuilding...');
-          await rebuildAtlas();
-          // Cache bust to refetch component PNGs (in case underlying art changed too).
-          state.cacheBust = Date.now();
-          state.imageCache.clear();
-          invalidateAllLayerCache();
-          refreshFacingGridArtwork();
-          await redraw();
-          showToast('Rebuilt');
-        } catch (err) {
-          showToast(String(err.message || err), { error: true });
-        } finally {
-          saveBtn.disabled = false; saveRebuildBtn.disabled = false;
-        }
+      let _autoTimer = null;
+      let _autoInFlight = null;
+      let _autoQueued = false;
+      async function _autoFlush() {
+        if (_autoInFlight) { _autoQueued = true; return; }
+        setAutoStatus('saving', 'saving');
+        _autoInFlight = (async function () {
+          try {
+            await Promise.all([saveOffsets(), savePixelEdits()]);
+            await rebuildAtlas();
+            state.cacheBust = Date.now();
+            state.imageCache.clear();
+            invalidateAllLayerCache();
+            recoloredAtlasCache.clear();
+            await refreshFacingGridArtwork();
+            buildPoseStrip();
+            await redraw();
+            setAutoStatus('saved', 'saved');
+          } catch (err) {
+            setAutoStatus('error: ' + (err.message || err), 'error');
+          } finally {
+            _autoInFlight = null;
+            if (_autoQueued) {
+              _autoQueued = false;
+              scheduleAutoSave(0);
+            }
+          }
+        })();
+      }
+      function scheduleAutoSave(delay) {
+        if (_autoTimer) clearTimeout(_autoTimer);
+        const ms = typeof delay === 'number' ? delay : 400;
+        setAutoStatus('pending', 'saving');
+        _autoTimer = setTimeout(function () {
+          _autoTimer = null;
+          _autoFlush();
+        }, ms);
       }
 
       // Detect legacy schema (kitId -> facing -> ...) and migrate to (kitId -> poseId -> facing -> ...).
@@ -1208,7 +1369,7 @@
         return poseId === 'idle' ? (base + '.png') : (base + '-' + poseId + '.png');
       }
 
-      function buildPoseStrip() {
+      async function buildPoseStrip() {
         const strip = document.getElementById('pose-strip');
         if (!strip) return;
         strip.innerHTML = '';
@@ -1221,6 +1382,7 @@
           btn.type = 'button';
           const crop = document.createElement('span');
           crop.className = 'crop';
+          // Set baked path as a fallback while the recolored data URL is being built.
           crop.style.backgroundImage = "url('" + poseAtlasPath(pid) + "')";
           const label = document.createElement('span');
           label.className = 'label';
@@ -1233,6 +1395,10 @@
             });
           });
           strip.appendChild(btn);
+          // Asynchronously fetch the recolored data URL and swap it in.
+          getRecoloredPoseAtlasUrl(pid).then(function (url) {
+            crop.style.backgroundImage = "url('" + url + "')";
+          }).catch(function (_err) { /* fallback already shown */ });
         }
       }
 
@@ -1340,6 +1506,8 @@
           buildUnitDropdown();
           buildPoseDropdown();
           buildRegimentDropdown();
+          syncRegimentPaletteInputs();
+          wireRegimentPalette();
           buildPoseStrip();
           buildFacingButtons();
           buildPalette();
@@ -1349,8 +1517,6 @@
 
           window.addEventListener('keydown', onKey);
           resetBtn.addEventListener('click', resetSelected);
-          saveBtn.addEventListener('click', onSave);
-          saveRebuildBtn.addEventListener('click', onSaveAndRebuild);
           undoBtn.addEventListener('click', onUndo);
           previewCanvas.addEventListener('click', onCanvasClick);
           previewCanvas.addEventListener('mousemove', onCanvasMove);
@@ -1369,9 +1535,15 @@
             const id = regimentSelectEl.value;
             state.regiment = state.regiments.find(function (r) { return r.id === id; }) || state.regiments[0] || null;
             state.layerCanvasCache.clear();
+            recoloredAtlasCache.clear();
+            syncRegimentPaletteInputs();
             redraw().catch(function (err) {
               showToast('Redraw failed: ' + (err.message || err), { error: true });
             });
+            refreshFacingGridArtwork().catch(function (err) {
+              showToast('Refresh grid failed: ' + (err.message || err), { error: true });
+            });
+            buildPoseStrip();
           });
         } catch (err) {
           showToast('Init failed: ' + (err.message || err), { error: true });
