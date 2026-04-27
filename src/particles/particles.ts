@@ -112,11 +112,26 @@ export function freeParticle(p: Particles, i: number): void {
   p.count--;
 }
 
-export function updateParticles(p: Particles, dt: number): void {
+export function updateParticles(
+  p: Particles,
+  dt: number,
+  splats?: { capacity: number; count: number; posX: Float32Array; posY: Float32Array; radius: Float32Array; intensity: Float32Array },
+): void {
   for (let n = 0; n < p.count; n++) {
     const i = p.aliveIds[n]!;
     p.life[i] -= dt;
     if (p.life[i]! <= 0) {
+      // Blood droplet "lands" — stamp a small ground splat at its final pos.
+      // Radius floor of 0.5m so the stamp is ≥1 texel at 2 texels/m, otherwise
+      // small drops fall between texels and never accumulate.
+      if (splats !== undefined && p.klass[i] === ParticleClass.Blood && splats.count < splats.capacity) {
+        const k = splats.count;
+        splats.posX[k] = p.posX[i]!;
+        splats.posY[k] = p.posY[i]!;
+        splats.radius[k] = Math.max(p.size[i]! * 1.5, 0.5);
+        splats.intensity[k] = 0.45;
+        splats.count = k + 1;
+      }
       freeParticle(p, i);
       n--;
       continue;

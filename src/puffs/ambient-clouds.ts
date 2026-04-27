@@ -60,6 +60,7 @@ export function tickAmbientClouds(
   puffs.life[idx] = life; puffs.lifeMax[idx] = life;
   puffs.size[idx] = rng.range(CLOUD.sizeStart.min, CLOUD.sizeStart.max);
   puffs.sizeMax[idx] = CLOUD.sizeMax;
+  puffs.aspectMax[idx] = CLOUD.aspectAtMax ?? 1;
   puffs.edgeGrowth[idx] = CLOUD.edgeGrowth;
   puffs.drag[idx] = CLOUD.drag;
   puffs.buoyancy[idx] = CLOUD.buoyancy;

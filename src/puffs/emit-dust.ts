@@ -43,6 +43,7 @@ export function emitDustForFrame(world: World, puffs: Puffs, dt: number): void {
     puffs.life[idx] = life; puffs.lifeMax[idx] = life;
     puffs.size[idx] = world.rng.range(DUST.sizeStart.min, DUST.sizeStart.max);
     puffs.sizeMax[idx] = DUST.sizeMax;
+    puffs.aspectMax[idx] = DUST.aspectAtMax ?? 1;
     puffs.edgeGrowth[idx] = DUST.edgeGrowth;
     puffs.drag[idx] = DUST.drag;
     puffs.buoyancy[idx] = DUST.buoyancy;

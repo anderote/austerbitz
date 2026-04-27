@@ -38,12 +38,8 @@ out vec4 outColor;
 
 void main() {
   if (v_kind < 0.5) {
-    // Musket: chunky tracer — hard rectangle, brightness stepped head→tail.
-    if (abs(v_local.y) > 0.5) discard;
-    float t = clamp(0.5 + v_local.x, 0.0, 1.0);
-    float a = floor(t * t * 4.0) / 4.0;
-    if (a <= 0.0) discard;
-    outColor = vec4(v_color.rgb * a, a);
+    // Musket ball: hard-edged pixel square — flat lead colour.
+    outColor = vec4(v_color.rgb, 1.0);
   } else if (v_kind < 1.5) {
     // Cannonball: chunky disc with hard rim — 8 cells across diameter.
     vec2 q = (floor(v_local * 8.0) + 0.5) / 8.0;

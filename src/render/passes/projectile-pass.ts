@@ -72,21 +72,20 @@ function pushBall(b: ProjectileBucket, cx: number, cy: number): void {
   b.count = i + 1;
 }
 
-function pushMusket(
-  b: ProjectileBucket,
-  cx: number, cy: number,
-  length: number, rotation: number,
-): void {
+// Lead-grey square, sized to read as a small chunky pixel at default zoom.
+const MUSKET_BALL_SIZE = 0.10;
+
+function pushMusket(b: ProjectileBucket, cx: number, cy: number): void {
   const i = b.count;
   b.centerWorld[i * 2 + 0] = cx;
   b.centerWorld[i * 2 + 1] = cy;
-  b.sizeOrLen[i * 2 + 0] = length;
-  b.sizeOrLen[i * 2 + 1] = 0.05;
-  b.rotation[i] = rotation;
+  b.sizeOrLen[i * 2 + 0] = MUSKET_BALL_SIZE;
+  b.sizeOrLen[i * 2 + 1] = MUSKET_BALL_SIZE;
+  b.rotation[i] = 0;
   b.kind[i] = 0;
-  b.color[i * 4 + 0] = 1.0;
-  b.color[i * 4 + 1] = 0.95;
-  b.color[i * 4 + 2] = 0.7;
+  b.color[i * 4 + 0] = 0.13;
+  b.color[i * 4 + 1] = 0.13;
+  b.color[i * 4 + 2] = 0.14;
   b.color[i * 4 + 3] = 1.0;
   b.count = i + 1;
 }
@@ -121,15 +120,7 @@ export function computeProjectileInstances(
       // Ball is lifted by Z.
       pushBall(buckets.ball, px, py - pz);
     } else if (kind === ProjectileKind.Musket) {
-      const prevX = p.prevX[i]!;
-      const prevY = p.prevY[i]!;
-      const dx = px - prevX;
-      const dy = py - prevY;
-      const len = Math.max(Math.hypot(dx, dy), 0.05);
-      const cx = (px + prevX) * 0.5;
-      const cy = (py + prevY) * 0.5;
-      const rot = Math.atan2(dy, dx);
-      pushMusket(buckets.musket, cx, cy, len, rot);
+      pushMusket(buckets.musket, px, py - pz);
     }
   }
 }
@@ -223,7 +214,7 @@ export function createProjectilePass(
       gl.bindVertexArray(vao);
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
 
-      // Render order: shadows under everything; opaque balls; additive streaks on top.
+      // Render order: shadows under everything; opaque balls and musket pellets on top.
 
       // Shadows: standard alpha blend.
       if (buckets.shadow.count > 0) {
@@ -232,20 +223,13 @@ export function createProjectilePass(
         uploadAndDraw(buckets.shadow);
       }
 
-      // Cannonballs: opaque (FS writes alpha=1; rim highlight is colour-only).
-      if (buckets.ball.count > 0) {
+      // Cannonballs and musket balls: opaque hard-edged pixels.
+      if (buckets.ball.count > 0 || buckets.musket.count > 0) {
         gl.disable(gl.BLEND);
         uploadAndDraw(buckets.ball);
-      }
-
-      // Musket tracers: additive over the scene.
-      if (buckets.musket.count > 0) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
         uploadAndDraw(buckets.musket);
       }
 
-      gl.disable(gl.BLEND);
       gl.bindVertexArray(null);
     },
   };

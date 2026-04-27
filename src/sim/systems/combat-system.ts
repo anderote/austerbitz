@@ -71,7 +71,6 @@ export function createCombatSystem(fireOrders: FireOrders): System {
       );
 
       let bestId = -1;
-      let bestD2 = rangeSq + 1e-9;
       for (let k = 0; k < count; k++) {
         const cid = candidateBuf[k]!;
         if (e.alive[cid] === 0) continue;
@@ -85,10 +84,9 @@ export function createCombatSystem(fireOrders: FireOrders): System {
         const dx = e.posX[cid]! - px;
         const dy = e.posY[cid]! - py;
         const d2 = dx * dx + dy * dy;
-        if (d2 < bestD2 || (d2 === bestD2 && (bestId === -1 || cid < bestId))) {
-          bestD2 = d2;
-          bestId = cid;
-        }
+        if (d2 > rangeSq) continue;
+        bestId = cid;
+        break;
       }
 
       if (bestId === -1) continue;

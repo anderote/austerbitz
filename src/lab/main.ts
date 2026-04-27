@@ -164,7 +164,7 @@ function frame(t: number) {
   tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
   updatePuffs(puffs, dt);
   coalesceStep(puffs, dt, world.rng, getProfileByIndex);
-  updateParticles(particles, dt);
+  updateParticles(particles, dt, world.bloodSplats);
 
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;

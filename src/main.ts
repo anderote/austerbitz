@@ -294,7 +294,7 @@ function frame(t: number) {
   applyWindToPuffs(puffs, currentWind, dt);
   windIndicator.update(currentWind);
   coalesceStep(puffs, dt, world.rng, getProfileByIndex);
-  updateParticles(particles, dt);
+  updateParticles(particles, dt, world.bloodSplats);
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;
   for (let i = 0; i < bs.count; i++) {

@@ -9,8 +9,8 @@ export const musket: WeaponProfile = {
     smoke: {
       profile: MUSKET_SMOKE,
       profileIdx: MUSKET_SMOKE_INDEX,
-      count: 6,
-      coneAngle: 0.10,
+      count: 9,
+      coneAngle: 0.14,
       speed: { min: 3, max: 6 },
     },
     recoilFirer: 0.5,
@@ -19,7 +19,7 @@ export const musket: WeaponProfile = {
     mass: 0.03,
     muzzleVelocity: 200,
     damage: 12,
-    accuracySpreadRad: (1.5 * Math.PI) / 180,
+    accuracySpreadRad: (4 * Math.PI) / 180,
     maxLife: 0.8,
   },
 };

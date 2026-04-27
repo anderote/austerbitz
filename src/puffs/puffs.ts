@@ -13,6 +13,9 @@ export interface Puffs {
   velX: Float32Array; velY: Float32Array;
   life: Float32Array; lifeMax: Float32Array;
   size: Float32Array; sizeMax: Float32Array; edgeGrowth: Float32Array;
+  /** Per-puff target width-over-height ratio at full size. 1 = round; values
+   *  >1 stretch the rendered puff horizontally as it grows toward sizeMax. */
+  aspectMax: Float32Array;
   drag: Float32Array; buoyancy: Float32Array;
   inertiaExp: Float32Array; inertiaWeight: Float32Array;
   r: Float32Array; g: Float32Array; b: Float32Array;
@@ -25,6 +28,8 @@ export interface Puffs {
 export function createPuffs(capacity: number): Puffs {
   const decayMul = new Float32Array(capacity);
   decayMul.fill(1);
+  const aspectMax = new Float32Array(capacity);
+  aspectMax.fill(1);
   const aliveIdx = new Int32Array(capacity);
   aliveIdx.fill(-1);
   return {
@@ -37,6 +42,7 @@ export function createPuffs(capacity: number): Puffs {
     velX: new Float32Array(capacity), velY: new Float32Array(capacity),
     life: new Float32Array(capacity), lifeMax: new Float32Array(capacity),
     size: new Float32Array(capacity), sizeMax: new Float32Array(capacity), edgeGrowth: new Float32Array(capacity),
+    aspectMax,
     drag: new Float32Array(capacity), buoyancy: new Float32Array(capacity),
     inertiaExp: new Float32Array(capacity), inertiaWeight: new Float32Array(capacity),
     r: new Float32Array(capacity), g: new Float32Array(capacity), b: new Float32Array(capacity),

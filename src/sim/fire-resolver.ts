@@ -58,7 +58,9 @@ export function resolveFire(
     let dirX = dx / d;
     let dirY = dy / d;
 
-    const spreadRad = weapon.projectile.accuracySpreadRad;
+    const baseSpread = weapon.projectile.accuracySpreadRad ?? 0;
+    const accuracy = kind.baseStats.weaponAccuracy;
+    const spreadRad = Math.max(0, baseSpread * (1 - accuracy));
     if (spreadRad) {
       const spread = (rng.next() - 0.5) * 2 * spreadRad;
       const cs = Math.cos(spread);

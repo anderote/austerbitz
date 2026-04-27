@@ -68,11 +68,10 @@ describe('computeProjectileInstances', () => {
     expect(buckets.musket.count).toBe(0);
   });
 
-  it('a musket ball with prevX=0,posX=10,prevY=0,posY=0 yields one streak: center=(5,0), len=10, rot=0', () => {
+  it('a musket ball renders as a small lead-grey pixel square at its current position', () => {
     const projectiles = createProjectiles(8);
     const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
     expect(id).toBeGreaterThanOrEqual(0);
-    // Override pos so the integration step is simulated by us.
     projectiles.prevX[id] = 0;
     projectiles.prevY[id] = 0;
     projectiles.posX[id] = 10;
@@ -85,20 +84,20 @@ describe('computeProjectileInstances', () => {
     expect(buckets.ball.count).toBe(0);
     expect(buckets.musket.count).toBe(1);
 
-    expect(buckets.musket.centerWorld[0]).toBeCloseTo(5);
+    expect(buckets.musket.centerWorld[0]).toBeCloseTo(10);
     expect(buckets.musket.centerWorld[1]).toBeCloseTo(0);
-    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(10);
-    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(0.05);
+    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(0.10);
+    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(0.10);
     expect(buckets.musket.rotation[0]).toBeCloseTo(0);
     expect(buckets.musket.kind[0]).toBe(0);
-    // Warm tracer color.
-    expect(buckets.musket.color[0]).toBeCloseTo(1.0);
-    expect(buckets.musket.color[1]).toBeCloseTo(0.95);
-    expect(buckets.musket.color[2]).toBeCloseTo(0.7);
+    // Lead-grey color.
+    expect(buckets.musket.color[0]).toBeCloseTo(0.13);
+    expect(buckets.musket.color[1]).toBeCloseTo(0.13);
+    expect(buckets.musket.color[2]).toBeCloseTo(0.14);
     expect(buckets.musket.color[3]).toBeCloseTo(1.0);
   });
 
-  it('a stationary musket ball (prev == cur) clamps length to a small minimum', () => {
+  it('a stationary musket ball still renders as a square at its position', () => {
     const projectiles = createProjectiles(8);
     const id = spawnMusketBall(projectiles, 3, 4, 1, 0, 0, 5, 380, 0.025, 1.0);
     projectiles.prevX[id] = 3;
@@ -112,7 +111,8 @@ describe('computeProjectileInstances', () => {
     expect(buckets.musket.count).toBe(1);
     expect(buckets.musket.centerWorld[0]).toBeCloseTo(3);
     expect(buckets.musket.centerWorld[1]).toBeCloseTo(4);
-    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(0.05); // clamped min
+    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(0.10);
+    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(0.10);
   });
 
   it('three projectiles of different kinds populate all three buckets', () => {

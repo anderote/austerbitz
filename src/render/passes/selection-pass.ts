@@ -607,15 +607,43 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         return chain.length >= 4 ? chain : null;
       };
 
-      // Faded chains for unselected, alive, player-team units.
-      // Cluster by *source position* via single-link union-find: any two
-      // units within LINK_R of each other are the same squad. Squads are
+      // Single-link union-find clumping by source position: any two units
+      // within LINK_R of each other belong to the same squad. Squads are
       // physically tight (spacing ~1.4) while distinct squads sit far apart,
       // so this groups by visual cohesion rather than by destination spread,
       // which previously fragmented one squad into multiple arrows when its
       // spread targets crossed a grid-bucket boundary.
       const LINK_R = 4;
       const LINK_R2 = LINK_R * LINK_R;
+      const clusterByLink = (ids: readonly number[]): number[][] => {
+        const parent: number[] = ids.map((_, i) => i);
+        const find = (i: number): number => {
+          while (parent[i] !== i) { parent[i] = parent[parent[i]!]!; i = parent[i]!; }
+          return i;
+        };
+        for (let i = 0; i < ids.length; i++) {
+          const x1 = e.posX[ids[i]!]!;
+          const y1 = e.posY[ids[i]!]!;
+          for (let j = i + 1; j < ids.length; j++) {
+            const dx = e.posX[ids[j]!]! - x1;
+            const dy = e.posY[ids[j]!]! - y1;
+            if (dx * dx + dy * dy <= LINK_R2) {
+              const ra = find(i), rb = find(j);
+              if (ra !== rb) parent[ra] = rb;
+            }
+          }
+        }
+        const groups = new Map<number, number[]>();
+        for (let i = 0; i < ids.length; i++) {
+          const r = find(i);
+          let arr = groups.get(r);
+          if (!arr) { arr = []; groups.set(r, arr); }
+          arr.push(ids[i]!);
+        }
+        return Array.from(groups.values());
+      };
+
+      // Faded chains for unselected, alive, player-team units.
       const candidates: number[] = [];
       for (const id of world.orderQueue.keys()) {
         if (e.alive[id] !== 1) continue;
@@ -628,32 +656,8 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         }
         if (hasMove) candidates.push(id);
       }
-      const parent: number[] = candidates.map((_, i) => i);
-      const find = (i: number): number => {
-        while (parent[i] !== i) { parent[i] = parent[parent[i]!]!; i = parent[i]!; }
-        return i;
-      };
-      for (let i = 0; i < candidates.length; i++) {
-        const x1 = e.posX[candidates[i]!]!;
-        const y1 = e.posY[candidates[i]!]!;
-        for (let j = i + 1; j < candidates.length; j++) {
-          const dx = e.posX[candidates[j]!]! - x1;
-          const dy = e.posY[candidates[j]!]! - y1;
-          if (dx * dx + dy * dy <= LINK_R2) {
-            const ra = find(i), rb = find(j);
-            if (ra !== rb) parent[ra] = rb;
-          }
-        }
-      }
-      const groups = new Map<number, number[]>();
-      for (let i = 0; i < candidates.length; i++) {
-        const r = find(i);
-        let arr = groups.get(r);
-        if (!arr) { arr = []; groups.set(r, arr); }
-        arr.push(candidates[i]!);
-      }
       const otherChains: number[][] = [];
-      for (const ids of groups.values()) {
+      for (const ids of clusterByLink(candidates)) {
         if (ids.length === 1) {
           const chain = buildUnitChain(ids[0]!);
           if (chain) otherChains.push(chain);
@@ -722,6 +726,44 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         }
       }
       renderChains(selectedChains, 1.0, [1.0, 0.93, 0.2]);
+
+      // Green marching-ants bounds around each clump of selected units.
+      // Single-unit "clumps" are skipped — the selection disc already marks them.
+      if (liveSelected.length >= 2) {
+        const selClumps = clusterByLink(liveSelected);
+        let drewAny = false;
+        for (const ids of selClumps) {
+          if (ids.length < 2) continue;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const id of ids) {
+            const x = e.posX[id]!, y = e.posY[id]!;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+          const pad = 1.5;
+          const x0 = minX - pad, y0 = minY - pad;
+          const x1 = maxX + pad, y1 = maxY + pad;
+          if (!drewAny) {
+            gl.useProgram(dragProg);
+            gl.bindVertexArray(dragVao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, dragBuf);
+            gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
+            gl.uniform1f(dragU.u_time, performance.now() * 0.001);
+            gl.uniform3f(dragU.u_color, 0.55, 1.0, 0.6);
+            drewAny = true;
+          }
+          const v = DRAG_RECT_VERTS;
+          v[0]  = x0; v[1]  = y0; v[2]  = x1; v[3]  = y0;
+          v[4]  = x1; v[5]  = y0; v[6]  = x1; v[7]  = y1;
+          v[8]  = x1; v[9]  = y1; v[10] = x0; v[11] = y1;
+          v[12] = x0; v[13] = y1; v[14] = x0; v[15] = y0;
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, v);
+          gl.drawArrays(gl.LINES, 0, 8);
+        }
+        if (drewAny) gl.bindVertexArray(null);
+      }
 
       // Drag-rect overlay: 1px marching-ants in world space.
       if (drag.active) {

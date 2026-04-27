@@ -21,6 +21,15 @@ export interface PuffProfile {
    *  they decay at this multiplier × dt. Linear interpolation between.
    *  <1 makes large/merged puffs persist much longer than fresh ones. */
   decayMulAtMaxSize?: number;
+  /** Symmetric multiplicative jitter applied to sizeMax per puff (default 0).
+   *  e.g. 0.25 → sizeMax in [profile.sizeMax * 0.75, profile.sizeMax * 1.25]. */
+  sizeMaxJitter?: number;
+  /** Width-over-height ratio the rendered puff trends toward as it grows to
+   *  sizeMax (default 1 = round). >1 produces flat, gunsmoke-style billows
+   *  that spread horizontally more than vertically. */
+  aspectAtMax?: number;
+  /** Symmetric additive jitter applied to per-puff aspectAtMax (default 0). */
+  aspectJitter?: number;
   coalesce: null | {
     radius: number;
     sizePerMerge: number;

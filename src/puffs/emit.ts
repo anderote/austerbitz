@@ -23,7 +23,9 @@ function writeProfile(
   const life = rng.range(profile.life.min, profile.life.max);
   p.life[i] = life; p.lifeMax[i] = life;
   p.size[i] = rng.range(profile.sizeStart.min, profile.sizeStart.max);
-  p.sizeMax[i] = profile.sizeMax;
+  const sizeJ = profile.sizeMaxJitter ?? 0;
+  p.sizeMax[i] = profile.sizeMax * (1 + jitter(rng, sizeJ));
+  p.aspectMax[i] = (profile.aspectAtMax ?? 1) + jitter(rng, profile.aspectJitter ?? 0);
   p.edgeGrowth[i] = profile.edgeGrowth;
   p.drag[i] = profile.drag;
   p.buoyancy[i] = profile.buoyancy;
@@ -84,9 +86,10 @@ export function emitPuffBurst(
   }
 }
 
-/** Muzzle spray: tight forward cone — every puff shoots out along the firing
- *  line, drag handles deceleration so they settle into a string at varying
- *  distances. No spawn-time coalesce; drift-merging happens later. */
+/** Muzzle spray: one stationary puff hangs at the gun tip; the rest shoot out
+ *  in a tight forward cone, drag handles deceleration so they settle into a
+ *  string at varying distances. No spawn-time coalesce; drift-merging happens
+ *  later. */
 export function emitPuffMuzzleSpray(
   p: Puffs, profile: PuffProfile, profileIdx: number,
   x: number, y: number, dirX: number, dirY: number,
@@ -94,9 +97,11 @@ export function emitPuffMuzzleSpray(
   speed: { min: number; max: number },
   rng: Rng,
 ): void {
+  if (count <= 0) return;
+  emitPuff(p, profile, profileIdx, x, y, 0, 0, rng);
   const theta = Math.atan2(dirY, dirX);
   const half = coneAngle * 0.5;
-  for (let n = 0; n < count; n++) {
+  for (let n = 1; n < count; n++) {
     const a = theta + rng.range(-half, half);
     const s = rng.range(speed.min, speed.max);
     const vx = Math.cos(a) * s;
