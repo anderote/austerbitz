@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createSelection, hitTestPoint, hitTestRect, findSameKindInView } from './selection';
 import { createWorld } from '../sim/world';
-import { allocEntity } from '../sim/entities';
+import { allocEntity, EntityState } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
 
 function spawnAt(world: ReturnType<typeof createWorld>, kind: string, x: number, y: number) {
@@ -71,5 +71,33 @@ describe('selection', () => {
     void farAway; void wrongKind;
     const ids = findSameKindInView(world, k, { x0: 0, y0: 0, x1: 50, y1: 50 });
     expect(ids.sort((x, y) => x - y)).toEqual([a, b].sort((x, y) => x - y));
+  });
+
+  it('hitTestPoint excludes dying/dead entities', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = spawnAt(world, 'line-infantry', 100, 100);
+    world.entities.state[id] = EntityState.Dying;
+    expect(hitTestPoint(world, { x: 100, y: 100 })).toBe(-1);
+    world.entities.state[id] = EntityState.Dead;
+    expect(hitTestPoint(world, { x: 100, y: 100 })).toBe(-1);
+  });
+
+  it('hitTestRect excludes dying entities inside the rect', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawnAt(world, 'line-infantry', 50, 50);
+    const b = spawnAt(world, 'line-infantry', 60, 60);
+    world.entities.state[b] = EntityState.Dying;
+    const ids = hitTestRect(world, 0, 0, 100, 100);
+    expect(ids).toEqual([a]);
+  });
+
+  it('findSameKindInView excludes dead entities of the same kind', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const k = getUnitKindIndex('line-infantry');
+    const a = spawnAt(world, 'line-infantry', 10, 10);
+    const b = spawnAt(world, 'line-infantry', 20, 20);
+    world.entities.state[b] = EntityState.Dead;
+    const ids = findSameKindInView(world, k, { x0: 0, y0: 0, x1: 50, y1: 50 });
+    expect(ids).toEqual([a]);
   });
 });

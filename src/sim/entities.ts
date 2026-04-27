@@ -184,3 +184,8 @@ export function freeEntity(e: Entities, id: number): void {
 export function isAlive(e: Entities, id: number): boolean {
   return e.alive[id] === 1;
 }
+
+export function isDead(e: Entities, id: number): boolean {
+  const s = e.state[id]!;
+  return s === EntityState.Dying || s === EntityState.Dead;
+}

@@ -9,6 +9,7 @@ import { hitTestRect } from '../../input/selection';
 import { getUnitKindByIndex } from '../../data/units';
 import { screenToWorld } from '../camera';
 import { PLAYER_TEAM } from '../../sim/player';
+import { isDead } from '../../sim/entities';
 
 export interface SelectionPass {
   // Tin-soldier base discs — call BEFORE the sprite pass so figures stand on top.
@@ -157,6 +158,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
     for (let i = 0; i < e.count; i++) {
       const id = e.aliveIds[i]!;
       if (e.alive[id] !== 1) continue;
+      if (isDead(e, id)) continue;
       if (e.team[id] !== team) continue;
       const kindIdx = e.kindId[id];
       const kind = getUnitKindByIndex(kindIdx);
@@ -184,6 +186,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
     for (const id of ids) {
       if (e.alive[id] !== 1) continue;
+      if (isDead(e, id)) continue;
       const kindIndex = e.kindId[id];
       const kind = kindIndex !== undefined ? getUnitKindByIndex(kindIndex) : null;
       if (!kind || !kind.weapon) continue;
@@ -441,6 +444,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const e = world.entities;
       const emit = (id: number, r: number, g: number, b: number): void => {
         if (e.alive[id] === 0) return;
+        if (isDead(e, id)) return;
         const kind = getUnitKindByIndex(e.kindId[id]!);
         const w = kind.placeholderSize.w;
         const h = kind.placeholderSize.h;
@@ -491,6 +495,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       for (const id of sel.ids) {
         if (!Number.isInteger(id)) continue;
         if (world.entities.alive[id] !== 1) continue;
+        if (isDead(world.entities, id)) continue;
         if (world.entities.team[id] !== team) continue;
         const kind = getUnitKindByIndex(world.entities.kindId[id]!);
         if (!kind.weapon || kind.baseStats.weaponRange <= 0) continue;
@@ -827,6 +832,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       let n = 0;
       for (const id of sel.ids) {
         if (e.alive[id] !== 1) continue;
+        if (isDead(e, id)) continue;
         const dst = finalDest(id);
         if (!dst) continue;
         if (n >= capacity) break;
@@ -840,6 +846,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       n = 0;
       for (const id of world.orderQueue.keys()) {
         if (e.alive[id] !== 1) continue;
+        if (isDead(e, id)) continue;
         if (e.team[id] !== PLAYER_TEAM) continue;
         if (sel.ids.has(id)) continue;
         const dst = finalDest(id);

@@ -1,6 +1,7 @@
 import type { World } from '../sim/world';
 import type { Vec2 } from '../util/math';
 import { getUnitKindByIndex } from '../data/units';
+import { isDead } from '../sim/entities';
 
 export interface Selection {
   ids: Set<number>;
@@ -78,6 +79,7 @@ export function hitTestPoint(world: World, w: Vec2, opts: HitOpts = {}): number 
   let bestD2 = Infinity;
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] !== 1) continue;
+    if (isDead(e, i)) continue;
     if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const kind = getUnitKindByIndex(e.kindId[i]!);
     const dx = w.x - e.posX[i]!;
@@ -104,6 +106,7 @@ export function hitTestRect(
   const e = world.entities;
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] !== 1) continue;
+    if (isDead(e, i)) continue;
     if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const x = e.posX[i]!;
     const y = e.posY[i]!;
@@ -122,6 +125,7 @@ export function findSameKindInView(
   const e = world.entities;
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] !== 1) continue;
+    if (isDead(e, i)) continue;
     if (e.kindId[i] !== kindId) continue;
     if (opts.team !== undefined && e.team[i] !== opts.team) continue;
     const x = e.posX[i]!;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from '../sim/world';
-import { allocEntity } from '../sim/entities';
+import { allocEntity, EntityState } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './selection';
 import { createSelectionController } from './selection-controller';
@@ -16,7 +16,7 @@ function makeDeps() {
   const drag = createDragRect();
   const formationDrag = createFormationDrag();
   const overlayRoot = { contains: (_n: Node) => false } as unknown as HTMLElement;
-  const canvas = {} as unknown as HTMLCanvasElement;
+  const canvas = { style: {} as CSSStyleDeclaration } as unknown as HTMLCanvasElement;
   const controlGroups = createControlGroups();
   const ctrl = createSelectionController({ canvas, overlayRoot, camera, world, selection, drag, formationDrag, controlGroups });
   return { ctrl, world, selection, drag, formationDrag, camera };
@@ -335,6 +335,46 @@ describe('selection-controller — control groups', () => {
     ctrl._internals.onKeyDown({ key: '4', code: 'Numpad4', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(selection.ids.has(a)).toBe(true);
   });
+
+  it('Recall does not add a Dead group member to selection', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    const b = spawn(world, 'line-infantry', 0, 5, 0);
+    selection.ids.add(a); selection.ids.add(b);
+    ctrl._internals.onKeyDown({ key: '5', code: 'Digit5', shiftKey: false, ctrlKey: true, metaKey: false });
+    world.entities.state[b] = EntityState.Dead;
+    selection.ids.clear();
+    ctrl._internals.onKeyDown({ key: '5', code: 'Digit5', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(selection.ids.has(a)).toBe(true);
+    expect(selection.ids.has(b)).toBe(false);
+  });
+
+  it('update(dt) prunes dead/dying entities from selection', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    const b = spawn(world, 'line-infantry', 0, 5, 0);
+    const c = spawn(world, 'line-infantry', 0, 10, 0);
+    selection.ids.add(a); selection.ids.add(b); selection.ids.add(c);
+    world.entities.state[b] = EntityState.Dying;
+    world.entities.alive[c] = 0;
+    ctrl.update(0.016);
+    expect(selection.ids.has(a)).toBe(true);
+    expect(selection.ids.has(b)).toBe(false);
+    expect(selection.ids.has(c)).toBe(false);
+  });
+
+  it('Shift+digit (merge) does not add a Dying group member', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    const b = spawn(world, 'line-infantry', 0, 5, 0);
+    selection.ids.add(a); selection.ids.add(b);
+    ctrl._internals.onKeyDown({ key: '6', code: 'Digit6', shiftKey: false, ctrlKey: true, metaKey: false });
+    world.entities.state[b] = EntityState.Dying;
+    selection.ids.clear();
+    ctrl._internals.onKeyDown({ key: '6', code: 'Digit6', shiftKey: true, ctrlKey: false, metaKey: false });
+    expect(selection.ids.has(a)).toBe(true);
+    expect(selection.ids.has(b)).toBe(false);
+  });
 });
 
 describe('selection-controller — formation drag (RMB)', () => {
@@ -415,5 +455,18 @@ describe('selection-controller — formation drag (RMB)', () => {
     ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
     ctrl._internals.onMouseUp({ button: 2, clientX: 420, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
     expect(world.orderQueue.size).toBe(0);
+  });
+
+  it('formation drag skips dying units in selection (liveFormationUnits)', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, -10);
+    const b = spawn(world, 'line-infantry', 0, 1, -10);
+    selection.ids.add(a); selection.ids.add(b);
+    world.entities.state[b] = EntityState.Dying;
+    ctrl._internals.onMouseDown({ button: 2, clientX: 380, clientY: 300, target: null });
+    ctrl._internals.onMouseMove({ clientX: 420, clientY: 300 });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 420, clientY: 300, shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(world.orderQueue.has(a)).toBe(true);
+    expect(world.orderQueue.has(b)).toBe(false);
   });
 });

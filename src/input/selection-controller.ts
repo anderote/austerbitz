@@ -6,6 +6,7 @@ import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type Dra
 import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove } from './commands';
 import { computeFormationSlots, assignFormationSlots, type FormationUnit } from './formation';
 import { getUnitKindByIndex } from '../data/units';
+import { isDead } from '../sim/entities';
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
 import type { Vec2 } from '../util/math';
@@ -103,6 +104,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     const e = world.entities;
     for (const id of selection.ids) {
       if (e.alive[id] !== 1) continue;
+      if (isDead(e, id)) continue;
       const kind = getUnitKindByIndex(e.kindId[id]!);
       out.push({
         id,
@@ -310,14 +312,14 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (e.shiftKey) {
         // Merge group into current selection (alive only).
         for (const id of groups[digit]!) {
-          if (world.entities.alive[id] === 1) selection.ids.add(id);
+          if (world.entities.alive[id] === 1 && !isDead(world.entities, id)) selection.ids.add(id);
         }
         return;
       }
       // Recall: replace selection with group (alive only).
       selection.ids.clear();
       for (const id of groups[digit]!) {
-        if (world.entities.alive[id] === 1) selection.ids.add(id);
+        if (world.entities.alive[id] === 1 && !isDead(world.entities, id)) selection.ids.add(id);
       }
       return;
     }
@@ -375,6 +377,10 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     get cursorMode() { return cursorMode; },
     formationPreview,
     update(_dt) {
+      const e = world.entities;
+      for (const id of selection.ids) {
+        if (e.alive[id] !== 1 || isDead(e, id)) selection.ids.delete(id);
+      }
       if (cursorMode === 'attack-move' && selection.ids.size === 0) cursorMode = 'normal';
       canvas.style.cursor = cursorMode === 'attack-move' ? 'crosshair' : 'default';
     },

@@ -1,6 +1,7 @@
 import type { System } from '../world';
 import { getUnitKindByIndex } from '../../data/units';
 import { writeFacingIntent } from './facing-system';
+import { isDead } from '../entities';
 
 const ARRIVE_RADIUS = 0.1; // m
 // Once a unit has reached its parked target it re-engages at this fraction of
@@ -14,6 +15,7 @@ export const ordersSystem: System = (world, dt) => {
       world.orderQueue.delete(id);
       continue;
     }
+    if (isDead(e, id)) continue;
     // 'stop' should be resolved eagerly: clear queue, idle. Re-anchor here so
     // the unit drifts back to *this* spot if jostled later.
     if (queue[0]!.kind === 'stop') {

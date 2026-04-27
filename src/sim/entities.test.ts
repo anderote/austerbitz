@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createEntities, allocEntity, freeEntity, isAlive, EntityState } from './entities';
+import { createEntities, allocEntity, freeEntity, isAlive, isDead, EntityState } from './entities';
 
 describe('Entities SoA', () => {
   it('allocates entities with monotonically increasing ids until capacity', () => {
@@ -155,5 +155,29 @@ describe('EntityState enum', () => {
     expect(EntityState.Ragdoll).toBe(6);
     expect(EntityState.Dying).toBe(7);
     expect(EntityState.Dead).toBe(8);
+  });
+});
+
+describe('isDead', () => {
+  it('returns true only for Dying and Dead', () => {
+    const e = createEntities(4);
+    const id = allocEntity(e);
+    const liveStates: EntityState[] = [
+      EntityState.Idle,
+      EntityState.Moving,
+      EntityState.Aiming,
+      EntityState.Firing,
+      EntityState.Reloading,
+      EntityState.Flinch,
+      EntityState.Ragdoll,
+    ];
+    for (const s of liveStates) {
+      e.state[id] = s;
+      expect(isDead(e, id)).toBe(false);
+    }
+    e.state[id] = EntityState.Dying;
+    expect(isDead(e, id)).toBe(true);
+    e.state[id] = EntityState.Dead;
+    expect(isDead(e, id)).toBe(true);
   });
 });
