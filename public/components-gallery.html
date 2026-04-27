@@ -15,6 +15,11 @@
       p.note { max-width: 680px; margin-bottom: 20px; color: #4b5563; font-size: 14px; }
       section { margin-bottom: 40px; }
 
+      /* --- Regiment picker --- */
+      .regiment-picker { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); width: fit-content; }
+      .regiment-picker label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #4b5563; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      .regiment-picker select { font: inherit; padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(55, 65, 81, 0.3); background: #f9fafb; color: #1f2937; }
+
       /* --- Pose picker (top bar) --- */
       .pose-picker { display: flex; gap: 16px; flex-wrap: wrap; padding: 20px; background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); width: fit-content; }
       .pose-thumb { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 2px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; transition: border-color 0.1s, background 0.1s; }
@@ -79,17 +84,25 @@
   </head>
   <body>
     <h1>Soldier Component Gallery</h1>
-    <p class='note'>Click a pose to inspect every direction.</p>
+    <p class='note'>Click a pose to inspect every direction. Switch regiment to recolor live.</p>
+
+    <section>
+      <h2>Regiment</h2>
+      <div class='regiment-picker'>
+        <label for='regiment-select'>Regiment</label>
+        <select id='regiment-select'></select>
+      </div>
+    </section>
 
     <section>
       <h2>Pose</h2>
       <div class='pose-picker' id='pose-picker'>
-        <button class='pose-thumb active' data-pose='idle' data-atlas='sprites/british-line-infantry-components.png' data-preview='sprites/british-line-infantry-components-preview.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components.png');"></span><span class='label'>idle</span></button>
-        <button class='pose-thumb' data-pose='make-ready' data-atlas='sprites/british-line-infantry-components-make-ready.png' data-preview='sprites/british-line-infantry-components-preview-make-ready.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-make-ready.png');"></span><span class='label'>make-ready</span></button>
-        <button class='pose-thumb' data-pose='present' data-atlas='sprites/british-line-infantry-components-present.png' data-preview='sprites/british-line-infantry-components-preview-present.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-present.png');"></span><span class='label'>present</span></button>
-        <button class='pose-thumb' data-pose='fire' data-atlas='sprites/british-line-infantry-components-fire.png' data-preview='sprites/british-line-infantry-components-preview-fire.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-fire.png');"></span><span class='label'>fire</span></button>
-        <button class='pose-thumb' data-pose='hit' data-atlas='sprites/british-line-infantry-components-hit.png' data-preview='sprites/british-line-infantry-components-preview-hit.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-hit.png');"></span><span class='label'>hit</span></button>
-        <button class='pose-thumb' data-pose='dying' data-atlas='sprites/british-line-infantry-components-dying.png' data-preview='sprites/british-line-infantry-components-preview-dying.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-dying.png');"></span><span class='label'>dying</span></button>
+        <button class='pose-thumb active' data-pose='idle' data-atlas='sprites/british-line-infantry-components-markers.png' data-baked-atlas='sprites/british-line-infantry-components.png' data-baked-preview='sprites/british-line-infantry-components-preview.png'><span class='crop'></span><span class='label'>idle</span></button>
+        <button class='pose-thumb' data-pose='make-ready' data-atlas='sprites/british-line-infantry-components-make-ready-markers.png' data-baked-atlas='sprites/british-line-infantry-components-make-ready.png' data-baked-preview='sprites/british-line-infantry-components-preview-make-ready.png'><span class='crop'></span><span class='label'>make-ready</span></button>
+        <button class='pose-thumb' data-pose='present' data-atlas='sprites/british-line-infantry-components-present-markers.png' data-baked-atlas='sprites/british-line-infantry-components-present.png' data-baked-preview='sprites/british-line-infantry-components-preview-present.png'><span class='crop'></span><span class='label'>present</span></button>
+        <button class='pose-thumb' data-pose='fire' data-atlas='sprites/british-line-infantry-components-fire-markers.png' data-baked-atlas='sprites/british-line-infantry-components-fire.png' data-baked-preview='sprites/british-line-infantry-components-preview-fire.png'><span class='crop'></span><span class='label'>fire</span></button>
+        <button class='pose-thumb' data-pose='hit' data-atlas='sprites/british-line-infantry-components-hit-markers.png' data-baked-atlas='sprites/british-line-infantry-components-hit.png' data-baked-preview='sprites/british-line-infantry-components-preview-hit.png'><span class='crop'></span><span class='label'>hit</span></button>
+        <button class='pose-thumb' data-pose='dying' data-atlas='sprites/british-line-infantry-components-dying-markers.png' data-baked-atlas='sprites/british-line-infantry-components-dying.png' data-baked-preview='sprites/british-line-infantry-components-preview-dying.png'><span class='crop'></span><span class='label'>dying</span></button>
       </div>
     </section>
 
@@ -97,8 +110,8 @@
       <h2>Composite + directions</h2>
       <div class='composite-display'>
         <figure class='composite-main'>
-          <img id='composite-preview' src='sprites/british-line-infantry-components-preview.png' alt='Composite preview' />
-          <figcaption id='composite-caption'>idle &middot; preview (6x)</figcaption>
+          <img id='composite-preview' alt='Composite preview' />
+          <figcaption id='composite-caption'>idle &middot; preview</figcaption>
         </figure>
         <div class='direction-grid' id='direction-grid'>
           <div class='dir-cell' data-dir='NW'><span class='crop'></span><span class='label'>NW</span></div>
@@ -116,54 +129,202 @@
 
     <section>
       <h2>Component layers</h2>
-      <div class='grid'>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/east/base.png' alt='east body' /></div><figcaption>anatomy/body/east/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/north/base.png' alt='north body' /></div><figcaption>anatomy/body/north/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/northeast/base.png' alt='northeast body' /></div><figcaption>anatomy/body/northeast/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/northwest/base.png' alt='northwest body' /></div><figcaption>anatomy/body/northwest/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/south/base.png' alt='south body' /></div><figcaption>anatomy/body/south/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/southeast/base.png' alt='southeast body' /></div><figcaption>anatomy/body/southeast/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/southwest/base.png' alt='southwest body' /></div><figcaption>anatomy/body/southwest/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/anatomy/body/west/base.png' alt='west body' /></div><figcaption>anatomy/body/west/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/uniform/coat-line/east/base.png' alt='east coat' /></div><figcaption>uniform/coat-line/east/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/uniform/coat-line/south/base.png' alt='south coat' /></div><figcaption>uniform/coat-line/south/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/uniform/coat-line/north/base.png' alt='north coat' /></div><figcaption>uniform/coat-line/north/base.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/weapon/musket/east/idle.png' alt='east musket' /></div><figcaption>weapon/musket/east/idle.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/weapon/musket/south/idle.png' alt='south musket' /></div><figcaption>weapon/musket/south/idle.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/weapon/musket/north/idle.png' alt='north musket' /></div><figcaption>weapon/musket/north/idle.png</figcaption></figure>
-        <figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/south.png' alt='south shako' /></div><figcaption>uniform/head/shako-standard/south.png</figcaption></figure>
+      <div class='grid' id='layers-grid'>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/east/base.png' alt='east body' /></div><figcaption>anatomy/body/east/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/north/base.png' alt='north body' /></div><figcaption>anatomy/body/north/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/northeast/base.png' alt='northeast body' /></div><figcaption>anatomy/body/northeast/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/northwest/base.png' alt='northwest body' /></div><figcaption>anatomy/body/northwest/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/south/base.png' alt='south body' /></div><figcaption>anatomy/body/south/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/southeast/base.png' alt='southeast body' /></div><figcaption>anatomy/body/southeast/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/southwest/base.png' alt='southwest body' /></div><figcaption>anatomy/body/southwest/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/anatomy/body/west/base.png' alt='west body' /></div><figcaption>anatomy/body/west/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/uniform/coat-line/east/base.png' alt='east coat' /></div><figcaption>uniform/coat-line/east/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/uniform/coat-line/south/base.png' alt='south coat' /></div><figcaption>uniform/coat-line/south/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/uniform/coat-line/north/base.png' alt='north coat' /></div><figcaption>uniform/coat-line/north/base.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/weapon/musket/east/idle.png' alt='east musket' /></div><figcaption>weapon/musket/east/idle.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/weapon/musket/south/idle.png' alt='south musket' /></div><figcaption>weapon/musket/south/idle.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/weapon/musket/north/idle.png' alt='north musket' /></div><figcaption>weapon/musket/north/idle.png</figcaption></figure>
+        <figure><div class='frame'><img data-src='sprites/components/uniform/head/shako-standard/south.png' alt='south shako' /></div><figcaption>uniform/head/shako-standard/south.png</figcaption></figure>
       </div>
     </section>
 
     <script>
       (function () {
+        const DEFAULT_REGIMENTS = [
+          { id: 'british-line',  label: 'British Line',  primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+          { id: 'french-line',   label: 'French Line',   primary: [50, 60, 140],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+          { id: 'prussian-line', label: 'Prussian Line', primary: [35, 45, 75],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
+          { id: 'russian-line',  label: 'Russian Line',  primary: [40, 75, 50],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
+          { id: 'austrian-line', label: 'Austrian Line', primary: [225, 215, 195], secondary: [120, 105, 85],  tertiary: [15, 15, 20] }
+        ];
+
         const picker = document.getElementById('pose-picker');
         const previewImg = document.getElementById('composite-preview');
         const captionEl = document.getElementById('composite-caption');
         const dirCrops = document.querySelectorAll('.dir-cell .crop');
+        const regimentSelect = document.getElementById('regiment-select');
+        const layerImgs = document.querySelectorAll('#layers-grid img[data-src]');
 
-        function setPose(btn) {
+        let regiments = DEFAULT_REGIMENTS;
+        let activeRegiment = DEFAULT_REGIMENTS[0];
+        let activePoseBtn = null;
+
+        // Cache: `${url}|${regimentId}` -> dataURL
+        const recolorCache = new Map();
+
+        async function loadRegiments() {
+          try {
+            const r = await fetch('/regiments.json');
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const arr = await r.json();
+            if (Array.isArray(arr) && arr.length > 0) return arr;
+          } catch (err) {
+            console.warn('Failed to fetch regiments.json, using defaults:', err);
+          }
+          return DEFAULT_REGIMENTS;
+        }
+
+        // Mirrors the family classifier in scripts/build-soldier-components.mjs
+        // and src/render/shaders/sprite.glsl.ts. Marker pixels have two channels
+        // exactly equal (the dominant pair) and one strictly lower off-channel.
+        function recolorImageData(imgData, reg) {
+          const data = imgData.data;
+          const eps = 0.01;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] === 0) continue;
+            const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+            const isMag = Math.abs(r - b) < eps && g < r - eps && r > 0.1;
+            const isCyn = Math.abs(g - b) < eps && r < g - eps && g > 0.1;
+            const isYel = Math.abs(r - g) < eps && b < r - eps && r > 0.1;
+            let slot = null, factor = 0, off = 0;
+            if (isMag) { slot = reg.primary; factor = r; off = g; }
+            else if (isCyn) { slot = reg.secondary; factor = g; off = r; }
+            else if (isYel) { slot = reg.tertiary; factor = r; off = b; }
+            if (!slot) continue;
+            let outR = Math.min(255, slot[0] * factor);
+            let outG = Math.min(255, slot[1] * factor);
+            let outB = Math.min(255, slot[2] * factor);
+            const lift = off * 0.5;
+            outR = outR * (1 - lift) + 255 * lift;
+            outG = outG * (1 - lift) + 255 * lift;
+            outB = outB * (1 - lift) + 255 * lift;
+            data[i] = Math.round(outR);
+            data[i + 1] = Math.round(outG);
+            data[i + 2] = Math.round(outB);
+          }
+        }
+
+        function loadImage(url) {
+          return new Promise((res, rej) => {
+            const i = new Image();
+            i.onload = () => res(i);
+            i.onerror = rej;
+            i.src = url;
+          });
+        }
+
+        async function recolorAtlasUrl(url, reg) {
+          const key = url + '|' + reg.id;
+          const hit = recolorCache.get(key);
+          if (hit) return hit;
+          let img;
+          try {
+            img = await loadImage(url);
+          } catch (err) {
+            console.warn('Failed to load image for recolor:', url, err);
+            return url;
+          }
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const cctx = c.getContext('2d', { willReadFrequently: true });
+          cctx.imageSmoothingEnabled = false;
+          cctx.drawImage(img, 0, 0);
+          const data = cctx.getImageData(0, 0, c.width, c.height);
+          recolorImageData(data, reg);
+          cctx.putImageData(data, 0, 0);
+          const dataUrl = c.toDataURL('image/png');
+          recolorCache.set(key, dataUrl);
+          return dataUrl;
+        }
+
+        async function setPose(btn) {
+          if (!btn) return;
+          activePoseBtn = btn;
           const pose = btn.dataset.pose;
           const atlas = btn.dataset.atlas;
-          const preview = btn.dataset.preview;
-          previewImg.src = preview;
-          captionEl.textContent = pose + ' · preview (6x)';
-          dirCrops.forEach(function (el) {
-            el.style.backgroundImage = "url('" + atlas + "')";
-          });
+
           document.querySelectorAll('.pose-thumb').forEach(function (b) {
             b.classList.toggle('active', b === btn);
           });
+
+          captionEl.textContent = pose + ' · ' + activeRegiment.label;
+
+          const recolored = await recolorAtlasUrl(atlas, activeRegiment);
+          previewImg.src = recolored;
+          dirCrops.forEach(function (el) {
+            el.style.backgroundImage = "url('" + recolored + "')";
+          });
+
+          // Also update the pose-thumb crop backgrounds (each thumb's own atlas).
+          await refreshPoseThumbs();
         }
+
+        async function refreshPoseThumbs() {
+          const thumbs = document.querySelectorAll('.pose-thumb');
+          await Promise.all(Array.from(thumbs).map(async function (t) {
+            const atlas = t.dataset.atlas;
+            if (!atlas) return;
+            const recolored = await recolorAtlasUrl(atlas, activeRegiment);
+            const crop = t.querySelector('.crop');
+            if (crop) crop.style.backgroundImage = "url('" + recolored + "')";
+          }));
+        }
+
+        async function refreshLayerThumbs() {
+          await Promise.all(Array.from(layerImgs).map(async function (img) {
+            const src = img.dataset.src;
+            if (!src) return;
+            const recolored = await recolorAtlasUrl(src, activeRegiment);
+            img.src = recolored;
+          }));
+        }
+
+        function populateRegimentSelect() {
+          regimentSelect.innerHTML = '';
+          regiments.forEach(function (reg, idx) {
+            const opt = document.createElement('option');
+            opt.value = String(idx);
+            opt.textContent = reg.label;
+            regimentSelect.appendChild(opt);
+          });
+          regimentSelect.value = '0';
+        }
+
+        regimentSelect.addEventListener('change', async function () {
+          const idx = Number(regimentSelect.value) || 0;
+          activeRegiment = regiments[idx] || regiments[0];
+          await Promise.all([
+            setPose(activePoseBtn),
+            refreshLayerThumbs()
+          ]);
+        });
 
         picker.addEventListener('click', function (e) {
           const btn = e.target.closest('.pose-thumb');
           if (btn) setPose(btn);
         });
 
-        // Initialize direction thumbnails to idle atlas.
-        const initialBtn = document.querySelector('.pose-thumb.active') || document.querySelector('.pose-thumb');
-        if (initialBtn) setPose(initialBtn);
+        (async function init() {
+          regiments = await loadRegiments();
+          activeRegiment = regiments[0];
+          populateRegimentSelect();
+          const initialBtn = document.querySelector('.pose-thumb.active') || document.querySelector('.pose-thumb');
+          await Promise.all([
+            setPose(initialBtn),
+            refreshLayerThumbs()
+          ]);
+        })();
       })();
     </script>
   </body>

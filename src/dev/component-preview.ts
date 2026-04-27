@@ -1,3 +1,5 @@
+import { loadRegiments, recolorImageData, type Regiment } from './regiments';
+
 // Component registry types ----------------------------------------------------
 type ComponentEntry = {
   id: string;
@@ -60,6 +62,7 @@ const GROUP_LABELS: Record<string, string> = {
 const registryContainer = document.getElementById('component-groups') as HTMLDivElement;
 const facingSelect = document.getElementById('facing-select') as HTMLSelectElement;
 const kitSelect = document.getElementById('kit-select') as HTMLSelectElement;
+const regimentSelect = document.getElementById('regiment-select') as HTMLSelectElement | null;
 const skeletonSelect = document.getElementById('skeleton-select') as HTMLSelectElement;
 const resetButton = document.getElementById('reset-button') as HTMLButtonElement;
 const infoCard = document.getElementById('info-card') as HTMLDivElement;
@@ -71,6 +74,7 @@ if (!ctx) {
 }
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+const recolorCache = new Map<string, HTMLCanvasElement>();
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   if (!imageCache.has(url)) {
@@ -87,6 +91,25 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   return imageCache.get(url)!;
 }
 
+async function getRecoloredCanvas(url: string, reg: Regiment): Promise<HTMLCanvasElement> {
+  const key = `${url}|${reg.id}`;
+  const cached = recolorCache.get(key);
+  if (cached) return cached;
+  const img = await loadImage(url);
+  const off = document.createElement('canvas');
+  off.width = img.naturalWidth || img.width;
+  off.height = img.naturalHeight || img.height;
+  const octx = off.getContext('2d', { willReadFrequently: true });
+  if (!octx) throw new Error('2D context');
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(img, 0, 0);
+  const data = octx.getImageData(0, 0, off.width, off.height);
+  recolorImageData(data, reg);
+  octx.putImageData(data, 0, 0);
+  recolorCache.set(key, off);
+  return off;
+}
+
 const componentsById = new Map<string, ComponentEntry>();
 const kitsById = new Map<string, KitConfig>();
 const componentSelections = new Set<string>();
@@ -95,6 +118,8 @@ let currentFacing = 'S';
 let currentKitId: string | null = null;
 let currentSkeleton = 'none';
 let renderToken = 0;
+let currentRegiment: Regiment | null = null;
+let regiments: Regiment[] = [];
 
 function layerKey(entry: ComponentEntry): string {
   return `${entry.type}:${entry.category}`;
@@ -235,10 +260,17 @@ async function renderPreview() {
   for (const entry of layers) {
     const url = `${COMPONENT_BASE_URL}${entry.path}`;
     try {
-      const image = await loadImage(url);
-      if (token !== renderToken) return;
-      if (!ctx) return;
-      ctx.drawImage(image, 0, 0);
+      if (currentRegiment) {
+        const recolored = await getRecoloredCanvas(url, currentRegiment);
+        if (token !== renderToken) return;
+        if (!ctx) return;
+        ctx.drawImage(recolored, 0, 0);
+      } else {
+        const image = await loadImage(url);
+        if (token !== renderToken) return;
+        if (!ctx) return;
+        ctx.drawImage(image, 0, 0);
+      }
     } catch (err) {
       console.warn(err);
     }
@@ -343,6 +375,16 @@ function initEvents() {
     void renderPreview();
   });
 
+  if (regimentSelect) {
+    regimentSelect.addEventListener('change', () => {
+      const next = regiments.find((r) => r.id === regimentSelect.value);
+      if (next) {
+        currentRegiment = next;
+        void renderPreview();
+      }
+    });
+  }
+
   resetButton.addEventListener('click', () => {
     applyKitDefaults(currentKitId, currentFacing);
     rebuildComponentGroups();
@@ -353,6 +395,21 @@ function initEvents() {
 async function main() {
   await loadRegistry();
   await loadKits();
+
+  regiments = await loadRegiments();
+  if (regimentSelect) {
+    regimentSelect.innerHTML = '';
+    for (const reg of regiments) {
+      const opt = document.createElement('option');
+      opt.value = reg.id;
+      opt.textContent = reg.label;
+      regimentSelect.appendChild(opt);
+    }
+  }
+  currentRegiment = regiments[0] ?? null;
+  if (regimentSelect && currentRegiment) {
+    regimentSelect.value = currentRegiment.id;
+  }
 
   // Default facing to first option if not present.
   if (!Array.from(facingSelect.options).some((opt) => opt.value === currentFacing)) {

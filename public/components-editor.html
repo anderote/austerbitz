@@ -268,9 +268,9 @@
       .pose-strip-btn:hover { background: #f3f4f6; }
       .pose-strip-btn.active { border-color: #2563eb; background: #eff6ff; }
       .pose-strip-btn .crop {
-        width: 64px; height: 72px;
-        background-size: 192px 216px; /* native 96x108 atlas at 2x */
-        background-position: -64px -72px; /* center cell = S */
+        width: 128px; height: 144px;
+        background-size: 384px 432px; /* native 96x108 atlas at 4x */
+        background-position: -128px -144px; /* center cell = S */
         background-repeat: no-repeat;
         image-rendering: pixelated;
       }
@@ -292,6 +292,10 @@
         <span class='header-select-group'>
           <span>Pose:</span>
           <select id='pose-select' class='header-select'></select>
+        </span>
+        <span class='header-select-group'>
+          <span>Regiment:</span>
+          <select id='regiment-select' class='header-select'></select>
         </span>
         <button id='save-btn'>Save</button>
         <button id='save-rebuild-btn' class='primary'>Save &amp; Rebuild</button>
@@ -442,12 +446,15 @@
         activeColorName: 'red',
         editVersion: 0,
         layerCanvasCache: new Map(), // key: poseId|facing|id|version -> HTMLCanvasElement
+        regiments: [],
+        regiment: null,
       };
 
       const facingsEl = document.getElementById('facings');
       const layersEl = document.getElementById('layers');
       const unitSelectEl = document.getElementById('unit-select');
       const poseSelectEl = document.getElementById('pose-select');
+      const regimentSelectEl = document.getElementById('regiment-select');
       const poseNoteEl = document.getElementById('pose-note');
       const selectedInfoEl = document.getElementById('selected-info');
       const dxValueEl = document.getElementById('dx-value');
@@ -793,6 +800,58 @@
         return COMPONENT_BASE + entry.path + cb;
       }
 
+      async function loadRegiments() {
+        try {
+          const res = await fetch('/regiments.json');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          if (!Array.isArray(data)) throw new Error('expected array');
+          return data;
+        } catch (err) {
+          console.warn('[regiments] load failed:', err);
+          return [{ id: 'british-line', label: 'British Line', primary: [180,40,50], secondary: [240,230,210], tertiary: [25,20,35] }];
+        }
+      }
+
+      function recolorImageData(img, reg) {
+        if (!reg) return;
+        const d = img.data;
+        const eps = 0.01;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] === 0) continue;
+          const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
+          const isMag = Math.abs(r - b) < eps && g < r - eps && r > 0.1;
+          const isCyn = Math.abs(g - b) < eps && r < g - eps && g > 0.1;
+          const isYel = Math.abs(r - g) < eps && b < r - eps && r > 0.1;
+          let slot = null, factor = 0, off = 0;
+          if (isMag) { slot = reg.primary; factor = r; off = g; }
+          else if (isCyn) { slot = reg.secondary; factor = g; off = r; }
+          else if (isYel) { slot = reg.tertiary; factor = r; off = b; }
+          if (!slot) continue;
+          let oR = Math.min(255, slot[0] * factor);
+          let oG = Math.min(255, slot[1] * factor);
+          let oB = Math.min(255, slot[2] * factor);
+          const lift = off * 0.5;
+          oR = oR * (1 - lift) + 255 * lift;
+          oG = oG * (1 - lift) + 255 * lift;
+          oB = oB * (1 - lift) + 255 * lift;
+          d[i] = Math.round(oR);
+          d[i + 1] = Math.round(oG);
+          d[i + 2] = Math.round(oB);
+        }
+      }
+
+      function buildRegimentDropdown() {
+        regimentSelectEl.innerHTML = '';
+        for (const r of state.regiments) {
+          const opt = document.createElement('option');
+          opt.value = r.id;
+          opt.textContent = r.label;
+          if (state.regiment && r.id === state.regiment.id) opt.selected = true;
+          regimentSelectEl.appendChild(opt);
+        }
+      }
+
       async function buildLayerCanvas(poseId, facing, id, img) {
         // Draw the source PNG into a 1x canvas, then apply pixel edits in array order.
         const layerCanvas = document.createElement('canvas');
@@ -801,6 +860,13 @@
         const lctx = layerCanvas.getContext('2d');
         lctx.imageSmoothingEnabled = false;
         lctx.drawImage(img, 0, 0);
+        // Recolor pass: classify marker pixels and remap to active regiment palette.
+        // Runs BEFORE pixel-edits so that user-painted overrides remain literal.
+        if (state.regiment) {
+          const imgData = lctx.getImageData(0, 0, CELL_W, CELL_H);
+          recolorImageData(imgData, state.regiment);
+          lctx.putImageData(imgData, 0, 0);
+        }
         const edits = getLayerEdits(poseId, facing, id);
         if (edits && edits.length > 0) {
           for (const edit of edits) {
@@ -822,7 +888,7 @@
       async function getCachedLayerCanvas(poseId, facing, id) {
         const editsArr = getLayerEdits(poseId, facing, id) || [];
         const editsHash = editsArr.length === 0 ? '0' : (editsArr.length + ':' + (editsArr[editsArr.length - 1].x|0) + ',' + (editsArr[editsArr.length - 1].y|0) + ',' + editsArr[editsArr.length - 1].color);
-        const key = poseId + '|' + facing + '|' + id + '|' + editsHash;
+        const key = poseId + '|' + facing + '|' + id + '|' + editsHash + '|' + (state.regiment ? state.regiment.id : '-');
         const cached = state.layerCanvasCache.get(key);
         if (cached) return cached;
         const src = componentSrc(id);
@@ -1238,6 +1304,9 @@
           state.kitId = kitsList[0].id;
           state.poseId = 'idle';
 
+          state.regiments = await loadRegiments();
+          state.regiment = state.regiments[0] || null;
+
           const [kit, registry] = await Promise.all([
             fetchJson('/components/kits/' + state.kitId + '.json'),
             fetchJson('/components/index.json'),
@@ -1270,6 +1339,7 @@
 
           buildUnitDropdown();
           buildPoseDropdown();
+          buildRegimentDropdown();
           buildPoseStrip();
           buildFacingButtons();
           buildPalette();
@@ -1293,6 +1363,14 @@
           poseSelectEl.addEventListener('change', function (ev) {
             switchPose(ev.target.value).catch(function (err) {
               showToast('Switch pose failed: ' + (err.message || err), { error: true });
+            });
+          });
+          regimentSelectEl.addEventListener('change', function () {
+            const id = regimentSelectEl.value;
+            state.regiment = state.regiments.find(function (r) { return r.id === id; }) || state.regiments[0] || null;
+            state.layerCanvasCache.clear();
+            redraw().catch(function (err) {
+              showToast('Redraw failed: ' + (err.message || err), { error: true });
             });
           });
         } catch (err) {

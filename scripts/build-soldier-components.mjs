@@ -270,8 +270,12 @@ async function main() {
   const previewScale = clampScale(scale);
 
   function compositeAndWrite(poseId, layerOverrides, atlasPath, previewPath, headerLabel) {
-    const target = new PNG({ width: baseAtlas.width, height: baseAtlas.height });
-    target.data.set(baseAtlas.data);
+    // Build the markers atlas first using the raw (un-recolored) base atlas
+    // and raw component PNGs. This preserves the marker pixel scheme so the
+    // gallery can recolor client-side at runtime.
+    const rawBase = PNG.sync.read(readFileSync(baseAtlasPath));
+    const markersTarget = new PNG({ width: rawBase.width, height: rawBase.height });
+    markersTarget.data.set(rawBase.data);
 
     if (headerLabel) console.log(`\n${headerLabel}`);
 
@@ -282,7 +286,7 @@ async function main() {
       const [col, row] = config.cell;
       const layers = (layerOverrides && layerOverrides[facing]) || config.layers;
       console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
-      clearCell(target, col, row);
+      clearCell(markersTarget, col, row);
       for (const id of layers) {
         const entry = componentsById.get(id);
         if (!entry) {
@@ -290,17 +294,28 @@ async function main() {
         }
         const componentPath = resolve(COMPONENT_ROOT, entry.path);
         const componentPng = PNG.sync.read(readFileSync(componentPath));
-        recolorMarkers(componentPng, bakedRegiment);
+        // No recolor here — markers go through raw to the markers atlas.
         const offset = lookupOffset(poseId, facing, id);
-        blitComponent(target, col, row, componentPng, offset);
+        blitComponent(markersTarget, col, row, componentPng, offset);
         const layerEdits = lookupPixelEdits(poseId, facing, id);
-        const editsApplied = layerEdits ? applyPixelEdits(target, col, row, layerEdits) : 0;
+        const editsApplied = layerEdits ? applyPixelEdits(markersTarget, col, row, layerEdits) : 0;
         const tagParts = [`pose=${poseId}`];
         if (offset[0] || offset[1]) tagParts.push(`offset ${offset[0]},${offset[1]}`);
         if (editsApplied > 0) tagParts.push(`+${editsApplied} pixel edits`);
         console.log(`  + ${id} (${tagParts.join(', ')})`);
       }
     }
+
+    // Write markers atlas (no preview for markers — gallery does live recolor).
+    const markersAtlasPath = withSuffix(atlasPath, '-markers');
+    mkdirSync(dirname(markersAtlasPath), { recursive: true });
+    writeFileSync(markersAtlasPath, PNG.sync.write(markersTarget));
+    console.log(`✔ Markers atlas written: ${markersAtlasPath}`);
+
+    // Build the recolored (baked English) atlas as a copy of the markers atlas.
+    const target = new PNG({ width: markersTarget.width, height: markersTarget.height });
+    target.data.set(markersTarget.data);
+    recolorMarkers(target, bakedRegiment);
 
     mkdirSync(dirname(atlasPath), { recursive: true });
     writeFileSync(atlasPath, PNG.sync.write(target));
