@@ -1,6 +1,6 @@
 import { linkProgram, getUniforms } from '../../gl/program';
 import { createBuffer, createVertexArray } from '../../gl/buffer';
-import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, PIP_VS, PIP_FS } from '../shaders/selection.glsl';
+import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, PIP_VS, PIP_FS, RANGE_VS, RANGE_FS } from '../shaders/selection.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
@@ -102,8 +102,163 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
   gl.bindVertexArray(null);
   const wpScratch = new Float32Array(WP_MAX_VERTS * 2);
 
+  // Range/cone overlay for selected ranged units (Total War-style).
+  const RANGE_SEGMENTS = 72;
+  const RANGE_MAX_VERTS = RANGE_SEGMENTS + 2;
+  const rangeProg = linkProgram(gl, RANGE_VS, RANGE_FS);
+  const rangeU = getUniforms(gl, rangeProg, ['u_viewProj', 'u_color'] as const);
+  const rangeVao = createVertexArray(gl);
+  gl.bindVertexArray(rangeVao);
+  const rangeBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, RANGE_MAX_VERTS * 2 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+  const rangeScratch = new Float32Array(RANGE_MAX_VERTS * 2);
+  const overlayPosScratch: number[] = [];
+  const overlayForwardScratch: number[] = [];
+
+  interface RangeOverlay {
+    originX: number;
+    originY: number;
+    radius: number;
+    dirX: number;
+    dirY: number;
+    halfAngle: number;
+  }
+
+  function computeRangeOverlay(world: World, sel: Selection): RangeOverlay | null {
+    if (sel.ids.size === 0) return null;
+    const e = world.entities;
+    overlayPosScratch.length = 0;
+    overlayForwardScratch.length = 0;
+    let count = 0;
+    let sumX = 0;
+    let sumY = 0;
+    let dirX = 0;
+    let dirY = 0;
+    let fallbackFacing: number | null = null;
+    let maxRange = 0;
+    for (const id of sel.ids) {
+      if (e.alive[id] !== 1) continue;
+      const kind = getUnitKindByIndex(e.kindId[id]!);
+      if (!kind.weapon) continue;
+      const range = kind.baseStats.weaponRange;
+      if (range <= 0) continue;
+      const x = e.posX[id]!;
+      const y = e.posY[id]!;
+      overlayPosScratch.push(x, y);
+      sumX += x;
+      sumY += y;
+      count++;
+      if (range > maxRange) maxRange = range;
+      const facing = e.facing[id]!;
+      fallbackFacing = fallbackFacing ?? facing;
+      const theta = (facing * Math.PI) / 4;
+      dirX += Math.cos(theta);
+      dirY += Math.sin(theta);
+    }
+    if (count === 0 || maxRange <= 0) return null;
+
+    let dirLen = Math.hypot(dirX, dirY);
+    if (dirLen < 1e-5) {
+      if (fallbackFacing !== null) {
+        const theta = (fallbackFacing * Math.PI) / 4;
+        dirX = Math.cos(theta);
+        dirY = Math.sin(theta);
+        dirLen = 1;
+      } else {
+        dirX = 0;
+        dirY = 1;
+        dirLen = 1;
+      }
+    }
+    dirX /= dirLen;
+    dirY /= dirLen;
+
+    const perpX = -dirY;
+    const perpY = dirX;
+    let minPerp = Infinity;
+    let maxPerp = -Infinity;
+    let minForward = Infinity;
+    let maxForward = -Infinity;
+    for (let i = 0; i < overlayPosScratch.length; i += 2) {
+      const px = overlayPosScratch[i]!;
+      const py = overlayPosScratch[i + 1]!;
+      const forward = px * dirX + py * dirY;
+      const lateral = px * perpX + py * perpY;
+      if (forward < minForward) minForward = forward;
+      if (forward > maxForward) maxForward = forward;
+      if (lateral < minPerp) minPerp = lateral;
+      if (lateral > maxPerp) maxPerp = lateral;
+      overlayForwardScratch.push(forward);
+    }
+
+    const FRONT_MARGIN = 1.5;
+    let frontSumX = 0;
+    let frontSumY = 0;
+    let frontCount = 0;
+    for (let i = 0; i < overlayPosScratch.length; i += 2) {
+      const px = overlayPosScratch[i]!;
+      const py = overlayPosScratch[i + 1]!;
+      const forward = overlayForwardScratch[i >> 1]!;
+      if ((maxForward - forward) <= FRONT_MARGIN) {
+        frontSumX += px;
+        frontSumY += py;
+        frontCount++;
+      }
+    }
+
+    const originX = frontCount > 0 ? frontSumX / frontCount : sumX / count;
+    const originY = frontCount > 0 ? frontSumY / frontCount : sumY / count;
+
+    const width = Math.max(0, maxPerp - minPerp);
+    const HALF_MIN = (25 * Math.PI) / 180;
+    const HALF_MAX = (80 * Math.PI) / 180;
+    const EXTRA_MARGIN = (10 * Math.PI) / 180;
+    const spanHalf = width * 0.5;
+    let halfAngle = Math.atan2(spanHalf, Math.max(maxRange, 1e-3)) + EXTRA_MARGIN;
+    if (halfAngle < HALF_MIN) halfAngle = HALF_MIN;
+    if (halfAngle > HALF_MAX) halfAngle = HALF_MAX;
+
+    return { originX, originY, radius: maxRange, dirX, dirY, halfAngle };
+  }
+
+  function renderRangeOverlay(world: World, cam: Camera, sel: Selection): void {
+    const overlay = computeRangeOverlay(world, sel);
+    if (!overlay) return;
+    const { originX, originY, radius, dirX, dirY, halfAngle } = overlay;
+    if (radius <= 0) return;
+    const baseAngle = Math.atan2(dirY, dirX);
+    const startAngle = baseAngle - halfAngle;
+    const endAngle = baseAngle + halfAngle;
+    rangeScratch[0] = originX;
+    rangeScratch[1] = originY;
+    for (let i = 0; i <= RANGE_SEGMENTS; i++) {
+      const t = i / RANGE_SEGMENTS;
+      const ang = startAngle + (endAngle - startAngle) * t;
+      rangeScratch[(i + 1) * 2 + 0] = originX + Math.cos(ang) * radius;
+      rangeScratch[(i + 1) * 2 + 1] = originY + Math.sin(ang) * radius;
+    }
+    const vertCount = RANGE_SEGMENTS + 2;
+    gl.useProgram(rangeProg);
+    gl.uniformMatrix3fv(rangeU.u_viewProj, false, viewProjection(cam));
+    gl.bindVertexArray(rangeVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, rangeBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, rangeScratch.subarray(0, vertCount * 2));
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniform4f(rangeU.u_color, 1.0, 0.93, 0.2, 0.16);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, vertCount);
+    gl.uniform4f(rangeU.u_color, 1.0, 0.93, 0.2, 0.5);
+    gl.drawArrays(gl.LINE_STRIP, 1, vertCount - 1);
+    gl.disable(gl.BLEND);
+    gl.bindVertexArray(null);
+  }
+
   return {
     drawDiscs(world, cam, sel, drag) {
+      renderRangeOverlay(world, cam, sel);
       const e = world.entities;
       const emit = (id: number, r: number, g: number, b: number): void => {
         if (e.alive[id] === 0) return;

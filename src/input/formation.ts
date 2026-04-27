@@ -46,18 +46,11 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
   const frontCount = Math.max(1, Math.min(N, Math.floor(dragLen / spacingX) + 1));
   const ranks = Math.ceil(N / frontCount);
 
-  // Centroid of unit positions; flip perpendicular if it points toward units.
-  let cx = 0, cy = 0;
-  for (const u of units) { cx += u.x; cy += u.y; }
-  if (N > 0) { cx /= N; cy /= N; }
+  // Drag midpoint; depth direction is fixed by drag direction (TW-style).
   const midX = (startW.x + endW.x) / 2;
   const midY = (startW.y + endW.y) / 2;
-  const sideDot = (midX - cx) * px + (midY - cy) * py;
-  const sign = sideDot >= 0 ? 1 : -1;
-  const dpx = px * sign;
-  const dpy = py * sign;
 
-  // Slots: row-major, last rank centered if partial.
+  // Slots: row-major, partial last rank centered (fills out from the middle).
   const slots: Vec2[] = [];
   for (let r = 0; r < ranks; r++) {
     const remaining = N - r * frontCount;
@@ -66,8 +59,8 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
       const fileOff = (f - (count - 1) / 2) * spacingX;
       const depthOff = r * spacingY;
       slots.push({
-        x: midX + fx * fileOff + dpx * depthOff,
-        y: midY + fy * fileOff + dpy * depthOff,
+        x: midX + fx * fileOff + px * depthOff,
+        y: midY + fy * fileOff + py * depthOff,
       });
     }
   }
@@ -77,8 +70,8 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
   const depth = (ranks - 1) * spacingY + spacingY;
   const tl = { x: midX - fx * halfW, y: midY - fy * halfW };
   const tr = { x: midX + fx * halfW, y: midY + fy * halfW };
-  const br = { x: tr.x + dpx * depth, y: tr.y + dpy * depth };
-  const bl = { x: tl.x + dpx * depth, y: tl.y + dpy * depth };
+  const br = { x: tr.x + px * depth, y: tr.y + py * depth };
+  const bl = { x: tl.x + px * depth, y: tl.y + py * depth };
 
   return { slots, rect: { tl, tr, br, bl } };
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createParticles, ParticleClass } from './particles';
 import {
+  emitDust,
   emitMuzzleFx,
   spawnBlood,
   emitRicochetBurst,
@@ -9,6 +10,8 @@ import {
 } from './emitters';
 import { createRng } from '../util/rng';
 import { musket } from '../data/weapons/musket';
+import { createWorld } from '../sim/world';
+import { allocEntity } from '../sim/entities';
 
 function countByClass(p: ReturnType<typeof createParticles>, klass: number): number {
   let n = 0;
@@ -100,6 +103,65 @@ describe('emitImpactDust', () => {
     expect(p.count).toBeGreaterThanOrEqual(4);
     expect(p.count).toBeLessThanOrEqual(6);
     expect(countByClass(p, ParticleClass.Dust)).toBe(p.count);
+  });
+});
+
+describe('emitDust merging', () => {
+  it('coalesces nearby emissions into one growing, longer-lived cloud', () => {
+    // 8 marching soldiers in a tight cluster — all within merge radius.
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 200 });
+    for (let k = 0; k < 8; k++) {
+      const id = allocEntity(world.entities);
+      world.entities.posX[id] = 50 + (k % 2) * 0.1;
+      world.entities.posY[id] = 50 + Math.floor(k / 2) * 0.1;
+      world.entities.velX[id] = 1;
+      world.entities.velY[id] = 0;
+    }
+    const p = createParticles(64);
+    // dt=1 → expected=1.2; rng.next()∈[0,1), so every soldier emits this tick.
+    emitDust(world, p, 1);
+    expect(p.count).toBe(1);
+    let idx = -1;
+    for (let i = 0; i < p.capacity; i++) if (p.alive[i] === 1) { idx = i; break; }
+    expect(p.klass[idx]).toBe(ParticleClass.Dust);
+    // Base spawn size at speed=1 is ~0.34; 7 merges add 7*0.08, so > 0.7.
+    expect(p.size[idx]!).toBeGreaterThan(0.7);
+    // Base spawn life ≤ 3.2; 7 merges add 7*0.4, so > 3.5.
+    expect(p.life[idx]!).toBeGreaterThan(3.5);
+    // Renderer fades by life/lifeMax — must remain ≤ 1.
+    expect(p.life[idx]!).toBeLessThanOrEqual(p.lifeMax[idx]! + 1e-6);
+  });
+
+  it('does not merge emissions far apart', () => {
+    const world = createWorld({ seed: 2, capacity: 16, mapSize: 1000 });
+    const a = allocEntity(world.entities);
+    world.entities.posX[a] = 10; world.entities.posY[a] = 10;
+    world.entities.velX[a] = 1;
+    const b = allocEntity(world.entities);
+    world.entities.posX[b] = 100; world.entities.posY[b] = 100;
+    world.entities.velX[b] = 1;
+    const p = createParticles(64);
+    emitDust(world, p, 1);
+    expect(p.count).toBe(2);
+  });
+
+  it('caps cloud size and life under heavy accretion', () => {
+    // Many emissions at the same spot — caps must hold.
+    const world = createWorld({ seed: 3, capacity: 200, mapSize: 200 });
+    for (let k = 0; k < 100; k++) {
+      const id = allocEntity(world.entities);
+      world.entities.posX[id] = 50;
+      world.entities.posY[id] = 50;
+      world.entities.velX[id] = 1;
+    }
+    const p = createParticles(256);
+    emitDust(world, p, 1);
+    let idx = -1;
+    for (let i = 0; i < p.capacity; i++) if (p.alive[i] === 1) { idx = i; break; }
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(p.size[idx]!).toBeLessThanOrEqual(1.0 + 1e-6);
+    expect(p.life[idx]!).toBeLessThanOrEqual(12.0 + 1e-6);
+    expect(p.life[idx]!).toBeLessThanOrEqual(p.lifeMax[idx]! + 1e-6);
   });
 });
 

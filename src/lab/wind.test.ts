@@ -3,7 +3,7 @@ import { createParticles, spawnParticle, ParticleClass } from '../particles/part
 import { applyWind } from './wind';
 
 describe('applyWind', () => {
-  it('only modifies smoke particles velX; leaves dust/blood/flash/debris untouched', () => {
+  it('drifts smoke at full strength and dust at a damped fraction; leaves blood/flash/debris alone', () => {
     const p = createParticles(16);
 
     const smokeId = spawnParticle(p, {
@@ -37,13 +37,15 @@ describe('applyWind', () => {
     applyWind(p, accel, dt);
 
     expect(p.velX[smokeId]).toBeCloseTo(1 + accel * dt, 6);
-    // Non-smoke kinds untouched.
-    expect(p.velX[dustId]).toBe(1);
+    // Dust drifts at 0.35x of smoke.
+    expect(p.velX[dustId]).toBeCloseTo(1 + accel * 0.35 * dt, 6);
+    // Other kinds are untouched.
     expect(p.velX[flashId]).toBe(1);
     expect(p.velX[bloodId]).toBe(1);
     expect(p.velX[debrisId]).toBe(1);
-    // velY is never touched, even on smoke.
+    // velY is never touched.
     expect(p.velY[smokeId]).toBe(0);
+    expect(p.velY[dustId]).toBe(0);
   });
 
   it('does nothing when accel is 0 (early-out)', () => {

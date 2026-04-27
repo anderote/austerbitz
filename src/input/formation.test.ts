@@ -28,7 +28,7 @@ describe('computeFormationSlots', () => {
     expect(r.slots[2]!.x).toBeCloseTo(1);
   });
 
-  it('partial last rank is centered', () => {
+  it('partial last rank fills out from the middle (centered)', () => {
     const units = Array.from({ length: 10 }, (_, i) => ({
       id: i, x: 0, y: -10, spacingX: 1, spacingY: 1,
     }));
@@ -41,7 +41,7 @@ describe('computeFormationSlots', () => {
     expect(r.slots[9]!.x).toBeCloseTo(0);
   });
 
-  it('depth direction points away from unit centroid', () => {
+  it('depth direction is fixed by drag direction, not unit position', () => {
     const units = Array.from({ length: 4 }, (_, i) => ({
       id: i, x: 0, y: -10, spacingX: 1, spacingY: 1,
     }));
@@ -51,6 +51,16 @@ describe('computeFormationSlots', () => {
       endW: { x: 1, y: 0 },
     });
     for (const s of r.slots) expect(s.y).toBeGreaterThanOrEqual(0);
+
+    const unitsOpposite = Array.from({ length: 4 }, (_, i) => ({
+      id: i, x: 0, y: 10, spacingX: 1, spacingY: 1,
+    }));
+    const r2 = computeFormationSlots({
+      units: unitsOpposite,
+      startW: { x: -1, y: 0 },
+      endW: { x: 1, y: 0 },
+    });
+    for (const s of r2.slots) expect(s.y).toBeGreaterThanOrEqual(0);
   });
 
   it('mixed-kind spacing uses max', () => {

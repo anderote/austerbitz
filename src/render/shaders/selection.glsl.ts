@@ -119,3 +119,22 @@ void main() {
   outColor = vec4(u_color, a);
 }
 `;
+
+export const RANGE_VS = `#version 300 es
+precision highp float;
+layout(location = 0) in vec2 a_pos;
+uniform mat3 u_viewProj;
+void main() {
+  vec3 clip = u_viewProj * vec3(a_pos, 1.0);
+  gl_Position = vec4(clip.xy, 0.0, 1.0);
+}
+`;
+
+export const RANGE_FS = `#version 300 es
+precision highp float;
+uniform vec4 u_color;
+out vec4 outColor;
+void main() {
+  outColor = u_color;
+}
+`;
