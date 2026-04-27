@@ -16,6 +16,7 @@ export interface MuzzleProfile {
 
 export interface ExplosionProfile {
   flash: { size: number; life: number; color: Color3 };
+  // coneAngle is omitted — explosions are always radial (2π); hardcoded in spawnExplosion.
   smokeBillow: {
     profile: PuffProfile;
     profileIdx: number;
