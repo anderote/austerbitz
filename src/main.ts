@@ -109,7 +109,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 60;      // metres between the two armies' front ranks (within musket range, 80m)
+const BATTLE_GAP = 50;      // metres between the two armies' front ranks (within musket range, 80m)
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 
@@ -193,16 +193,9 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// Three echelons of infantry, each spaced ~2.3 musket-ranges (80 m) apart. Cavalry sits
-// well behind the rear echelon as a reserve.
-const INFANTRY_ECHELON_DEPTH = 30;
-const CAVALRY_BACK = 420;
-
+// One long line: 5000 line-infantry per side, 5 ranks deep, split into ten 100-file regiments.
 const lineRegiments: RegimentPlan[] = [
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: 0 },
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH },
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH * 2 },
-  { kindId: 'cuirassier',    files: 50,  ranks: 3, count: 6, gap: 30, backOffset: CAVALRY_BACK },
+  { kindId: 'line-infantry', files: 100, ranks: 5, count: 10, gap: 8, backOffset: 0 },
 ];
 
 const friendlyArmy: ArmyPlan = {
