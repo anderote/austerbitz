@@ -132,7 +132,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 50;      // metres between the two armies' front ranks (within musket range, 80m)
+const BATTLE_GAP = 75;      // metres between the two armies' front ranks
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 
@@ -143,6 +143,9 @@ interface RegimentPlan {
   count: number;
   gap?: number;
   backOffset?: number;
+  // Metres north of the army's frontCenter (positive = north / -Y world).
+  // Independent of facing so both armies share one coordinate.
+  northOffset?: number;
 }
 
 interface ArmyPlan {
@@ -195,12 +198,16 @@ function spawnArmy(plan: ArmyPlan): void {
     const gap = reg.gap ?? spacingX * 6;
     const totalSpan = reg.count * blockWidth + Math.max(0, reg.count - 1) * gap;
     const firstCenterOffset = reg.count === 0 ? 0 : -totalSpan / 2 + blockWidth / 2;
+    const backShift = reg.backOffset ?? 0;
+    const northShift = reg.northOffset ?? 0;
+    // northShift is facing-independent: +north always means -Y in world space.
+    const anchorX = plan.frontCenter.x - forwardX * backShift;
+    const anchorY = plan.frontCenter.y - forwardY * backShift - northShift;
     for (let i = 0; i < reg.count; i++) {
       const centerLateral = firstCenterOffset + i * (blockWidth + gap);
-      const backShift = reg.backOffset ?? 0;
       const frontCenter = {
-        x: plan.frontCenter.x + lateralX * centerLateral - forwardX * backShift,
-        y: plan.frontCenter.y + lateralY * centerLateral - forwardY * backShift,
+        x: anchorX + lateralX * centerLateral,
+        y: anchorY + lateralY * centerLateral,
       };
       spawnFormationBlock({
         kindId: reg.kindId,
@@ -216,22 +223,22 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// One long line: 5000 line-infantry per side, 5 ranks deep, split into ten 100-file regiments.
+// 2000 line-infantry per side, 8 ranks deep, split into five 50-file regiments.
 const lineRegiments: RegimentPlan[] = [
-  { kindId: 'line-infantry', files: 100, ranks: 5, count: 10, gap: 8, backOffset: 0 },
+  { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8 },
 ];
 
 const friendlyArmy: ArmyPlan = {
   team: 0,
-  facing: FACING_W,
-  frontCenter: { x: cx + BATTLE_GAP / 2, y: cy },
+  facing: FACING_E,
+  frontCenter: { x: cx - BATTLE_GAP / 2, y: cy },
   regiments: lineRegiments,
 };
 
 const enemyArmy: ArmyPlan = {
   team: 1,
-  facing: FACING_E,
-  frontCenter: { x: cx - BATTLE_GAP / 2, y: cy },
+  facing: FACING_W,
+  frontCenter: { x: cx + BATTLE_GAP / 2, y: cy },
   regiments: lineRegiments,
 };
 
