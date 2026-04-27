@@ -79,8 +79,6 @@ describe('promote()', () => {
   it('increments rank and resets xp when threshold reached', () => {
     const e = createEntities(4);
     e.rank[0] = Rank.Recruit;
-    e.xp[0] = 0;
-
     e.xp[0] = 1;
     const promoted = promote(e, 0);
     expect(promoted).toBe(true);
@@ -98,12 +96,13 @@ describe('promote()', () => {
     expect(e.xp[0]).toBe(1);
   });
 
-  it('saturates at Captain', () => {
+  it('saturates at Captain — preserves rank and xp without consuming it', () => {
     const e = createEntities(4);
     e.rank[0] = Rank.Captain;
     e.xp[0] = 99;
     const promoted = promote(e, 0);
     expect(promoted).toBe(false);
     expect(e.rank[0]).toBe(Rank.Captain);
+    expect(e.xp[0]).toBe(99);
   });
 });

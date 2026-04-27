@@ -58,8 +58,7 @@ export function effectiveArmor(e: Entities, id: number, base: number): number {
   return base + ARMOR_ADD[(e as any).rank[id]!]!;
 }
 
-/** Cumulative kills required to reach a given rank from Recruit. Used by tests
- *  and by the unit-inspector "X / Y" display. */
+/** Cumulative kills required to reach a given rank from Recruit. */
 export function cumulativeKillsForRank(target: Rank): number {
   let sum = 0;
   for (let r = 0; r < target; r++) sum += RANK_THRESHOLDS[r]!;
