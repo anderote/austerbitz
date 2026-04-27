@@ -4,6 +4,10 @@ export interface Puffs {
   /** Rolling cursor for allocPuff so we don't rescan slot 0 every call. */
   cursor: number;
   alive: Uint8Array;
+  /** Packed list of alive slot ids; aliveIds[0..count) are live. */
+  aliveIds: Int32Array;
+  /** Inverse map: aliveIdx[slotId] = packed index, or -1 if not alive. */
+  aliveIdx: Int32Array;
   profileIdx: Uint16Array;
   posX: Float32Array; posY: Float32Array;
   velX: Float32Array; velY: Float32Array;
@@ -21,9 +25,13 @@ export interface Puffs {
 export function createPuffs(capacity: number): Puffs {
   const decayMul = new Float32Array(capacity);
   decayMul.fill(1);
+  const aliveIdx = new Int32Array(capacity);
+  aliveIdx.fill(-1);
   return {
     capacity, count: 0, cursor: 0,
     alive: new Uint8Array(capacity),
+    aliveIds: new Int32Array(capacity),
+    aliveIdx,
     profileIdx: new Uint16Array(capacity),
     posX: new Float32Array(capacity), posY: new Float32Array(capacity),
     velX: new Float32Array(capacity), velY: new Float32Array(capacity),
@@ -43,6 +51,8 @@ export function allocPuff(p: Puffs): number {
   for (let n = 0; n < cap; n++) {
     if (p.alive[i] === 0) {
       p.alive[i] = 1;
+      p.aliveIdx[i] = p.count;
+      p.aliveIds[p.count] = i;
       p.count++;
       p.cursor = i + 1 === cap ? 0 : i + 1;
       return i;
@@ -52,9 +62,25 @@ export function allocPuff(p: Puffs): number {
   return -1;
 }
 
+/** Frees slot `i`. Safe to call from inside a packed-list iteration if the
+ *  caller iterates by index `n` and decrements on free (see updatePuffs). */
+export function freePuff(p: Puffs, i: number): void {
+  if (p.alive[i] === 0) return;
+  p.alive[i] = 0;
+  const idx = p.aliveIdx[i]!;
+  const last = p.count - 1;
+  if (idx !== last) {
+    const lastId = p.aliveIds[last]!;
+    p.aliveIds[idx] = lastId;
+    p.aliveIdx[lastId] = idx;
+  }
+  p.aliveIdx[i] = -1;
+  p.count--;
+}
+
 export function updatePuffs(p: Puffs, dt: number): void {
-  for (let i = 0; i < p.capacity; i++) {
-    if (p.alive[i] === 0) continue;
+  for (let n = 0; n < p.count; n++) {
+    const i = p.aliveIds[n]!;
     const sm = p.sizeMax[i]!;
     const sizeFrac = sm > 0 ? p.size[i]! / sm : 0;
     // Decay slows down as the puff approaches its size cap. decayMul=1 means
@@ -62,8 +88,8 @@ export function updatePuffs(p: Puffs, dt: number): void {
     const decayMul = 1 - (1 - p.decayMul[i]!) * sizeFrac;
     p.life[i] -= dt * decayMul;
     if (p.life[i]! <= 0) {
-      p.alive[i] = 0;
-      p.count--;
+      freePuff(p, i);
+      n--;
       continue;
     }
     // inertiaExp must be > 0; pow(x, 0) = 1 would apply full inertia at all sizes.

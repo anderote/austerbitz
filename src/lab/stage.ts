@@ -93,11 +93,14 @@ export function resetStage(
   p.freeListNext[p.capacity - 1] = -1;
   p.freeListHead = 0;
 
-  // Bulk-clear the particle pool (allowed only here per spec).
+  // Bulk-clear the particle pool (allowed only here per spec). Also reset the
+  // packed-list bookkeeping (aliveIdx, cursor) to keep the schema invariant.
   for (let i = 0; i < particles.capacity; i++) {
     particles.alive[i] = 0;
+    particles.aliveIdx[i] = -1;
   }
   particles.count = 0;
+  particles.cursor = 0;
 
   // Re-spawn.
   const fresh = setupStage(world, projectiles, particles, stage.subjectKind);

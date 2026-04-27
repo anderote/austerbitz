@@ -38,23 +38,25 @@ out vec4 outColor;
 
 void main() {
   if (v_kind < 0.5) {
-    // Musket: bright tracer fading from head (right) to tail (left)
+    // Musket: chunky tracer — hard rectangle, brightness stepped head→tail.
+    if (abs(v_local.y) > 0.5) discard;
     float t = clamp(0.5 + v_local.x, 0.0, 1.0);
-    float a = pow(t, 2.0) * smoothstep(1.0, 0.0, abs(v_local.y) * 2.0);
+    float a = floor(t * t * 4.0) / 4.0;
     if (a <= 0.0) discard;
     outColor = vec4(v_color.rgb * a, a);
   } else if (v_kind < 1.5) {
-    // Cannonball: crisp dark sphere with rim highlight
-    float d = length(v_local);
-    if (d > 0.5) discard;
-    float rim = smoothstep(0.45, 0.5, d);
-    outColor = vec4(v_color.rgb + rim * 0.5, 1.0);
+    // Cannonball: chunky disc with hard rim — 8 cells across diameter.
+    vec2 q = (floor(v_local * 8.0) + 0.5) / 8.0;
+    float d2 = dot(q, q);
+    if (d2 > 0.25) discard;
+    float rim = step(0.16, d2);
+    outColor = vec4(v_color.rgb + rim * 0.45, 1.0);
   } else {
-    // Shadow: squashed ellipse, soft falloff
-    vec2 e = v_local * vec2(1.0, 1.7);
-    float d = length(e);
-    if (d > 0.5) discard;
-    outColor = vec4(0.0, 0.0, 0.0, 0.4 * smoothstep(0.5, 0.3, d));
+    // Shadow: chunky squashed ellipse, hard edge, flat alpha.
+    vec2 q = (floor(v_local * 8.0) + 0.5) / 8.0;
+    vec2 e = q * vec2(1.0, 1.7);
+    if (dot(e, e) > 0.25) discard;
+    outColor = vec4(0.0, 0.0, 0.0, 0.4);
   }
 }
 `;

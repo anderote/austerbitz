@@ -4,14 +4,14 @@ import { DUST, DUST_INDEX } from './profiles/dust';
 import { buildCoalesceGrid, gridInsert, tryMergeOrSpawn } from './coalesce';
 import { allocPuff } from './puffs';
 
-const DUST_PER_SEC = 0.25; // particles per moving entity per second
+const DUST_PER_SEC = 1.0; // particles per moving entity per second
 
 export function emitDustForFrame(world: World, puffs: Puffs, dt: number): void {
   const e = world.entities;
   const expected = DUST_PER_SEC * dt;
   const grid = buildCoalesceGrid(puffs);
-  for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 0) continue;
+  for (let n = 0; n < e.count; n++) {
+    const i = e.aliveIds[n]!;
     const vx = e.velX[i]!;
     const vy = e.velY[i]!;
     if (vx === 0 && vy === 0) continue;

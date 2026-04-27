@@ -297,7 +297,10 @@ export function pickPoseUv(
   }
   const dirs = atlas.dirLookup.get(kind)?.get(effectivePose);
   if (!dirs) return null;
-  const slot = (facing - 1) & 7;
+  // facing 0..7 starts at +X (E on screen) and advances CCW in math (= CW on
+  // screen since world Y grows down). DIRECTIONS is N-CW. Mapping:
+  //   facing=0 (E) → DIRECTIONS[2]; facing=2 (S) → [4]; facing=6 (N) → [0].
+  const slot = (facing + 2) & 7;
   const dir = dirs[slot]!;
   const clipList = poseMap.get(dir);
   if (!clipList || clipList.length === 0) return null;

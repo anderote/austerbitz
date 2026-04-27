@@ -1,4 +1,4 @@
-import type { Puffs } from './puffs';
+import { freePuff, type Puffs } from './puffs';
 import type { PuffProfile } from './profile';
 import type { Rng } from '../util/rng';
 
@@ -9,20 +9,47 @@ function key(profileIdx: number, cx: number, cy: number): number {
   return ((profileIdx * 2654435761) ^ (cx * 73856093) ^ (cy * 19349663)) >>> 0;
 }
 
+const SHARED_GRID: CoalesceGrid = new Map();
+const BUCKET_POOL: number[][] = [];
+let bucketsInUse = 0;
+
+function acquireBucket(): number[] {
+  if (bucketsInUse < BUCKET_POOL.length) {
+    const b = BUCKET_POOL[bucketsInUse++]!;
+    b.length = 0;
+    return b;
+  }
+  const b: number[] = [];
+  BUCKET_POOL.push(b);
+  bucketsInUse++;
+  return b;
+}
+
+function resetGrid(): void {
+  SHARED_GRID.clear();
+  bucketsInUse = 0;
+}
+
 export function buildCoalesceGrid(p: Puffs): CoalesceGrid {
   // Cell size is profile-specific. We bucket by a coarse cell of size 1m and
   // let the per-profile radius lookup handle the actual radius check.
-  const grid: CoalesceGrid = new Map();
-  for (let i = 0; i < p.capacity; i++) {
-    if (p.alive[i] === 0) continue;
+  // Returns a shared grid + pooled buckets — callers must build, use, and
+  // discard within a single function call (no retention across frames, no
+  // interleaved builds).
+  resetGrid();
+  for (let n = 0; n < p.count; n++) {
+    const i = p.aliveIds[n]!;
     const cx = Math.floor(p.posX[i]!);
     const cy = Math.floor(p.posY[i]!);
     const k = key(p.profileIdx[i]!, cx, cy);
-    let bucket = grid.get(k);
-    if (bucket === undefined) { bucket = []; grid.set(k, bucket); }
+    let bucket = SHARED_GRID.get(k);
+    if (bucket === undefined) {
+      bucket = acquireBucket();
+      SHARED_GRID.set(k, bucket);
+    }
     bucket.push(i);
   }
-  return grid;
+  return SHARED_GRID;
 }
 
 export interface MergeResult {
@@ -85,7 +112,10 @@ export function gridInsert(grid: CoalesceGrid, p: Puffs, idx: number): void {
   const cy = Math.floor(p.posY[idx]!);
   const k = key(p.profileIdx[idx]!, cx, cy);
   let bucket = grid.get(k);
-  if (bucket === undefined) { bucket = []; grid.set(k, bucket); }
+  if (bucket === undefined) {
+    bucket = acquireBucket();
+    grid.set(k, bucket);
+  }
   bucket.push(idx);
 }
 
@@ -101,8 +131,8 @@ export function coalesceStep(
 ): void {
   if (dt <= 0) return;
   const grid = buildCoalesceGrid(p);
-  for (let i = 0; i < p.capacity; i++) {
-    if (p.alive[i] === 0) continue;
+  for (let n = 0; n < p.count; n++) {
+    const i = p.aliveIds[n]!;
     const profile = profileLookup(p.profileIdx[i]!);
     const c = profile.coalesce;
     if (c === null) continue;
@@ -161,7 +191,7 @@ export function coalesceStep(
     const buoyMul = c.buoyancyMulOnMerge ?? 1.0;
     if (buoyMul !== 1.0) p.buoyancy[keeper] = p.buoyancy[keeper]! * buoyMul;
 
-    p.alive[eaten] = 0;
-    p.count--;
+    freePuff(p, eaten);
+    if (eaten === i) n--;
   }
 }

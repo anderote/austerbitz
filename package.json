@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:poses": "node scripts/build-pose-manifest.mjs",
+    "build:soldier-components": "node scripts/build-soldier-components.mjs --kit british-line-infantry && node scripts/slice-component-atlas.mjs",
+    "build:poses": "npm run build:soldier-components && node scripts/build-pose-manifest.mjs",
     "dev": "npm run build:poses && vite",
     "build": "npm run build:poses && tsc --noEmit && vite build",
     "preview": "vite preview",

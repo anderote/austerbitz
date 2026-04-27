@@ -270,9 +270,8 @@ export function createSpritePass(
             uv = pickPoseUv(poseAtlas, kind.id, pose, facing, clipIdx, poseT, poseAtlasY, sheetW, sheetH);
           }
           if (!uv) {
-            const cell = facing >= 1 && facing <= meta.poseCells.length
-              ? meta.poseCells[facing - 1]!
-              : (kind.spriteCell ?? meta.tintCell);
+            // Same facing→slot mapping as pickPoseUv (see atlas.ts).
+            const cell = meta.poseCells[(facing + 2) & 7] ?? kind.spriteCell ?? meta.tintCell;
             uv = cellUv(meta, cell.col, cell.row);
           }
           scratchUv[k * 4 + 0] = uv[0];

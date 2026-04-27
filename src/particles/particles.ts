@@ -11,6 +11,12 @@ export interface Particles {
   capacity: number;
   count: number;
   alive: Uint8Array;
+  /** Packed list of alive slot ids; aliveIds[0..count) are live. */
+  aliveIds: Int32Array;
+  /** Inverse map: aliveIdx[slotId] = packed index, or -1 if not alive. */
+  aliveIdx: Int32Array;
+  /** Rolling cursor for spawnParticle (matches puffs.allocPuff pattern). */
+  cursor: number;
   posX: Float32Array;
   posY: Float32Array;
   velX: Float32Array;
@@ -40,9 +46,13 @@ export interface ParticleSpawn {
 }
 
 export function createParticles(capacity: number): Particles {
+  const aliveIdx = new Int32Array(capacity);
+  aliveIdx.fill(-1);
   return {
-    capacity, count: 0,
+    capacity, count: 0, cursor: 0,
     alive: new Uint8Array(capacity),
+    aliveIds: new Int32Array(capacity),
+    aliveIdx,
     posX: new Float32Array(capacity),
     posY: new Float32Array(capacity),
     velX: new Float32Array(capacity),
@@ -61,9 +71,15 @@ export function createParticles(capacity: number): Particles {
 }
 
 export function spawnParticle(p: Particles, s: ParticleSpawn): number {
-  for (let i = 0; i < p.capacity; i++) {
+  const cap = p.capacity;
+  let i = p.cursor;
+  for (let n = 0; n < cap; n++) {
     if (p.alive[i] === 0) {
       p.alive[i] = 1;
+      p.aliveIdx[i] = p.count;
+      p.aliveIds[p.count] = i;
+      p.count++;
+      p.cursor = i + 1 === cap ? 0 : i + 1;
       p.posX[i] = s.x; p.posY[i] = s.y;
       p.velX[i] = s.vx; p.velY[i] = s.vy;
       p.life[i] = s.life; p.lifeMax[i] = s.life;
@@ -73,20 +89,36 @@ export function spawnParticle(p: Particles, s: ParticleSpawn): number {
       p.accelY[i] = s.accelY ?? 0;
       p.sizeGrowth[i] = s.sizeGrowth ?? 0;
       p.klass[i] = s.klass ?? ParticleClass.Dust;
-      p.count++;
       return i;
     }
+    i = i + 1 === cap ? 0 : i + 1;
   }
   return -1;
 }
 
+/** Frees slot `i`. Safe to call from inside a packed-list iteration if the
+ *  caller iterates by index `n` and decrements on free (see updateParticles). */
+export function freeParticle(p: Particles, i: number): void {
+  if (p.alive[i] === 0) return;
+  p.alive[i] = 0;
+  const idx = p.aliveIdx[i]!;
+  const last = p.count - 1;
+  if (idx !== last) {
+    const lastId = p.aliveIds[last]!;
+    p.aliveIds[idx] = lastId;
+    p.aliveIdx[lastId] = idx;
+  }
+  p.aliveIdx[i] = -1;
+  p.count--;
+}
+
 export function updateParticles(p: Particles, dt: number): void {
-  for (let i = 0; i < p.capacity; i++) {
-    if (p.alive[i] === 0) continue;
+  for (let n = 0; n < p.count; n++) {
+    const i = p.aliveIds[n]!;
     p.life[i] -= dt;
     if (p.life[i]! <= 0) {
-      p.alive[i] = 0;
-      p.count--;
+      freeParticle(p, i);
+      n--;
       continue;
     }
     p.velX[i] *= p.drag[i]!;

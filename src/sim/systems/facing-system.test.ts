@@ -50,9 +50,16 @@ describe('facingSystem', () => {
     facingSystem(world, 1 / 60);
     expect(world.entities.facing[id]).toBe(0);
 
-    // Larger 30° nudge should flip to NE.
-    const bigAngle = 30 * Math.PI / 180;
-    writeFacingIntent(world.entities, id, Math.cos(bigAngle), Math.sin(bigAngle));
+    // 30° intent is past the 22.5° octant boundary but inside the 10°
+    // hysteresis margin — facing should still hold at east.
+    const justOverBoundary = 30 * Math.PI / 180;
+    writeFacingIntent(world.entities, id, Math.cos(justOverBoundary), Math.sin(justOverBoundary));
+    facingSystem(world, 1 / 60);
+    expect(world.entities.facing[id]).toBe(0);
+
+    // 40° clears boundary + hysteresis (22.5 + 10) — should now flip to NE.
+    const wellPastBoundary = 40 * Math.PI / 180;
+    writeFacingIntent(world.entities, id, Math.cos(wellPastBoundary), Math.sin(wellPastBoundary));
     facingSystem(world, 1 / 60);
     expect(world.entities.facing[id]).toBe(1);
   });

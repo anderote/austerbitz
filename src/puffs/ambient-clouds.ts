@@ -14,8 +14,9 @@ export function tickAmbientClouds(
   puffs: Puffs, cfg: AmbientCloudConfig, dt: number, rng: Rng,
 ): void {
   let alive = 0;
-  for (let i = 0; i < puffs.capacity; i++) {
-    if (puffs.alive[i] === 1 && puffs.profileIdx[i] === CLOUD_INDEX) alive++;
+  for (let n = 0; n < puffs.count; n++) {
+    const i = puffs.aliveIds[n]!;
+    if (puffs.profileIdx[i] === CLOUD_INDEX) alive++;
   }
   const deficit = cfg.target - alive;
   if (deficit <= 0) return;

@@ -11,6 +11,11 @@ import { screenToWorld } from '../camera';
 import { PLAYER_TEAM } from '../../sim/player';
 import { isDead } from '../../sim/entities';
 
+// Reusable per-frame vert buffers for fixed-size line-loop overlays drawn
+// inside `draw`. Each is 8 verts × vec2 = 16 floats.
+const DRAG_RECT_VERTS = new Float32Array(16);
+const FORMATION_OUTLINE_VERTS = new Float32Array(16);
+
 export interface SelectionPass {
   // Tin-soldier base discs — call BEFORE the sprite pass so figures stand on top.
   // Selected units render green; units inside an active drag rect (preview)
@@ -448,9 +453,11 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         const kind = getUnitKindByIndex(e.kindId[id]!);
         const w = kind.placeholderSize.w;
         const h = kind.placeholderSize.h;
-        // Disc straddles the foot line: center at the bottom of the sprite.
+        // Disc straddles the foot line. Use the kind's foot offset if set,
+        // otherwise fall back to the bottom of the quad.
+        const footY = kind.footYFromCenter ?? h * 0.5;
         scratchPos[n * 2 + 0] = e.posX[id]!;
-        scratchPos[n * 2 + 1] = e.posY[id]! + h * 0.5;
+        scratchPos[n * 2 + 1] = e.posY[id]! + footY;
         // Squashed ellipse — wider than tall to suggest a flat disc on the ground.
         scratchSize[n * 2 + 0] = w * 1.25;
         scratchSize[n * 2 + 1] = w * 0.55;
@@ -722,16 +729,15 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         const b = screenToWorld(cam, drag.currentScreen);
         const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
         const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
-        const verts = new Float32Array([
-          x0, y0,  x1, y0,
-          x1, y0,  x1, y1,
-          x1, y1,  x0, y1,
-          x0, y1,  x0, y0,
-        ]);
+        const v = DRAG_RECT_VERTS;
+        v[0]  = x0; v[1]  = y0; v[2]  = x1; v[3]  = y0;
+        v[4]  = x1; v[5]  = y0; v[6]  = x1; v[7]  = y1;
+        v[8]  = x1; v[9]  = y1; v[10] = x0; v[11] = y1;
+        v[12] = x0; v[13] = y1; v[14] = x0; v[15] = y0;
         gl.useProgram(dragProg);
         gl.bindVertexArray(dragVao);
         gl.bindBuffer(gl.ARRAY_BUFFER, dragBuf);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, v);
         gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
         gl.uniform1f(dragU.u_time, performance.now() * 0.001);
         gl.uniform3f(dragU.u_color, 1.0, 1.0, 1.0); // white — selection drag
@@ -742,16 +748,15 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       // Formation preview: marching-ants outline + per-slot pips.
       if (formation) {
         const { rect, slots } = formation;
-        const verts = new Float32Array([
-          rect.tl.x, rect.tl.y,  rect.tr.x, rect.tr.y,
-          rect.tr.x, rect.tr.y,  rect.br.x, rect.br.y,
-          rect.br.x, rect.br.y,  rect.bl.x, rect.bl.y,
-          rect.bl.x, rect.bl.y,  rect.tl.x, rect.tl.y,
-        ]);
+        const v = FORMATION_OUTLINE_VERTS;
+        v[0]  = rect.tl.x; v[1]  = rect.tl.y; v[2]  = rect.tr.x; v[3]  = rect.tr.y;
+        v[4]  = rect.tr.x; v[5]  = rect.tr.y; v[6]  = rect.br.x; v[7]  = rect.br.y;
+        v[8]  = rect.br.x; v[9]  = rect.br.y; v[10] = rect.bl.x; v[11] = rect.bl.y;
+        v[12] = rect.bl.x; v[13] = rect.bl.y; v[14] = rect.tl.x; v[15] = rect.tl.y;
         gl.useProgram(dragProg);
         gl.bindVertexArray(dragVao);
         gl.bindBuffer(gl.ARRAY_BUFFER, dragBuf);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, v);
         gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
         gl.uniform1f(dragU.u_time, performance.now() * 0.001);
         gl.uniform3f(dragU.u_color, 0.55, 1.0, 0.6); // green — formation

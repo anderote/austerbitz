@@ -7,8 +7,8 @@ import type { Puffs } from './puffs';
  *  smoke streams sideways. Saturates at size ≈ 1.7 m. */
 export function applyWindToPuffs(p: Puffs, accelX: number, dt: number): void {
   if (accelX === 0) return;
-  for (let i = 0; i < p.capacity; i++) {
-    if (p.alive[i] === 0) continue;
+  for (let n = 0; n < p.count; n++) {
+    const i = p.aliveIds[n]!;
     const sizeFactor = Math.min(1.0, p.size[i]! * 0.6);
     const lifeRatio = p.lifeMax[i]! > 0 ? p.life[i]! / p.lifeMax[i]! : 0;
     const ageFactor = 1 - lifeRatio;

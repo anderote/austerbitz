@@ -1,6 +1,7 @@
 import type { System } from '../world';
 import { gridQueryRadius } from '../spatial/grid';
 import { unitKinds } from '../../data/units';
+import { EntityState } from '../entities';
 
 const PUSH_STRENGTH = 0.5;
 // Seconds a unit waits after being shoved before drifting back to its parked
@@ -22,7 +23,12 @@ export const collisionSystem: System = (world, _dt) => {
   const e = world.entities;
   for (let n = 0; n < e.count; n++) {
     const i = e.aliveIds[n]!;
-    if (e.state[i]! >= 4) continue; // ragdoll/dead bodies don't push
+    // Ragdoll/Dying/Dead are corpses — they don't push or get pushed. Reloading
+    // and Flinch are upright soldiers that still occupy space, so they collide
+    // normally; otherwise marching reloaders walk through each other and arrive
+    // overlapping their neighbours, which kicks off a drift-back/jostle loop
+    // the moment they tick back into Idle.
+    if (e.state[i]! >= EntityState.Ragdoll) continue;
     const ri = e.bodyRadius[i]!;
     const mi = e.massKg[i]!;
     const xi = e.posX[i]!;
@@ -32,7 +38,7 @@ export const collisionSystem: System = (world, _dt) => {
       const j = NEIGHBOR_BUF[k]!;
       if (j <= i) continue;
       if (e.alive[j] !== 1) continue;
-      if (e.state[j]! >= 4) continue;
+      if (e.state[j]! >= EntityState.Ragdoll) continue;
       const rj = e.bodyRadius[j]!;
       const sumR = ri + rj;
       const dx = e.posX[j]! - e.posX[i]!;

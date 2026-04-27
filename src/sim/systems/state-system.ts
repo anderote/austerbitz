@@ -8,10 +8,12 @@ import { getUnitKindByIndex } from '../../data/units';
 import { writeFacingIntent } from './facing-system';
 import { Pose, RUN_THRESHOLD_PX_S } from '../../render/poses/pose-config';
 
-function poseFor(state: EntityState, speed: number): Pose {
+const RUN_THRESHOLD_SQ = RUN_THRESHOLD_PX_S * RUN_THRESHOLD_PX_S;
+
+function poseFor(state: EntityState, speedSq: number): Pose {
   switch (state) {
     case EntityState.Idle:      return Pose.idle;
-    case EntityState.Moving:    return speed > RUN_THRESHOLD_PX_S ? Pose.running : Pose.walking;
+    case EntityState.Moving:    return speedSq > RUN_THRESHOLD_SQ ? Pose.running : Pose.walking;
     case EntityState.Aiming:    return Pose.aiming;
     case EntityState.Firing:    return Pose.firing;
     case EntityState.Reloading: return Pose.reloading;
@@ -139,8 +141,10 @@ export function tickStates(
         break;
     }
 
-    const speed = Math.hypot(e.velX[i]!, e.velY[i]!);
-    const desired = poseFor(e.state[i] as EntityState, speed);
+    const vx = e.velX[i]!;
+    const vy = e.velY[i]!;
+    const speedSq = vx * vx + vy * vy;
+    const desired = poseFor(e.state[i] as EntityState, speedSq);
     if (e.pose[i] !== desired) {
       e.pose[i] = desired;
       e.poseT[i] = 0;

@@ -132,7 +132,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 75;      // metres between the two armies' front ranks
+const BATTLE_GAP = 75;      // metres between the two armies' front ranks (within 80m musket range)
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 

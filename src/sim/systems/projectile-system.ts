@@ -19,11 +19,13 @@ import { cannon12Shell } from '../../data/weapons/cannon-12-shell';
 
 /** Half-width (m) of the per-entity body footprint used for swept-segment hits. */
 export const PROJECTILE_HIT_RADIUS = 0.5;
+const PROJECTILE_HIT_RADIUS_SQ = PROJECTILE_HIT_RADIUS * PROJECTILE_HIT_RADIUS;
 
 /** Ground friction applied to a rolling solid shot (per-second). */
 const GROUND_FRICTION = 1.5;
 /** Speed (m/s) below which a rolling solid shot is freed. */
 const ROLL_STOP_SPEED = 3;
+const ROLL_STOP_SPEED_SQ = ROLL_STOP_SPEED * ROLL_STOP_SPEED;
 /** Restitution applied to vertical velocity on a solid-shot ricochet. */
 const RICOCHET_RESTITUTION_Z = 0.5;
 /** Per-ricochet horizontal velocity damping. */
@@ -142,8 +144,10 @@ export function tickProjectiles(
       const fric = 1 - GROUND_FRICTION * dt;
       p.velX[i] = p.velX[i]! * fric;
       p.velY[i] = p.velY[i]! * fric;
-      const speed = Math.hypot(p.velX[i]!, p.velY[i]!);
-      if (speed < ROLL_STOP_SPEED) {
+      const vxR = p.velX[i]!;
+      const vyR = p.velY[i]!;
+      const speedSq = vxR * vxR + vyR * vyR;
+      if (speedSq < ROLL_STOP_SPEED_SQ) {
         freeProjectile(p, i);
         continue;
       }
@@ -186,8 +190,8 @@ export function tickProjectiles(
         const closestY = ay + t * sdy;
         const dCloseX = ex - closestX;
         const dCloseY = ey - closestY;
-        const dist = Math.hypot(dCloseX, dCloseY);
-        if (dist > PROJECTILE_HIT_RADIUS) continue;
+        const distSq = dCloseX * dCloseX + dCloseY * dCloseY;
+        if (distSq > PROJECTILE_HIT_RADIUS_SQ) continue;
 
         // Z-range: tick range must overlap the entity's body height.
         const body = getUnitKindByIndex(entities.kindId[id]!).bodyZ;

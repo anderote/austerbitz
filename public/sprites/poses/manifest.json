@@ -118,6 +118,30 @@
     },
     "line-infantry": {
       "poses": {
+        "aiming": {
+          "dirs": [
+            "S"
+          ],
+          "clips": {
+            "S": [
+              [
+                "S/0/0.png"
+              ]
+            ]
+          }
+        },
+        "firing": {
+          "dirs": [
+            "S"
+          ],
+          "clips": {
+            "S": [
+              [
+                "S/0/0.png"
+              ]
+            ]
+          }
+        },
         "idle": {
           "dirs": [
             "N",
@@ -168,6 +192,18 @@
             "NW": [
               [
                 "NW/0/0.png"
+              ]
+            ]
+          }
+        },
+        "reloading": {
+          "dirs": [
+            "S"
+          ],
+          "clips": {
+            "S": [
+              [
+                "S/0/0.png"
               ]
             ]
           }
