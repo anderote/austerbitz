@@ -25,6 +25,7 @@ import { createSelectionPanel } from './ui/selection-panel';
 import { createStatsCard } from './ui/stats-card';
 import { createBuildMenu } from './ui/build-menu';
 import { createScaleBar } from './ui/scale-bar';
+import { createWindIndicator } from './ui/wind-indicator';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
 import { createGroupBadges } from './ui/group-badges';
@@ -32,6 +33,9 @@ import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
 import { createParticles, updateParticles } from './particles/particles';
 import { createPuffs, updatePuffs } from './puffs/puffs';
+import { coalesceStep } from './puffs/coalesce';
+import { getProfileByIndex } from './puffs/profile';
+import { applyWindToPuffs, windAt, createWindState, tickWind } from './puffs/wind';
 import { emitDustForFrame } from './puffs/emit-dust';
 import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clouds';
 import { createProjectiles } from './sim/projectiles';
@@ -40,7 +44,7 @@ import { loadPoseAtlas } from './render/poses/atlas';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
-const PUFF_CAPACITY = 1024;
+const PUFF_CAPACITY = 65536;
 const PROJECTILE_CAPACITY = 2048;
 
 async function start(): Promise<void> {
@@ -73,6 +77,7 @@ const cloudCfg: AmbientCloudConfig = {
 };
 const particles = createParticles(PARTICLE_CAPACITY);
 const puffs = createPuffs(PUFF_CAPACITY);
+const windState = createWindState();
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
@@ -250,6 +255,7 @@ const selPanel = createSelectionPanel(overlay);
 const statsCard = createStatsCard(overlay);
 const buildMenu = createBuildMenu(overlay);
 const scaleBar = createScaleBar(overlay);
+const windIndicator = createWindIndicator(overlay);
 const minimap = createMinimap(overlay, map.size, camera);
 const cgPanel = createControlGroupsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
@@ -263,9 +269,11 @@ const controller = createSelectionController({
 
 let lastT = performance.now();
 let smoothedFps = 60;
+let simElapsed = 0;
 function frame(t: number) {
   const dt = Math.min(0.1, (t - lastT) / 1000);
   lastT = t;
+  simElapsed += dt;
   smoothedFps = smoothedFps * 0.9 + (1 / Math.max(dt, 1e-3)) * 0.1;
   input.beginFrame();
   cameraControls.update(dt);
@@ -274,6 +282,11 @@ function frame(t: number) {
   emitDustForFrame(world, puffs, dt);
   tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
   updatePuffs(puffs, dt);
+  tickWind(windState, simElapsed, world.rng);
+  const currentWind = windAt(windState, simElapsed);
+  applyWindToPuffs(puffs, currentWind, dt);
+  windIndicator.update(currentWind);
+  coalesceStep(puffs, dt, world.rng, getProfileByIndex);
   updateParticles(particles, dt);
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;

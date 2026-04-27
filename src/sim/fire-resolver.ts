@@ -7,7 +7,7 @@ import {
 } from './projectiles';
 import type { Particles } from '../particles/particles';
 import { emitMuzzleFx } from '../particles/emitters';
-import { emitPuffBurst } from '../puffs/emit';
+import { emitPuffMuzzleSpray } from '../puffs/emit';
 import type { Puffs } from '../puffs/puffs';
 import type { Rng } from '../util/rng';
 import { barrelTip } from '../fx/barrel';
@@ -82,7 +82,7 @@ export function resolveFire(
 
     if (weapon.muzzle) {
       emitMuzzleFx(particles, weapon.muzzle, tip.x, tip.y, dirX, dirY, rng);
-      emitPuffBurst(
+      emitPuffMuzzleSpray(
         puffs,
         weapon.muzzle.smoke.profile,
         weapon.muzzle.smoke.profileIdx,
@@ -151,7 +151,7 @@ export function resolveFire(
 
     if (weapon.muzzle) {
       emitMuzzleFx(particles, weapon.muzzle, tip.x, tip.y, dirX, dirY, rng);
-      emitPuffBurst(
+      emitPuffMuzzleSpray(
         puffs,
         weapon.muzzle.smoke.profile,
         weapon.muzzle.smoke.profileIdx,

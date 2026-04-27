@@ -7,8 +7,8 @@ export const cannon12Muzzle: MuzzleProfile = {
     profile: CANNON_SMOKE,
     profileIdx: CANNON_SMOKE_INDEX,
     count: 40,
-    coneAngle: 0.8,
-    speed: { min: 8, max: 15 },
+    coneAngle: 0.18,
+    speed: { min: 14, max: 24 },
   },
   recoilFirer: 4.0,
 };

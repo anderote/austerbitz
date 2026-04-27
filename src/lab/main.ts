@@ -6,6 +6,8 @@ import { createCameraControls } from '../input/camera-controls';
 import { createWorld, rebuildGrid } from '../sim/world';
 import { createParticles, updateParticles } from '../particles/particles';
 import { createPuffs, updatePuffs } from '../puffs/puffs';
+import { coalesceStep } from '../puffs/coalesce';
+import { getProfileByIndex } from '../puffs/profile';
 import { tickAmbientClouds, type AmbientCloudConfig } from '../puffs/ambient-clouds';
 import { createProjectiles } from '../sim/projectiles';
 import { createSelection, createDragRect } from '../input/selection';
@@ -31,7 +33,7 @@ import { loadPoseAtlas } from '../render/poses/atlas';
 
 const CAPACITY = 256;
 const PARTICLE_CAPACITY = 50_000;
-const PUFF_CAPACITY = 1024;
+const PUFF_CAPACITY = 8192;
 const PROJECTILE_CAPACITY = 2_048;
 
 async function start(): Promise<void> {
@@ -161,6 +163,7 @@ function frame(t: number) {
   applyWind(puffs, wind.accelX, dt);
   tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
   updatePuffs(puffs, dt);
+  coalesceStep(puffs, dt, world.rng, getProfileByIndex);
   updateParticles(particles, dt);
 
   // Drain sim-queued blood splats into the GPU stain pass.

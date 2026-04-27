@@ -34,6 +34,7 @@ function writeProfile(
   p.b[i] = clamp01(profile.color[2] + jitter(rng, profile.colorJitter));
   p.alpha[i] = profile.alpha;
   p.softness[i] = profile.softness;
+  p.decayMul[i] = profile.decayMulAtMaxSize ?? 1;
 }
 
 /** Emit a single puff. No coalescence (use emitPuffWithCoalesce for that). */
@@ -66,6 +67,27 @@ export function emitPuffWithCoalesce(
  *  muzzle smoke and explosion billows. No coalescence (each burst is one
  *  emission event; coalescence is meant for streams like marching dust). */
 export function emitPuffBurst(
+  p: Puffs, profile: PuffProfile, profileIdx: number,
+  x: number, y: number, dirX: number, dirY: number,
+  count: number, coneAngle: number,
+  speed: { min: number; max: number },
+  rng: Rng,
+): void {
+  const theta = Math.atan2(dirY, dirX);
+  const half = coneAngle * 0.5;
+  for (let n = 0; n < count; n++) {
+    const a = theta + rng.range(-half, half);
+    const s = rng.range(speed.min, speed.max);
+    const vx = Math.cos(a) * s;
+    const vy = Math.sin(a) * s;
+    emitPuff(p, profile, profileIdx, x, y, vx, vy, rng);
+  }
+}
+
+/** Muzzle spray: tight forward cone — every puff shoots out along the firing
+ *  line, drag handles deceleration so they settle into a string at varying
+ *  distances. No spawn-time coalesce; drift-merging happens later. */
+export function emitPuffMuzzleSpray(
   p: Puffs, profile: PuffProfile, profileIdx: number,
   x: number, y: number, dirX: number, dirY: number,
   count: number, coneAngle: number,

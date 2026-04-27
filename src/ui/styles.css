@@ -147,6 +147,55 @@
   font-size: 11px;
 }
 
+#ui-root .wind-indicator {
+  position: absolute;
+  bottom: 50px;
+  right: 8px;
+  width: 64px;
+  color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+  font-size: 11px;
+  pointer-events: none;
+  text-align: center;
+}
+
+#ui-root .wind-indicator .compass {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: rgba(20, 24, 28, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+#ui-root .wind-indicator .dir {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1;
+}
+
+#ui-root .wind-indicator .dir.n { top: 3px;    left: 50%; transform: translateX(-50%); }
+#ui-root .wind-indicator .dir.s { bottom: 3px; left: 50%; transform: translateX(-50%); }
+#ui-root .wind-indicator .dir.e { right: 4px;  top: 50%;  transform: translateY(-50%); }
+#ui-root .wind-indicator .dir.w { left: 4px;   top: 50%;  transform: translateY(-50%); }
+
+#ui-root .wind-indicator .arrow-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  transition: transform 0.4s ease-out;
+}
+
+#ui-root .wind-indicator .speed {
+  margin-top: 4px;
+}
+
 #ui-root .control-groups {
   position: absolute;
   bottom: 56px;

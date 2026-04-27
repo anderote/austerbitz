@@ -1,6 +1,6 @@
 export { createPuffs, allocPuff, updatePuffs, type Puffs } from './puffs';
 export { registerProfile, getProfileByIndex, profileCount, type PuffProfile } from './profile';
-export { emitPuff, emitPuffBurst, emitPuffWithCoalesce } from './emit';
+export { emitPuff, emitPuffBurst, emitPuffMuzzleSpray, emitPuffWithCoalesce } from './emit';
 export { buildCoalesceGrid, gridInsert, tryMergeOrSpawn } from './coalesce';
 export { DUST, DUST_INDEX } from './profiles/dust';
 export { MUSKET_SMOKE, MUSKET_SMOKE_INDEX } from './profiles/musket-smoke';

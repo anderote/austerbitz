@@ -88,3 +88,80 @@ export function gridInsert(grid: CoalesceGrid, p: Puffs, idx: number): void {
   if (bucket === undefined) { bucket = []; grid.set(k, bucket); }
   bucket.push(idx);
 }
+
+/** Per-frame drift-merge: same-profile puffs that have drifted near each
+ *  other gradually consume one another. The keeper grows + gains life; the
+ *  partner is freed. Rate is `driftMergePerSec` from the profile coalesce
+ *  config (probability per puff per second). */
+export function coalesceStep(
+  p: Puffs,
+  dt: number,
+  rng: Rng,
+  profileLookup: (idx: number) => PuffProfile,
+): void {
+  if (dt <= 0) return;
+  const grid = buildCoalesceGrid(p);
+  for (let i = 0; i < p.capacity; i++) {
+    if (p.alive[i] === 0) continue;
+    const profile = profileLookup(p.profileIdx[i]!);
+    const c = profile.coalesce;
+    if (c === null) continue;
+    const rate = c.driftMergePerSec ?? 0;
+    if (rate <= 0) continue;
+    if (rng.next() >= rate * dt) continue;
+
+    // Find the closest same-profile partner within radius (excluding self).
+    const cx = Math.floor(p.posX[i]!);
+    const cy = Math.floor(p.posY[i]!);
+    const cells = Math.max(1, Math.ceil(c.radius));
+    let bestIdx = -1;
+    let bestSq = c.radius * c.radius;
+    for (let dy = -cells; dy <= cells; dy++) {
+      for (let dx = -cells; dx <= cells; dx++) {
+        const bucket = grid.get(key(p.profileIdx[i]!, cx + dx, cy + dy));
+        if (bucket === undefined) continue;
+        for (let b = 0; b < bucket.length; b++) {
+          const j = bucket[b]!;
+          if (j === i) continue;
+          if (p.alive[j] === 0) continue;
+          const ddx = p.posX[j]! - p.posX[i]!;
+          const ddy = p.posY[j]! - p.posY[i]!;
+          const dsq = ddx * ddx + ddy * ddy;
+          if (dsq < bestSq) { bestSq = dsq; bestIdx = j; }
+        }
+      }
+    }
+    if (bestIdx === -1) continue;
+
+    // Keeper = whichever is older (more life remaining); the other is freed.
+    const keeper = p.life[i]! >= p.life[bestIdx]! ? i : bestIdx;
+    const eaten = keeper === i ? bestIdx : i;
+
+    const sm = p.sizeMax[keeper]!;
+    const atSizeCap = p.size[keeper]! >= sm - 1e-6;
+    if (!atSizeCap) {
+      const newSize = p.size[keeper]! + c.sizePerMerge;
+      p.size[keeper] = newSize > sm ? sm : newSize;
+
+      const lifeMaxBump = c.lifeMaxPerMerge ?? 0;
+      if (lifeMaxBump > 0) p.lifeMax[keeper] = p.lifeMax[keeper]! + lifeMaxBump;
+
+      const lm = p.lifeMax[keeper]!;
+      const newLife = p.life[keeper]! + c.lifePerMerge;
+      p.life[keeper] = newLife > lm ? lm : newLife;
+    }
+
+    p.posX[keeper] = p.posX[keeper]! * (1 - c.posBlend) + p.posX[eaten]! * c.posBlend;
+    p.posY[keeper] = p.posY[keeper]! * (1 - c.posBlend) + p.posY[eaten]! * c.posBlend;
+
+    const velDamp = c.velDampOnMerge ?? 1.0;
+    p.velX[keeper] = (p.velX[keeper]! + p.velX[eaten]!) * 0.5 * velDamp;
+    p.velY[keeper] = (p.velY[keeper]! + p.velY[eaten]!) * 0.5 * velDamp;
+
+    const buoyMul = c.buoyancyMulOnMerge ?? 1.0;
+    if (buoyMul !== 1.0) p.buoyancy[keeper] = p.buoyancy[keeper]! * buoyMul;
+
+    p.alive[eaten] = 0;
+    p.count--;
+  }
+}

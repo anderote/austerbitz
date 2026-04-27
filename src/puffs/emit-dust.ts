@@ -4,7 +4,7 @@ import { DUST, DUST_INDEX } from './profiles/dust';
 import { buildCoalesceGrid, gridInsert, tryMergeOrSpawn } from './coalesce';
 import { allocPuff } from './puffs';
 
-const DUST_PER_SEC = 1.2; // particles per moving entity per second
+const DUST_PER_SEC = 0.25; // particles per moving entity per second
 
 export function emitDustForFrame(world: World, puffs: Puffs, dt: number): void {
   const e = world.entities;
@@ -50,6 +50,7 @@ export function emitDustForFrame(world: World, puffs: Puffs, dt: number): void {
     puffs.inertiaWeight[idx] = DUST.inertiaWeight;
     puffs.r[idx] = DUST.color[0]; puffs.g[idx] = DUST.color[1]; puffs.b[idx] = DUST.color[2];
     puffs.alpha[idx] = DUST.alpha; puffs.softness[idx] = DUST.softness;
+    puffs.decayMul[idx] = DUST.decayMulAtMaxSize ?? 1;
     gridInsert(grid, puffs, idx);
   }
 }
