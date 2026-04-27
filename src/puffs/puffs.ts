@@ -51,6 +51,7 @@ export function updatePuffs(p: Puffs, dt: number): void {
     }
     const sm = p.sizeMax[i]!;
     const sizeFrac = sm > 0 ? p.size[i]! / sm : 0;
+    // inertiaExp must be > 0; pow(x, 0) = 1 would apply full inertia at all sizes.
     const sizeDamp = 1 - p.inertiaWeight[i]! * Math.pow(sizeFrac, p.inertiaExp[i]!);
     const tickMul = p.drag[i]! * sizeDamp;
     p.velX[i] = p.velX[i]! * tickMul;
