@@ -43,7 +43,9 @@ describe('tickStates', () => {
     expect(e.state[id]).toBe(EntityState.Reloading);
     expect(projectiles.count).toBe(1);
     const reload = getUnitKindByIndex(e.kindId[id]!).baseStats.weaponReload;
-    expect(e.reloadT[id]).toBeCloseTo(reload, 6);
+    // ±20% jitter is applied by tickStates; reloadT must land in that band.
+    expect(e.reloadT[id]).toBeGreaterThanOrEqual(reload * 0.8);
+    expect(e.reloadT[id]).toBeLessThanOrEqual(reload * 1.2);
     expect(fireOrders.has(id)).toBe(false);
   });
 

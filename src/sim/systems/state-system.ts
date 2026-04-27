@@ -76,7 +76,8 @@ export function tickStates(
 
           const kind = getUnitKindByIndex(e.kindId[i]!);
           e.state[i] = EntityState.Reloading;
-          e.reloadT[i] = kind.baseStats.weaponReload;
+          // Jitter ±20% so units don't resync into a single volley over time.
+          e.reloadT[i] = kind.baseStats.weaponReload * rng.range(0.8, 1.2);
           e.stateT[i] = 0;
         }
         break;

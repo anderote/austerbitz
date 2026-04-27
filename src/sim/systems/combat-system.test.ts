@@ -289,9 +289,10 @@ describe('combat pipeline integration', () => {
     // the loop — but we know at least one was spawned along the way.
     expect(peakProjectiles).toBeGreaterThanOrEqual(1);
 
-    // Reload countdown is in progress.
+    // Reload countdown is in progress. Upper bound covers the ±20% reload
+    // jitter applied by state-system at the firing transition.
     const reloadTotal = getUnitKindByIndex(world.entities.kindId[shooter]!).baseStats.weaponReload;
     expect(world.entities.reloadT[shooter]).toBeGreaterThan(0);
-    expect(world.entities.reloadT[shooter]).toBeLessThan(reloadTotal);
+    expect(world.entities.reloadT[shooter]).toBeLessThanOrEqual(reloadTotal * 1.2);
   });
 });

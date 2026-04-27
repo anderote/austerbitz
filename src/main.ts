@@ -4,7 +4,7 @@ import { createCamera } from './render/camera';
 import { createInputManager } from './input/input-manager';
 import { createCameraControls } from './input/camera-controls';
 import { createWorld, tickWorld } from './sim/world';
-import { allocEntity } from './sim/entities';
+import { allocEntity, EntityState } from './sim/entities';
 import { getUnitKind, getUnitKindIndex } from './data/units';
 import { createDefaultMap } from './map/world-map';
 import { ordersSystem } from './sim/systems/orders-system';
@@ -96,6 +96,13 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
   world.entities.hp[id] = kind.baseStats.hp;
   world.entities.bodyRadius[id] = kind.baseStats.bodyRadius;
   world.entities.massKg[id] = kind.baseStats.massKg;
+  // Stagger initial firing — each armed unit starts mid-reload at a random
+  // point so the first volley spreads across one reload cycle instead of
+  // landing on a single tick.
+  if (kind.weapon) {
+    world.entities.state[id] = EntityState.Reloading;
+    world.entities.reloadT[id] = world.rng.range(0, kind.baseStats.weaponReload);
+  }
   return id;
 }
 
