@@ -25,3 +25,19 @@ export function emitDust(world: World, particles: Particles, dt: number): void {
     });
   }
 }
+
+export function emitOrderPuff(particles: Particles, x: number, y: number): void {
+  for (let i = 0; i < 8; i++) {
+    const a = (Math.PI * 2 * i) / 8;
+    const r = 0.3;
+    spawnParticle(particles, {
+      x: x + Math.cos(a) * r,
+      y: y + Math.sin(a) * r,
+      vx: Math.cos(a) * 0.6,
+      vy: Math.sin(a) * 0.6,
+      life: 0.35,
+      size: 0.18,
+      r: 0.8, g: 0.9, b: 1.0,
+    });
+  }
+}
