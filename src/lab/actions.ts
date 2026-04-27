@@ -1,6 +1,8 @@
 import type { World } from '../sim/world';
 import type { Projectiles } from '../sim/projectiles';
 import type { Particles } from '../particles/particles';
+import type { Puffs } from '../puffs/puffs';
+import { emitPuffBurst } from '../puffs/emit';
 import type { Rng } from '../util/rng';
 import type { Stage } from './stage';
 import { EntityState } from '../sim/entities';
@@ -85,6 +87,7 @@ export function actSolidShot(
   world: World,
   projectiles: Projectiles,
   particles: Particles,
+  puffs: Puffs,
   stage: Stage,
 ): void {
   const id = subject(world, stage);
@@ -97,6 +100,7 @@ export function actSolidShot(
     world.entities,
     projectiles,
     particles,
+    puffs,
     world.rng,
     id,
     DUMMY_ROW_X, DUMMY_ROW_Y,
@@ -112,6 +116,7 @@ export function actExplosiveShell(
   world: World,
   projectiles: Projectiles,
   particles: Particles,
+  puffs: Puffs,
   stage: Stage,
 ): void {
   const id = subject(world, stage);
@@ -147,6 +152,16 @@ export function actExplosiveShell(
 
   if (profile.muzzle) {
     emitMuzzleFx(particles, profile.muzzle, tip.x, tip.y, dirX, dirY, world.rng);
+    emitPuffBurst(
+      puffs,
+      profile.muzzle.smoke.profile,
+      profile.muzzle.smoke.profileIdx,
+      tip.x, tip.y, dirX, dirY,
+      profile.muzzle.smoke.count,
+      profile.muzzle.smoke.coneAngle,
+      profile.muzzle.smoke.speed,
+      world.rng,
+    );
   }
   world.entities.recoilT[id] = RECOIL_T;
   if (profile.muzzle?.recoilFirer) {

@@ -22,13 +22,12 @@ function countByClass(p: ReturnType<typeof createParticles>, klass: number): num
 }
 
 describe('emitMuzzleFx', () => {
-  it('spawns exactly 1 flash + 10 smoke particles for the musket profile', () => {
+  it('spawns exactly 1 flash particle for the musket profile (smoke handled by puffs)', () => {
     const p = createParticles(64);
     const rng = createRng(1);
     emitMuzzleFx(p, musket.muzzle!, 0, 0, 1, 0, rng);
-    expect(p.count).toBe(11);
+    expect(p.count).toBe(1);
     expect(countByClass(p, ParticleClass.Flash)).toBe(1);
-    expect(countByClass(p, ParticleClass.Smoke)).toBe(10);
   });
 
   it('flash particle has correct size, life, and color', () => {

@@ -1,6 +1,7 @@
 import { type Entities, EntityState } from '../entities';
 import type { Projectiles } from '../projectiles';
 import type { Particles } from '../../particles/particles';
+import type { Puffs } from '../../puffs/puffs';
 import type { Rng } from '../../util/rng';
 import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
@@ -41,6 +42,7 @@ export function tickStates(
   e: Entities,
   projectiles: Projectiles,
   particles: Particles,
+  puffs: Puffs,
   rng: Rng,
   fireOrders: FireOrders,
   dt: number,
@@ -68,7 +70,7 @@ export function tickStates(
           e.state[i] = EntityState.Firing;
           const order = fireOrders.get(i);
           if (order) {
-            resolveFire(e, projectiles, particles, rng, i, order.tx, order.ty);
+            resolveFire(e, projectiles, particles, puffs, rng, i, order.tx, order.ty);
           }
           fireOrders.delete(i);
 

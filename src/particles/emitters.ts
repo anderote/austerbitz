@@ -139,15 +139,16 @@ export function emitOrderPuff(particles: Particles, x: number, y: number): void 
   }
 }
 
-/** Emit muzzle flash + smoke puff in the forward cone of (dirX, dirY). */
+/** Emit muzzle flash particle at the barrel tip. Smoke is now handled by the
+ *  puff system; callers also invoke emitPuffBurst with `profile.smoke`. */
 export function emitMuzzleFx(
   particles: Particles,
   profile: MuzzleProfile,
   x: number, y: number,
-  dirX: number, dirY: number,
-  rng: Rng,
+  _dirX: number, _dirY: number,
+  _rng: Rng,
 ): void {
-  // Single flash particle at origin — short-lived, snaps out via high drag.
+  // Flash particle only — short-lived, snaps out via high drag.
   spawnParticle(particles, {
     x, y,
     vx: 0, vy: 0,
@@ -159,28 +160,6 @@ export function emitMuzzleFx(
     sizeGrowth: 0,
     klass: ParticleClass.Flash,
   });
-
-  // Smoke puff in a forward cone aligned with (dirX, dirY).
-  const theta = Math.atan2(dirY, dirX);
-  const halfCone = profile.smoke.coneAngle / 2;
-  const { count, speed, life, sizeStart, sizeGrowth, drag, upwardDrift, color } = profile.smoke;
-  for (let i = 0; i < count; i++) {
-    const delta = rng.range(-halfCone, halfCone);
-    const s = rng.range(speed.min, speed.max);
-    const a = theta + delta;
-    spawnParticle(particles, {
-      x, y,
-      vx: Math.cos(a) * s,
-      vy: Math.sin(a) * s,
-      life: rng.range(life.min, life.max),
-      size: sizeStart,
-      r: color[0], g: color[1], b: color[2],
-      drag,
-      accelY: upwardDrift,
-      sizeGrowth,
-      klass: ParticleClass.Smoke,
-    });
-  }
 }
 
 /** Single dark-red burst at impact location. Intensity scales count + size. */

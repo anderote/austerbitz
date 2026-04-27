@@ -81,8 +81,8 @@ const handlers: ActionHandlers = {
   faceR: () => actFaceR(world, stage),
   fire: () => actFire(world, fireOrders, stage),
   reload: () => actReload(world, stage),
-  solidShot: () => actSolidShot(world, projectiles, particles, stage),
-  explosiveShell: () => actExplosiveShell(world, projectiles, particles, stage),
+  solidShot: () => actSolidShot(world, projectiles, particles, puffs, stage),
+  explosiveShell: () => actExplosiveShell(world, projectiles, particles, puffs, stage),
   charge: () => actCharge(world, stage),
   takeMusketHit: () => actTakeMusketHit(world, particles, world.rng, stage),
   takeCannonHit: () => actTakeCannonHit(world, particles, world.rng, stage),
@@ -127,7 +127,7 @@ function frame(t: number) {
   // Sim tick — manually orchestrated since the lab runs its own system order.
   rebuildGrid(world);
   movementSystem(world, dt);
-  tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
+  tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt);
   tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
 
