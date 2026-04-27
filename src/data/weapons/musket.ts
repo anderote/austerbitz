@@ -1,24 +1,17 @@
 import type { WeaponProfile } from './types';
+import { MUSKET_SMOKE, MUSKET_SMOKE_INDEX } from '../../puffs/profiles/musket-smoke';
 
 export const musket: WeaponProfile = {
   id: 'musket',
   kind: 'musket',
   muzzle: {
-    flash: {
-      size: 0.5,
-      life: 0.06,
-      color: [1.0, 0.86, 0.59],
-    },
+    flash: { size: 0.5, life: 0.06, color: [1.0, 0.86, 0.59] },
     smoke: {
+      profile: MUSKET_SMOKE,
+      profileIdx: MUSKET_SMOKE_INDEX,
       count: 10,
       coneAngle: 0.4,
       speed: { min: 4, max: 7 },
-      life: { min: 1.0, max: 1.8 },
-      sizeStart: 0.3,
-      sizeGrowth: 0.4,
-      upwardDrift: 0.4,
-      drag: 0.97,
-      color: [0.86, 0.84, 0.82],
     },
     recoilFirer: 0.5,
   },
