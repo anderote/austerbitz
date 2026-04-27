@@ -46,6 +46,20 @@
           1,
           0
         ]
+      },
+      "W": {
+        "musket-brown-bess-west": [
+          -2,
+          0
+        ]
+      }
+    },
+    "hit": {
+      "SW": {
+        "musket-brown-bess-southwest-hit": [
+          2,
+          0
+        ]
       }
     }
   }

@@ -3,8 +3,8 @@
 // trousers, tall black shako with red plume and gold plate).
 //
 // Outputs:
-//   public/sprites/british-line-infantry.png          (native, 33x54)
-//   public/sprites/british-line-infantry-preview.png  (6x scale, 198x324)
+//   public/sprites/line-infantry.png          (native, 33x54)
+//   public/sprites/line-infantry-preview.png  (6x scale, 198x324)
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -268,10 +268,10 @@ function encodePng(width, height, rgba) {
 }
 
 mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(`${OUT_DIR}/british-line-infantry.png`, encodePng(SHEET_W, SHEET_H, sheet));
+writeFileSync(`${OUT_DIR}/line-infantry.png`, encodePng(SHEET_W, SHEET_H, sheet));
 const SCALE = 6;
 const big = scale(sheet, SHEET_W, SHEET_H, SCALE);
-writeFileSync(`${OUT_DIR}/british-line-infantry-preview.png`, encodePng(big.width, big.height, big.data));
+writeFileSync(`${OUT_DIR}/line-infantry-preview.png`, encodePng(big.width, big.height, big.data));
 
-console.log(`wrote ${OUT_DIR}/british-line-infantry.png (${SHEET_W}x${SHEET_H})`);
-console.log(`wrote ${OUT_DIR}/british-line-infantry-preview.png (${big.width}x${big.height})`);
+console.log(`wrote ${OUT_DIR}/line-infantry.png (${SHEET_W}x${SHEET_H})`);
+console.log(`wrote ${OUT_DIR}/line-infantry-preview.png (${big.width}x${big.height})`);

@@ -144,6 +144,73 @@
             "y": 28,
             "color": "#000000"
           }
+        ],
+        "musket-brown-bess-west": [
+          {
+            "x": 10,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 14,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 12,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 11,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 11,
+            "color": "clear"
+          }
         ]
       },
       "NW": {
@@ -269,6 +336,59 @@
             "x": 19,
             "y": 28,
             "color": "#000000"
+          }
+        ]
+      }
+    }
+  },
+  "line-infantry": {
+    "musket": {
+      "NW": {
+        "musket-brown-bess-northwest": [
+          {
+            "x": 20,
+            "y": 11,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 12,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 14,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 21,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 17,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 18,
+            "color": "clear"
           }
         ]
       }

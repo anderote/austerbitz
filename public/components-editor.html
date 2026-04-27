@@ -1463,8 +1463,8 @@
             kitsList = [];
           }
           if (!Array.isArray(kitsList) || kitsList.length === 0) {
-            // Fallback: assume single british-line-infantry kit.
-            kitsList = [{ id: 'british-line-infantry', label: 'British Line Infantry', poses: ['idle'] }];
+            // Fallback: assume single line-infantry kit.
+            kitsList = [{ id: 'line-infantry', label: 'Line Infantry', poses: ['idle'] }];
           }
           state.kits = kitsList;
           state.kitId = kitsList[0].id;

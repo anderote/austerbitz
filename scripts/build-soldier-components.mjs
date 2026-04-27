@@ -199,7 +199,7 @@ function recolorMarkers(png, regiment) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const kitId = args.get('kit') ?? 'british-line-infantry';
+  const kitId = args.get('kit') ?? 'line-infantry';
   const kitPath = resolve(ROOT, `public/components/kits/${kitId}.json`);
   const kit = loadJson(kitPath);
 
@@ -249,7 +249,7 @@ async function main() {
     return null;
   }
 
-  const baseAtlasPath = resolve(ROOT, args.get('base') ?? kit.baseAtlas ?? 'public/sprites/british-line-infantry.png');
+  const baseAtlasPath = resolve(ROOT, args.get('base') ?? kit.baseAtlas ?? 'public/sprites/line-infantry.png');
   const outputAtlasPath = resolve(
     ROOT,
     args.get('out') ?? kit.outputAtlas ?? `public/sprites/${kitId}-components.png`

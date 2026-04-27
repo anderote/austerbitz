@@ -21,7 +21,7 @@ import sys
 import json
 from pathlib import Path
 
-SRC = Path(__file__).parent.parent / "public/sprites/british-line-infantry-source.png"
+SRC = Path(__file__).parent.parent / "public/sprites/line-infantry-source.png"
 OUT = Path(__file__).parent.parent / "src/render/british-soldier-frames.generated.json"
 
 img = Image.open(SRC).convert("RGBA")

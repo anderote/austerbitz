@@ -123,7 +123,7 @@ function offsetsApiPlugin(): Plugin {
                   [
                     'scripts/build-soldier-components.mjs',
                     '--kit',
-                    'british-line-infantry',
+                    'line-infantry',
                     '--scale',
                     '16',
                   ],
