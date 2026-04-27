@@ -9,6 +9,7 @@ import { getUnitKindIndex } from './data/units';
 import { createDefaultMap } from './map/world-map';
 import { ordersSystem } from './sim/systems/orders-system';
 import { movementSystem } from './sim/systems/movement-system';
+import { collisionSystem } from './sim/systems/collision-system';
 import { createSelection, createDragRect, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
 import './ui/styles.css';
@@ -41,7 +42,7 @@ const map = createDefaultMap();
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
 const particles = createParticles(PARTICLE_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
-world.systems = [ordersSystem, movementSystem];
+world.systems = [ordersSystem, movementSystem, collisionSystem];
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },

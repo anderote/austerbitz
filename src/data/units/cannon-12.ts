@@ -19,6 +19,7 @@ export const cannon12: UnitKind = {
     armor: 2,
     massKg: 1500,
     formationSpacing: { x: 6.0, y: 6.0 },
+    bodyRadius: 1.2,
   },
   bodyZ: { low: 0, high: 1.5 },
   barrelOffset: { forward: 1.6, side: 0.0, height: 0.7 },

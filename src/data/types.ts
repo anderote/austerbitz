@@ -14,6 +14,8 @@ export interface BaseStats {
   armor: number;
   massKg: number;
   formationSpacing: { x: number; y: number };
+  /** Soft-body collision radius, world units (≈ meters). */
+  bodyRadius: number;
 }
 
 export interface UnitKind {
