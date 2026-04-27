@@ -1,0 +1,7 @@
+[
+  { "id": "british-line",  "label": "British Line",  "primary": [180, 40, 50], "secondary": [240, 230, 210], "tertiary": [25, 20, 35] },
+  { "id": "french-line",   "label": "French Line",   "primary": [50, 60, 140], "secondary": [240, 230, 210], "tertiary": [25, 20, 35] },
+  { "id": "prussian-line", "label": "Prussian Line", "primary": [35, 45, 75],  "secondary": [240, 230, 210], "tertiary": [15, 15, 20] },
+  { "id": "russian-line",  "label": "Russian Line",  "primary": [40, 75, 50],  "secondary": [240, 230, 210], "tertiary": [15, 15, 20] },
+  { "id": "austrian-line", "label": "Austrian Line", "primary": [225, 215, 195], "secondary": [120, 105, 85], "tertiary": [15, 15, 20] }
+]

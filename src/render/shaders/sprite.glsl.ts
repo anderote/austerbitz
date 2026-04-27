@@ -9,12 +9,14 @@ layout(location = 4) in vec4 a_uvRect;     // (uMin, vMin, uSize, vSize) in atla
 layout(location = 5) in vec3 a_primary;    // per-instance primary uniform color
 layout(location = 6) in vec3 a_secondary;  // per-instance secondary uniform color
 layout(location = 7) in float a_pattern;   // 0 = none, 1 = check, 2 = h-stripes
+layout(location = 8) in vec3 a_tertiary;   // per-instance tertiary uniform color
 
 out vec2 v_uv;
 out vec2 v_world;
 out vec4 v_color;
 out vec3 v_primary;
 out vec3 v_secondary;
+out vec3 v_tertiary;
 out float v_pattern;
 
 uniform mat3 u_viewProj;
@@ -31,6 +33,7 @@ void main() {
   v_color = a_color;
   v_primary = a_primary;
   v_secondary = a_secondary;
+  v_tertiary = a_tertiary;
   v_pattern = a_pattern;
 }
 `;
@@ -43,6 +46,7 @@ in vec2 v_world;
 in vec4 v_color;
 in vec3 v_primary;
 in vec3 v_secondary;
+in vec3 v_tertiary;
 in float v_pattern;
 out vec4 outColor;
 
@@ -53,10 +57,31 @@ void main() {
   vec4 tex = texture(u_atlas, v_uv);
   if (tex.a <= 0.0) discard;
   vec3 col = tex.rgb;
-  // Marker substitution. Atlas uses NEAREST sampling so the markers come
-  // through as pure (1,0,1) and (0,1,1) — no interpolation, exact match.
-  if (col.r > 0.95 && col.g < 0.05 && col.b > 0.95) col = v_primary;
-  else if (col.r < 0.05 && col.g > 0.95 && col.b > 0.95) col = v_secondary;
+  // 3-slot marker substitution: magenta=primary, cyan=secondary, yellow=tertiary.
+  // Each family has 4 brightness levels (deep/shade/mid/hi). Marker pixels
+  // always have two equal channels (the dominant pair) and one strictly lower
+  // off-channel — this distinguishes them from any literal art color. The
+  // brightness factor comes from the dominant pair (1.0 at mid, 0.31 at deep);
+  // the off-channel lifts toward white for highlight rows. Atlas uses NEAREST
+  // sampling so byte values come through exact (epsilon stays tight).
+  vec3 src = col;
+  float eps = 0.01;
+  bool mag = abs(src.r - src.b) < eps && src.g < src.r - eps && src.r > 0.1;
+  bool cyn = abs(src.g - src.b) < eps && src.r < src.g - eps && src.g > 0.1;
+  bool yel = abs(src.r - src.g) < eps && src.b < src.r - eps && src.r > 0.1;
+  if (mag) {
+    float f = src.r;
+    col = clamp(v_primary * f, 0.0, 1.0);
+    col = mix(col, vec3(1.0), src.g * 0.5);
+  } else if (cyn) {
+    float f = src.g;
+    col = clamp(v_secondary * f, 0.0, 1.0);
+    col = mix(col, vec3(1.0), src.r * 0.5);
+  } else if (yel) {
+    float f = src.r;
+    col = clamp(v_tertiary * f, 0.0, 1.0);
+    col = mix(col, vec3(1.0), src.b * 0.5);
+  }
   // Dot patterns. Sampled atlas cell is solid white, so col=(1,1,1) here —
   // we override based on the fragment's WORLD position so adjacent overlapping
   // dots tile a single coherent pattern across the merged formation blob,

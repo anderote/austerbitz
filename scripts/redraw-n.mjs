@@ -27,6 +27,11 @@ import { PNG } from 'pngjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  paintMusketVertical,
+  paintMusketHorizontal,
+  paintMusketHitTilted,
+} from './lib/musket-shapes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -217,31 +222,284 @@ function drawShakoNorth() {
 
 function drawMusketNorth() {
   const p = makeSprite();
-  // Vertical musket along x=20 (soldier's right side; from behind that's viewer's right).
-  // Bayonet socket offset to LEFT (x=19) from barrel axis (x=20) -- same anatomical
-  // side of the barrel as S, mirrored across the figure.
-  set(p, 19, 3, PAL.bayonetTip);
-  set(p, 19, 4, PAL.bayonet);
-  set(p, 19, 5, PAL.bayonet);
-  set(p, 19, 6, PAL.bayonet);
-  set(p, 19, 7, PAL.bayonet);
-  // T-shape socket: in-line steel pixel in barrel column at bayonet base row.
-  set(p, 20, 7, PAL.bayonet);
-  // Muzzle.
-  set(p, 20, 8, PAL.musketMuzzle);
-  // Barrel rows 9-19.
-  for (let y = 9; y <= 19; y++) set(p, 20, y, PAL.musketBarrel);
-  // Brass barrel band mid-barrel.
-  set(p, 20, 14, PAL.brass);
-  // Lock (brass) at row 20, hammer outboard at x=21.
-  set(p, 20, 20, PAL.brass);
-  set(p, 21, 20, PAL.hammer);
-  // Stock.
-  set(p, 20, 21, PAL.musketStockHi);
-  set(p, 20, 22, PAL.musketStock);
+  // N idle: vertical musket on viewer's right side. Mirror of S idle (flipX).
+  // Butt at hip (20, 22) -- mirrors S's (11, 22).
+  paintMusketVertical(p, 20, 22, { flipX: true });
   // Right hand grips the lock from the body side (inboard, x=19).
   set(p, 19, 20, PAL.skinHi);
   save(p, 'weapon/musket/north/idle.png');
+}
+
+// --- NORTH FIRING POSES ---
+//
+// N firing is the up-pointing mirror of S firing. Soldier facing AWAY from
+// camera, presenting the musket forward (i.e. up the screen). Both arms
+// reach inward to grip a vertical musket centered on the body axis (x=16);
+// muzzle/bayonet project past the top of the head, butt rests at chest.
+// Coat back retains pack + waist belt from idle (NO X-belts, since back view).
+
+function paintFiringCoatNorth(p) {
+  // Torso fill rows 17-22 -- back view, even shading (lit at x=13, shade at x=18).
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
+  }
+  // Backpack, same as idle.
+  for (let y = 17; y <= 20; y++) {
+    for (let x = 14; x <= 17; x++) {
+      set(p, x, y, PAL.packLeather);
+    }
+  }
+  for (let y = 17; y <= 20; y++) {
+    set(p, 17, y, PAL.packShade);
+  }
+  row(p, 17, 14, 17, PAL.packHi);
+  set(p, 17, 17, PAL.packLeather);
+  // Backpack straps.
+  set(p, 14, 17, PAL.beltWhite);
+  set(p, 17, 17, PAL.beltWhite);
+  // Waist belt row 22.
+  row(p, 22, 13, 18, PAL.beltWhite);
+  // Coat hem row 23.
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+
+  // Both arms reach inward to grip the vertical musket on body centerline.
+  // Since the gun rises straight up past the head/shako, both hands grip
+  // at chest level near the butt (mirror of S firing's both-hands-at-chest).
+  // Right sleeve (viewer's left, lit) crosses inward to butt grip.
+  set(p, 12, 17, PAL.coatHi);          // shoulder cap (lit)
+  set(p, 14, 18, PAL.coatMid);         // forearm crossing inward
+  set(p, 15, 18, PAL.skinHi);          // right hand on butt
+  // Left sleeve (viewer's right, shaded) crosses inward to forestock grip
+  // a row higher than the right hand (separated grip on the gun shaft).
+  set(p, 19, 17, PAL.coatShade);       // shoulder cap (shaded)
+  set(p, 18, 18, PAL.coatMid);         // forearm crossing inward
+  set(p, 17, 17, PAL.skinHi);          // left hand on forestock (chest level)
+}
+
+function drawCoatNorthPresent() {
+  const p = makeSprite();
+  paintFiringCoatNorth(p);
+  save(p, 'uniform/coat-line/north/present.png');
+}
+
+function drawCoatNorthFire() {
+  const p = makeSprite();
+  paintFiringCoatNorth(p);
+  save(p, 'uniform/coat-line/north/fire.png');
+}
+
+function drawMusketNorthPresent() {
+  const p = makeSprite();
+  // Vertical musket pointed north (up). Butt at chest (16, 18).
+  paintMusketVertical(p, 16, 18);
+  save(p, 'weapon/musket/north/present.png');
+}
+
+function drawMusketNorthFire() {
+  const p = makeSprite();
+  paintMusketVertical(p, 16, 18);
+  save(p, 'weapon/musket/north/fire.png');
+}
+
+// --- N MAKE-READY / HIT / DYING ---
+
+const PAL_BLOOD = {
+  bright: '#D13B33',
+  dark:   '#7A1A22',
+  pool:   '#5C1419',
+};
+
+function drawCoatNorthMakeReady() {
+  const p = makeSprite();
+  // Same torso/pack/belt/hem as idle.
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
+  }
+  for (let y = 17; y <= 20; y++) {
+    for (let x = 14; x <= 17; x++) set(p, x, y, PAL.packLeather);
+  }
+  for (let y = 17; y <= 20; y++) set(p, 17, y, PAL.packShade);
+  row(p, 17, 14, 17, PAL.packHi);
+  set(p, 17, 17, PAL.packLeather);
+  set(p, 14, 17, PAL.beltWhite);
+  set(p, 17, 17, PAL.beltWhite);
+  row(p, 22, 13, 18, PAL.beltWhite);
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+  // Both arms reach up to grip a vertical centerline musket. Mirror of S
+  // make-ready: shoulder caps + forearms rising to grip near forestock + lock.
+  // Right sleeve (viewer's left, lit) up to forestock grip.
+  set(p, 12, 17, PAL.coatHi);          // shoulder cap
+  set(p, 13, 16, PAL.coatMid);         // upper arm rising
+  set(p, 14, 15, PAL.coatHi);          // forearm/hand near forestock
+  // Left sleeve (viewer's right, shaded) up to lock-height grip.
+  set(p, 19, 17, PAL.coatShade);       // shoulder cap
+  set(p, 18, 18, PAL.coatShade);
+  set(p, 17, 18, PAL.coatMid);         // forearm crossing toward lock
+  save(p, 'uniform/coat-line/north/make-ready.png');
+}
+
+function drawMusketNorthMakeReady() {
+  const p = makeSprite();
+  // Vertical musket along body centerline; butt at hip (16, 20).
+  paintMusketVertical(p, 16, 20);
+  save(p, 'weapon/musket/north/make-ready.png');
+}
+
+function drawCoatNorthHit() {
+  const p = makeSprite();
+  // Same torso/pack/belt/hem as idle.
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
+  }
+  for (let y = 17; y <= 20; y++) {
+    for (let x = 14; x <= 17; x++) set(p, x, y, PAL.packLeather);
+  }
+  for (let y = 17; y <= 20; y++) set(p, 17, y, PAL.packShade);
+  row(p, 17, 14, 17, PAL.packHi);
+  set(p, 17, 17, PAL.packLeather);
+  set(p, 14, 17, PAL.beltWhite);
+  set(p, 17, 17, PAL.beltWhite);
+  row(p, 22, 13, 18, PAL.beltWhite);
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+  // Right arm (viewer's left) flung outward.
+  set(p, 12, 17, PAL.coatHi);
+  set(p, 11, 17, PAL.coatHi);
+  set(p, 10, 17, PAL.coatMid);
+  set(p, 9, 18, PAL.skinHi);
+  // Left arm (viewer's right) flung outward — symmetric jolt from behind.
+  set(p, 19, 17, PAL.coatShade);
+  set(p, 20, 17, PAL.coatShade);
+  set(p, 21, 17, PAL.coatMid);
+  set(p, 22, 18, PAL.skinHi);
+  save(p, 'uniform/coat-line/north/hit.png');
+}
+
+function drawMusketNorthHit() {
+  const p = makeSprite();
+  // Hit-tilted leaning to viewer's right (mirror of S hit -> flipX).
+  paintMusketHitTilted(p, 17, 23, { flipX: true });
+  save(p, 'weapon/musket/north/hit.png');
+}
+
+function drawBloodNorthHit() {
+  const p = makeSprite();
+  // Spray erupting from upper-back (chest exit wound is on the BACK side from camera).
+  // Bright core just above shoulder line, droplets radiating up & out.
+  set(p, 16, 17, PAL_BLOOD.bright);
+  set(p, 15, 17, PAL_BLOOD.bright);
+  set(p, 17, 17, PAL_BLOOD.bright);
+  set(p, 14, 16, PAL_BLOOD.dark);
+  set(p, 18, 16, PAL_BLOOD.dark);
+  set(p, 13, 15, PAL_BLOOD.bright);
+  set(p, 19, 14, PAL_BLOOD.dark);
+  set(p, 16, 15, PAL_BLOOD.dark);
+  save(p, 'fx/blood/north/hit.png');
+}
+
+function drawBodyNorthDying() {
+  const p = makeSprite();
+  // Head sagged forward & down 1px. Same hair scheme as idle but shifted +1y.
+  set(p, 15, 16, PAL.hairTop);
+  set(p, 16, 16, PAL.hairTop);
+  set(p, 17, 16, PAL.musketStock);
+  set(p, 15, 17, PAL.musketStock);
+  set(p, 16, 17, PAL.musketStock);
+  set(p, 17, 17, PAL.hairDeep);
+  save(p, 'anatomy/body/north/dying.png');
+}
+
+function drawShakoNorthDying() {
+  const p = makeSprite();
+  set(p, 16, 8, PAL.plumeTip);
+  set(p, 16, 9, PAL.plumeRed);
+  for (let y = 10; y <= 14; y++) {
+    row(p, y, 14, 18, PAL.shakoMid);
+    set(p, 14, y, PAL.shakoHi);
+    set(p, 18, y, PAL.shakoShade);
+  }
+  // Brim (right-leaning, mirrors idle N).
+  row(p, 15, 14, 19, PAL.shakoShade);
+  save(p, 'uniform/head/shako-standard/north-dying.png');
+}
+
+function drawCoatNorthDying() {
+  const p = makeSprite();
+  // Slumped torso (rows 18-23). Pack remains. Waist belt at row 23.
+  for (let y = 18; y <= 23; y++) {
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
+  }
+  for (let y = 18; y <= 21; y++) {
+    for (let x = 14; x <= 17; x++) set(p, x, y, PAL.packLeather);
+  }
+  for (let y = 18; y <= 21; y++) set(p, 17, y, PAL.packShade);
+  row(p, 18, 14, 17, PAL.packHi);
+  set(p, 17, 18, PAL.packLeather);
+  set(p, 14, 18, PAL.beltWhite);
+  set(p, 17, 18, PAL.beltWhite);
+  row(p, 23, 13, 18, PAL.beltWhite);
+  // Coat hem row 24.
+  row(p, 24, 13, 18, PAL.coatShade);
+  set(p, 13, 24, PAL.coatDeep);
+  set(p, 18, 24, PAL.coatDeep);
+  // Both arms slumped outward.
+  set(p, 12, 19, PAL.coatHi);
+  set(p, 13, 20, PAL.coatMid);
+  set(p, 14, 21, PAL.coatMid);
+  set(p, 19, 19, PAL.coatShade);
+  set(p, 20, 20, PAL.coatShade);
+  set(p, 21, 21, PAL.coatMid);
+  save(p, 'uniform/coat-line/north/dying.png');
+}
+
+function drawTrousersNorthDying() {
+  const p = makeSprite();
+  // Knees splayed outward, gaiters at row 27-28 (one row lower).
+  for (let y = 25; y <= 26; y++) {
+    set(p, 14, y, PAL.trouserHi);
+    set(p, 15, y, PAL.trouserMid);
+    set(p, 16, y, PAL.trouserMid);
+    set(p, 17, y, PAL.trouserShade);
+  }
+  for (let y = 27; y <= 28; y++) {
+    set(p, 13, y, PAL.gaiterBlack);
+    set(p, 14, y, PAL.gaiterBlack);
+    set(p, 17, y, PAL.gaiterBlack);
+    set(p, 18, y, PAL.gaiterBlack);
+  }
+  set(p, 13, 27, PAL.gaiterHi);
+  save(p, 'uniform/lower/trousers/north-dying.png');
+}
+
+function drawMusketNorthDying() {
+  const p = makeSprite();
+  // Musket flat on ground, butt-left, beside soldier (mirroring S dying).
+  paintMusketHorizontal(p, 17, 29);
+  save(p, 'weapon/musket/north/dying.png');
+}
+
+function drawBloodNorthDying() {
+  const p = makeSprite();
+  row(p, 30, 11, 21, PAL_BLOOD.pool);
+  row(p, 29, 12, 20, PAL_BLOOD.dark);
+  set(p, 13, 28, PAL_BLOOD.pool);
+  set(p, 19, 28, PAL_BLOOD.pool);
+  set(p, 16, 19, PAL_BLOOD.dark);
+  set(p, 15, 21, PAL_BLOOD.dark);
+  save(p, 'fx/blood/north/dying.png');
 }
 
 function drawNorth() {
@@ -252,6 +510,21 @@ function drawNorth() {
   drawCoatNorth();
   drawShakoNorth();
   drawMusketNorth();
+  drawCoatNorthPresent();
+  drawCoatNorthFire();
+  drawMusketNorthPresent();
+  drawMusketNorthFire();
+  drawCoatNorthMakeReady();
+  drawMusketNorthMakeReady();
+  drawCoatNorthHit();
+  drawMusketNorthHit();
+  drawBloodNorthHit();
+  drawBodyNorthDying();
+  drawShakoNorthDying();
+  drawCoatNorthDying();
+  drawTrousersNorthDying();
+  drawMusketNorthDying();
+  drawBloodNorthDying();
 }
 
 drawNorth();

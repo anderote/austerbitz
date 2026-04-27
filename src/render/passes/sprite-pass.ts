@@ -22,24 +22,78 @@ export interface SpritePass {
 }
 
 interface FactionPalette {
+  /** Identifier for the regiment (matches `regiments.json`). */
+  id?: string;
+  /** Display label. */
+  label?: string;
   /** Coat color (RGB 0..255). */
   primary: [number, number, number];
-  /** Facings / plume / collar / turnbacks (RGB 0..255). */
+  /** Cross-belts / trousers / breeches (RGB 0..255). */
   secondary: [number, number, number];
+  /** Boots/gaiters + shako/hat (RGB 0..255). */
+  tertiary: [number, number, number];
 }
 
 /**
- * Per-team uniform colors. Indexed by `entities.team`. Add entries here as
- * new factions are introduced; missing teams fall back to entry 0.
+ * Per-team uniform colors. Indexed by `entities.team`. Hardcoded fallback
+ * matches `public/regiments.json` so the renderer has valid palettes even if
+ * the async fetch fails or the first frame ticks before the fetch resolves.
  */
-const TEAM_COLORS: readonly FactionPalette[] = [
-  { primary: [180, 40, 50], secondary: [50, 60, 140] },   // 0 — British: red coat / blue facings
-  { primary: [50, 60, 140], secondary: [200, 60, 70] },   // 1 — French: blue coat / red facings
+let regiments: FactionPalette[] = [
+  { id: 'british-line',  label: 'British Line',  primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+  { id: 'french-line',   label: 'French Line',   primary: [50, 60, 140],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+  { id: 'prussian-line', label: 'Prussian Line', primary: [35, 45, 75],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
+  { id: 'russian-line',  label: 'Russian Line',  primary: [40, 75, 50],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
+  { id: 'austrian-line', label: 'Austrian Line', primary: [225, 215, 195], secondary: [120, 105, 85],  tertiary: [15, 15, 20] },
 ];
 
-const FALLBACK_TEAM = TEAM_COLORS[0]!;
+const FALLBACK_TEAM = regiments[0]!;
+
+function isTriple(v: unknown): v is [number, number, number] {
+  return (
+    Array.isArray(v) &&
+    v.length === 3 &&
+    v.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 255)
+  );
+}
+
+async function loadRegimentsAsync(): Promise<void> {
+  try {
+    const res = await fetch('/regiments.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: unknown = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('regiments.json must be a non-empty array');
+    }
+    const parsed: FactionPalette[] = [];
+    for (let i = 0; i < data.length; i++) {
+      const e = data[i] as Record<string, unknown> | null | undefined;
+      if (!e || typeof e !== 'object') {
+        throw new Error(`entry ${i}: not an object`);
+      }
+      const { id, label, primary, secondary, tertiary } = e;
+      if (typeof id !== 'string' || typeof label !== 'string') {
+        throw new Error(`entry ${i}: id/label must be strings`);
+      }
+      if (!isTriple(primary) || !isTriple(secondary) || !isTriple(tertiary)) {
+        throw new Error(`entry ${i}: primary/secondary/tertiary must each be [r,g,b] of 0..255`);
+      }
+      parsed.push({ id, label, primary, secondary, tertiary });
+    }
+    // Replace in-place so any captured references see the updated values.
+    regiments.length = 0;
+    regiments.push(...parsed);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[sprite-pass] failed to load /regiments.json, keeping hardcoded fallback:', err);
+  }
+}
 
 export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): SpritePass {
+  // Fire-and-forget regiment load; falls back to the hardcoded defaults until
+  // the fetch resolves. Validation + warning live inside loadRegimentsAsync.
+  void loadRegimentsAsync();
+
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
   const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld'] as const);
 
@@ -97,6 +151,12 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   gl.vertexAttribPointer(7, 1, gl.FLOAT, false, 0, 0);
   gl.vertexAttribDivisor(7, 1);
 
+  const tertiaryBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 3 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(8);
+  gl.vertexAttribPointer(8, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(8, 1);
+
   gl.bindVertexArray(null);
 
   // Combined atlas: don't tile-wrap (each cell occupies a sub-rect, sampling
@@ -133,6 +193,7 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   const scratchUv = new Float32Array(capacity * 4);
   const scratchPrimary = new Float32Array(capacity * 3);
   const scratchSecondary = new Float32Array(capacity * 3);
+  const scratchTertiary = new Float32Array(capacity * 3);
   const scratchPattern = new Float32Array(capacity);
   // Reused per-frame sort buffer: alive entity ids sorted back-to-front by world Y.
   const sortIdx: number[] = [];
@@ -186,13 +247,16 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         }
         scratchPos[k * 2 + 0] = e.posX[i]! + e.recoilPeakX[i]! * wave;
         scratchPos[k * 2 + 1] = e.posY[i]! + e.recoilPeakY[i]! * wave;
-        const team = TEAM_COLORS[e.team[i]!] ?? FALLBACK_TEAM;
+        const team = regiments[e.team[i]!] ?? FALLBACK_TEAM;
         scratchPrimary[k * 3 + 0] = team.primary[0] / 255;
         scratchPrimary[k * 3 + 1] = team.primary[1] / 255;
         scratchPrimary[k * 3 + 2] = team.primary[2] / 255;
         scratchSecondary[k * 3 + 0] = team.secondary[0] / 255;
         scratchSecondary[k * 3 + 1] = team.secondary[1] / 255;
         scratchSecondary[k * 3 + 2] = team.secondary[2] / 255;
+        scratchTertiary[k * 3 + 0] = team.tertiary[0] / 255;
+        scratchTertiary[k * 3 + 1] = team.tertiary[1] / 255;
+        scratchTertiary[k * 3 + 2] = team.tertiary[2] / 255;
         const meta = KIND_ATLAS[kind.id] ?? SOLDIER_FALLBACK;
         if (useDots) {
           // Solid tint cell — fragment shader will either pass v_color through
@@ -266,6 +330,8 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPrimary.subarray(0, n * 3));
       gl.bindBuffer(gl.ARRAY_BUFFER, secondaryBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSecondary.subarray(0, n * 3));
+      gl.bindBuffer(gl.ARRAY_BUFFER, tertiaryBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchTertiary.subarray(0, n * 3));
       gl.bindBuffer(gl.ARRAY_BUFFER, patternBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPattern.subarray(0, n));
 

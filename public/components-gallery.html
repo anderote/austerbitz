@@ -14,18 +14,157 @@
       h2 { margin-top: 40px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: #4b5563; }
       p.note { max-width: 680px; margin-bottom: 20px; color: #4b5563; font-size: 14px; }
       section { margin-bottom: 40px; }
+
+      /* --- Pose picker (top bar) --- */
+      .pose-picker { display: flex; gap: 16px; flex-wrap: wrap; padding: 20px; background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); width: fit-content; }
+      .pose-thumb { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 2px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; transition: border-color 0.1s, background 0.1s; }
+      .pose-thumb:hover { background: #f3f4f6; }
+      .pose-thumb.active { border-color: #2563eb; background: #eff6ff; }
+      .pose-thumb .crop {
+        width: 96px;
+        height: 108px;
+        background-size: 288px 324px; /* native 96x108 atlas scaled 3x */
+        background-position: -96px -108px; /* center cell = S */
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+      }
+      .pose-thumb .label { font-size: 12px; color: #374151; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+      /* --- Composite display (selected pose) --- */
+      .composite-display { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; padding: 24px; background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); width: fit-content; }
+      .composite-main { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+      .composite-main img { width: auto; height: 540px; image-rendering: pixelated; display: block; }
+      .composite-main figcaption { text-align: center; font-size: 12px; color: #4b5563; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+      /* --- Per-direction breakdown --- */
+      .direction-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .dir-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      .dir-cell .crop {
+        width: 128px;
+        height: 144px;
+        background-size: 384px 432px; /* native 96x108 atlas at 4x */
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+        border: 1px solid rgba(55, 65, 81, 0.15);
+        border-radius: 4px;
+        background-color: #f9fafb;
+      }
+      .dir-cell .label { font-size: 11px; color: #6b7280; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      .dir-cell-empty { width: 128px; height: 144px; }
+
+      /* Per-direction background offsets (4x scale, native cell 32x36 → 128x144).
+       * The kit's atlas places N at cell [1,2], S at [1,1] (center). The compass
+       * grid here remaps each data-dir to its actual atlas cell via background-position. */
+      .dir-cell[data-dir="NW"] .crop { background-position: 0 0; }
+      .dir-cell[data-dir="N"]  .crop { background-position: -128px -288px; }
+      .dir-cell[data-dir="NE"] .crop { background-position: -256px 0; }
+      .dir-cell[data-dir="W"]  .crop { background-position: 0 -144px; }
+      .dir-cell[data-dir="S"]  .crop { background-position: -128px -144px; }
+      .dir-cell[data-dir="E"]  .crop { background-position: -256px -144px; }
+      .dir-cell[data-dir="SW"] .crop { background-position: 0 -288px; }
+      .dir-cell[data-dir="SE"] .crop { background-position: -256px -288px; }
+
+      /* --- Component layers grid (unchanged from before) --- */
       figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; color: #374151; }
       figure img { image-rendering: pixelated; display: block; width: 180px; height: auto; }
       .frame { padding: 16px; background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); }
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 24px; align-items: start; }
       figcaption { text-align: center; word-break: break-all; }
-      .composite-row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; padding: 24px; background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08); width: fit-content; }
-      .composite-row figure img { width: auto; height: 540px; image-rendering: pixelated; display: block; }
     </style>
   </head>
   <body>
     <h1>Soldier Component Gallery</h1>
-    <p class='note'>Open directly in a browser to inspect every exported layer and the combined atlas.</p>
-    <section><h2>Composite</h2><div class='composite-row'><figure><img src='sprites/british-line-infantry-components-preview.png' alt='Composite preview' /><figcaption>idle &middot; preview</figcaption></figure><figure><img src='sprites/british-line-infantry-components.png' alt='Composite atlas' /><figcaption>idle &middot; atlas (native 48&times;108)</figcaption></figure><figure><img src='sprites/british-line-infantry-components-preview-make-ready.png' alt='make-ready preview' /><figcaption>make-ready &middot; preview</figcaption></figure><figure><img src='sprites/british-line-infantry-components-make-ready.png' alt='make-ready atlas' /><figcaption>make-ready &middot; atlas</figcaption></figure><figure><img src='sprites/british-line-infantry-components-preview-present.png' alt='present preview' /><figcaption>present &middot; preview</figcaption></figure><figure><img src='sprites/british-line-infantry-components-present.png' alt='present atlas' /><figcaption>present &middot; atlas</figcaption></figure><figure><img src='sprites/british-line-infantry-components-preview-fire.png' alt='fire preview' /><figcaption>fire &middot; preview</figcaption></figure><figure><img src='sprites/british-line-infantry-components-fire.png' alt='fire atlas' /><figcaption>fire &middot; atlas</figcaption></figure></div></section><section><h2>Component Layers</h2><div class='grid'><figure><div class='frame'><img src='sprites/components/anatomy/body/east/base.png' alt='sprites/components/anatomy/body/east/base.png' /></div><figcaption>sprites/components/anatomy/body/east/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/north/base.png' alt='sprites/components/anatomy/body/north/base.png' /></div><figcaption>sprites/components/anatomy/body/north/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/northeast/base.png' alt='sprites/components/anatomy/body/northeast/base.png' /></div><figcaption>sprites/components/anatomy/body/northeast/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/northwest/base.png' alt='sprites/components/anatomy/body/northwest/base.png' /></div><figcaption>sprites/components/anatomy/body/northwest/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/south/base.png' alt='sprites/components/anatomy/body/south/base.png' /></div><figcaption>sprites/components/anatomy/body/south/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/southeast/base.png' alt='sprites/components/anatomy/body/southeast/base.png' /></div><figcaption>sprites/components/anatomy/body/southeast/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/southwest/base.png' alt='sprites/components/anatomy/body/southwest/base.png' /></div><figcaption>sprites/components/anatomy/body/southwest/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/body/west/base.png' alt='sprites/components/anatomy/body/west/base.png' /></div><figcaption>sprites/components/anatomy/body/west/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/head/south/default.png' alt='sprites/components/anatomy/head/south/default.png' /></div><figcaption>sprites/components/anatomy/head/south/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/legs/south/idle.png' alt='sprites/components/anatomy/legs/south/idle.png' /></div><figcaption>sprites/components/anatomy/legs/south/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/anatomy/torso/south/slim.png' alt='sprites/components/anatomy/torso/south/slim.png' /></div><figcaption>sprites/components/anatomy/torso/south/slim.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/east/default.png' alt='sprites/components/shadow/east/default.png' /></div><figcaption>sprites/components/shadow/east/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/north/default.png' alt='sprites/components/shadow/north/default.png' /></div><figcaption>sprites/components/shadow/north/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/northeast/default.png' alt='sprites/components/shadow/northeast/default.png' /></div><figcaption>sprites/components/shadow/northeast/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/northwest/default.png' alt='sprites/components/shadow/northwest/default.png' /></div><figcaption>sprites/components/shadow/northwest/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/south/default.png' alt='sprites/components/shadow/south/default.png' /></div><figcaption>sprites/components/shadow/south/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/southeast/default.png' alt='sprites/components/shadow/southeast/default.png' /></div><figcaption>sprites/components/shadow/southeast/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/southwest/default.png' alt='sprites/components/shadow/southwest/default.png' /></div><figcaption>sprites/components/shadow/southwest/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/shadow/west/default.png' alt='sprites/components/shadow/west/default.png' /></div><figcaption>sprites/components/shadow/west/default.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/east/base.png' alt='sprites/components/uniform/coat-line/east/base.png' /></div><figcaption>sprites/components/uniform/coat-line/east/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/north/base.png' alt='sprites/components/uniform/coat-line/north/base.png' /></div><figcaption>sprites/components/uniform/coat-line/north/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/northeast/base.png' alt='sprites/components/uniform/coat-line/northeast/base.png' /></div><figcaption>sprites/components/uniform/coat-line/northeast/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/northwest/base.png' alt='sprites/components/uniform/coat-line/northwest/base.png' /></div><figcaption>sprites/components/uniform/coat-line/northwest/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/south/base.png' alt='sprites/components/uniform/coat-line/south/base.png' /></div><figcaption>sprites/components/uniform/coat-line/south/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/southeast/base.png' alt='sprites/components/uniform/coat-line/southeast/base.png' /></div><figcaption>sprites/components/uniform/coat-line/southeast/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/southwest/base.png' alt='sprites/components/uniform/coat-line/southwest/base.png' /></div><figcaption>sprites/components/uniform/coat-line/southwest/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/coat-line/west/base.png' alt='sprites/components/uniform/coat-line/west/base.png' /></div><figcaption>sprites/components/uniform/coat-line/west/base.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/east.png' alt='sprites/components/uniform/head/shako-standard/east.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/east.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/north.png' alt='sprites/components/uniform/head/shako-standard/north.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/north.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/northeast.png' alt='sprites/components/uniform/head/shako-standard/northeast.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/northeast.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/northwest.png' alt='sprites/components/uniform/head/shako-standard/northwest.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/northwest.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/south.png' alt='sprites/components/uniform/head/shako-standard/south.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/south.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/southeast.png' alt='sprites/components/uniform/head/shako-standard/southeast.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/southeast.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/southwest.png' alt='sprites/components/uniform/head/shako-standard/southwest.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/southwest.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/west.png' alt='sprites/components/uniform/head/shako-standard/west.png' /></div><figcaption>sprites/components/uniform/head/shako-standard/west.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/east.png' alt='sprites/components/uniform/lower/trousers/east.png' /></div><figcaption>sprites/components/uniform/lower/trousers/east.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/north.png' alt='sprites/components/uniform/lower/trousers/north.png' /></div><figcaption>sprites/components/uniform/lower/trousers/north.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/northeast.png' alt='sprites/components/uniform/lower/trousers/northeast.png' /></div><figcaption>sprites/components/uniform/lower/trousers/northeast.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/northwest.png' alt='sprites/components/uniform/lower/trousers/northwest.png' /></div><figcaption>sprites/components/uniform/lower/trousers/northwest.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/south.png' alt='sprites/components/uniform/lower/trousers/south.png' /></div><figcaption>sprites/components/uniform/lower/trousers/south.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/southeast.png' alt='sprites/components/uniform/lower/trousers/southeast.png' /></div><figcaption>sprites/components/uniform/lower/trousers/southeast.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/southwest.png' alt='sprites/components/uniform/lower/trousers/southwest.png' /></div><figcaption>sprites/components/uniform/lower/trousers/southwest.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/uniform/lower/trousers/west.png' alt='sprites/components/uniform/lower/trousers/west.png' /></div><figcaption>sprites/components/uniform/lower/trousers/west.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/east/idle.png' alt='sprites/components/weapon/musket/east/idle.png' /></div><figcaption>sprites/components/weapon/musket/east/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/north/idle.png' alt='sprites/components/weapon/musket/north/idle.png' /></div><figcaption>sprites/components/weapon/musket/north/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/northeast/idle.png' alt='sprites/components/weapon/musket/northeast/idle.png' /></div><figcaption>sprites/components/weapon/musket/northeast/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/northwest/idle.png' alt='sprites/components/weapon/musket/northwest/idle.png' /></div><figcaption>sprites/components/weapon/musket/northwest/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/south/idle.png' alt='sprites/components/weapon/musket/south/idle.png' /></div><figcaption>sprites/components/weapon/musket/south/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/southeast/idle.png' alt='sprites/components/weapon/musket/southeast/idle.png' /></div><figcaption>sprites/components/weapon/musket/southeast/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/southwest/idle.png' alt='sprites/components/weapon/musket/southwest/idle.png' /></div><figcaption>sprites/components/weapon/musket/southwest/idle.png</figcaption></figure><figure><div class='frame'><img src='sprites/components/weapon/musket/west/idle.png' alt='sprites/components/weapon/musket/west/idle.png' /></div><figcaption>sprites/components/weapon/musket/west/idle.png</figcaption></figure></div></section>
+    <p class='note'>Click a pose to inspect every direction.</p>
+
+    <section>
+      <h2>Pose</h2>
+      <div class='pose-picker' id='pose-picker'>
+        <button class='pose-thumb active' data-pose='idle' data-atlas='sprites/british-line-infantry-components.png' data-preview='sprites/british-line-infantry-components-preview.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components.png');"></span><span class='label'>idle</span></button>
+        <button class='pose-thumb' data-pose='make-ready' data-atlas='sprites/british-line-infantry-components-make-ready.png' data-preview='sprites/british-line-infantry-components-preview-make-ready.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-make-ready.png');"></span><span class='label'>make-ready</span></button>
+        <button class='pose-thumb' data-pose='present' data-atlas='sprites/british-line-infantry-components-present.png' data-preview='sprites/british-line-infantry-components-preview-present.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-present.png');"></span><span class='label'>present</span></button>
+        <button class='pose-thumb' data-pose='fire' data-atlas='sprites/british-line-infantry-components-fire.png' data-preview='sprites/british-line-infantry-components-preview-fire.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-fire.png');"></span><span class='label'>fire</span></button>
+        <button class='pose-thumb' data-pose='hit' data-atlas='sprites/british-line-infantry-components-hit.png' data-preview='sprites/british-line-infantry-components-preview-hit.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-hit.png');"></span><span class='label'>hit</span></button>
+        <button class='pose-thumb' data-pose='dying' data-atlas='sprites/british-line-infantry-components-dying.png' data-preview='sprites/british-line-infantry-components-preview-dying.png'><span class='crop' style="background-image: url('sprites/british-line-infantry-components-dying.png');"></span><span class='label'>dying</span></button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Composite + directions</h2>
+      <div class='composite-display'>
+        <figure class='composite-main'>
+          <img id='composite-preview' src='sprites/british-line-infantry-components-preview.png' alt='Composite preview' />
+          <figcaption id='composite-caption'>idle &middot; preview (6x)</figcaption>
+        </figure>
+        <div class='direction-grid' id='direction-grid'>
+          <div class='dir-cell' data-dir='NW'><span class='crop'></span><span class='label'>NW</span></div>
+          <div class='dir-cell' data-dir='N'><span class='crop'></span><span class='label'>N</span></div>
+          <div class='dir-cell' data-dir='NE'><span class='crop'></span><span class='label'>NE</span></div>
+          <div class='dir-cell' data-dir='W'><span class='crop'></span><span class='label'>W</span></div>
+          <div class='dir-cell-empty'></div>
+          <div class='dir-cell' data-dir='E'><span class='crop'></span><span class='label'>E</span></div>
+          <div class='dir-cell' data-dir='SW'><span class='crop'></span><span class='label'>SW</span></div>
+          <div class='dir-cell' data-dir='S'><span class='crop'></span><span class='label'>S</span></div>
+          <div class='dir-cell' data-dir='SE'><span class='crop'></span><span class='label'>SE</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Component layers</h2>
+      <div class='grid'>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/east/base.png' alt='east body' /></div><figcaption>anatomy/body/east/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/north/base.png' alt='north body' /></div><figcaption>anatomy/body/north/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/northeast/base.png' alt='northeast body' /></div><figcaption>anatomy/body/northeast/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/northwest/base.png' alt='northwest body' /></div><figcaption>anatomy/body/northwest/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/south/base.png' alt='south body' /></div><figcaption>anatomy/body/south/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/southeast/base.png' alt='southeast body' /></div><figcaption>anatomy/body/southeast/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/southwest/base.png' alt='southwest body' /></div><figcaption>anatomy/body/southwest/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/anatomy/body/west/base.png' alt='west body' /></div><figcaption>anatomy/body/west/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/uniform/coat-line/east/base.png' alt='east coat' /></div><figcaption>uniform/coat-line/east/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/uniform/coat-line/south/base.png' alt='south coat' /></div><figcaption>uniform/coat-line/south/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/uniform/coat-line/north/base.png' alt='north coat' /></div><figcaption>uniform/coat-line/north/base.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/weapon/musket/east/idle.png' alt='east musket' /></div><figcaption>weapon/musket/east/idle.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/weapon/musket/south/idle.png' alt='south musket' /></div><figcaption>weapon/musket/south/idle.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/weapon/musket/north/idle.png' alt='north musket' /></div><figcaption>weapon/musket/north/idle.png</figcaption></figure>
+        <figure><div class='frame'><img src='sprites/components/uniform/head/shako-standard/south.png' alt='south shako' /></div><figcaption>uniform/head/shako-standard/south.png</figcaption></figure>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        const picker = document.getElementById('pose-picker');
+        const previewImg = document.getElementById('composite-preview');
+        const captionEl = document.getElementById('composite-caption');
+        const dirCrops = document.querySelectorAll('.dir-cell .crop');
+
+        function setPose(btn) {
+          const pose = btn.dataset.pose;
+          const atlas = btn.dataset.atlas;
+          const preview = btn.dataset.preview;
+          previewImg.src = preview;
+          captionEl.textContent = pose + ' · preview (6x)';
+          dirCrops.forEach(function (el) {
+            el.style.backgroundImage = "url('" + atlas + "')";
+          });
+          document.querySelectorAll('.pose-thumb').forEach(function (b) {
+            b.classList.toggle('active', b === btn);
+          });
+        }
+
+        picker.addEventListener('click', function (e) {
+          const btn = e.target.closest('.pose-thumb');
+          if (btn) setPose(btn);
+        });
+
+        // Initialize direction thumbnails to idle atlas.
+        const initialBtn = document.querySelector('.pose-thumb.active') || document.querySelector('.pose-thumb');
+        if (initialBtn) setPose(initialBtn);
+      })();
+    </script>
   </body>
 </html>

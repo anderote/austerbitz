@@ -11,6 +11,7 @@ const REGISTRY_PATH = resolve(ROOT, 'public/components/index.json');
 const COMPONENT_ROOT = resolve(ROOT, 'public/sprites/components');
 const OFFSETS_PATH = resolve(ROOT, 'public/components/offsets.json');
 const PIXEL_EDITS_PATH = resolve(ROOT, 'public/components/pixel-edits.json');
+const REGIMENTS_PATH = resolve(ROOT, 'public/regiments.json');
 
 const CELL_W = 32;
 const CELL_H = 36;
@@ -164,11 +165,53 @@ function scaleNearest(srcPng, scale) {
   return scaled;
 }
 
+// Recolor marker pixels in-place. Marker pixels always have two equal channels
+// (the dominant pair) and one strictly lower off-channel — this distinguishes
+// them from literal art colors. Brightness factor = dominant value (1.0 mid,
+// 0.31 deep); off-channel value lifts toward white for highlight rows. Mirrors
+// the sprite.glsl.ts shader so on-disk previews match runtime rendering.
+function recolorMarkers(png, regiment) {
+  const data = png.data;
+  const eps = 0.01;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+    const isMag = Math.abs(r - b) < eps && g < r - eps && r > 0.1;
+    const isCyn = Math.abs(g - b) < eps && r < g - eps && g > 0.1;
+    const isYel = Math.abs(r - g) < eps && b < r - eps && r > 0.1;
+    let slot = null, factor = 0, off = 0;
+    if (isMag) { slot = regiment.primary; factor = r; off = g; }
+    else if (isCyn) { slot = regiment.secondary; factor = g; off = r; }
+    else if (isYel) { slot = regiment.tertiary; factor = r; off = b; }
+    if (!slot) continue;
+    let outR = Math.min(255, slot[0] * factor);
+    let outG = Math.min(255, slot[1] * factor);
+    let outB = Math.min(255, slot[2] * factor);
+    const lift = off * 0.5;
+    outR = outR * (1 - lift) + 255 * lift;
+    outG = outG * (1 - lift) + 255 * lift;
+    outB = outB * (1 - lift) + 255 * lift;
+    data[i] = Math.round(outR);
+    data[i + 1] = Math.round(outG);
+    data[i + 2] = Math.round(outB);
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const kitId = args.get('kit') ?? 'british-line-infantry';
   const kitPath = resolve(ROOT, `public/components/kits/${kitId}.json`);
   const kit = loadJson(kitPath);
+
+  const regiments = loadJson(REGIMENTS_PATH);
+  const bakedRegiment =
+    (Array.isArray(regiments) && regiments.find((r) => r && r.id === 'british-line')) ||
+    (Array.isArray(regiments) && regiments[0]) ||
+    null;
+  if (!bakedRegiment) {
+    throw new Error(`Could not load any regiment from ${REGIMENTS_PATH}`);
+  }
+  console.log(`Recoloring with regiment: ${bakedRegiment.label} (${bakedRegiment.id})`);
 
   const registry = loadJson(REGISTRY_PATH);
   const componentsById = new Map(registry.components.map((entry) => [entry.id, entry]));
@@ -219,6 +262,7 @@ async function main() {
   const scale = args.has('scale') ? Number(args.get('scale')) : 6;
 
   const baseAtlas = PNG.sync.read(readFileSync(baseAtlasPath));
+  recolorMarkers(baseAtlas, bakedRegiment);
 
   console.log(`Using base atlas: ${baseAtlasPath}`);
   console.log(`Writing output atlas: ${outputAtlasPath}`);
@@ -246,6 +290,7 @@ async function main() {
         }
         const componentPath = resolve(COMPONENT_ROOT, entry.path);
         const componentPng = PNG.sync.read(readFileSync(componentPath));
+        recolorMarkers(componentPng, bakedRegiment);
         const offset = lookupOffset(poseId, facing, id);
         blitComponent(target, col, row, componentPng, offset);
         const layerEdits = lookupPixelEdits(poseId, facing, id);

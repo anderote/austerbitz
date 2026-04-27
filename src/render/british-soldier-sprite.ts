@@ -6,11 +6,15 @@
 //   (0,1) W side mirrored        (1,1) S front          (2,1) E side
 //   (0,2) SW front-3/4 mirrored  (1,2) N back           (2,2) SE front-3/4
 //
-// Color encoding: pixels marked `P` and `S` are emitted as pure magenta
-// (255,0,255) and pure cyan (0,255,255). The sprite fragment shader detects
-// these markers via NEAREST sampling and replaces them with per-instance
-// `a_primary` and `a_secondary` colors so factions can vary uniform colors
-// without rebaking the atlas.
+// Color encoding: pixels marked `P`, `S`, and `T` are emitted as pure magenta
+// (255,0,255), pure cyan (0,255,255), and pure yellow (255,255,0) — three
+// regiment recolor slots. The sprite fragment shader detects each marker
+// family via NEAREST sampling and replaces them with per-instance
+// `a_primary`, `a_secondary`, and `a_tertiary` colors so factions can vary
+// uniform colors without rebaking the atlas. Slot assignments:
+//   primary   (P) = coat
+//   secondary (S) = collar / turnbacks / cross-belts / breeches
+//   tertiary  (T) = shako / boots / gaiters
 //
 // Keep in sync with scripts/draw-british-soldier.mjs (preview PNG generator).
 
@@ -43,11 +47,13 @@ export const POSE_CELLS = [
 export const PRIMARY_MARKER: readonly [number, number, number] = [255, 0, 255];
 /** Cyan marker pixel — replaced by the per-instance secondary color. */
 export const SECONDARY_MARKER: readonly [number, number, number] = [0, 255, 255];
+/** Yellow marker pixel — replaced by the per-instance tertiary color. */
+export const TERTIARY_MARKER: readonly [number, number, number] = [255, 255, 0];
 
 const PALETTE_BASE: Record<string, [number, number, number, number]> = {
   '.': [0, 0, 0, 0],
-  'k': [22, 18, 28, 255],     // black: shako, boots, dark outline
-  'w': [236, 232, 222, 255],  // white: cross-belts, breeches
+  'k': [22, 18, 28, 255],     // black: literal dark outline (unused after 3-slot conversion)
+  'w': [236, 232, 222, 255],  // white: literal (unused after 3-slot conversion)
   'f': [228, 188, 156, 255],  // skin
   'F': [186, 142, 108, 255],  // skin shadow
   'y': [232, 188, 72, 255],   // brass: shako plate, gold accents
@@ -62,26 +68,28 @@ const PALETTE_BASE: Record<string, [number, number, number, number]> = {
 // soldier's left arm with the bayonet rising above the shako; for back-facing
 // poses the rifle is mirrored to the soldier's right side from viewer POV.
 //
-//   P = primary  (coat)        S = secondary  (plume / collar / facings)
+//   P = primary  (coat)
+//   S = secondary (collar / turnbacks / cross-belts / breeches)
+//   T = tertiary  (shako / boots / gaiters)
 
 const POSE_FRONT = [
   '.g.........', // 0  bayonet tip
   '.g.........', // 1  bayonet
   '.g....S....', // 2  plume tip
   '.g...SSS...', // 3  plume base
-  '.g...kkk...', // 4  shako top
-  '.g...kyk...', // 5  shako with brass plate
-  '.g...kkk...', // 6  shako body
-  '.g..kkkkk..', // 7  shako brim
+  '.g...TTT...', // 4  shako top
+  '.g...TyT...', // 5  shako with brass plate
+  '.g...TTT...', // 6  shako body
+  '.g..TTTTT..', // 7  shako brim
   '.g...fFf...', // 8  face
   '.m...SSS...', // 9  collar (secondary)
-  '.m..wPPPw..', // 10 shoulders + cross-belt anchors
-  '.m..PwPwP..', // 11 chest, belts crossing in
-  '.m..PPwPP..', // 12 chest, belt intersection
-  '.m..PwPwP..', // 13 chest, belts crossing out
+  '.m..SPPPS..', // 10 shoulders + cross-belt anchors
+  '.m..PSPSP..', // 11 chest, belts crossing in
+  '.m..PPSPP..', // 12 chest, belt intersection
+  '.m..PSPSP..', // 13 chest, belts crossing out
   '.m..SPPPS..', // 14 turnbacks (secondary corners)
-  '.M...www...', // 15 breeches
-  '.M...k.k...', // 16 gaiters
+  '.M...SSS...', // 15 breeches
+  '.M...T.T...', // 16 gaiters
   '.....sss...', // 17 shadow
 ];
 
@@ -90,19 +98,19 @@ const POSE_FRONT_DIAG = [
   '.g.........', // 1
   '.g.....S...', // 2  plume tip nudged toward viewer-right
   '.g....SSS..', // 3
-  '.g....kkk..', // 4
-  '.g....kky..', // 5  brass plate angled to the right side
-  '.g....kkk..', // 6
-  '.g...kkkkk.', // 7  shako brim
+  '.g....TTT..', // 4
+  '.g....TTy..', // 5  brass plate angled to the right side
+  '.g....TTT..', // 6
+  '.g...TTTTT.', // 7  shako brim
   '.g....fF...', // 8  face 3/4 (more shadow on right)
   '.m...SPPS..', // 9  collar with secondary on viewer-right
-  '.m..wPPPSw.', // 10 shoulders (asymmetric — facing showing)
-  '.m..PwPwSP.', // 11 chest
-  '.m..PPwPSP.', // 12 chest
-  '.m..PSPwSP.', // 13 chest with vertical lapel band
+  '.m..SPPPSS.', // 10 shoulders (asymmetric — facing showing)
+  '.m..PSPSSP.', // 11 chest
+  '.m..PPSPSP.', // 12 chest
+  '.m..PSPSSP.', // 13 chest with vertical lapel band
   '.m..SPPPSP.', // 14 turnbacks
-  '.M...www...', // 15 breeches
-  '.M...k.k...', // 16 gaiters
+  '.M...SSS...', // 15 breeches
+  '.M...T.T...', // 16 gaiters
   '.....sss...', // 17 shadow
 ];
 
@@ -111,19 +119,19 @@ const POSE_SIDE = [
   '.g.........', // 1  bayonet
   '.g.....S...', // 2  plume tip
   '.g....SSS..', // 3  plume base
-  '.g....kkk..', // 4  shako top
-  '.g....kyk..', // 5  brass plate (front-of-side facing)
-  '.g....kkk..', // 6  shako body
-  '.g...kkkkk.', // 7  shako brim
+  '.g....TTT..', // 4  shako top
+  '.g....TyT..', // 5  brass plate (front-of-side facing)
+  '.g....TTT..', // 6  shako body
+  '.g...TTTTT.', // 7  shako brim
   '.g.....fF..', // 8  face profile (nose / brow on viewer-right)
   '.m....SPS..', // 9  collar
-  '.m....wPP..', // 10 shoulder + cross-belt strap
-  '.m....PwS..', // 11 chest, single belt visible from this side
+  '.m....SPP..', // 10 shoulder + cross-belt strap
+  '.m....PSS..', // 11 chest, single belt visible from this side
   '.m....PPP..', // 12 chest
-  '.m....PwS..', // 13 chest
+  '.m....PSS..', // 13 chest
   '.m....SPS..', // 14 coat tail
-  '.M....www..', // 15 breeches
-  '.M....k.k..', // 16 gaiters (one foot forward)
+  '.M....SSS..', // 15 breeches
+  '.M....T.T..', // 16 gaiters (one foot forward)
   '......sss..', // 17 shadow
 ];
 
@@ -132,19 +140,19 @@ const POSE_BACK = [
   '.........g.', // 1  bayonet
   '....S....g.', // 2  plume tip
   '...SSS...g.', // 3  plume base
-  '...kkk...g.', // 4  shako top
-  '...kyk...g.', // 5  shako rear (brass plate on rear seam)
-  '...kkk...g.', // 6  shako body
-  '..kkkkk..g.', // 7  shako brim
-  '...kkk...g.', // 8  back of head
+  '...TTT...g.', // 4  shako top
+  '...TyT...g.', // 5  shako rear (brass plate on rear seam)
+  '...TTT...g.', // 6  shako body
+  '..TTTTT..g.', // 7  shako brim
+  '...TTT...g.', // 8  back of head (under hat region)
   '...SSS...m.', // 9  collar
-  '..wPPPw..m.', // 10 shoulders + belt anchors
-  '..PwPwP..m.', // 11 back, belts crossing in
-  '..PPwPP..m.', // 12 back, belt intersection
-  '..PwPwP..m.', // 13 back, belts crossing out
+  '..SPPPS..m.', // 10 shoulders + belt anchors
+  '..PSPSP..m.', // 11 back, belts crossing in
+  '..PPSPP..m.', // 12 back, belt intersection
+  '..PSPSP..m.', // 13 back, belts crossing out
   '..SPPPS..M.', // 14 coat tails
-  '...www.....', // 15 breeches
-  '...k.k.....', // 16 gaiters
+  '...SSS.....', // 15 breeches
+  '...T.T.....', // 16 gaiters
   '...sss.....', // 17 shadow
 ];
 
@@ -153,19 +161,19 @@ const POSE_BACK_DIAG = [
   '.........g.', // 1
   '...S.....g.', // 2  plume tip nudged toward viewer-left (soldier turning away-right)
   '..SSS....g.', // 3
-  '..kkk....g.', // 4
-  '..kyk....g.', // 5  brass plate offset (rear-quarter)
-  '..kkk....g.', // 6
-  '.kkkkk...g.', // 7
-  '..kkk....g.', // 8  back of head
+  '..TTT....g.', // 4
+  '..TyT....g.', // 5  brass plate offset (rear-quarter)
+  '..TTT....g.', // 6
+  '.TTTTT...g.', // 7
+  '..TTT....g.', // 8  back of head (under hat region)
   '..SSS....m.', // 9
-  '.wPPPw...m.', // 10 shoulders
-  '.PwPwP...m.', // 11 back, belts
-  '.PPwPP...m.', // 12 back
-  '.PwPwP...m.', // 13 back
+  '.SPPPS...m.', // 10 shoulders
+  '.PSPSP...m.', // 11 back, belts
+  '.PPSPP...m.', // 12 back
+  '.PSPSP...m.', // 13 back
   '.SPPPS...M.', // 14 coat tails
-  '..www......', // 15 breeches
-  '..k.k......', // 16 gaiters
+  '..SSS......', // 15 breeches
+  '..T.T......', // 16 gaiters
   '..sss......', // 17 shadow
 ];
 
@@ -174,6 +182,7 @@ const TINT_CELL = Array.from({ length: SOLDIER_CELL_H }, () => 'W'.repeat(SOLDIE
 function buildPalette(
   resolvePrimary?: readonly [number, number, number],
   resolveSecondary?: readonly [number, number, number],
+  resolveTertiary?: readonly [number, number, number],
 ): Record<string, [number, number, number, number]> {
   const palette: Record<string, [number, number, number, number]> = { ...PALETTE_BASE };
   palette['P'] = resolvePrimary
@@ -182,6 +191,9 @@ function buildPalette(
   palette['S'] = resolveSecondary
     ? [resolveSecondary[0], resolveSecondary[1], resolveSecondary[2], 255]
     : [SECONDARY_MARKER[0], SECONDARY_MARKER[1], SECONDARY_MARKER[2], 255];
+  palette['T'] = resolveTertiary
+    ? [resolveTertiary[0], resolveTertiary[1], resolveTertiary[2], 255]
+    : [TERTIARY_MARKER[0], TERTIARY_MARKER[1], TERTIARY_MARKER[2], 255];
   return palette;
 }
 
@@ -213,21 +225,23 @@ export interface SoldierSheetOptions {
   resolvePrimary?: readonly [number, number, number];
   /** If set, bake this secondary RGB into the atlas instead of the cyan marker. */
   resolveSecondary?: readonly [number, number, number];
+  /** If set, bake this tertiary RGB into the atlas instead of the yellow marker. */
+  resolveTertiary?: readonly [number, number, number];
 }
 
 /**
  * Builds the 33x54 RGBA atlas as a flat Uint8Array.
  *
- * By default the primary/secondary regions are emitted as magenta/cyan
- * markers; the runtime sprite shader replaces them per-instance. Pass
- * `resolvePrimary` / `resolveSecondary` to bake a faction's colors directly
- * (useful for static previews).
+ * By default the primary/secondary/tertiary regions are emitted as
+ * magenta/cyan/yellow markers; the runtime sprite shader replaces them
+ * per-instance. Pass `resolvePrimary` / `resolveSecondary` / `resolveTertiary`
+ * to bake a faction's colors directly (useful for static previews).
  */
 export function generateBritishSoldierSheet(opts: SoldierSheetOptions = {}): Uint8Array {
   const buf = new Uint8Array(SOLDIER_SHEET_W * SOLDIER_SHEET_H * 4);
   const W = SOLDIER_CELL_W;
   const H = SOLDIER_CELL_H;
-  const palette = buildPalette(opts.resolvePrimary, opts.resolveSecondary);
+  const palette = buildPalette(opts.resolvePrimary, opts.resolveSecondary, opts.resolveTertiary);
   blit(buf, SOLDIER_SHEET_W, 0,     0,     POSE_BACK_DIAG,  true,  palette);
   blit(buf, SOLDIER_SHEET_W, W,     0,     TINT_CELL,       false, palette);
   blit(buf, SOLDIER_SHEET_W, 2 * W, 0,     POSE_BACK_DIAG,  false, palette);

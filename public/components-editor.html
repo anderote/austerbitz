@@ -110,6 +110,10 @@
         background: #e5e7eb;
         border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 4px;
         display: block; max-width: 100%; height: auto;
+        /* Override the global box-sizing: border-box so the canvas drawing
+           buffer maps 1:1 to its CSS content box (no scaling skew from the
+           1px border). */
+        box-sizing: content-box;
       }
       .keys-help {
         margin-top: 10px; font-size: 12px; color: #6b7280;
@@ -181,6 +185,14 @@
       }
       .cursor-overlay.show { opacity: 1; }
       canvas.paint-mode { cursor: crosshair; }
+      .cell-marker {
+        position: absolute; pointer-events: none;
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.95) inset,
+                    0 0 0 2px rgba(255, 255, 255, 0.7);
+        background: rgba(37, 99, 235, 0.18);
+        display: none;
+      }
+      .cell-marker.show { display: block; }
       .toast {
         position: fixed; bottom: 24px; right: 24px;
         background: #1f2937; color: #ffffff; padding: 10px 16px;
@@ -191,6 +203,82 @@
       .toast.show { opacity: 1; transform: translateY(0); }
       .toast.error { background: #b91c1c; }
       img.layer-img { image-rendering: pixelated; }
+
+      /* --- Stage canvas + facing grid side-by-side --- */
+      .stage-body { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+      .facing-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .facing-cell {
+        position: relative;
+        width: 96px; height: 108px;
+        background-size: 288px 324px; /* native 96x108 atlas at 3x */
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+        border: 2px solid rgba(55, 65, 81, 0.15);
+        border-radius: 4px;
+        background-color: #f9fafb;
+        cursor: pointer;
+        transition: border-color 0.1s, transform 0.1s;
+        padding: 0;
+      }
+      .facing-cell:hover { border-color: #94a3b8; }
+      .facing-cell.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+      .facing-cell .label {
+        position: absolute; top: 2px; left: 4px;
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+        font-size: 10px; color: #1f2937;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 1px 4px; border-radius: 2px;
+        pointer-events: none;
+      }
+      .facing-cell-empty { width: 96px; height: 108px; }
+
+      /* Background-position offsets per facing (3x scale of native atlas).
+       * Atlas physical layout: NW [0,0], W [0,1], SW [0,2], S [1,1], N [1,2],
+       * NE [2,0], E [2,1], SE [2,2]. Empty cell at atlas [1,0]. */
+      .facing-cell[data-facing="NW"] { background-position: 0 0; }
+      .facing-cell[data-facing="N"]  { background-position: -96px -216px; }
+      .facing-cell[data-facing="NE"] { background-position: -192px 0; }
+      .facing-cell[data-facing="W"]  { background-position: 0 -108px; }
+      .facing-cell[data-facing="S"]  { background-position: -96px -108px; }
+      .facing-cell[data-facing="E"]  { background-position: -192px -108px; }
+      .facing-cell[data-facing="SW"] { background-position: 0 -216px; }
+      .facing-cell[data-facing="SE"] { background-position: -192px -216px; }
+
+      /* Hide the old horizontal facings bar — replaced by the grid. */
+      .facings { display: none; }
+
+      .pose-strip {
+        display: flex; gap: 12px; padding: 12px 16px; margin-top: 12px;
+        background: #ffffff; border: 1px solid rgba(55, 65, 81, 0.2);
+        border-radius: 8px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        overflow-x: auto; overflow-y: hidden;
+      }
+      .pose-strip-btn {
+        flex-shrink: 0;
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        padding: 6px 8px; border: 2px solid transparent; border-radius: 6px;
+        background: transparent; cursor: pointer;
+        transition: border-color 0.1s, background 0.1s;
+      }
+      .pose-strip-btn:hover { background: #f3f4f6; }
+      .pose-strip-btn.active { border-color: #2563eb; background: #eff6ff; }
+      .pose-strip-btn .crop {
+        width: 64px; height: 72px;
+        background-size: 192px 216px; /* native 96x108 atlas at 2x */
+        background-position: -64px -72px; /* center cell = S */
+        background-repeat: no-repeat;
+        image-rendering: pixelated;
+      }
+      .pose-strip-btn .label {
+        font-size: 11px; color: #374151;
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+        text-transform: lowercase;
+      }
     </style>
   </head>
   <body>
@@ -209,6 +297,8 @@
         <button id='save-rebuild-btn' class='primary'>Save &amp; Rebuild</button>
       </div>
     </div>
+
+    <div class='pose-strip' id='pose-strip'></div>
 
     <p class='note'>
       Edits live in your browser. Use Save to persist to <code>public/components/offsets.json</code>.
@@ -233,8 +323,8 @@
         <div class='tools-panel'>
           <h2 style='margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#4b5563;'>Tool</h2>
           <div class='tools-row' id='tools-row'>
-            <button class='tool-btn active' data-tool='move'>Move</button>
-            <button class='tool-btn' data-tool='paint'>Paint</button>
+            <button class='tool-btn' data-tool='move'>Move</button>
+            <button class='tool-btn active' data-tool='paint'>Paint</button>
             <button class='tool-btn' data-tool='erase'>Erase</button>
           </div>
           <button id='undo-btn'>Undo last pixel edit</button>
@@ -250,14 +340,30 @@
 
       <div class='panel stage'>
         <div class='stage-header'>
-          <span class='stage-title'>Composite (16x scale)</span>
+          <span class='stage-title' id='stage-title'>Composite</span>
           <span class='selected-info' id='selected-info'>Selected: &mdash;</span>
         </div>
-        <div class='canvas-wrap'>
-          <canvas id='preview' width='256' height='576'></canvas>
-          <div class='cursor-overlay' id='cursor-overlay'>-</div>
+        <div class='stage-body'>
+          <div>
+            <div class='canvas-wrap'>
+              <canvas id='preview' width='512' height='576'></canvas>
+              <div class='cell-marker' id='cell-marker'></div>
+              <div class='cursor-overlay' id='cursor-overlay'>-</div>
+            </div>
+            <div class='keys-help'>Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px</div>
+          </div>
+          <div class='facing-grid' id='facing-grid'>
+            <button class='facing-cell' data-facing='NW' type='button'><span class='label'>NW</span></button>
+            <button class='facing-cell' data-facing='N' type='button'><span class='label'>N</span></button>
+            <button class='facing-cell' data-facing='NE' type='button'><span class='label'>NE</span></button>
+            <button class='facing-cell' data-facing='W' type='button'><span class='label'>W</span></button>
+            <div class='facing-cell-empty'></div>
+            <button class='facing-cell' data-facing='E' type='button'><span class='label'>E</span></button>
+            <button class='facing-cell' data-facing='SW' type='button'><span class='label'>SW</span></button>
+            <button class='facing-cell' data-facing='S' type='button'><span class='label'>S</span></button>
+            <button class='facing-cell' data-facing='SE' type='button'><span class='label'>SE</span></button>
+          </div>
         </div>
-        <div class='keys-help'>Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px</div>
       </div>
     </div>
 
@@ -267,9 +373,12 @@
       'use strict';
 
       const FACINGS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-      const CELL_W = 16;
-      const CELL_H = 36;
-      const SCALE = 16;
+      // Cell dimensions and preview scale are detected at runtime from the
+      // first available component image, so the editor adapts to any tile size.
+      let CELL_W = 32;
+      let CELL_H = 36;
+      let SCALE = 16;
+      const PREVIEW_MAX_PX = 576;
       const STORAGE_KEY = 'componentOffsets.v2';
       const PIXEL_EDITS_STORAGE_KEY = 'componentPixelEdits.v2';
       const COMPONENT_BASE = 'sprites/components/';
@@ -328,7 +437,7 @@
         selectedLayerId: null,
         cacheBust: 0,
         imageCache: new Map(),
-        tool: 'move',
+        tool: 'paint',
         activeColor: PAL.red,
         activeColorName: 'red',
         editVersion: 0,
@@ -349,6 +458,7 @@
       const previewCanvas = document.getElementById('preview');
       const previewCtx = previewCanvas.getContext('2d');
       previewCtx.imageSmoothingEnabled = false;
+      const stageTitleEl = document.getElementById('stage-title');
       const toastEl = document.getElementById('toast');
       const toolsRowEl = document.getElementById('tools-row');
       const paletteEl = document.getElementById('palette');
@@ -356,6 +466,7 @@
       const selectedHexEl = document.getElementById('selected-hex');
       const undoBtn = document.getElementById('undo-btn');
       const cursorOverlayEl = document.getElementById('cursor-overlay');
+      const cellMarkerEl = document.getElementById('cell-marker');
 
       function showToast(message, opts) {
         toastEl.textContent = message;
@@ -382,6 +493,47 @@
         });
         state.imageCache.set(src, promise);
         return promise;
+      }
+
+      function applyCellSize(w, h) {
+        CELL_W = w;
+        CELL_H = h;
+        // Pick the largest integer scale that keeps the preview within PREVIEW_MAX_PX.
+        SCALE = Math.max(1, Math.floor(PREVIEW_MAX_PX / Math.max(w, h)));
+        previewCanvas.width = CELL_W * SCALE;
+        previewCanvas.height = CELL_H * SCALE;
+        if (stageTitleEl) {
+          stageTitleEl.textContent = 'Composite (' + CELL_W + 'x' + CELL_H + ' tile, ' + SCALE + 'x scale)';
+        }
+        // Cached layer canvases were sized to the previous CELL_W/CELL_H, so drop them.
+        invalidateAllLayerCache();
+      }
+
+      async function detectCellSizeFromKit() {
+        // Sample any registered component for the current kit and adopt its size.
+        if (!state.kit || !state.kit.facings) return;
+        const tried = new Set();
+        for (const f of FACINGS) {
+          const cfg = state.kit.facings[f];
+          if (!cfg || !Array.isArray(cfg.layers)) continue;
+          for (const id of cfg.layers) {
+            if (tried.has(id)) continue;
+            tried.add(id);
+            const src = componentSrc(id);
+            if (!src) continue;
+            try {
+              const img = await loadImage(src);
+              const w = img.naturalWidth || img.width;
+              const h = img.naturalHeight || img.height;
+              if (w > 0 && h > 0 && (w !== CELL_W || h !== CELL_H)) {
+                applyCellSize(w, h);
+              } else if (stageTitleEl) {
+                stageTitleEl.textContent = 'Composite (' + CELL_W + 'x' + CELL_H + ' tile, ' + SCALE + 'x scale)';
+              }
+              return;
+            } catch (_err) { /* try next */ }
+          }
+        }
       }
 
       function getKitOffsets() {
@@ -551,9 +703,24 @@
           facingsEl.appendChild(btn);
         }
         updateFacingButtons();
+        // Wire click handlers on the 3x3 facing grid.
+        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+          cell.addEventListener('click', function () { switchFacing(cell.dataset.facing); });
+        });
+        refreshFacingGridArtwork();
+      }
+
+      function refreshFacingGridArtwork() {
+        const url = poseAtlasPath(state.poseId);
+        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+          cell.style.backgroundImage = "url('" + url + "?v=" + Date.now() + "')";
+        });
       }
 
       function updateFacingButtons() {
+        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+          cell.classList.toggle('active', cell.dataset.facing === state.facing);
+        });
         for (const btn of facingsEl.querySelectorAll('button.facing-btn')) {
           btn.classList.toggle('active', btn.dataset.facing === state.facing);
         }
@@ -794,12 +961,38 @@
         previewCanvas.classList.toggle('paint-mode', paintLike);
       }
 
-      function clientToCell(event) {
+      // Returns the canvas-content-box origin (in client coords) and the
+      // display-pixel size of one tile cell. Uses clientWidth/clientHeight,
+      // which exclude the canvas border so the drawing buffer maps 1:1 to
+      // the content box.
+      function getCanvasMetrics() {
         const rect = previewCanvas.getBoundingClientRect();
-        const scaleX = previewCanvas.width / rect.width;
-        const scaleY = previewCanvas.height / rect.height;
-        const cx = Math.floor(((event.clientX - rect.left) * scaleX) / SCALE);
-        const cy = Math.floor(((event.clientY - rect.top) * scaleY) / SCALE);
+        const styles = window.getComputedStyle(previewCanvas);
+        const borderL = parseFloat(styles.borderLeftWidth) || 0;
+        const borderT = parseFloat(styles.borderTopWidth) || 0;
+        const contentW = previewCanvas.clientWidth;
+        const contentH = previewCanvas.clientHeight;
+        // Display pixels per drawing-buffer pixel.
+        const pxScaleX = contentW / previewCanvas.width;
+        const pxScaleY = contentH / previewCanvas.height;
+        // Display pixels per cell.
+        const cellPxX = pxScaleX * SCALE;
+        const cellPxY = pxScaleY * SCALE;
+        return {
+          contentLeft: rect.left + borderL,
+          contentTop: rect.top + borderT,
+          contentW, contentH,
+          pxScaleX, pxScaleY,
+          cellPxX, cellPxY,
+        };
+      }
+
+      function clientToCell(event) {
+        const m = getCanvasMetrics();
+        const x = event.clientX - m.contentLeft;
+        const y = event.clientY - m.contentTop;
+        const cx = Math.floor(x / m.cellPxX);
+        const cy = Math.floor(y / m.cellPxY);
         return { cx, cy };
       }
 
@@ -817,14 +1010,30 @@
         const { cx, cy } = clientToCell(event);
         if (cx < 0 || cx >= CELL_W || cy < 0 || cy >= CELL_H) {
           cursorOverlayEl.classList.remove('show');
+          cellMarkerEl.classList.remove('show');
           return;
         }
         cursorOverlayEl.textContent = '(' + cx + ',' + cy + ')';
         cursorOverlayEl.classList.add('show');
+        // Position the cell marker at the actual paint target. Coordinates are
+        // relative to .canvas-wrap (the marker's positioned ancestor), which
+        // wraps the canvas with no padding -- so border offset is the only
+        // thing we add to align with the canvas content area.
+        const styles = window.getComputedStyle(previewCanvas);
+        const borderL = parseFloat(styles.borderLeftWidth) || 0;
+        const borderT = parseFloat(styles.borderTopWidth) || 0;
+        const cellPxX = previewCanvas.clientWidth / CELL_W;
+        const cellPxY = previewCanvas.clientHeight / CELL_H;
+        cellMarkerEl.style.width = cellPxX + 'px';
+        cellMarkerEl.style.height = cellPxY + 'px';
+        cellMarkerEl.style.left = (borderL + cx * cellPxX) + 'px';
+        cellMarkerEl.style.top = (borderT + cy * cellPxY) + 'px';
+        cellMarkerEl.classList.add('show');
       }
 
       function onCanvasLeave() {
         cursorOverlayEl.classList.remove('show');
+        cellMarkerEl.classList.remove('show');
       }
 
       function onUndo() {
@@ -867,6 +1076,7 @@
           state.cacheBust = Date.now();
           state.imageCache.clear();
           invalidateAllLayerCache();
+          refreshFacingGridArtwork();
           await redraw();
           showToast('Rebuilt');
         } catch (err) {
@@ -927,6 +1137,47 @@
         }
       }
 
+      function poseAtlasPath(poseId) {
+        const base = 'sprites/' + state.kitId + '-components';
+        return poseId === 'idle' ? (base + '.png') : (base + '-' + poseId + '.png');
+      }
+
+      function buildPoseStrip() {
+        const strip = document.getElementById('pose-strip');
+        if (!strip) return;
+        strip.innerHTML = '';
+        const kitMeta = state.kits.find(function (k) { return k.id === state.kitId; });
+        const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
+        for (const pid of poses) {
+          const btn = document.createElement('button');
+          btn.className = 'pose-strip-btn' + (pid === state.poseId ? ' active' : '');
+          btn.dataset.pose = pid;
+          btn.type = 'button';
+          const crop = document.createElement('span');
+          crop.className = 'crop';
+          crop.style.backgroundImage = "url('" + poseAtlasPath(pid) + "')";
+          const label = document.createElement('span');
+          label.className = 'label';
+          label.textContent = poseLabel(pid);
+          btn.appendChild(crop);
+          btn.appendChild(label);
+          btn.addEventListener('click', function () {
+            switchPose(pid).catch(function (err) {
+              showToast('Switch pose failed: ' + (err.message || err), { error: true });
+            });
+          });
+          strip.appendChild(btn);
+        }
+      }
+
+      function syncPoseStripActive() {
+        const strip = document.getElementById('pose-strip');
+        if (!strip) return;
+        strip.querySelectorAll('.pose-strip-btn').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.pose === state.poseId);
+        });
+      }
+
       async function loadKit(kitId) {
         const kit = await fetchJson('/components/kits/' + kitId + '.json');
         state.kit = kit;
@@ -940,6 +1191,9 @@
         const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
         state.poseId = poses.includes('idle') ? 'idle' : (poses[0] || 'idle');
         buildPoseDropdown();
+        buildPoseStrip();
+        refreshFacingGridArtwork();
+        await detectCellSizeFromKit();
         invalidateAllLayerCache();
         // Choose a sensible default selected layer.
         const layers = getCurrentLayers();
@@ -958,6 +1212,9 @@
         if (!state.selectedLayerId || !layers.includes(state.selectedLayerId)) {
           state.selectedLayerId = layers[0] || null;
         }
+        if (poseSelectEl.value !== poseId) poseSelectEl.value = poseId;
+        syncPoseStripActive();
+        refreshFacingGridArtwork();
         renderLayersList();
         renderOffsetReadout();
         renderPoseNote();
@@ -1013,9 +1270,11 @@
 
           buildUnitDropdown();
           buildPoseDropdown();
+          buildPoseStrip();
           buildFacingButtons();
           buildPalette();
           buildToolButtons();
+          await detectCellSizeFromKit();
           switchFacing('S');
 
           window.addEventListener('keydown', onKey);

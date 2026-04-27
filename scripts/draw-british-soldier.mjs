@@ -15,13 +15,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = `${__dirname}/../public/sprites`;
 
 // --- Palette (RGBA 0..255) ----------------------------------------------------
-// `P` (primary) / `S` (secondary) bake British defaults here so the static PNG
-// shows recognizable colors. The runtime atlas in TypeScript emits magenta /
-// cyan markers and lets the shader substitute per-team colors.
+// `P` (primary) / `S` (secondary) / `T` (tertiary) bake British defaults here
+// so the static PNG shows recognizable colors. The runtime atlas in TypeScript
+// emits magenta / cyan / yellow markers and lets the shader substitute
+// per-regiment colors.
+//   P = coat            (British red)
+//   S = belts + pants   (British cream)
+//   T = shako + boots   (British navy/black)
 const PALETTE = {
   '.': [0, 0, 0, 0],         // transparent
-  'k': [22, 18, 28, 255],    // shako / boots / outline
-  'w': [236, 232, 222, 255], // white (crossbelts, breeches)
+  'k': [22, 18, 28, 255],    // literal black (unused after 3-slot conversion)
+  'w': [236, 232, 222, 255], // literal white (unused after 3-slot conversion)
   'f': [228, 188, 156, 255], // skin
   'F': [186, 142, 108, 255], // skin shadow
   'y': [232, 188, 72, 255],  // brass (shako plate)
@@ -31,7 +35,8 @@ const PALETTE = {
   's': [60, 56, 52, 110],    // ground shadow (semi-transparent)
   'W': [255, 255, 255, 255], // tint sample cell
   'P': [180, 40, 50, 255],   // PRIMARY — British red coat (markers in runtime)
-  'S': [50, 60, 140, 255],   // SECONDARY — British blue facings (markers in runtime)
+  'S': [240, 230, 210, 255], // SECONDARY — British cream belts/pants (markers in runtime)
+  'T': [25, 20, 35, 255],    // TERTIARY — British navy shako/boots (markers in runtime)
 };
 
 // --- Pose grids (11 wide x 18 tall) -------------------------------------------
@@ -43,19 +48,19 @@ const POSE_FRONT = [
   '.g.........', // 1  bayonet
   '.g....S....', // 2  plume tip
   '.g...SSS...', // 3  plume base
-  '.g...kkk...', // 4  shako top
-  '.g...kyk...', // 5  shako with brass plate
-  '.g...kkk...', // 6  shako body
-  '.g..kkkkk..', // 7  shako brim
+  '.g...TTT...', // 4  shako top
+  '.g...TyT...', // 5  shako with brass plate
+  '.g...TTT...', // 6  shako body
+  '.g..TTTTT..', // 7  shako brim
   '.g...fFf...', // 8  face
   '.m...SSS...', // 9  collar (secondary)
-  '.m..wPPPw..', // 10 shoulders + cross-belt anchors
-  '.m..PwPwP..', // 11 chest, belts crossing in
-  '.m..PPwPP..', // 12 chest, belt intersection
-  '.m..PwPwP..', // 13 chest, belts crossing out
+  '.m..SPPPS..', // 10 shoulders + cross-belt anchors
+  '.m..PSPSP..', // 11 chest, belts crossing in
+  '.m..PPSPP..', // 12 chest, belt intersection
+  '.m..PSPSP..', // 13 chest, belts crossing out
   '.m..SPPPS..', // 14 turnbacks (secondary corners)
-  '.M...www...', // 15 breeches
-  '.M...k.k...', // 16 gaiters
+  '.M...SSS...', // 15 breeches
+  '.M...T.T...', // 16 gaiters
   '.....sss...', // 17 shadow
 ];
 
@@ -64,19 +69,19 @@ const POSE_FRONT_DIAG = [
   '.g.........',
   '.g.....S...',
   '.g....SSS..',
-  '.g....kkk..',
-  '.g....kky..',
-  '.g....kkk..',
-  '.g...kkkkk.',
+  '.g....TTT..',
+  '.g....TTy..',
+  '.g....TTT..',
+  '.g...TTTTT.',
   '.g....fF...',
   '.m...SPPS..',
-  '.m..wPPPSw.',
-  '.m..PwPwSP.',
-  '.m..PPwPSP.',
-  '.m..PSPwSP.',
+  '.m..SPPPSS.',
+  '.m..PSPSSP.',
+  '.m..PPSPSP.',
+  '.m..PSPSSP.',
   '.m..SPPPSP.',
-  '.M...www...',
-  '.M...k.k...',
+  '.M...SSS...',
+  '.M...T.T...',
   '.....sss...',
 ];
 
@@ -85,19 +90,19 @@ const POSE_SIDE = [
   '.g.........',
   '.g.....S...',
   '.g....SSS..',
-  '.g....kkk..',
-  '.g....kyk..',
-  '.g....kkk..',
-  '.g...kkkkk.',
+  '.g....TTT..',
+  '.g....TyT..',
+  '.g....TTT..',
+  '.g...TTTTT.',
   '.g.....fF..',
   '.m....SPS..',
-  '.m....wPP..',
-  '.m....PwS..',
+  '.m....SPP..',
+  '.m....PSS..',
   '.m....PPP..',
-  '.m....PwS..',
+  '.m....PSS..',
   '.m....SPS..',
-  '.M....www..',
-  '.M....k.k..',
+  '.M....SSS..',
+  '.M....T.T..',
   '......sss..',
 ];
 
@@ -106,19 +111,19 @@ const POSE_BACK = [
   '.........g.',
   '....S....g.',
   '...SSS...g.',
-  '...kkk...g.',
-  '...kyk...g.',
-  '...kkk...g.',
-  '..kkkkk..g.',
-  '...kkk...g.',
+  '...TTT...g.',
+  '...TyT...g.',
+  '...TTT...g.',
+  '..TTTTT..g.',
+  '...TTT...g.',
   '...SSS...m.',
-  '..wPPPw..m.',
-  '..PwPwP..m.',
-  '..PPwPP..m.',
-  '..PwPwP..m.',
+  '..SPPPS..m.',
+  '..PSPSP..m.',
+  '..PPSPP..m.',
+  '..PSPSP..m.',
   '..SPPPS..M.',
-  '...www.....',
-  '...k.k.....',
+  '...SSS.....',
+  '...T.T.....',
   '...sss.....',
 ];
 
@@ -127,19 +132,19 @@ const POSE_BACK_DIAG = [
   '.........g.',
   '...S.....g.',
   '..SSS....g.',
-  '..kkk....g.',
-  '..kyk....g.',
-  '..kkk....g.',
-  '.kkkkk...g.',
-  '..kkk....g.',
+  '..TTT....g.',
+  '..TyT....g.',
+  '..TTT....g.',
+  '.TTTTT...g.',
+  '..TTT....g.',
   '..SSS....m.',
-  '.wPPPw...m.',
-  '.PwPwP...m.',
-  '.PPwPP...m.',
-  '.PwPwP...m.',
+  '.SPPPS...m.',
+  '.PSPSP...m.',
+  '.PPSPP...m.',
+  '.PSPSP...m.',
   '.SPPPS...M.',
-  '..www......',
-  '..k.k......',
+  '..SSS......',
+  '..T.T......',
   '..sss......',
 ];
 

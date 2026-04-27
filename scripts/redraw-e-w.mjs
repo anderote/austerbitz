@@ -28,6 +28,11 @@ import { PNG } from 'pngjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  paintMusketVertical,
+  paintMusketHorizontal,
+  paintMusketHitTilted,
+} from './lib/musket-shapes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -231,27 +236,9 @@ function drawShakoEast() {
 
 function drawMusketEast() {
   const p = makeSprite();
-  // Vertical Brown Bess on viewer's right (camera-side of figure, x=20).
-  // Socket bayonet: blade offset 1 column right of barrel axis (x=21).
-  set(p, 21, 3, PAL.bayonetTip);
-  set(p, 21, 4, PAL.bayonet);
-  set(p, 21, 5, PAL.bayonet);
-  set(p, 21, 6, PAL.bayonet);
-  set(p, 21, 7, PAL.bayonet);
-  // T-shape socket: in-line steel pixel in barrel column at bayonet base row.
-  set(p, 20, 7, PAL.bayonet);
-  // Muzzle / socket.
-  set(p, 20, 8, PAL.musketMuzzle);
-  // Barrel rows 9-19.
-  for (let y = 9; y <= 19; y++) set(p, 20, y, PAL.musketBarrel);
-  // Brass barrel band mid-barrel.
-  set(p, 20, 14, PAL.brass);
-  // Lock (brass) row 20 with hammer outboard (camera-side, to the right).
-  set(p, 20, 20, PAL.brass);
-  set(p, 21, 20, PAL.hammer);
-  // Stock.
-  set(p, 20, 21, PAL.musketStockHi);
-  set(p, 20, 22, PAL.musketStock);
+  // E idle: vertical musket on the camera-side of the figure (viewer's right).
+  // Butt at hip (20, 22). Mirror of S idle layout (offsets the same).
+  paintMusketVertical(p, 20, 22, { flipX: true });
   // Right hand grips lock from body-side (left of barrel).
   set(p, 19, 20, PAL.skinHi);
   return p;
@@ -294,15 +281,196 @@ function drawCoatEastFiring() {
 
 function drawMusketEastFiring() {
   const p = makeSprite();
-  // Horizontal Brown Bess along row 18, butt at viewer's left, bayonet at right.
-  set(p, 13, 18, PAL.musketStockHi);   // butt extension outboard
-  set(p, 14, 18, PAL.musketStock);     // butt
-  set(p, 15, 18, PAL.brass);           // lock plate
-  for (let x = 16; x <= 20; x++) set(p, x, 18, PAL.musketBarrel);
-  set(p, 18, 18, PAL.brass);          // brass barrel band
-  set(p, 21, 18, PAL.musketMuzzle);   // muzzle
-  set(p, 22, 18, PAL.bayonet);        // bayonet blade
-  set(p, 23, 18, PAL.bayonetTip);     // bayonet tip
+  // E firing: horizontal musket pointing east, butt heel at (13, 18).
+  paintMusketHorizontal(p, 13, 18);
+  return p;
+}
+
+// --- E MAKE-READY / HIT / DYING ---
+
+const PAL_BLOOD = {
+  bright: '#D13B33',
+  dark:   '#7A1A22',
+  pool:   '#5C1419',
+};
+
+function drawCoatEastMakeReady() {
+  const p = makeSprite();
+  // Same torso/belt/backpack/hem as idle.
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 15, 18, PAL.coatMid);
+    set(p, 15, y, PAL.coatShade);
+    set(p, 18, y, PAL.coatHi);
+  }
+  const belt = [[18, 17], [17, 18], [17, 19], [16, 20], [16, 21]];
+  for (const [x, y] of belt) set(p, x, y, PAL.beltWhite);
+  for (let y = 18; y <= 21; y++) {
+    set(p, 13, y, PAL.packShade);
+    set(p, 14, y, PAL.packTan);
+  }
+  set(p, 15, 17, PAL.beltWhite);
+  row(p, 23, 15, 18, PAL.coatShade);
+  set(p, 15, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+  // Near arm (camera-side, x=19, lit) reaches up to grip vertical musket at
+  // body centerline (x=16). Both arms cross over chest area as gun is being raised.
+  set(p, 19, 17, PAL.coatHi);          // near shoulder cap
+  set(p, 18, 16, PAL.coatMid);         // forearm reaching across to gun
+  set(p, 17, 15, PAL.skinHi);          // near hand on forestock
+  // Far arm (camera-far side at the back of the figure x=15) just shows a
+  // little sleeve raised — second hand at lock height.
+  set(p, 15, 17, PAL.coatShade);       // far shoulder cap
+  set(p, 16, 16, PAL.skinHi);          // far hand on lock
+  return p;
+}
+
+function drawMusketEastMakeReady() {
+  const p = makeSprite();
+  // Vertical musket at body centerline; butt at hip (16, 20).
+  paintMusketVertical(p, 16, 20);
+  return p;
+}
+
+function drawCoatEastHit() {
+  const p = makeSprite();
+  // Same torso/belt/backpack/hem as idle.
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 15, 18, PAL.coatMid);
+    set(p, 15, y, PAL.coatShade);
+    set(p, 18, y, PAL.coatHi);
+  }
+  const belt = [[18, 17], [17, 18], [17, 19], [16, 20], [16, 21]];
+  for (const [x, y] of belt) set(p, x, y, PAL.beltWhite);
+  for (let y = 18; y <= 21; y++) {
+    set(p, 13, y, PAL.packShade);
+    set(p, 14, y, PAL.packTan);
+  }
+  set(p, 15, 17, PAL.beltWhite);
+  row(p, 23, 15, 18, PAL.coatShade);
+  set(p, 15, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+  // Near arm (camera-side, x=19, lit) flung forward (east).
+  set(p, 19, 17, PAL.coatHi);
+  set(p, 20, 17, PAL.coatHi);
+  set(p, 21, 17, PAL.coatMid);
+  set(p, 22, 18, PAL.skinHi);
+  // Far arm hint visible at rear — flailing back.
+  set(p, 14, 17, PAL.coatShade);
+  set(p, 13, 17, PAL.coatShade);
+  return p;
+}
+
+function drawMusketEastHit() {
+  const p = makeSprite();
+  // Hit-tilted leaning forward to viewer's right. flipX so the lean tilts the
+  // far end out into the cell-right.
+  paintMusketHitTilted(p, 17, 23, { flipX: true });
+  return p;
+}
+
+function drawBloodEastHit() {
+  const p = makeSprite();
+  // Spray erupting east (toward viewer-right, away from facing direction = chest exit).
+  // Profile chest at x=18, blood goes east (right) and forward.
+  set(p, 19, 18, PAL_BLOOD.bright);
+  set(p, 20, 18, PAL_BLOOD.bright);
+  set(p, 19, 19, PAL_BLOOD.bright);
+  set(p, 21, 18, PAL_BLOOD.dark);
+  set(p, 21, 19, PAL_BLOOD.dark);
+  set(p, 22, 17, PAL_BLOOD.bright);
+  set(p, 22, 20, PAL_BLOOD.dark);
+  set(p, 23, 19, PAL_BLOOD.dark);
+  return p;
+}
+
+function drawBodyEastDying() {
+  const p = makeSprite();
+  // Profile face shifted +1y, head sagged.
+  set(p, 16, 16, PAL.skinShade);
+  set(p, 17, 16, PAL.skinDeep);
+  set(p, 18, 16, PAL.skinDeep);
+  set(p, 16, 17, PAL.skinHi);
+  set(p, 17, 17, PAL.skinShade);
+  return p;
+}
+
+function drawShakoEastDying() {
+  const p = makeSprite();
+  // Shifted +1 row.
+  set(p, 17, 8, PAL.plumeTip);
+  set(p, 17, 9, PAL.plumeRed);
+  for (let y = 10; y <= 14; y++) {
+    row(p, y, 15, 18, PAL.shakoMid);
+    set(p, 15, y, PAL.shakoShade);
+    set(p, 18, y, PAL.shakoHi);
+  }
+  set(p, 18, 12, PAL.brass);
+  row(p, 15, 15, 19, PAL.shakoShade);
+  return p;
+}
+
+function drawCoatEastDying() {
+  const p = makeSprite();
+  // Slumped torso shifted +1y (rows 18-23) but same column range.
+  for (let y = 18; y <= 23; y++) {
+    row(p, y, 15, 18, PAL.coatMid);
+    set(p, 15, y, PAL.coatShade);
+    set(p, 18, y, PAL.coatHi);
+  }
+  // Crumpled belt — just the diagonal core.
+  set(p, 18, 18, PAL.beltWhite);
+  set(p, 17, 19, PAL.beltWhite);
+  set(p, 16, 20, PAL.beltWhite);
+  set(p, 17, 21, PAL.brass);
+  // Backpack still present, slid down.
+  for (let y = 19; y <= 22; y++) {
+    set(p, 13, y, PAL.packShade);
+    set(p, 14, y, PAL.packTan);
+  }
+  // Coat hem row 24.
+  row(p, 24, 15, 18, PAL.coatShade);
+  set(p, 15, 24, PAL.coatDeep);
+  set(p, 18, 24, PAL.coatDeep);
+  // Near arm slumped forward (collapsing on side).
+  set(p, 19, 19, PAL.coatHi);
+  set(p, 20, 20, PAL.coatMid);
+  set(p, 21, 21, PAL.skinHi);          // hand outstretched forward
+  return p;
+}
+
+function drawTrousersEastDying() {
+  const p = makeSprite();
+  // Knee buckled +1y, gaiters slid lower.
+  for (let y = 25; y <= 26; y++) {
+    set(p, 16, y, PAL.trouserHi);
+    set(p, 17, y, PAL.trouserShade);
+  }
+  for (let y = 27; y <= 28; y++) {
+    set(p, 16, y, PAL.gaiterBlack);
+    set(p, 17, y, PAL.gaiterBlack);
+  }
+  // One foot splayed outward (east).
+  set(p, 18, 28, PAL.gaiterBlack);
+  set(p, 16, 27, PAL.gaiterHi);
+  return p;
+}
+
+function drawMusketEastDying() {
+  const p = makeSprite();
+  // Horizontal musket flat on ground, butt at viewer's left, muzzle east.
+  paintMusketHorizontal(p, 17, 29);
+  return p;
+}
+
+function drawBloodEastDying() {
+  const p = makeSprite();
+  // Pool spreading under figure.
+  row(p, 30, 13, 22, PAL_BLOOD.pool);
+  row(p, 29, 14, 21, PAL_BLOOD.dark);
+  set(p, 14, 28, PAL_BLOOD.pool);
+  set(p, 20, 28, PAL_BLOOD.pool);
+  set(p, 19, 19, PAL_BLOOD.dark);
+  set(p, 20, 21, PAL_BLOOD.dark);
   return p;
 }
 
@@ -328,6 +496,29 @@ function drawAll() {
   const eMusketFire = drawMusketEastFiring();
   save(eMusketFire, 'weapon/musket/east/present.png');
   save(eMusketFire, 'weapon/musket/east/fire.png');
+  // Make-ready / hit / dying for E.
+  const eCoatMR = drawCoatEastMakeReady();
+  save(eCoatMR, 'uniform/coat-line/east/make-ready.png');
+  const eMusketMR = drawMusketEastMakeReady();
+  save(eMusketMR, 'weapon/musket/east/make-ready.png');
+  const eCoatHit = drawCoatEastHit();
+  save(eCoatHit, 'uniform/coat-line/east/hit.png');
+  const eMusketHit = drawMusketEastHit();
+  save(eMusketHit, 'weapon/musket/east/hit.png');
+  const eBloodHit = drawBloodEastHit();
+  save(eBloodHit, 'fx/blood/east/hit.png');
+  const eBodyDying = drawBodyEastDying();
+  save(eBodyDying, 'anatomy/body/east/dying.png');
+  const eShakoDying = drawShakoEastDying();
+  save(eShakoDying, 'uniform/head/shako-standard/east-dying.png');
+  const eCoatDying = drawCoatEastDying();
+  save(eCoatDying, 'uniform/coat-line/east/dying.png');
+  const eTrousersDying = drawTrousersEastDying();
+  save(eTrousersDying, 'uniform/lower/trousers/east-dying.png');
+  const eMusketDying = drawMusketEastDying();
+  save(eMusketDying, 'weapon/musket/east/dying.png');
+  const eBloodDying = drawBloodEastDying();
+  save(eBloodDying, 'fx/blood/east/dying.png');
 
   console.log('Drawing W facing components (mirrored from E):');
   save(mirrorHorizontal(eShadow), 'shadow/west/default.png');
@@ -343,6 +534,18 @@ function drawAll() {
   save(mirrorHorizontal(eCoatFire), 'uniform/coat-line/west/fire.png');
   save(mirrorHorizontal(eMusketFire), 'weapon/musket/west/present.png');
   save(mirrorHorizontal(eMusketFire), 'weapon/musket/west/fire.png');
+  // W mirrored from E.
+  save(mirrorHorizontal(eCoatMR), 'uniform/coat-line/west/make-ready.png');
+  save(mirrorHorizontal(eMusketMR), 'weapon/musket/west/make-ready.png');
+  save(mirrorHorizontal(eCoatHit), 'uniform/coat-line/west/hit.png');
+  save(mirrorHorizontal(eMusketHit), 'weapon/musket/west/hit.png');
+  save(mirrorHorizontal(eBloodHit), 'fx/blood/west/hit.png');
+  save(mirrorHorizontal(eBodyDying), 'anatomy/body/west/dying.png');
+  save(mirrorHorizontal(eShakoDying), 'uniform/head/shako-standard/west-dying.png');
+  save(mirrorHorizontal(eCoatDying), 'uniform/coat-line/west/dying.png');
+  save(mirrorHorizontal(eTrousersDying), 'uniform/lower/trousers/west-dying.png');
+  save(mirrorHorizontal(eMusketDying), 'weapon/musket/west/dying.png');
+  save(mirrorHorizontal(eBloodDying), 'fx/blood/west/dying.png');
 }
 
 drawAll();
