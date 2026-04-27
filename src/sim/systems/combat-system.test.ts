@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from '../world';
 import { allocEntity, EntityState } from '../entities';
-import { getUnitKindIndex } from '../../data/units';
+import { getUnitKindIndex, getUnitKindByIndex } from '../../data/units';
 import { rebuildGrid } from '../world';
 import { createCombatSystem } from './combat-system';
 import type { FireOrders } from './state-system';
@@ -9,7 +9,6 @@ import { tickStates } from './state-system';
 import { tickProjectiles } from './projectile-system';
 import { createProjectiles } from '../projectiles';
 import { createParticles } from '../../particles/particles';
-import { getUnitKindByIndex } from '../../data/units';
 
 function makeWorld() {
   const world = createWorld({ seed: 1, capacity: 64, mapSize: 200, cellSize: 2 });
@@ -251,7 +250,7 @@ describe('combatSystem', () => {
 });
 
 describe('combat pipeline integration', () => {
-  it('idle → aiming → reloading → idle, spawning a projectile along the way', () => {
+  it('idle → aiming → reloading transitions and projectile is spawned', () => {
     const world = makeWorld();
     const projectiles = createProjectiles(16);
     const particles = createParticles(2048);
@@ -273,17 +272,23 @@ describe('combat pipeline integration', () => {
     expect(projectiles.count).toBe(0);
 
     // Run enough ticks to outlast the 0.15 s aiming windup. After Aiming
-    // expires, state-system resolves the shot and transitions to Reloading.
+    // expires, state-system resolves the shot (spawning a projectile via
+    // fire-resolver) and transitions to Reloading.
+    let peakProjectiles = 0;
     for (let i = 0; i < 12; i++) {
       rebuildGrid(world);
       combat(world, dt);
       tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
       tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
+      peakProjectiles = Math.max(peakProjectiles, projectiles.count);
     }
 
     expect(world.entities.state[shooter]).toBe(EntityState.Reloading);
-    // Projectile may have hit, missed, or still be in flight — but we know
-    // at least one was spawned.
+
+    // Projectile may have hit, missed, or still be in flight by the end of
+    // the loop — but we know at least one was spawned along the way.
+    expect(peakProjectiles).toBeGreaterThanOrEqual(1);
+
     // Reload countdown is in progress.
     const reloadTotal = getUnitKindByIndex(world.entities.kindId[shooter]!).baseStats.weaponReload;
     expect(world.entities.reloadT[shooter]).toBeGreaterThan(0);
