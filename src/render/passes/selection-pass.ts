@@ -237,33 +237,52 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       };
 
       // Faded chains for unselected, alive, player-team units.
-      // Cluster units by the location of their final move waypoint so a squad
-      // that was group-moved collapses into a single centroid arrow rather
-      // than one faint arrow per soldier. Bucket size > the spread radius
-      // produced by `spreadTarget` for typical squad sizes.
-      const CLUSTER_R = 12;
-      const buckets = new Map<string, number[]>();
+      // Cluster by *source position* via single-link union-find: any two
+      // units within LINK_R of each other are the same squad. Squads are
+      // physically tight (spacing ~1.4) while distinct squads sit far apart,
+      // so this groups by visual cohesion rather than by destination spread,
+      // which previously fragmented one squad into multiple arrows when its
+      // spread targets crossed a grid-bucket boundary.
+      const LINK_R = 4;
+      const LINK_R2 = LINK_R * LINK_R;
+      const candidates: number[] = [];
       for (const id of world.orderQueue.keys()) {
         if (e.alive[id] !== 1) continue;
         if (sel.ids.has(id)) continue;
         if (e.team[id] !== PLAYER_TEAM) continue;
-        const queue = world.orderQueue.get(id)!;
-        let lastTx = NaN, lastTy = NaN;
-        for (let k = queue.length - 1; k >= 0; k--) {
-          const o = queue[k]!;
-          if (o.kind === 'move' || o.kind === 'attack-move') {
-            lastTx = o.targetX; lastTy = o.targetY;
-            break;
+        const q = world.orderQueue.get(id)!;
+        let hasMove = false;
+        for (const o of q) {
+          if (o.kind === 'move' || o.kind === 'attack-move') { hasMove = true; break; }
+        }
+        if (hasMove) candidates.push(id);
+      }
+      const parent: number[] = candidates.map((_, i) => i);
+      const find = (i: number): number => {
+        while (parent[i] !== i) { parent[i] = parent[parent[i]!]!; i = parent[i]!; }
+        return i;
+      };
+      for (let i = 0; i < candidates.length; i++) {
+        const x1 = e.posX[candidates[i]!]!;
+        const y1 = e.posY[candidates[i]!]!;
+        for (let j = i + 1; j < candidates.length; j++) {
+          const dx = e.posX[candidates[j]!]! - x1;
+          const dy = e.posY[candidates[j]!]! - y1;
+          if (dx * dx + dy * dy <= LINK_R2) {
+            const ra = find(i), rb = find(j);
+            if (ra !== rb) parent[ra] = rb;
           }
         }
-        if (Number.isNaN(lastTx)) continue;
-        const key = `${Math.floor(lastTx / CLUSTER_R)},${Math.floor(lastTy / CLUSTER_R)}`;
-        let arr = buckets.get(key);
-        if (!arr) { arr = []; buckets.set(key, arr); }
-        arr.push(id);
+      }
+      const groups = new Map<number, number[]>();
+      for (let i = 0; i < candidates.length; i++) {
+        const r = find(i);
+        let arr = groups.get(r);
+        if (!arr) { arr = []; groups.set(r, arr); }
+        arr.push(candidates[i]!);
       }
       const otherChains: number[][] = [];
-      for (const ids of buckets.values()) {
+      for (const ids of groups.values()) {
         if (ids.length === 1) {
           const chain = buildUnitChain(ids[0]!);
           if (chain) otherChains.push(chain);

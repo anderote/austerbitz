@@ -48,9 +48,15 @@ export function tickStates(
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] === 0) continue;
 
-    // Visual recoil timer always counts down regardless of state.
+    // Visual recoil timer always counts down regardless of state. When it
+    // hits zero the render-only peak vector is cleared so the entity
+    // settles back at its anchor position.
     if (e.recoilT[i]! > 0) {
       e.recoilT[i] = Math.max(0, e.recoilT[i]! - dt);
+      if (e.recoilT[i] === 0) {
+        e.recoilPeakX[i] = 0;
+        e.recoilPeakY[i] = 0;
+      }
     }
 
     const state = e.state[i]!;

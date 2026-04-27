@@ -13,7 +13,7 @@ export interface MuzzleProfile {
     drag: number;             // per-tick velocity multiplier
     color: Color3;
   };
-  recoilFirer: number;        // m/s impulse opposite facing on the shooter
+  recoilFirer: number;        // meters of one-time positional shove backward on the shooter
 }
 
 export interface ExplosionProfile {

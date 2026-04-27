@@ -51,6 +51,8 @@ describe('Entities SoA', () => {
     const e = createEntities(4);
     // Pre-poison the slot so alloc must clear it.
     e.recoilT[0] = 1.5;
+    e.recoilPeakX[0] = 0.9;
+    e.recoilPeakY[0] = -0.4;
     e.stateT[0] = 2.5;
     e.impulseX[0] = 7;
     e.impulseY[0] = -3;
@@ -59,6 +61,8 @@ describe('Entities SoA', () => {
     const id = allocEntity(e);
     expect(id).toBe(0);
     expect(e.recoilT[id]).toBe(0);
+    expect(e.recoilPeakX[id]).toBe(0);
+    expect(e.recoilPeakY[id]).toBe(0);
     expect(e.stateT[id]).toBe(0);
     expect(e.impulseX[id]).toBe(0);
     expect(e.impulseY[id]).toBe(0);
@@ -69,11 +73,15 @@ describe('Entities SoA', () => {
   it('exposes state-machine transient buffers at the expected length and type', () => {
     const e = createEntities(16);
     expect(e.recoilT).toBeInstanceOf(Float32Array);
+    expect(e.recoilPeakX).toBeInstanceOf(Float32Array);
+    expect(e.recoilPeakY).toBeInstanceOf(Float32Array);
     expect(e.stateT).toBeInstanceOf(Float32Array);
     expect(e.impulseX).toBeInstanceOf(Float32Array);
     expect(e.impulseY).toBeInstanceOf(Float32Array);
     expect(e.ragdollT).toBeInstanceOf(Float32Array);
     expect(e.recoilT.length).toBe(16);
+    expect(e.recoilPeakX.length).toBe(16);
+    expect(e.recoilPeakY.length).toBe(16);
     expect(e.stateT.length).toBe(16);
     expect(e.impulseX.length).toBe(16);
     expect(e.impulseY.length).toBe(16);

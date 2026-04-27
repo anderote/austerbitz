@@ -6,7 +6,7 @@ import type { Stage } from './stage';
 import { EntityState } from '../sim/entities';
 import { triggerFire, type FireOrders } from '../sim/systems/state-system';
 import { applyHit } from '../sim/systems/combat-events';
-import { resolveFire } from '../sim/fire-resolver';
+import { resolveFire, RECOIL_T } from '../sim/fire-resolver';
 import { spawnShell } from '../sim/projectiles';
 import { barrelTip } from '../fx/barrel';
 import { solveCannonLaunch } from '../fx/ballistics';
@@ -149,10 +149,13 @@ export function actExplosiveShell(
   if (profile.muzzle) {
     emitMuzzleFx(particles, profile.muzzle, tip.x, tip.y, dirX, dirY, world.rng);
   }
-  world.entities.recoilT[id] = 0.12;
+  world.entities.recoilT[id] = RECOIL_T;
   if (profile.muzzle?.recoilFirer) {
-    world.entities.velX[id] -= dirX * profile.muzzle.recoilFirer;
-    world.entities.velY[id] -= dirY * profile.muzzle.recoilFirer;
+    world.entities.recoilPeakX[id] = -dirX * profile.muzzle.recoilFirer;
+    world.entities.recoilPeakY[id] = -dirY * profile.muzzle.recoilFirer;
+  } else {
+    world.entities.recoilPeakX[id] = 0;
+    world.entities.recoilPeakY[id] = 0;
   }
 }
 

@@ -4,7 +4,7 @@ import { createProjectiles, ProjectileKind } from './projectiles';
 import { createParticles } from '../particles/particles';
 import { createRng } from '../util/rng';
 import { getUnitKindIndex } from '../data/units';
-import { resolveFire } from './fire-resolver';
+import { resolveFire, RECOIL_T } from './fire-resolver';
 
 describe('resolveFire', () => {
   it('line-infantry firing east: spawns one musket ball + muzzle FX, sets recoilT', () => {
@@ -26,7 +26,7 @@ describe('resolveFire', () => {
     expect(projectiles.count).toBe(1);
     expect(projectiles.kind[0]).toBe(ProjectileKind.Musket);
     expect(particles.count).toBeGreaterThan(0);
-    expect(e.recoilT[id]).toBeCloseTo(0.12, 6);
+    expect(e.recoilT[id]).toBeCloseTo(RECOIL_T, 6);
   });
 
   it('cannon-12 firing 100m east: spawns one solid-shot at launchHeight = 0.7', () => {
@@ -52,7 +52,7 @@ describe('resolveFire', () => {
     expect(projectiles.velX[0]!).toBeGreaterThan(0);
     // And a positive launch vz on the lower trajectory.
     expect(projectiles.velZ[0]!).toBeGreaterThan(0);
-    expect(e.recoilT[id]).toBeCloseTo(0.12, 6);
+    expect(e.recoilT[id]).toBeCloseTo(RECOIL_T, 6);
   });
 
   it('cuirassier (no weapon): returns false; nothing spawned', () => {
@@ -118,7 +118,7 @@ describe('resolveFire', () => {
     expect(particles.count).toBe(0);
   });
 
-  it('musket recoil applies a velocity nudge opposite the shot direction', () => {
+  it('musket recoil sets a render-only peak offset opposite the shot direction; sim pos/vel untouched', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);
     const particles = createParticles(256);
@@ -133,7 +133,12 @@ describe('resolveFire', () => {
 
     const ok = resolveFire(e, projectiles, particles, rng, id, 100, 0);
     expect(ok).toBe(true);
-    // Musket recoilFirer = 0.5 m/s; shot is roughly east → recoil pushes velX negative.
-    expect(e.velX[id]!).toBeLessThan(0);
+    // Shot is roughly east → recoil peak points west (negative X).
+    expect(e.recoilPeakX[id]!).toBeLessThan(0);
+    // Sim position and velocity are not perturbed — the offset is render-only.
+    expect(e.posX[id]!).toBe(0);
+    expect(e.posY[id]!).toBe(0);
+    expect(e.velX[id]!).toBe(0);
+    expect(e.velY[id]!).toBe(0);
   });
 });

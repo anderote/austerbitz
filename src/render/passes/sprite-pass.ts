@@ -6,6 +6,7 @@ import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
 import { getUnitKindByIndex } from '../../data/units';
+import { RECOIL_T, RECOIL_PUSH_END, RECOIL_HOLD_END } from '../../sim/fire-resolver';
 import {
   generateBritishSoldierSheet,
   SOLDIER_SHEET_W,
@@ -109,8 +110,25 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       for (let k = 0; k < n; k++) {
         const i = sortIdx[k]!;
         const kind = getUnitKindByIndex(e.kindId[i]!);
-        scratchPos[k * 2 + 0] = e.posX[i]!;
-        scratchPos[k * 2 + 1] = e.posY[i]!;
+        // Render-only recoil: decelerating push out → hold at peak → slow
+        // ease back to the anchor. Sim posX/posY never moves.
+        const rt = e.recoilT[i]!;
+        let wave = 0;
+        if (rt > 0) {
+          const phase = 1 - rt / RECOIL_T;
+          if (phase < RECOIL_PUSH_END) {
+            const u = phase / RECOIL_PUSH_END;
+            const inv = 1 - u;
+            wave = 1 - inv * inv * inv; // ease-out cubic: fast push, decaying
+          } else if (phase < RECOIL_HOLD_END) {
+            wave = 1; // pause at peak
+          } else {
+            const u = (phase - RECOIL_HOLD_END) / (1 - RECOIL_HOLD_END);
+            wave = 1 - u * u * (3 - 2 * u); // smoothstep down: slow reset
+          }
+        }
+        scratchPos[k * 2 + 0] = e.posX[i]! + e.recoilPeakX[i]! * wave;
+        scratchPos[k * 2 + 1] = e.posY[i]! + e.recoilPeakY[i]! * wave;
         scratchSize[k * 2 + 0] = kind.placeholderSize.w;
         scratchSize[k * 2 + 1] = kind.placeholderSize.h;
         scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;

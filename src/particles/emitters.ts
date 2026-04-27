@@ -3,7 +3,7 @@ import type { Rng } from '../util/rng';
 import type { MuzzleProfile } from '../data/weapons/types';
 import { ParticleClass, spawnParticle, type Particles } from './particles';
 
-const DUST_PER_SEC = 4;       // particles per moving unit per second
+const DUST_PER_SEC = 1.2;     // particles per moving unit per second
 
 export function emitDust(world: World, particles: Particles, dt: number): void {
   const e = world.entities;
@@ -15,15 +15,23 @@ export function emitDust(world: World, particles: Particles, dt: number): void {
     if (vx === 0 && vy === 0) continue;
     if (world.rng.next() > expected) continue;
     const speed = Math.hypot(vx, vy);
+    const invSpeed = speed > 0 ? 1 / speed : 0;
+    const dirX = vx * invSpeed;
+    const dirY = vy * invSpeed;
     const jitter = () => world.rng.range(-0.4, 0.4);
     spawnParticle(particles, {
+      // Anchor at the soldier's feet (sprite is centered, so south-of-anchor).
       x: e.posX[i]! + jitter(),
-      y: e.posY[i]! + jitter() + 0.2,
-      vx: -vx * 0.1 + jitter() * 0.5,
-      vy: -vy * 0.1 + jitter() * 0.5,
-      life: 0.5 + world.rng.next() * 0.5,
-      size: 0.7 + Math.min(speed * 0.06, 0.5),
-      r: 0.65, g: 0.55, b: 0.42,
+      y: e.posY[i]! + jitter() + 0.5,
+      // Drift backward (opposite to motion) and gently upward (negative Y).
+      vx: -dirX * 0.3 + jitter() * 0.3,
+      vy: -dirY * 0.3 - world.rng.range(0.3, 0.7),
+      life: 1.8 + world.rng.next() * 1.4,
+      size: 0.3 + Math.min(speed * 0.04, 0.25),
+      r: 0.45, g: 0.38, b: 0.30,
+      drag: 0.985,
+      accelY: -0.18,
+      sizeGrowth: 0.55,
       klass: ParticleClass.Dust,
     });
   }

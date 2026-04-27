@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sprite Importer — Austerbitz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #101218;
+        --panel: #1a1e26;
+        --panel-2: #232834;
+        --line: #2f3544;
+        --ink: #f2f4f8;
+        --muted: #8b90a1;
+        --accent: #7cb3ff;
+        --danger: #ff6b6b;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 13px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+      body { display: grid; grid-template-columns: 320px 1fr; }
+
+      aside {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 20px 18px;
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+        overflow-y: auto;
+      }
+
+      h1 { margin: 0; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+      p { margin: 0; color: var(--muted); }
+
+      label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+      select, input[type="number"], input[type="text"], input[type="search"], input[type="range"] {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 10px;
+        color: var(--ink);
+        font: inherit;
+      }
+      input[type="range"] { padding: 0; }
+
+      button {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px 12px;
+        color: var(--ink);
+        font: inherit;
+        cursor: pointer;
+        transition: border-color 0.12s, background 0.12s;
+      }
+      button:hover { border-color: var(--accent); }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #061018; font-weight: 600; }
+      button.danger { border-color: rgba(255, 107, 107, 0.4); color: var(--danger); }
+
+      .control-group { display: flex; flex-direction: column; gap: 8px; }
+      .control-row { display: flex; gap: 8px; align-items: center; }
+      .control-row > * { flex: 1; }
+
+      #selection-list { display: flex; flex-direction: column; gap: 10px; }
+      .selection-item {
+        background: var(--panel-2);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 10px 12px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px 12px;
+      }
+      .selection-item header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+      .selection-item label { font-size: 10px; }
+      .selection-item .row { display: flex; gap: 6px; align-items: center; }
+      .selection-item input[type="number"] { width: 100%; }
+      .selection-item button { padding: 4px 8px; font-size: 12px; }
+
+      main { position: relative; overflow: hidden; background: #0d0f14; }
+      #stage { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transition: outline 0.12s ease; }
+      #stage.dragover { outline: 2px dashed var(--accent); outline-offset: -16px; }
+      #canvas-wrap { position: relative; }
+      canvas { display: block; image-rendering: pixelated; border: 1px solid var(--line); background: #fafbff; }
+      #empty-state { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; }
+
+      .badge { padding: 2px 8px; border-radius: 999px; background: rgba(124, 179, 255, 0.18); border: 1px solid rgba(124, 179, 255, 0.35); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+
+      .toggle { display: flex; align-items: center; gap: 8px; }
+      .toggle input { width: 14px; height: 14px; }
+
+      @media (max-width: 1024px) {
+        body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        aside { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--line); }
+        #selection-list { flex: 1 1 100%; max-height: 220px; overflow-y: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <div class="control-group">
+        <h1>Sprite Importer</h1>
+        <p>Drop a sprite sheet with a white background, then drag to draw precise clips for each pose.</p>
+      </div>
+      <div class="control-group">
+        <label>Target Unit
+          <select id="unit-select"></select>
+        </label>
+      </div>
+      <div class="control-group">
+        <label>Zoom <span id="zoom-value" class="badge">1.0×</span>
+          <input id="zoom-slider" type="range" min="1" max="12" step="0.5" value="4" />
+        </label>
+      </div>
+      <div class="control-group toggle">
+        <input id="auto-trim" type="checkbox" checked />
+        <label for="auto-trim" style="flex-direction: row; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500;">Auto-trim whitespace on save</label>
+      </div>
+      <div class="control-row">
+        <button id="open-file">Load PNG…</button>
+        <button id="clear-selections" class="danger">Clear clips</button>
+      </div>
+      <div class="control-row">
+        <button id="download-json" class="primary">Download JSON</button>
+      </div>
+      <div class="control-group">
+        <label>Notes
+          <textarea id="notes" rows="4" placeholder="Optional notes for this import" style="background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; resize: vertical; color: var(--ink); font: inherit;"></textarea>
+        </label>
+      </div>
+      <div class="control-group">
+        <h2 style="margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);">Selections</h2>
+        <div id="selection-list"></div>
+      </div>
+    </aside>
+    <main>
+      <div id="stage">
+        <div id="empty-state">Drop a PNG here or use “Load PNG…”</div>
+        <div id="canvas-wrap">
+          <canvas id="canvas" width="0" height="0"></canvas>
+        </div>
+      </div>
+    </main>
+    <input id="file-input" type="file" accept="image/png,image/*" hidden />
+    <script type="module" src="/src/dev/sprite-importer.ts"></script>
+  </body>
+</html>

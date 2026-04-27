@@ -32,6 +32,8 @@ export interface Entities {
 
   // State-machine transients
   recoilT: Float32Array;    // countdown for visual recoil offset
+  recoilPeakX: Float32Array; // peak render-only recoil displacement x
+  recoilPeakY: Float32Array; // peak render-only recoil displacement y
   stateT: Float32Array;     // generic time-remaining-in-state timer
   impulseX: Float32Array;   // pending impulse x
   impulseY: Float32Array;   // pending impulse y
@@ -71,6 +73,8 @@ export function createEntities(capacity: number): Entities {
     reloadT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
     recoilT: new Float32Array(capacity),
+    recoilPeakX: new Float32Array(capacity),
+    recoilPeakY: new Float32Array(capacity),
     stateT: new Float32Array(capacity),
     impulseX: new Float32Array(capacity),
     impulseY: new Float32Array(capacity),
@@ -101,6 +105,8 @@ export function allocEntity(e: Entities): number {
   e.reloadT[id] = 0;
   e.targetId[id] = -1;
   e.recoilT[id] = 0;
+  e.recoilPeakX[id] = 0;
+  e.recoilPeakY[id] = 0;
   e.stateT[id] = 0;
   e.impulseX[id] = 0;
   e.impulseY[id] = 0;

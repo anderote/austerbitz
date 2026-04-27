@@ -12,7 +12,17 @@ import { barrelTip } from '../fx/barrel';
 import { solveCannonLaunch } from '../fx/ballistics';
 import { getUnitKindByIndex } from '../data/units';
 
-const RECOIL_T = 0.12;
+/**
+ * Total duration of the visual recoil animation in seconds. The render-side
+ * offset traces a three-phase curve over this window: a quick decelerating
+ * push out (RECOIL_PUSH_END), a brief hold at peak (until RECOIL_HOLD_END),
+ * and a slow ease back to the anchor.
+ */
+export const RECOIL_T = 0.9;
+/** Fraction of `RECOIL_T` spent on the outward push (ease-out cubic). */
+export const RECOIL_PUSH_END = 0.15;
+/** Fraction of `RECOIL_T` at which the hold ends and the return begins. */
+export const RECOIL_HOLD_END = 0.3;
 
 /**
  * Pure resolver: turn "entity `id` is firing at (targetX, targetY)" into a
@@ -73,8 +83,11 @@ export function resolveFire(
 
     e.recoilT[id] = RECOIL_T;
     if (weapon.muzzle?.recoilFirer) {
-      e.velX[id] -= dirX * weapon.muzzle.recoilFirer;
-      e.velY[id] -= dirY * weapon.muzzle.recoilFirer;
+      e.recoilPeakX[id] = -dirX * weapon.muzzle.recoilFirer;
+      e.recoilPeakY[id] = -dirY * weapon.muzzle.recoilFirer;
+    } else {
+      e.recoilPeakX[id] = 0;
+      e.recoilPeakY[id] = 0;
     }
     return true;
   }
@@ -129,8 +142,11 @@ export function resolveFire(
 
     e.recoilT[id] = RECOIL_T;
     if (weapon.muzzle?.recoilFirer) {
-      e.velX[id] -= dirX * weapon.muzzle.recoilFirer;
-      e.velY[id] -= dirY * weapon.muzzle.recoilFirer;
+      e.recoilPeakX[id] = -dirX * weapon.muzzle.recoilFirer;
+      e.recoilPeakY[id] = -dirY * weapon.muzzle.recoilFirer;
+    } else {
+      e.recoilPeakX[id] = 0;
+      e.recoilPeakY[id] = 0;
     }
     return true;
   }

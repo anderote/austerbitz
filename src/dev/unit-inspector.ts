@@ -5,7 +5,6 @@ import {
   SOLDIER_CELL_W,
   SOLDIER_CELL_H,
   SOLDIER_SHEET_W,
-  SOLDIER_SHEET_H,
   POSE_CELLS,
 } from '../render/british-soldier-sprite';
 
@@ -43,7 +42,7 @@ const britishInfantryRenderer: UnitRenderer = {
     const sheet = generateBritishSoldierSheet();
     const previews: HTMLCanvasElement[] = [];
     for (const cell of POSE_CELLS) {
-      const data = new Uint8ClampedArray(SOLDIER_CELL_W * SOLDIER_CELL_H * 4);
+      const data = new Uint8Array(SOLDIER_CELL_W * SOLDIER_CELL_H * 4);
       const sheetRowStride = SOLDIER_SHEET_W * 4;
       for (let y = 0; y < SOLDIER_CELL_H; y++) {
         const srcRow = (cell.row * SOLDIER_CELL_H + y) * sheetRowStride + cell.col * SOLDIER_CELL_W * 4;
@@ -101,14 +100,6 @@ function renderUnitList(filter: string) {
       li.appendChild(btn);
       listEl.appendChild(li);
     });
-}
-
-function clearSelection() {
-  selectedId = null;
-  detailSection.hidden = true;
-  noSelectionEl.style.display = 'flex';
-  const pressed = listEl.querySelector('[aria-pressed="true"]');
-  if (pressed) pressed.removeAttribute('aria-pressed');
 }
 
 function selectUnit(id: string) {

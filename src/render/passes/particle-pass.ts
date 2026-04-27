@@ -6,7 +6,11 @@ import { viewProjection } from '../camera';
 import type { Particles } from '../../particles/particles';
 
 export interface ParticlePass {
-  draw(particles: Particles, cam: Camera): void;
+  /**
+   * Draw particles. If `klassMask` is provided, only particles whose
+   * `(1 << klass) & klassMask` is non-zero are rendered.
+   */
+  draw(particles: Particles, cam: Camera, klassMask?: number): void;
 }
 
 export function createParticlePass(gl: WebGL2RenderingContext, capacity: number): ParticlePass {
@@ -49,10 +53,11 @@ export function createParticlePass(gl: WebGL2RenderingContext, capacity: number)
   const scratchColor = new Float32Array(capacity * 4);
 
   return {
-    draw(p, cam) {
+    draw(p, cam, klassMask) {
       let n = 0;
       for (let i = 0; i < p.capacity; i++) {
         if (p.alive[i] === 0) continue;
+        if (klassMask !== undefined && ((1 << p.klass[i]!) & klassMask) === 0) continue;
         scratchPos[n * 2 + 0] = p.posX[i]!;
         scratchPos[n * 2 + 1] = p.posY[i]!;
         scratchSize[n] = p.size[i]!;
