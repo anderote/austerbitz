@@ -75,7 +75,7 @@ function pushBall(b: ProjectileBucket, cx: number, cy: number): void {
 
 // Sizes are tuned for the default zoom of 12 px / world unit.
 const MUSKET_BALL_SIZE = 4 / 12;       // 4 px square
-const MUSKET_STREAK_LEN = 8 / 12;      // 8 px trailing streak
+const MUSKET_STREAK_LEN = 24 / 12;     // 24 px trailing streak
 const MUSKET_STREAK_WIDTH = 1 / 12;    // 1 px wide
 
 function pushMusket(b: ProjectileBucket, cx: number, cy: number): void {

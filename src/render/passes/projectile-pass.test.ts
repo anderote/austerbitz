@@ -108,13 +108,13 @@ describe('computeProjectileInstances', () => {
     computeProjectileInstances(projectiles, buckets);
 
     expect(buckets.streak.count).toBe(1);
-    // Streak is 1 px wide, 8 px long, oriented along +x → rotation 0.
-    expect(buckets.streak.sizeOrLen[0]).toBeCloseTo(8 / 12);
+    // Streak is 1 px wide, 24 px long, oriented along +x → rotation 0.
+    expect(buckets.streak.sizeOrLen[0]).toBeCloseTo(24 / 12);
     expect(buckets.streak.sizeOrLen[1]).toBeCloseTo(1 / 12);
     expect(buckets.streak.rotation[0]).toBeCloseTo(0);
     expect(buckets.streak.kind[0]).toBe(3);
     // Trails behind the ball: center shifted back by half-length along -x.
-    expect(buckets.streak.centerWorld[0]).toBeCloseTo(10 - (8 / 12) * 0.5);
+    expect(buckets.streak.centerWorld[0]).toBeCloseTo(10 - (24 / 12) * 0.5);
     expect(buckets.streak.centerWorld[1]).toBeCloseTo(0);
     // White, transparent.
     expect(buckets.streak.color[0]).toBeCloseTo(1.0);
