@@ -25,17 +25,25 @@ import {
 } from './actions';
 import { applyWind } from './wind';
 import { createLabUi, type ActionHandlers, type GridToggle, type TimeScaleState, type WindState } from './lab-ui';
+import { loadPoseAtlas } from '../render/poses/atlas';
 
 const CAPACITY = 256;
 const PARTICLE_CAPACITY = 50_000;
 const PROJECTILE_CAPACITY = 2_048;
 
+async function start(): Promise<void> {
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
 const LAB_MAP_SIZE = 200;
+let poseAtlas = null;
+try {
+  poseAtlas = await loadPoseAtlas(gl);
+} catch (err) {
+  console.warn('[lab] pose atlas load failed; continuing without it:', err);
+}
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
-  LAB_MAP_SIZE, LAB_MAP_SIZE,
+  LAB_MAP_SIZE, LAB_MAP_SIZE, poseAtlas,
 );
 const camera = createCamera();
 const input = createInputManager(canvas);
@@ -164,3 +172,6 @@ function frame(t: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+}
+
+void start();

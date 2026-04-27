@@ -34,17 +34,25 @@ import { createParticles, updateParticles } from './particles/particles';
 import { emitDust } from './particles/emitters';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
+import { loadPoseAtlas } from './render/poses/atlas';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
 const PROJECTILE_CAPACITY = 2048;
 
+async function start(): Promise<void> {
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
 const map = createDefaultMap();
+let poseAtlas = null;
+try {
+  poseAtlas = await loadPoseAtlas(gl);
+} catch (err) {
+  console.warn('[main] pose atlas load failed; continuing without it:', err);
+}
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY,
-  map.size.w, map.size.h,
+  map.size.w, map.size.h, poseAtlas,
 );
 const camera = createCamera();
 const input = createInputManager(canvas);
@@ -278,3 +286,6 @@ function frame(t: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+}
+
+void start();
