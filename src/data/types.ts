@@ -1,3 +1,5 @@
+import type { WeaponProfile } from './weapons/types';
+
 export type UnitCategory = 'infantry' | 'cavalry' | 'artillery';
 
 export interface BaseStats {
@@ -26,6 +28,12 @@ export interface UnitKind {
   /** Atlas cell for this kind. If omitted, the white tint cell is used. */
   spriteCell?: { col: number; row: number };
   baseStats: BaseStats;
+  /** Body height range above ground for hit detection (meters). */
+  bodyZ: { low: number; high: number };
+  /** Barrel-tip offset relative to entity facing (meters). */
+  barrelOffset: { forward: number; side: number; height: number };
+  /** Weapon profile this unit fires (none = no firearm). */
+  weapon?: WeaponProfile;
 }
 
 export interface UpgradeNode {

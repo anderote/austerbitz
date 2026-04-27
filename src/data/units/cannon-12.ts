@@ -1,4 +1,5 @@
 import type { UnitKind } from '../types';
+import { cannon12Solid } from '../weapons/cannon-12-solid';
 
 export const cannon12: UnitKind = {
   id: 'cannon-12',
@@ -19,4 +20,7 @@ export const cannon12: UnitKind = {
     massKg: 1500,
     formationSpacing: { x: 6.0, y: 6.0 },
   },
+  bodyZ: { low: 0, high: 1.5 },
+  barrelOffset: { forward: 1.6, side: 0.0, height: 0.7 },
+  weapon: cannon12Solid,
 };

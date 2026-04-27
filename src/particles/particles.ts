@@ -1,3 +1,12 @@
+export const ParticleClass = {
+  Dust: 0,
+  Smoke: 1,
+  Flash: 2,
+  Blood: 3,
+  Debris: 4,
+} as const;
+export type ParticleClass = (typeof ParticleClass)[keyof typeof ParticleClass];
+
 export interface Particles {
   capacity: number;
   count: number;
@@ -12,6 +21,10 @@ export interface Particles {
   r: Float32Array;
   g: Float32Array;
   b: Float32Array;
+  drag: Float32Array;
+  accelY: Float32Array;
+  sizeGrowth: Float32Array;
+  klass: Uint8Array;
 }
 
 export interface ParticleSpawn {
@@ -20,6 +33,10 @@ export interface ParticleSpawn {
   life: number;
   size: number;
   r: number; g: number; b: number;
+  drag?: number;
+  accelY?: number;
+  sizeGrowth?: number;
+  klass?: ParticleClass;
 }
 
 export function createParticles(capacity: number): Particles {
@@ -36,6 +53,10 @@ export function createParticles(capacity: number): Particles {
     r: new Float32Array(capacity),
     g: new Float32Array(capacity),
     b: new Float32Array(capacity),
+    drag: new Float32Array(capacity),
+    accelY: new Float32Array(capacity),
+    sizeGrowth: new Float32Array(capacity),
+    klass: new Uint8Array(capacity),
   };
 }
 
@@ -48,6 +69,10 @@ export function spawnParticle(p: Particles, s: ParticleSpawn): number {
       p.life[i] = s.life; p.lifeMax[i] = s.life;
       p.size[i] = s.size;
       p.r[i] = s.r; p.g[i] = s.g; p.b[i] = s.b;
+      p.drag[i] = s.drag ?? 0.98;
+      p.accelY[i] = s.accelY ?? 0;
+      p.sizeGrowth[i] = s.sizeGrowth ?? 0;
+      p.klass[i] = s.klass ?? ParticleClass.Dust;
       p.count++;
       return i;
     }
@@ -64,10 +89,11 @@ export function updateParticles(p: Particles, dt: number): void {
       p.count--;
       continue;
     }
+    p.velX[i] *= p.drag[i]!;
+    p.velY[i] *= p.drag[i]!;
+    p.velY[i] += p.accelY[i]! * dt;
+    p.size[i] *= 1 + p.sizeGrowth[i]! * dt;
     p.posX[i] += p.velX[i]! * dt;
     p.posY[i] += p.velY[i]! * dt;
-    // Mild drag
-    p.velX[i] *= 0.98;
-    p.velY[i] *= 0.98;
   }
 }

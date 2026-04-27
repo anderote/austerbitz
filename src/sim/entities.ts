@@ -1,3 +1,16 @@
+export const EntityState = {
+  Idle: 0,
+  Moving: 1,
+  Aiming: 2,
+  Firing: 3,
+  Reloading: 4,
+  Flinch: 5,
+  Ragdoll: 6,
+  Dying: 7,
+  Dead: 8,
+} as const;
+export type EntityState = (typeof EntityState)[keyof typeof EntityState];
+
 export interface Entities {
   capacity: number;
   count: number;            // live count
@@ -13,9 +26,16 @@ export interface Entities {
   // Combat
   hp: Uint16Array;
   morale: Uint8Array;       // 0..255
-  state: Uint8Array;        // 0=idle, 1=moving, 2=firing, 3=reloading, 4=ragdoll, 5=dead
+  state: Uint8Array;        // EntityState (0..8)
   reloadT: Float32Array;
   targetId: Int32Array;     // -1 if none
+
+  // State-machine transients
+  recoilT: Float32Array;    // countdown for visual recoil offset
+  stateT: Float32Array;     // generic time-remaining-in-state timer
+  impulseX: Float32Array;   // pending impulse x
+  impulseY: Float32Array;   // pending impulse y
+  ragdollT: Float32Array;   // countdown while in ragdoll state
 
   // Identity
   kindId: Uint16Array;
@@ -50,6 +70,11 @@ export function createEntities(capacity: number): Entities {
     state: new Uint8Array(capacity),
     reloadT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
+    recoilT: new Float32Array(capacity),
+    stateT: new Float32Array(capacity),
+    impulseX: new Float32Array(capacity),
+    impulseY: new Float32Array(capacity),
+    ragdollT: new Float32Array(capacity),
     kindId: new Uint16Array(capacity),
     team: new Uint8Array(capacity),
     formationId: new Int32Array(capacity).fill(-1),
@@ -72,9 +97,14 @@ export function allocEntity(e: Entities): number {
   e.facing[id] = 0;
   e.hp[id] = 0;
   e.morale[id] = 200;
-  e.state[id] = 0;
+  e.state[id] = EntityState.Idle;
   e.reloadT[id] = 0;
   e.targetId[id] = -1;
+  e.recoilT[id] = 0;
+  e.stateT[id] = 0;
+  e.impulseX[id] = 0;
+  e.impulseY[id] = 0;
+  e.ragdollT[id] = 0;
   e.kindId[id] = 0;
   e.team[id] = 0;
   e.formationId[id] = -1;

@@ -22,13 +22,15 @@ import { createControlGroupsPanel } from './ui/control-groups-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createParticles, updateParticles } from './particles/particles';
 import { emitDust } from './particles/emitters';
+import { createProjectiles } from './sim/projectiles';
 
 const CAPACITY = 4096;
-const PARTICLE_CAPACITY = 4096;
+const PARTICLE_CAPACITY = 50000;
+const PROJECTILE_CAPACITY = 2048;
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
-const renderer = createRenderer(gl, canvas, CAPACITY, PARTICLE_CAPACITY);
+const renderer = createRenderer(gl, canvas, CAPACITY, PARTICLE_CAPACITY, PROJECTILE_CAPACITY);
 const camera = createCamera();
 const input = createInputManager(canvas);
 const selection = createSelection();
@@ -38,6 +40,7 @@ const controlGroups = createControlGroups();
 const map = createDefaultMap();
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
 const particles = createParticles(PARTICLE_CAPACITY);
+const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 world.systems = [ordersSystem, movementSystem];
 
 const cameraControls = createCameraControls(camera, input, {
@@ -111,7 +114,7 @@ function frame(t: number) {
   tickWorld(world, dt);
   emitDust(world, particles, dt);
   updateParticles(particles, dt);
-  renderer.render(world, particles, camera, selection, drag);
+  renderer.render(world, projectiles, particles, camera, selection, drag);
   hud.update(smoothedFps, world, controller.cursorMode);
   selPanel.update(world, selection);
   buildMenu.update();

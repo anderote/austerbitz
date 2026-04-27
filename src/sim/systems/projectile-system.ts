@@ -1,0 +1,237 @@
+import { freeProjectile, ProjectileKind, type Projectiles } from '../projectiles';
+import type { Entities } from '../entities';
+import { gridSweptQuery, type Grid } from '../spatial/grid';
+import type { Particles } from '../../particles/particles';
+import type { Rng } from '../../util/rng';
+import { applyHit } from './combat-events';
+import {
+  emitCannonballTrail,
+  emitImpactDust,
+  emitRicochetBurst,
+} from '../../particles/emitters';
+import { spawnExplosion } from '../../fx/explosion';
+import { getUnitKindByIndex } from '../../data/units';
+import { GAME_GRAVITY } from '../../fx/ballistics';
+import { cannon12Shell } from '../../data/weapons/cannon-12-shell';
+
+/** Half-width (m) of the per-entity body footprint used for swept-segment hits. */
+export const PROJECTILE_HIT_RADIUS = 0.5;
+
+/** Ground friction applied to a rolling solid shot (per-second). */
+const GROUND_FRICTION = 1.5;
+/** Speed (m/s) below which a rolling solid shot is freed. */
+const ROLL_STOP_SPEED = 3;
+/** Restitution applied to vertical velocity on a solid-shot ricochet. */
+const RICOCHET_RESTITUTION_Z = 0.5;
+/** Per-ricochet horizontal velocity damping. */
+const RICOCHET_HORIZONTAL_DAMPING = 0.7;
+/** Solid-shot damage falloff per entity it plows through. */
+const SOLID_SHOT_DAMAGE_FALLOFF = 0.6;
+/** Solid-shot velocity falloff per entity it plows through. */
+const SOLID_SHOT_VELOCITY_FALLOFF = 0.85;
+/** Solid-shot is freed once damage drops below this. */
+const SOLID_SHOT_FREE_BELOW_DAMAGE = 5;
+
+/**
+ * Module-level scratch buffer for swept-grid candidate ids. `gridSweptQuery`
+ * clears it on entry, so reuse across calls is safe and avoids per-tick alloc.
+ */
+const candidateBuf: number[] = [];
+
+/**
+ * Integrate, ground-collide, ricochet/roll, swept entity-collide, and emit
+ * trails for every live projectile. Mirrors the per-tick algorithm in §3 of
+ * the combat-effects design spec.
+ */
+export function tickProjectiles(
+  projectiles: Projectiles,
+  entities: Entities,
+  grid: Grid,
+  particles: Particles,
+  rng: Rng,
+  dt: number,
+): void {
+  const p = projectiles;
+  for (let i = 0; i < p.capacity; i++) {
+    if (p.alive[i] === 0) continue;
+
+    const kind = p.kind[i]! as ProjectileKind;
+
+    // 1. Snapshot prev pos and write it back into the SoA for renderers/tests.
+    const pX0 = p.posX[i]!;
+    const pY0 = p.posY[i]!;
+    const pZ0 = p.posZ[i]!;
+    p.prevX[i] = pX0;
+    p.prevY[i] = pY0;
+
+    // 2. Integrate XY position.
+    p.posX[i] = pX0 + p.velX[i]! * dt;
+    p.posY[i] = pY0 + p.velY[i]! * dt;
+
+    // 3. Z integration (musket stays flat at posZ=0).
+    if (kind !== ProjectileKind.Musket) {
+      p.velZ[i] = p.velZ[i]! - GAME_GRAVITY * dt;
+      p.posZ[i] = pZ0 + p.velZ[i]! * dt;
+    }
+
+    // 4. Shell fuse — detonate in flight when the timer expires.
+    if (kind === ProjectileKind.Shell) {
+      p.fuseT[i] = p.fuseT[i]! - dt;
+      if (p.fuseT[i]! <= 0) {
+        spawnExplosion(
+          entities, grid, particles, rng,
+          p.posX[i]!, p.posY[i]!,
+          cannon12Shell.projectile.explosion!,
+          undefined,
+        );
+        freeProjectile(p, i);
+        continue;
+      }
+    }
+
+    // 5. Ground impact. After step 3 posZ may have crossed zero; bounce, pin,
+    // detonate, or kick up dust depending on kind.
+    if (p.posZ[i]! <= 0 && p.velZ[i]! < 0) {
+      if (kind === ProjectileKind.SolidShot) {
+        if (p.ricochets[i]! > 0) {
+          p.posZ[i] = 0;
+          p.velZ[i] = -RICOCHET_RESTITUTION_Z * p.velZ[i]!;
+          p.velX[i] = p.velX[i]! * RICOCHET_HORIZONTAL_DAMPING;
+          p.velY[i] = p.velY[i]! * RICOCHET_HORIZONTAL_DAMPING;
+          p.ricochets[i] = p.ricochets[i]! - 1;
+          emitRicochetBurst(particles, p.posX[i]!, p.posY[i]!, p.velX[i]!, p.velY[i]!, rng);
+        } else {
+          // Pin to the ground; rolling proceeds in step 6 on subsequent ticks.
+          p.posZ[i] = 0;
+          p.velZ[i] = 0;
+        }
+      } else if (kind === ProjectileKind.Shell) {
+        // Detonate at the impact point before clamping.
+        spawnExplosion(
+          entities, grid, particles, rng,
+          p.prevX[i]!, p.prevY[i]!,
+          cannon12Shell.projectile.explosion!,
+          undefined,
+        );
+        freeProjectile(p, i);
+        continue;
+      } else {
+        // Musket — flat-flight, but if it does hit the ground emit dust + free.
+        emitImpactDust(particles, p.posX[i]!, p.posY[i]!, rng);
+        freeProjectile(p, i);
+        continue;
+      }
+    }
+
+    // 6. Rolling — grounded solid shot decays horizontally and stops below
+    // the threshold.
+    if (
+      kind === ProjectileKind.SolidShot &&
+      p.posZ[i]! === 0 &&
+      p.ricochets[i]! === 0
+    ) {
+      const fric = 1 - GROUND_FRICTION * dt;
+      p.velX[i] = p.velX[i]! * fric;
+      p.velY[i] = p.velY[i]! * fric;
+      const speed = Math.hypot(p.velX[i]!, p.velY[i]!);
+      if (speed < ROLL_STOP_SPEED) {
+        freeProjectile(p, i);
+        continue;
+      }
+    }
+
+    // 7. Swept entity collision. Walk the grid cells the segment crosses, then
+    // do per-candidate point-vs-segment + Z-range refinement.
+    gridSweptQuery(grid, p.prevX[i]!, p.prevY[i]!, p.posX[i]!, p.posY[i]!, candidateBuf);
+
+    if (candidateBuf.length > 0) {
+      const ax = p.prevX[i]!;
+      const ay = p.prevY[i]!;
+      const bx = p.posX[i]!;
+      const by = p.posY[i]!;
+      const sdx = bx - ax;
+      const sdy = by - ay;
+      const segLenSq = sdx * sdx + sdy * sdy;
+      const zMin = Math.min(pZ0, p.posZ[i]!);
+      const zMax = Math.max(pZ0, p.posZ[i]!);
+
+      let freed = false;
+      for (let k = 0; k < candidateBuf.length; k++) {
+        const id = candidateBuf[k]!;
+        if (entities.alive[id] === 0) continue;
+        if (entities.team[id] === p.team[i]) continue;
+
+        // Point-vs-segment: project entity onto segment, clamp, distance.
+        const ex = entities.posX[id]!;
+        const ey = entities.posY[id]!;
+        let t: number;
+        if (segLenSq > 0) {
+          t = ((ex - ax) * sdx + (ey - ay) * sdy) / segLenSq;
+          if (t < 0) t = 0;
+          else if (t > 1) t = 1;
+        } else {
+          t = 0;
+        }
+        const closestX = ax + t * sdx;
+        const closestY = ay + t * sdy;
+        const dCloseX = ex - closestX;
+        const dCloseY = ey - closestY;
+        const dist = Math.hypot(dCloseX, dCloseY);
+        if (dist > PROJECTILE_HIT_RADIUS) continue;
+
+        // Z-range: tick range must overlap the entity's body height.
+        const body = getUnitKindByIndex(entities.kindId[id]!).bodyZ;
+        if (zMax < body.low || zMin > body.high) continue;
+
+        // Hit confirmed — branch by kind.
+        if (kind === ProjectileKind.Shell) {
+          // Detonate at the candidate's xy; the explosion handles damage.
+          spawnExplosion(
+            entities, grid, particles, rng,
+            ex, ey,
+            cannon12Shell.projectile.explosion!,
+            undefined,
+          );
+          freeProjectile(p, i);
+          freed = true;
+          break;
+        }
+
+        const impX = p.velX[i]! * p.mass[i]!;
+        const impY = p.velY[i]! * p.mass[i]!;
+        const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind);
+
+        if (kind === ProjectileKind.Musket) {
+          freeProjectile(p, i);
+          freed = true;
+          break;
+        }
+
+        // SolidShot — bleed damage + velocity, free if too weak, else plow on.
+        p.damage[i] = p.damage[i]! * SOLID_SHOT_DAMAGE_FALLOFF;
+        p.velX[i] = p.velX[i]! * SOLID_SHOT_VELOCITY_FALLOFF;
+        p.velY[i] = p.velY[i]! * SOLID_SHOT_VELOCITY_FALLOFF;
+        if (p.damage[i]! < SOLID_SHOT_FREE_BELOW_DAMAGE) {
+          freeProjectile(p, i);
+          freed = true;
+          break;
+        }
+        // continue inspecting next candidate
+      }
+      if (freed) continue;
+    }
+
+    // 8. Life timer.
+    p.life[i] = p.life[i]! - dt;
+    if (p.life[i]! <= 0) {
+      freeProjectile(p, i);
+      continue;
+    }
+
+    // 9. Trail — solid shots and shells drop a smoke particle each tick.
+    if (kind === ProjectileKind.SolidShot || kind === ProjectileKind.Shell) {
+      emitCannonballTrail(particles, p.posX[i]!, p.posY[i]!, rng);
+    }
+  }
+}

@@ -19,4 +19,6 @@ export const cuirassier: UnitKind = {
     massKg: 600,
     formationSpacing: { x: 2.0, y: 3.0 },
   },
+  bodyZ: { low: 0, high: 2.2 },
+  barrelOffset: { forward: 0.6, side: 0.1, height: 1.7 },
 };

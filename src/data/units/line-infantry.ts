@@ -1,4 +1,5 @@
 import type { UnitKind } from '../types';
+import { musket } from '../weapons/musket';
 
 export const lineInfantry: UnitKind = {
   id: 'line-infantry',
@@ -20,4 +21,7 @@ export const lineInfantry: UnitKind = {
     massKg: 80,
     formationSpacing: { x: 1.2, y: 1.6 },
   },
+  bodyZ: { low: 0, high: 1.8 },
+  barrelOffset: { forward: 0.4, side: 0.0, height: 1.4 },
+  weapon: musket,
 };
