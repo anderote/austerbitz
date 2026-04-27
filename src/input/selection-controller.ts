@@ -321,7 +321,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (selection.ids.size > 0 && cursorMode === 'normal') cursorMode = 'attack-move';
       return;
     }
-    if (e.code === 'KeyS') {
+    if (e.code === 'Delete' || e.code === 'Backspace') {
       issueStop(world, selection);
       return;
     }

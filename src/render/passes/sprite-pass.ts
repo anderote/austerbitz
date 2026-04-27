@@ -21,6 +21,24 @@ export interface SpritePass {
   draw(world: World, cam: Camera): void;
 }
 
+interface FactionPalette {
+  /** Coat color (RGB 0..255). */
+  primary: [number, number, number];
+  /** Facings / plume / collar / turnbacks (RGB 0..255). */
+  secondary: [number, number, number];
+}
+
+/**
+ * Per-team uniform colors. Indexed by `entities.team`. Add entries here as
+ * new factions are introduced; missing teams fall back to entry 0.
+ */
+const TEAM_COLORS: readonly FactionPalette[] = [
+  { primary: [180, 40, 50], secondary: [50, 60, 140] },   // 0 — British: red coat / blue facings
+  { primary: [50, 60, 140], secondary: [200, 60, 70] },   // 1 — French: blue coat / red facings
+];
+
+const FALLBACK_TEAM = TEAM_COLORS[0]!;
+
 export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): SpritePass {
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
   const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas'] as const);
@@ -61,6 +79,18 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   gl.vertexAttribPointer(4, 4, gl.FLOAT, false, 0, 0);
   gl.vertexAttribDivisor(4, 1);
 
+  const primaryBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 3 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(5);
+  gl.vertexAttribPointer(5, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(5, 1);
+
+  const secondaryBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 3 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(6);
+  gl.vertexAttribPointer(6, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(6, 1);
+
   gl.bindVertexArray(null);
 
   // Atlas: don't tile-wrap (each cell occupies a sub-rect, sampling outside
@@ -90,6 +120,8 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
   const scratchSize = new Float32Array(capacity * 2);
   const scratchColor = new Float32Array(capacity * 4);
   const scratchUv = new Float32Array(capacity * 4);
+  const scratchPrimary = new Float32Array(capacity * 3);
+  const scratchSecondary = new Float32Array(capacity * 3);
   // Reused per-frame sort buffer: alive entity ids sorted back-to-front by world Y.
   const sortIdx: number[] = [];
 
@@ -135,6 +167,13 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
         scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;
         scratchColor[k * 4 + 3] = 1.0;
+        const team = TEAM_COLORS[e.team[i]!] ?? FALLBACK_TEAM;
+        scratchPrimary[k * 3 + 0] = team.primary[0] / 255;
+        scratchPrimary[k * 3 + 1] = team.primary[1] / 255;
+        scratchPrimary[k * 3 + 2] = team.primary[2] / 255;
+        scratchSecondary[k * 3 + 0] = team.secondary[0] / 255;
+        scratchSecondary[k * 3 + 1] = team.secondary[1] / 255;
+        scratchSecondary[k * 3 + 2] = team.secondary[2] / 255;
         const facing = e.facing[i]!;
         const overrideCell = facing >= 1 && facing <= POSE_CELLS.length
           ? POSE_CELLS[facing - 1]!
@@ -158,6 +197,10 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchColor.subarray(0, n * 4));
       gl.bindBuffer(gl.ARRAY_BUFFER, uvRectBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchUv.subarray(0, n * 4));
+      gl.bindBuffer(gl.ARRAY_BUFFER, primaryBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPrimary.subarray(0, n * 3));
+      gl.bindBuffer(gl.ARRAY_BUFFER, secondaryBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSecondary.subarray(0, n * 3));
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, atlas);

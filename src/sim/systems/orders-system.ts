@@ -26,8 +26,13 @@ export const ordersSystem: System = (world, _dt) => {
       if (dist <= ARRIVE_RADIUS) {
         e.velX[id] = 0;
         e.velY[id] = 0;
-        queue.shift();
-        if (queue.length === 0) world.orderQueue.delete(id);
+        // Keep the final move/attack-move order parked on its target so
+        // collision pushes can't permanently displace the unit — it re-engages
+        // next tick if it's nudged out of position. Only consume the order if
+        // there's another queued behind it.
+        if (queue.length > 1) {
+          queue.shift();
+        }
         continue;
       }
       const speed = getUnitKindByIndex(e.kindId[id]!).baseStats.moveSpeed;

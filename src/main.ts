@@ -74,44 +74,114 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-// Two opposing armies: block regiments running N→S, 4 ranks deep × 100 across.
-// Friendly (team 0) to the east facing W; enemy (team 1) to the west facing E.
-const REGIMENTS = 6;
-const FILES = 100;          // soldiers across the N-S frontage
-const RANKS = 4;            // soldiers deep along the E-W axis
-const FILE_GAP = 1.2;       // metres between files (N-S)
-const RANK_GAP = 1.6;       // metres between ranks (E-W)
-const REGIMENT_GAP = 8;     // metres between adjacent regiments (N-S)
-const BATTLE_GAP = 200;     // metres between the two armies' front ranks
-const FACING_W = 7;         // POSE_CELLS index 6 = W side mirrored
-const FACING_E = 3;         // POSE_CELLS index 2 = E side
-const regLenNS = (FILES - 1) * FILE_GAP;
-const armyLenNS = REGIMENTS * regLenNS + (REGIMENTS - 1) * REGIMENT_GAP;
-const y0 = cy - armyLenNS / 2;
+const BATTLE_GAP = 60;      // metres between the two armies' front ranks (within musket range, 80m)
+const FACING_E = 0;         // +X
+const FACING_W = 4;         // -X
 
-const friendlyFrontX = cx + BATTLE_GAP / 2;
-for (let g = 0; g < REGIMENTS; g++) {
-  const regY0 = y0 + g * (regLenNS + REGIMENT_GAP);
-  for (let f = 0; f < FILES; f++) {
-    for (let r = 0; r < RANKS; r++) {
-      const x = friendlyFrontX + r * RANK_GAP;
-      const y = regY0 + f * FILE_GAP;
-      spawn('line-infantry', 0, x, y, FACING_W);
+interface RegimentPlan {
+  kindId: string;
+  files: number;
+  ranks: number;
+  count: number;
+  gap?: number;
+  backOffset?: number;
+}
+
+interface ArmyPlan {
+  team: number;
+  facing: number;
+  frontCenter: { x: number; y: number };
+  regiments: RegimentPlan[];
+}
+
+function spawnFormationBlock(args: {
+  kindId: string;
+  team: number;
+  facing: number;
+  frontCenter: { x: number; y: number };
+  files: number;
+  ranks: number;
+  spacingX: number;
+  spacingY: number;
+}): void {
+  const { kindId, team, facing, frontCenter, files, ranks, spacingX, spacingY } = args;
+  const theta = (facing * Math.PI) / 4;
+  const forwardX = Math.cos(theta);
+  const forwardY = Math.sin(theta);
+  const lateralX = -forwardY;
+  const lateralY = forwardX;
+  const lateralStart = -((files - 1) * spacingX) / 2;
+  for (let f = 0; f < files; f++) {
+    const lateralOffset = lateralStart + f * spacingX;
+    for (let r = 0; r < ranks; r++) {
+      const depth = r * spacingY;
+      const x = frontCenter.x - forwardX * depth + lateralX * lateralOffset;
+      const y = frontCenter.y - forwardY * depth + lateralY * lateralOffset;
+      spawn(kindId, team, x, y, facing);
     }
   }
 }
 
-const enemyFrontX = cx - BATTLE_GAP / 2;
-for (let g = 0; g < REGIMENTS; g++) {
-  const regY0 = y0 + g * (regLenNS + REGIMENT_GAP);
-  for (let f = 0; f < FILES; f++) {
-    for (let r = 0; r < RANKS; r++) {
-      const x = enemyFrontX - r * RANK_GAP;
-      const y = regY0 + f * FILE_GAP;
-      spawn('line-infantry', 1, x, y, FACING_E);
+function spawnArmy(plan: ArmyPlan): void {
+  const theta = (plan.facing * Math.PI) / 4;
+  const forwardX = Math.cos(theta);
+  const forwardY = Math.sin(theta);
+  const lateralX = -forwardY;
+  const lateralY = forwardX;
+
+  for (const reg of plan.regiments) {
+    const kind = getUnitKind(reg.kindId);
+    const spacingX = kind.baseStats.formationSpacing.x;
+    const spacingY = kind.baseStats.formationSpacing.y;
+    const blockWidth = spacingX * Math.max(0, reg.files - 1);
+    const gap = reg.gap ?? spacingX * 6;
+    const totalSpan = reg.count * blockWidth + Math.max(0, reg.count - 1) * gap;
+    const firstCenterOffset = reg.count === 0 ? 0 : -totalSpan / 2 + blockWidth / 2;
+    for (let i = 0; i < reg.count; i++) {
+      const centerLateral = firstCenterOffset + i * (blockWidth + gap);
+      const backShift = reg.backOffset ?? 0;
+      const frontCenter = {
+        x: plan.frontCenter.x + lateralX * centerLateral - forwardX * backShift,
+        y: plan.frontCenter.y + lateralY * centerLateral - forwardY * backShift,
+      };
+      spawnFormationBlock({
+        kindId: reg.kindId,
+        team: plan.team,
+        facing: plan.facing,
+        frontCenter,
+        files: reg.files,
+        ranks: reg.ranks,
+        spacingX,
+        spacingY,
+      });
     }
   }
 }
+
+const friendlyArmy: ArmyPlan = {
+  team: 0,
+  facing: FACING_W,
+  frontCenter: { x: cx + BATTLE_GAP / 2, y: cy },
+  regiments: [
+    { kindId: 'line-infantry', files: 100, ranks: 4, count: 6, gap: 8 },
+    { kindId: 'cuirassier', files: 24, ranks: 3, count: 2, gap: 24, backOffset: 40 },
+    { kindId: 'cannon-12', files: 4, ranks: 1, count: 2, gap: 30, backOffset: 80 },
+  ],
+};
+
+const enemyArmy: ArmyPlan = {
+  team: 1,
+  facing: FACING_E,
+  frontCenter: { x: cx - BATTLE_GAP / 2, y: cy },
+  regiments: [
+    { kindId: 'line-infantry', files: 100, ranks: 4, count: 6, gap: 8 },
+    { kindId: 'cuirassier', files: 24, ranks: 3, count: 2, gap: 24, backOffset: 40 },
+    { kindId: 'cannon-12', files: 4, ranks: 1, count: 2, gap: 30, backOffset: 80 },
+  ],
+};
+
+spawnArmy(friendlyArmy);
+spawnArmy(enemyArmy);
 
 function syncViewport() {
   renderer.resize();

@@ -15,136 +15,132 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = `${__dirname}/../public/sprites`;
 
 // --- Palette (RGBA 0..255) ----------------------------------------------------
+// `P` (primary) / `S` (secondary) bake British defaults here so the static PNG
+// shows recognizable colors. The runtime atlas in TypeScript emits magenta /
+// cyan markers and lets the shader substitute per-team colors.
 const PALETTE = {
   '.': [0, 0, 0, 0],         // transparent
   'k': [22, 18, 28, 255],    // shako / boots / outline
-  'r': [178, 48, 56, 255],   // line-infantry red coat
-  'd': [120, 28, 36, 255],   // red shadow / coat tail
-  'B': [54, 76, 162, 255],   // blue facings (lapels, back panel)
-  'D': [30, 44, 108, 255],   // blue shadow (reserved)
-  'w': [236, 232, 222, 255], // white (crossbelts, trousers)
+  'w': [236, 232, 222, 255], // white (crossbelts, breeches)
   'f': [228, 188, 156, 255], // skin
   'F': [186, 142, 108, 255], // skin shadow
-  'y': [232, 188, 72, 255],  // gold (shako plate, belt buckle)
-  'p': [220, 60, 64, 255],   // shako plume (slightly brighter than coat)
-  'm': [86, 56, 36, 255],    // dark wood (musket stock)
-  'g': [148, 156, 168, 255], // steel (bayonet, barrel highlight)
+  'y': [232, 188, 72, 255],  // brass (shako plate)
+  'm': [86, 56, 36, 255],    // wood (musket stock)
+  'M': [56, 36, 22, 255],    // dark wood (musket butt)
+  'g': [180, 188, 200, 255], // steel (bayonet, barrel)
   's': [60, 56, 52, 110],    // ground shadow (semi-transparent)
   'W': [255, 255, 255, 255], // tint sample cell
+  'P': [180, 40, 50, 255],   // PRIMARY — British red coat (markers in runtime)
+  'S': [50, 60, 140, 255],   // SECONDARY — British blue facings (markers in runtime)
 };
 
 // --- Pose grids (11 wide x 18 tall) -------------------------------------------
-// Front: facing viewer. Musket held in soldier's right hand (viewer's left),
-// barrel running up alongside the shoulder, butt resting at the right foot.
-// Where the shako brim is wider than the musket column, the brim covers the
-// musket — matching the reference's "order arms" silhouette.
+// Soldier silhouette is centered roughly cols 4-8. Musket is held vertically
+// alongside the soldier's left arm with the bayonet rising above the shako;
+// for back-facing poses the musket mirrors to viewer-right.
 const POSE_FRONT = [
-  'g...p......',
-  'm.kkkkkkk..',
-  'mkkkkkkkkk.',
-  'mkkkyykkk..',
-  'mkkkkkkkkk.',
-  'mkkfFfkk...',
-  'mrrrBrrrr..',
-  'mrwwBBwwr..',
-  'mrwBwwBwr..',
-  'mrwwBBwwr..',
-  'mrddyddrr..',
-  'mrwwwwwwr..',
-  'mdrrrrddr..',
-  'mww..ww....',
-  'mww..ww....',
-  'mkk..kk....',
-  'm.sssssss..',
-  '...........',
+  '.g.........', // 0  bayonet tip
+  '.g.........', // 1  bayonet
+  '.g....S....', // 2  plume tip
+  '.g...SSS...', // 3  plume base
+  '.g...kkk...', // 4  shako top
+  '.g...kyk...', // 5  shako with brass plate
+  '.g...kkk...', // 6  shako body
+  '.g..kkkkk..', // 7  shako brim
+  '.g...fFf...', // 8  face
+  '.m...SSS...', // 9  collar (secondary)
+  '.m..wPPPw..', // 10 shoulders + cross-belt anchors
+  '.m..PwPwP..', // 11 chest, belts crossing in
+  '.m..PPwPP..', // 12 chest, belt intersection
+  '.m..PwPwP..', // 13 chest, belts crossing out
+  '.m..SPPPS..', // 14 turnbacks (secondary corners)
+  '.M...www...', // 15 breeches
+  '.M...k.k...', // 16 gaiters
+  '.....sss...', // 17 shadow
 ];
 
-// Front 3/4 right: head/plate offset right, asymmetric crossbelt.
-// Musket still on the soldier's right (viewer's left), passing behind the brim.
 const POSE_FRONT_DIAG = [
-  'g...p......',
-  'm..kkkkkk..',
-  'mmkkkkkkk..',
-  'mmkkykkk...',
-  'mmkkkkkk...',
-  'mmkfFfk....',
-  'mmrrBrrr...',
-  'mmrwBwwr...',
-  'mmrwwBwr...',
-  'mmm.rwwr...',
-  'mmm.dydr...',
-  'mmm.wwwr...',
-  'm.m.rrd....',
-  'm..w.ww....',
-  'm..www.....',
-  'm..kkk.....',
-  '...sssss...',
-  '...........',
-];
-
-// Back 3/4 right: no face plate; blue back panel with white X crossbelts.
-// Musket on the soldier's right side, which from the back-3/4 sits on viewer's right.
-const POSE_BACK_DIAG = [
-  'gp.........',
-  'm..kkkkkk..',
-  'mmkkkkkkk..',
-  'mmkkkkkk...',
-  'mmkkkkkk...',
-  'mmrBBBr....',
-  'mmrwBwr....',
-  'mmrBwBr....',
-  'mmrwBwr....',
-  'mmrrrrr....',
-  'mmmdrd.....',
-  'mmmwww.....',
-  'm.mwww.....',
-  'm.mkk......',
-  'm.sssss....',
-  '...........',
-  '...........',
-  '...........',
-];
-
-const POSE_BACK = [
-  '....p......',
-  '..kkkkkkk..',
-  '.kkkkkkkkk.',
-  '.kkkkkkkkk.',
-  '.kkkkkkkkk.',
-  '.kkkkkkkkk.',
-  '..rBBBBr...',
-  '..rwBBwr...',
-  '..rBwwBr...',
-  '..rwBBwr...',
-  '..rrrrrr...',
-  '..drrrd....',
-  '..ww.ww....',
-  '..ww.ww....',
-  '..kk.kk....',
-  '..ssssss...',
-  '...........',
-  '...........',
+  '.g.........',
+  '.g.........',
+  '.g.....S...',
+  '.g....SSS..',
+  '.g....kkk..',
+  '.g....kky..',
+  '.g....kkk..',
+  '.g...kkkkk.',
+  '.g....fF...',
+  '.m...SPPS..',
+  '.m..wPPPSw.',
+  '.m..PwPwSP.',
+  '.m..PPwPSP.',
+  '.m..PSPwSP.',
+  '.m..SPPPSP.',
+  '.M...www...',
+  '.M...k.k...',
+  '.....sss...',
 ];
 
 const POSE_SIDE = [
-  'g.p........',
-  'm..kkkk....',
-  'm..kkk.....',
-  'm..kyk.....',
-  'm..kkk.....',
-  'm..fFk.....',
-  'm..rBrr....',
-  'm..wBwr....',
-  'm..wwBr....',
-  'm..wBwr....',
-  'm..dydr....',
-  'm..wwwr....',
-  'm..rrd.....',
-  'm...ww.....',
-  'm...ww.....',
-  'm...kk.....',
+  '.g.........',
+  '.g.........',
+  '.g.....S...',
+  '.g....SSS..',
+  '.g....kkk..',
+  '.g....kyk..',
+  '.g....kkk..',
+  '.g...kkkkk.',
+  '.g.....fF..',
+  '.m....SPS..',
+  '.m....wPP..',
+  '.m....PwS..',
+  '.m....PPP..',
+  '.m....PwS..',
+  '.m....SPS..',
+  '.M....www..',
+  '.M....k.k..',
+  '......sss..',
+];
+
+const POSE_BACK = [
+  '.........g.',
+  '.........g.',
+  '....S....g.',
+  '...SSS...g.',
+  '...kkk...g.',
+  '...kyk...g.',
+  '...kkk...g.',
+  '..kkkkk..g.',
+  '...kkk...g.',
+  '...SSS...m.',
+  '..wPPPw..m.',
+  '..PwPwP..m.',
+  '..PPwPP..m.',
+  '..PwPwP..m.',
+  '..SPPPS..M.',
+  '...www.....',
+  '...k.k.....',
   '...sss.....',
-  '...........',
+];
+
+const POSE_BACK_DIAG = [
+  '.........g.',
+  '.........g.',
+  '...S.....g.',
+  '..SSS....g.',
+  '..kkk....g.',
+  '..kyk....g.',
+  '..kkk....g.',
+  '.kkkkk...g.',
+  '..kkk....g.',
+  '..SSS....m.',
+  '.wPPPw...m.',
+  '.PwPwP...m.',
+  '.PPwPP...m.',
+  '.PwPwP...m.',
+  '.SPPPS...M.',
+  '..www......',
+  '..k.k......',
+  '..sss......',
 ];
 
 const CELL_W = 11;

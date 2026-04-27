@@ -106,10 +106,10 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
   // Range/cone overlay for selected ranged units (Total War-style).
   const RANGE_PROFILE_SAMPLES = 96;
-  const RANGE_MAX_VERTS = RANGE_PROFILE_SAMPLES + 3;
-  const MAX_ARC_TOTAL_DEGREES = 110;
-  const MAX_ARC_HALF_ANGLE = (MAX_ARC_TOTAL_DEGREES * Math.PI) / 360;
-  const ARC_LATERAL_PADDING = 0.75;
+  const RANGE_MAX_VERTS = (RANGE_PROFILE_SAMPLES + 1) * 4;
+  const FIRE_ARC_DEGREES = 110;
+  const FIRE_ARC_HALF_RAD = (FIRE_ARC_DEGREES * Math.PI) / 360;
+  const FIRE_ARC_COS = Math.cos(FIRE_ARC_HALF_RAD);
   const rangeProg = linkProgram(gl, RANGE_VS, RANGE_FS);
   const rangeU = getUniforms(gl, rangeProg, ['u_viewProj', 'u_color'] as const);
   const rangeVao = createVertexArray(gl);
@@ -124,11 +124,12 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
   const overlayForwardScratch: number[] = [];
   const overlayLateralScratch: number[] = [];
   const overlayRangeScratch: number[] = [];
+  const overlayFacingX: number[] = [];
+  const overlayFacingY: number[] = [];
 
   interface RangeOverlay {
-    anchorX: number;
-    anchorY: number;
-    boundary: number[];
+    top: number[];
+    bottom: number[];
   }
 
   function computeRangeOverlay(world: World, sel: Selection): RangeOverlay | null {
@@ -138,13 +139,15 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
     overlayForwardScratch.length = 0;
     overlayLateralScratch.length = 0;
     overlayRangeScratch.length = 0;
-    let count = 0;
-    let sumX = 0;
-    let sumY = 0;
-    let dirX = 0;
-    let dirY = 0;
+    overlayFacingX.length = 0;
+    overlayFacingY.length = 0;
+
+    let dirSumX = 0;
+    let dirSumY = 0;
     let fallbackFacing: number | null = null;
     let maxRange = 0;
+    let count = 0;
+
     for (const id of sel.ids) {
       if (e.alive[id] !== 1) continue;
       const kind = getUnitKindByIndex(e.kindId[id]!);
@@ -155,104 +158,58 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const y = e.posY[id]!;
       overlayPosScratch.push(x, y);
       overlayRangeScratch.push(range);
-      sumX += x;
-      sumY += y;
       count++;
       if (range > maxRange) maxRange = range;
       const facing = e.facing[id]!;
       fallbackFacing = fallbackFacing ?? facing;
       const theta = (facing * Math.PI) / 4;
-      dirX += Math.cos(theta);
-      dirY += Math.sin(theta);
+      const fx = Math.cos(theta);
+      const fy = Math.sin(theta);
+      overlayFacingX.push(fx);
+      overlayFacingY.push(fy);
+      dirSumX += fx;
+      dirSumY += fy;
     }
+
     if (count === 0 || maxRange <= 0) return null;
 
-    let dirLen = Math.hypot(dirX, dirY);
+    let dirLen = Math.hypot(dirSumX, dirSumY);
+    let dirX: number;
+    let dirY: number;
     if (dirLen < 1e-5) {
       if (fallbackFacing !== null) {
         const theta = (fallbackFacing * Math.PI) / 4;
         dirX = Math.cos(theta);
         dirY = Math.sin(theta);
-        dirLen = 1;
       } else {
         dirX = 0;
         dirY = 1;
-        dirLen = 1;
       }
+    } else {
+      dirX = dirSumX / dirLen;
+      dirY = dirSumY / dirLen;
     }
-    dirX /= dirLen;
-    dirY /= dirLen;
 
     const perpX = -dirY;
     const perpY = dirX;
-    let maxForward = -Infinity;
+    let minSample = Infinity;
+    let maxSample = -Infinity;
     for (let i = 0, j = 0; i < overlayPosScratch.length; i += 2, j++) {
       const px = overlayPosScratch[i]!;
       const py = overlayPosScratch[i + 1]!;
       const forward = px * dirX + py * dirY;
       const lateral = px * perpX + py * perpY;
-      if (forward > maxForward) maxForward = forward;
       overlayForwardScratch[j] = forward;
       overlayLateralScratch[j] = lateral;
-    }
-
-    const FRONT_MARGIN = 1.5;
-    let frontSumX = 0;
-    let frontSumY = 0;
-    let frontCount = 0;
-    for (let i = 0; i < overlayPosScratch.length; i += 2) {
-      const px = overlayPosScratch[i]!;
-      const py = overlayPosScratch[i + 1]!;
-      const forward = overlayForwardScratch[i >> 1]!;
-      if ((maxForward - forward) <= FRONT_MARGIN) {
-        frontSumX += px;
-        frontSumY += py;
-        frontCount++;
-      }
-    }
-
-    const originX = frontCount > 0 ? frontSumX / frontCount : sumX / count;
-    const originY = frontCount > 0 ? frontSumY / frontCount : sumY / count;
-
-    let anchorX = originX - dirX * 0.5;
-    let anchorY = originY - dirY * 0.5;
-    let anchorInside = false;
-    for (let i = 0, j = 0; i < overlayPosScratch.length; i += 2, j++) {
-      const ux = overlayPosScratch[i]!;
-      const uy = overlayPosScratch[i + 1]!;
-      const range = overlayRangeScratch[j]!;
-      const dx = anchorX - ux;
-      const dy = anchorY - uy;
-      if (dx * dx + dy * dy <= range * range) {
-        anchorInside = true;
-        break;
-      }
-    }
-    if (!anchorInside) {
-      anchorX = overlayPosScratch[0]!;
-      anchorY = overlayPosScratch[1]!;
-    }
-
-    const anchorForward = anchorX * dirX + anchorY * dirY;
-    const anchorLateral = anchorX * perpX + anchorY * perpY;
-
-    let minSample = Infinity;
-    let maxSample = -Infinity;
-    for (let j = 0; j < overlayLateralScratch.length; j++) {
-      const lateral = overlayLateralScratch[j]!;
       const range = overlayRangeScratch[j]!;
       const left = lateral - range;
       const right = lateral + range;
       if (left < minSample) minSample = left;
       if (right > maxSample) maxSample = right;
     }
+
     if (!Number.isFinite(minSample) || !Number.isFinite(maxSample)) return null;
-    const forwardSpan = Math.max(maxForward - anchorForward, 0) + maxRange;
-    if (forwardSpan > 0) {
-      const lateralCap = Math.tan(MAX_ARC_HALF_ANGLE) * forwardSpan + ARC_LATERAL_PADDING;
-      minSample = Math.max(minSample, anchorLateral - lateralCap);
-      maxSample = Math.min(maxSample, anchorLateral + lateralCap);
-    }
+
     if (maxSample - minSample < 1e-4) {
       minSample -= maxRange * 0.5;
       maxSample += maxRange * 0.5;
@@ -260,69 +217,61 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
     const span = Math.max(maxSample - minSample, 1e-3);
     const samples = Math.max(12, Math.min(RANGE_PROFILE_SAMPLES, Math.ceil(span / Math.max(maxRange * 0.08, 0.5))));
-    const computeForwardAt = (lateral: number): number => {
-      let best = -Infinity;
+    const topBoundary: number[] = [];
+    const bottomBoundary: number[] = [];
+    for (let i = 0; i <= samples; i++) {
+      const t = samples === 0 ? 0 : i / samples;
+      const lateral = minSample + span * t;
+      let bestForward = -Infinity;
+      let bestIndex = -1;
       for (let j = 0; j < overlayForwardScratch.length; j++) {
         const baseForward = overlayForwardScratch[j]!;
         const baseLateral = overlayLateralScratch[j]!;
         const range = overlayRangeScratch[j]!;
         const delta = lateral - baseLateral;
         if (Math.abs(delta) > range) continue;
-        const reach = Math.sqrt(Math.max(0, range * range - delta * delta));
-        const candidate = baseForward + reach;
-        if (candidate > best) best = candidate;
+        const forwardDelta = Math.sqrt(Math.max(0, range * range - delta * delta));
+        if (forwardDelta <= 1e-4) continue;
+        const candidateForward = baseForward + forwardDelta;
+        if (candidateForward <= baseForward) continue;
+        const worldDX = dirX * forwardDelta + perpX * delta;
+        const worldDY = dirY * forwardDelta + perpY * delta;
+        const mag = Math.hypot(worldDX, worldDY);
+        if (mag < 1e-5) continue;
+        const facingDot = (worldDX * overlayFacingX[j]! + worldDY * overlayFacingY[j]!) / mag;
+        if (facingDot < FIRE_ARC_COS) continue;
+        if (candidateForward > bestForward) {
+          bestForward = candidateForward;
+          bestIndex = j;
+        }
       }
-      return best;
-    };
-    const clampLateral = (lateral: number, relativeForward: number): number => {
-      if (relativeForward <= 0) return anchorLateral;
-      const limit = Math.tan(MAX_ARC_HALF_ANGLE) * relativeForward + ARC_LATERAL_PADDING;
-      const rel = lateral - anchorLateral;
-      if (Math.abs(rel) <= limit) return lateral;
-      return anchorLateral + Math.max(-limit, Math.min(rel, limit));
-    };
-    const boundary: number[] = [];
-    for (let i = 0; i <= samples; i++) {
-      const t = samples === 0 ? 0 : i / samples;
-      const sampleLateral = minSample + span * t;
-      let lateral = sampleLateral;
-      let bestForward = computeForwardAt(lateral);
-      if (!Number.isFinite(bestForward)) continue;
-      let relativeForward = Math.max(bestForward - anchorForward, 0);
-      lateral = clampLateral(lateral, relativeForward);
-      if (Math.abs(lateral - sampleLateral) > 1e-3) {
-        bestForward = computeForwardAt(lateral);
-        if (!Number.isFinite(bestForward)) continue;
-        relativeForward = Math.max(bestForward - anchorForward, 0);
-        lateral = clampLateral(lateral, relativeForward);
-      }
+      if (!Number.isFinite(bestForward) || bestIndex === -1) continue;
       const worldX = dirX * bestForward + perpX * lateral;
       const worldY = dirY * bestForward + perpY * lateral;
-      boundary.push(worldX, worldY);
+      topBoundary.push(worldX, worldY);
+      bottomBoundary.push(overlayPosScratch[bestIndex * 2]!, overlayPosScratch[bestIndex * 2 + 1]!);
     }
 
-    if (boundary.length < 4) return null;
+    if (topBoundary.length < 4 || topBoundary.length !== bottomBoundary.length) return null;
 
-    return { anchorX, anchorY, boundary };
+    return { top: topBoundary, bottom: bottomBoundary };
   }
 
   function renderRangeOverlay(world: World, cam: Camera, sel: Selection): void {
     const overlay = computeRangeOverlay(world, sel);
     if (!overlay) return;
-    const { anchorX, anchorY, boundary } = overlay;
-    if (boundary.length < 4) return;
-    const boundaryCount = boundary.length / 2;
-    if (boundaryCount + 2 > RANGE_MAX_VERTS) return;
-    rangeScratch[0] = anchorX;
-    rangeScratch[1] = anchorY;
-    for (let i = 0; i < boundaryCount; i++) {
-      rangeScratch[(i + 1) * 2 + 0] = boundary[i * 2 + 0]!;
-      rangeScratch[(i + 1) * 2 + 1] = boundary[i * 2 + 1]!;
+    const { top, bottom } = overlay;
+    const sampleCount = top.length / 2;
+    if (sampleCount < 2 || sampleCount !== bottom.length / 2) return;
+    const vertCount = sampleCount * 2;
+    if (vertCount > RANGE_MAX_VERTS) return;
+    let ptr = 0;
+    for (let i = 0; i < sampleCount; i++) {
+      rangeScratch[ptr++] = top[i * 2 + 0]!;
+      rangeScratch[ptr++] = top[i * 2 + 1]!;
+      rangeScratch[ptr++] = bottom[i * 2 + 0]!;
+      rangeScratch[ptr++] = bottom[i * 2 + 1]!;
     }
-    rangeScratch[(boundaryCount + 1) * 2 + 0] = boundary[0]!;
-    rangeScratch[(boundaryCount + 1) * 2 + 1] = boundary[1]!;
-    const vertCount = boundaryCount + 2;
-    const lineCount = boundaryCount + 1;
     gl.useProgram(rangeProg);
     gl.uniformMatrix3fv(rangeU.u_viewProj, false, viewProjection(cam));
     gl.bindVertexArray(rangeVao);
@@ -331,9 +280,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.uniform4f(rangeU.u_color, 1.0, 0.93, 0.2, 0.16);
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, vertCount);
-    gl.uniform4f(rangeU.u_color, 1.0, 0.93, 0.2, 0.5);
-    gl.drawArrays(gl.LINE_STRIP, 1, lineCount);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertCount);
     gl.disable(gl.BLEND);
     gl.bindVertexArray(null);
   }
@@ -587,7 +534,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
           if (chain) selectedChains.push(chain);
         }
       }
-      renderChains(selectedChains, 1.0);
+      renderChains(selectedChains, 1.0, [1.0, 0.93, 0.2]);
 
       // Drag-rect overlay: 1px marching-ants in world space.
       if (drag.active) {
@@ -672,40 +619,62 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       }
     },
     drawMovePreview(world, cam, sel) {
-      if (sel.ids.size === 0) return;
       const e = world.entities;
-      let n = 0;
-      for (const id of sel.ids) {
-        if (e.alive[id] !== 1) continue;
+      const finalDest = (id: number): { x: number; y: number } | null => {
         const queue = world.orderQueue.get(id);
-        if (!queue || queue.length === 0) continue;
-        // Final destination: last move-style order in the queue.
-        let tx = 0, ty = 0, found = false;
+        if (!queue || queue.length === 0) return null;
         for (let k = queue.length - 1; k >= 0; k--) {
           const o = queue[k]!;
           if (o.kind === 'move' || o.kind === 'attack-move') {
-            tx = o.targetX; ty = o.targetY; found = true; break;
+            return { x: o.targetX, y: o.targetY };
           }
         }
-        if (!found) continue;
+        return null;
+      };
+
+      const drawBatch = (n: number, r: number, g: number, b: number): void => {
+        if (n === 0) return;
+        gl.useProgram(pipProg);
+        gl.bindVertexArray(pipVao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, n * 2));
+        gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
+        gl.uniform1f(pipU.u_size, 1.2);
+        gl.uniform3f(pipU.u_color, r, g, b);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+        gl.disable(gl.BLEND);
+        gl.bindVertexArray(null);
+      };
+
+      // Selected units: yellow pip at final destination.
+      let n = 0;
+      for (const id of sel.ids) {
+        if (e.alive[id] !== 1) continue;
+        const dst = finalDest(id);
+        if (!dst) continue;
         if (n >= capacity) break;
-        pipScratch[n * 2 + 0] = tx;
-        pipScratch[n * 2 + 1] = ty;
+        pipScratch[n * 2 + 0] = dst.x;
+        pipScratch[n * 2 + 1] = dst.y;
         n++;
       }
-      if (n === 0) return;
-      gl.useProgram(pipProg);
-      gl.bindVertexArray(pipVao);
-      gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, n * 2));
-      gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
-      gl.uniform1f(pipU.u_size, 1.2);
-      gl.uniform3f(pipU.u_color, 1.0, 0.9, 0.2);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
-      gl.disable(gl.BLEND);
-      gl.bindVertexArray(null);
+      drawBatch(n, 1.0, 0.9, 0.2);
+
+      // Unselected player units: white pip at final destination.
+      n = 0;
+      for (const id of world.orderQueue.keys()) {
+        if (e.alive[id] !== 1) continue;
+        if (e.team[id] !== PLAYER_TEAM) continue;
+        if (sel.ids.has(id)) continue;
+        const dst = finalDest(id);
+        if (!dst) continue;
+        if (n >= capacity) break;
+        pipScratch[n * 2 + 0] = dst.x;
+        pipScratch[n * 2 + 1] = dst.y;
+        n++;
+      }
+      drawBatch(n, 1.0, 1.0, 1.0);
     },
   };
 }
