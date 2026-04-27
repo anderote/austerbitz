@@ -124,15 +124,6 @@
         border-top: 1px solid rgba(55, 65, 81, 0.15);
         display: flex; flex-direction: column; gap: 10px;
       }
-      .tools-row {
-        display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
-      }
-      .tool-btn {
-        flex: 1; min-width: 60px; padding: 6px 8px; font-size: 12px;
-      }
-      .tool-btn.active {
-        background: #2563eb; color: #ffffff; border-color: #1d4ed8;
-      }
       .palette-label {
         font-size: 11px; color: #4b5563; letter-spacing: 0.06em;
         text-transform: uppercase; margin-top: 4px;
@@ -184,7 +175,7 @@
         opacity: 0; transition: opacity 100ms ease;
       }
       .cursor-overlay.show { opacity: 1; }
-      canvas.paint-mode { cursor: crosshair; }
+      #preview { cursor: crosshair; }
       .cell-marker {
         position: absolute; pointer-events: none;
         box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.95) inset,
@@ -356,12 +347,6 @@
         </div>
 
         <div class='tools-panel'>
-          <h2 style='margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#4b5563;'>Tool</h2>
-          <div class='tools-row' id='tools-row'>
-            <button class='tool-btn' data-tool='move'>Move</button>
-            <button class='tool-btn active' data-tool='paint'>Paint</button>
-            <button class='tool-btn' data-tool='erase'>Erase</button>
-          </div>
           <button id='undo-btn'>Undo last pixel edit</button>
           <div class='palette-label'>Palette</div>
           <div class='palette' id='palette'></div>
@@ -385,7 +370,7 @@
               <div class='cell-marker' id='cell-marker'></div>
               <div class='cursor-overlay' id='cursor-overlay'>-</div>
             </div>
-            <div class='keys-help'>Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px</div>
+            <div class='keys-help'><kbd>Left-click</kbd> paints with the selected color, <kbd>Right-click</kbd> erases. Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px.</div>
           </div>
           <div class='facing-grid' id='facing-grid'>
             <button class='facing-cell' data-facing='NW' type='button'><span class='label'>NW</span></button>
@@ -472,7 +457,6 @@
         selectedLayerId: null,
         cacheBust: 0,
         imageCache: new Map(),
-        tool: 'paint',
         activeColor: PAL.red,
         activeColorName: 'red',
         editVersion: 0,
@@ -500,7 +484,6 @@
       previewCtx.imageSmoothingEnabled = false;
       const stageTitleEl = document.getElementById('stage-title');
       const toastEl = document.getElementById('toast');
-      const toolsRowEl = document.getElementById('tools-row');
       const paletteEl = document.getElementById('palette');
       const selectedChipEl = document.getElementById('selected-chip');
       const selectedHexEl = document.getElementById('selected-hex');
@@ -1154,24 +1137,6 @@
         selectedHexEl.textContent = state.activeColor;
       }
 
-      function buildToolButtons() {
-        for (const btn of toolsRowEl.querySelectorAll('.tool-btn')) {
-          btn.addEventListener('click', () => {
-            state.tool = btn.dataset.tool;
-            updateToolUi();
-          });
-        }
-        updateToolUi();
-      }
-
-      function updateToolUi() {
-        for (const btn of toolsRowEl.querySelectorAll('.tool-btn')) {
-          btn.classList.toggle('active', btn.dataset.tool === state.tool);
-        }
-        const paintLike = state.tool === 'paint' || state.tool === 'erase';
-        previewCanvas.classList.toggle('paint-mode', paintLike);
-      }
-
       // Returns the canvas-content-box origin (in client coords) and the
       // display-pixel size of one tile cell. Uses clientWidth/clientHeight,
       // which exclude the canvas border so the drawing buffer maps 1:1 to
@@ -1207,12 +1172,13 @@
         return { cx, cy };
       }
 
-      function onCanvasClick(event) {
+      function onCanvasMouseDown(event) {
+        if (event.button !== 0 && event.button !== 2) return;
+        event.preventDefault();
         if (!state.selectedLayerId) return;
-        if (state.tool !== 'paint' && state.tool !== 'erase') return;
         const { cx, cy } = clientToCell(event);
         if (cx < 0 || cx >= CELL_W || cy < 0 || cy >= CELL_H) return;
-        const color = state.tool === 'erase' ? 'clear' : state.activeColor;
+        const color = event.button === 2 ? 'clear' : state.activeColor;
         appendPixelEdit(state.poseId, state.facing, state.selectedLayerId, { x: cx, y: cy, color });
         redraw();
         scheduleAutoSave();
@@ -1511,14 +1477,14 @@
           buildPoseStrip();
           buildFacingButtons();
           buildPalette();
-          buildToolButtons();
           await detectCellSizeFromKit();
           switchFacing('S');
 
           window.addEventListener('keydown', onKey);
           resetBtn.addEventListener('click', resetSelected);
           undoBtn.addEventListener('click', onUndo);
-          previewCanvas.addEventListener('click', onCanvasClick);
+          previewCanvas.addEventListener('mousedown', onCanvasMouseDown);
+          previewCanvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
           previewCanvas.addEventListener('mousemove', onCanvasMove);
           previewCanvas.addEventListener('mouseleave', onCanvasLeave);
           unitSelectEl.addEventListener('change', function (ev) {
