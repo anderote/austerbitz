@@ -70,8 +70,9 @@ export function tryMergeOrSpawn(
   const newSize = p.size[bestIdx]! + c.sizePerMerge;
   p.size[bestIdx] = newSize > sm ? sm : newSize;
 
-  // Life accretes beyond the original lifeMax — coalescence extends the puff's lifetime.
-  p.life[bestIdx] = p.life[bestIdx]! + c.lifePerMerge;
+  const lm = p.lifeMax[bestIdx]!;
+  const newLife = p.life[bestIdx]! + c.lifePerMerge;
+  p.life[bestIdx] = newLife > lm ? lm : newLife;
 
   p.posX[bestIdx] = p.posX[bestIdx]! * (1 - c.posBlend) + x * c.posBlend;
   p.posY[bestIdx] = p.posY[bestIdx]! * (1 - c.posBlend) + y * c.posBlend;

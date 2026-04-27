@@ -22,7 +22,7 @@ function seedPuff(p: ReturnType<typeof createPuffs>, profileIdx: number, x: numb
   p.profileIdx[i] = profileIdx;
   p.posX[i] = x; p.posY[i] = y;
   p.size[i] = 1; p.sizeMax[i] = 4;
-  p.life[i] = 4; p.lifeMax[i] = 4;
+  p.life[i] = 4; p.lifeMax[i] = 10;
   return i;
 }
 
