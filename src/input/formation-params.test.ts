@@ -14,13 +14,13 @@ describe('formation-params', () => {
     expect(spacingMultiplier(p)).toBe(1);
   });
 
-  it('isTightStance is true for indices 0..4 and false for 5..15', () => {
+  it('isTightStance is true for indices 0..3 and false for 4..15', () => {
     const p = createFormationParams();
-    for (let i = 0; i <= 4; i++) {
+    for (let i = 0; i <= 3; i++) {
       p.spacingIndex = i;
       expect(isTightStance(p)).toBe(true);
     }
-    for (let i = 5; i < SPACING_STEPS.length; i++) {
+    for (let i = 4; i < SPACING_STEPS.length; i++) {
       p.spacingIndex = i;
       expect(isTightStance(p)).toBe(false);
     }

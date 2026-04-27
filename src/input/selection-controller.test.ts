@@ -478,10 +478,10 @@ describe('formation hotkeys', () => {
     selection.ids.add(id);
 
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(7); // default 6 → 7
+    expect(ctrl.formationParams.spacingIndex).toBe(6); // default 5 → 6
 
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(6);
+    expect(ctrl.formationParams.spacingIndex).toBe(5);
   });
 
   it(', and . cycle ranks', () => {
@@ -492,14 +492,17 @@ describe('formation hotkeys', () => {
     ctrl._internals.onKeyDown({ key: '.', code: 'Period', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl.formationParams.ranks).toBe(1);
 
+    // After the `,` press, bumpRanks cycles 1 → null, but then reformNow's
+    // snapshot logic immediately re-infers ranks from current positions
+    // (single unit → 1 rank) so the formation shape stays locked.
     ctrl._internals.onKeyDown({ key: ',', code: 'Comma', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.ranks).toBe(null);
+    expect(ctrl.formationParams.ranks).toBe(1);
   });
 
   it('hotkeys are no-op when selection is empty', () => {
     const { ctrl } = makeDeps();
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(6); // unchanged
+    expect(ctrl.formationParams.spacingIndex).toBe(5); // unchanged
   });
 
   it('issues a move order on hotkey press with non-empty selection', () => {
@@ -520,12 +523,12 @@ describe('formation hotkeys', () => {
     ctrl.update(0);                     // bind initial signature
 
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(7);
+    expect(ctrl.formationParams.spacingIndex).toBe(6);
 
     selection.ids.clear();
     selection.ids.add(id2);
     ctrl.update(0);                     // detect change → reset
-    expect(ctrl.formationParams.spacingIndex).toBe(6);
+    expect(ctrl.formationParams.spacingIndex).toBe(5);
   });
 });
 
@@ -548,6 +551,34 @@ describe('selection-controller — tight stance', () => {
     expect(ctrl.tightHeld).toBe(true);
   });
 
+  it('preserves rank count across tightening that would otherwise break inference', () => {
+    const { ctrl, world, selection } = makeDeps();
+    // Spawn 9 units in a 3-rank × 3-file layout. line-infantry spacing is
+    // (1.0, 1.2). Place units along +Y (depth axis) so restFacing pointing
+    // along +Y matches the formation's depth direction.
+    const ids: number[] = [];
+    for (let r = 0; r < 3; r++) {
+      for (let f = 0; f < 3; f++) {
+        const id = spawn(world, 'line-infantry', 0, f * 1.0, r * 1.2);
+        world.entities.restFacing[id] = 2; // 2 * π/4 = 90°, facing +Y
+        ids.push(id);
+      }
+    }
+    for (const id of ids) selection.ids.add(id);
+    ctrl.update(0); // bind selection signature
+
+    // First spacing press at 0.9× nominal — units still well-separated → infer = 3 ranks correctly.
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.ranks).toBe(3); // snapshotted
+
+    // Now even if we tighten further (where inference would otherwise fail at low spacing),
+    // ranks stays at 3.
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.ranks).toBe(3); // unchanged
+  });
+
   it('single right-click in tight stance reforms at march-floor spacing', () => {
     const { ctrl, world, selection } = makeDeps();
     // Four line-infantry units in a row; spacingX = 1 (line-infantry default).
@@ -560,7 +591,7 @@ describe('selection-controller — tight stance', () => {
     for (const i of ids) selection.ids.add(i);
     ctrl.update(0);
 
-    // Set tight stance via spacing index 0 (mult 0.05).
+    // Set tight stance via spacing index 0 (mult 0.5, below march floor 0.9).
     ctrl.formationParams.spacingIndex = 0;
 
     // Single right-click (no drag) at world (50, 50). Camera center is (0,0),
@@ -580,7 +611,7 @@ describe('selection-controller — tight stance', () => {
     }
 
     // Nearest-neighbor distance must be at least MARCH_FLOOR_MULT * spacingX
-    // (0.85 * 1.0 = 0.85m), proving the floor clamp kicked in.
+    // (0.9 * 1.0 = 0.9m), proving the floor clamp kicked in.
     let minD = Infinity;
     for (let i = 0; i < targets.length; i++) {
       for (let j = i + 1; j < targets.length; j++) {
@@ -590,6 +621,6 @@ describe('selection-controller — tight stance', () => {
         if (d < minD) minD = d;
       }
     }
-    expect(minD).toBeGreaterThanOrEqual(0.85 - 1e-6);
+    expect(minD).toBeGreaterThanOrEqual(0.9 - 1e-6);
   });
 });

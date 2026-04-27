@@ -4,7 +4,7 @@ import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
 import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueReformInPlace, issueReformAtTarget } from './commands';
-import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits } from './formation';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions } from './formation';
 import { isDead, EntityState } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
@@ -124,8 +124,22 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     return { x: sx / len, y: sy / len };
   }
 
+  // Snapshot rank count BEFORE issuing reform — once units are packed tight,
+  // inferRanksFromPositions can't tell ranks apart anymore, so capture the
+  // current arrangement now and lock it in. Subsequent spacing changes will
+  // preserve this rank count instead of collapsing.
+  function snapshotRanksIfMissing(fwd: { x: number; y: number }): void {
+    if (formationParams.ranks == null) {
+      const units = materializeUnits(world, selection.ids);
+      if (units.length > 0) {
+        formationParams.ranks = inferRanksFromPositions(units, fwd);
+      }
+    }
+  }
+
   function reformNow(): void {
     const fwd = averageFacing();
+    snapshotRanksIfMissing(fwd);
     issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), formationParams.ranks);
   }
 
@@ -295,6 +309,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         let assignments;
         if (isTightStance(formationParams)) {
           const fwd = averageFacing();
+          snapshotRanksIfMissing(fwd);
           assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, formationParams.ranks, opts);
         } else {
           assignments = issueMove(world, selection, w, opts);
@@ -459,8 +474,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
           if (e.state[id] === EntityState.Moving) { allIdle = false; break; }
         }
         if (allIdle) {
-          const fwd = averageFacing();
-          issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), formationParams.ranks);
+          reformNow();
           tightHeld = true;
         }
       }
