@@ -2,6 +2,7 @@ import type { System } from '../world';
 import { getUnitKindByIndex } from '../../data/units';
 import { writeFacingIntent } from './facing-system';
 import { isDead } from '../entities';
+import { MARCH_SPEED_FACTOR } from './march-system';
 
 const ARRIVE_RADIUS = 0.1; // m
 // Once a unit has reached its parked target it re-engages at this fraction of
@@ -28,6 +29,62 @@ export const ordersSystem: System = (world, dt) => {
       continue;
     }
     const order = queue[0]!;
+    if (order.kind === 'march-formation') {
+      const group = world.marchGroups.get(order.groupId);
+      if (!group) {
+        // Group dissolved out from under us — drop the order and idle.
+        queue.shift();
+        if (queue.length === 0) world.orderQueue.delete(id);
+        e.velX[id] = 0;
+        e.velY[id] = 0;
+        continue;
+      }
+
+      if (group.phase === 'volley') {
+        e.velX[id] = 0;
+        e.velY[id] = 0;
+        writeFacingIntent(e, id, group.forward.x, group.forward.y);
+        continue;
+      }
+
+      // 'march' phase — same arrival/march logic as 'move' but at march speed.
+      const dx = order.targetX - e.posX[id]!;
+      const dy = order.targetY - e.posY[id]!;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= ARRIVE_RADIUS) {
+        e.velX[id] = 0;
+        e.velY[id] = 0;
+        e.pushedT[id] = 0;
+        e.restPosX[id] = order.targetX;
+        e.restPosY[id] = order.targetY;
+        e.restFacing[id] = e.facing[id]!;
+        if (queue.length > 1) {
+          queue.shift();
+        } else {
+          order.arrived = true;
+        }
+        continue;
+      }
+      const baseSpeed = getUnitKindByIndex(e.kindId[id]!).baseStats.moveSpeed;
+      if (order.arrived) {
+        if (e.pushedT[id]! > 0) {
+          e.pushedT[id] = Math.max(0, e.pushedT[id]! - dt);
+          e.velX[id] = 0;
+          e.velY[id] = 0;
+          continue;
+        }
+        const settle = baseSpeed * SETTLE_SPEED_FACTOR;
+        e.velX[id] = (dx / dist) * settle;
+        e.velY[id] = (dy / dist) * settle;
+        writeFacingIntent(e, id, dx, dy);
+      } else {
+        const speed = baseSpeed * MARCH_SPEED_FACTOR;
+        e.velX[id] = (dx / dist) * speed;
+        e.velY[id] = (dy / dist) * speed;
+        writeFacingIntent(e, id, dx, dy);
+      }
+      continue;
+    }
     if (order.kind === 'move' || order.kind === 'attack-move') {
       const dx = order.targetX - e.posX[id]!;
       const dy = order.targetY - e.posY[id]!;
