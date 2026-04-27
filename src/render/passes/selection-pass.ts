@@ -1,10 +1,10 @@
 import { linkProgram, getUniforms } from '../../gl/program';
 import { createBuffer, createVertexArray } from '../../gl/buffer';
-import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS } from '../shaders/selection.glsl';
+import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, PIP_VS, PIP_FS } from '../shaders/selection.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
-import type { Selection, DragRect } from '../../input/selection';
+import type { Selection, DragRect, FormationPreview } from '../../input/selection';
 import { hitTestRect } from '../../input/selection';
 import { getUnitKindByIndex } from '../../data/units';
 import { screenToWorld } from '../camera';
@@ -15,8 +15,8 @@ export interface SelectionPass {
   // Selected units render green; units inside an active drag rect (preview)
   // render yellow.
   drawDiscs(world: World, cam: Camera, sel: Selection, drag: DragRect): void;
-  // Waypoint chains and drag rectangle — call AFTER sprites so they overlay.
-  draw(world: World, cam: Camera, sel: Selection, drag: DragRect): void;
+  // Waypoint chains, drag rectangle, and formation preview — call AFTER sprites so they overlay.
+  draw(world: World, cam: Camera, sel: Selection, drag: DragRect, formation: FormationPreview | null): void;
 }
 
 export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number): SelectionPass {
@@ -60,7 +60,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
   // Drag rectangle: dedicated program + VAO; marching-ants animated 1px lines.
   const dragProg = linkProgram(gl, DRAG_VS, DRAG_FS);
-  const dragU = getUniforms(gl, dragProg, ['u_viewProj', 'u_time'] as const);
+  const dragU = getUniforms(gl, dragProg, ['u_viewProj', 'u_time', 'u_color'] as const);
   const dragVao = createVertexArray(gl);
   gl.bindVertexArray(dragVao);
   const dragBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
@@ -68,6 +68,26 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
+
+  // Formation slot pips — instanced hollow-square quads.
+  const pipProg = linkProgram(gl, PIP_VS, PIP_FS);
+  const pipU = getUniforms(gl, pipProg, ['u_viewProj', 'u_size', 'u_color'] as const);
+  const pipVao = createVertexArray(gl);
+  gl.bindVertexArray(pipVao);
+  const pipCornersBuf = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array([
+    -0.5, -0.5,  0.5, -0.5, -0.5, 0.5,
+    -0.5,  0.5,  0.5, -0.5,  0.5, 0.5,
+  ]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const pipPosBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 2 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(1, 1);
+  gl.bindVertexArray(null);
+  const pipScratch = new Float32Array(capacity * 2);
+  void pipCornersBuf;
 
   // Waypoint polylines — solid-color line segments through queued orders
   const wpProg = linkProgram(gl, WAYPOINT_VS, WAYPOINT_FS);
@@ -132,41 +152,186 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       gl.disable(gl.BLEND);
       gl.bindVertexArray(null);
     },
-    draw(world, cam, sel, drag) {
+    draw(world, cam, sel, drag, formation) {
       const e = world.entities;
-      // Waypoint chains for selected units that have a queue
-      let wpN = 0;
-      for (const id of sel.ids) {
-        if (e.alive[id] === 0) continue;
-        const queue = world.orderQueue.get(id);
-        if (!queue || queue.length === 0) continue;
-        let prevX = e.posX[id]!;
-        let prevY = e.posY[id]!;
-        for (const o of queue) {
-          if (o.kind !== 'move' && o.kind !== 'attack-move') continue;
-          if (wpN + 2 > WP_MAX_VERTS) break;
-          wpScratch[wpN * 2 + 0] = prevX;
-          wpScratch[wpN * 2 + 1] = prevY;
-          wpScratch[wpN * 2 + 2] = o.targetX;
-          wpScratch[wpN * 2 + 3] = o.targetY;
-          wpN += 2;
-          prevX = o.targetX;
-          prevY = o.targetY;
+      // Waypoint chains for player units that have a queue.
+      //  - Selected units render at full opacity (group selections collapse
+      //    to a single centroid line through per-index averaged targets).
+      //  - Unselected player units' chains stay visible at low opacity so
+      //    the player can still see where idle squads are headed.
+      // Each "chain" is a flat list [x0,y0,x1,y1,...] starting at the unit's
+      // (or group's) origin and stepping through waypoints.
+
+      const halfW = 2 / cam.zoom;     // 4 game-pixels thick line
+      const arrowLen = 7 / cam.zoom;
+      const arrowHalf = 5 / cam.zoom;
+
+      const renderChains = (chains: number[][], alpha: number): void => {
+        if (chains.length === 0) return;
+        let wpN = 0;
+        const writeVert = (x: number, y: number): void => {
+          wpScratch[wpN * 2 + 0] = x;
+          wpScratch[wpN * 2 + 1] = y;
+          wpN++;
+        };
+        for (const chain of chains) {
+          if (chain.length < 4) continue;
+          for (let i = 0; i + 3 < chain.length; i += 2) {
+            if (wpN + 6 > WP_MAX_VERTS) break;
+            const x0 = chain[i]!, y0 = chain[i + 1]!;
+            const x1 = chain[i + 2]!, y1 = chain[i + 3]!;
+            let dx = x1 - x0, dy = y1 - y0;
+            const len = Math.hypot(dx, dy);
+            if (len < 1e-6) continue;
+            dx /= len; dy /= len;
+            const px = -dy * halfW, py = dx * halfW;
+            writeVert(x0 + px, y0 + py);
+            writeVert(x0 - px, y0 - py);
+            writeVert(x1 + px, y1 + py);
+            writeVert(x1 + px, y1 + py);
+            writeVert(x0 - px, y0 - py);
+            writeVert(x1 - px, y1 - py);
+          }
+          if (wpN + 3 <= WP_MAX_VERTS) {
+            const ix = chain.length - 4;
+            const x0 = chain[ix]!, y0 = chain[ix + 1]!;
+            const x1 = chain[ix + 2]!, y1 = chain[ix + 3]!;
+            let dx = x1 - x0, dy = y1 - y0;
+            const len = Math.hypot(dx, dy);
+            if (len > 1e-6) {
+              dx /= len; dy /= len;
+              const px = -dy * arrowHalf, py = dx * arrowHalf;
+              const bx = x1 - dx * arrowLen;
+              const by = y1 - dy * arrowLen;
+              writeVert(x1, y1);
+              writeVert(bx + px, by + py);
+              writeVert(bx - px, by - py);
+            }
+          }
         }
-      }
-      if (wpN > 0) {
+        if (wpN === 0) return;
         gl.useProgram(wpProg);
         gl.bindVertexArray(wpVao);
         gl.bindBuffer(gl.ARRAY_BUFFER, wpBuf);
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, wpScratch.subarray(0, wpN * 2));
         gl.uniformMatrix3fv(wpU.u_viewProj, false, viewProjection(cam));
-        gl.uniform4f(wpU.u_color, 0.4, 0.7, 1.0, 0.4);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.drawArrays(gl.LINES, 0, wpN);
-        gl.disable(gl.BLEND);
+        gl.uniform4f(wpU.u_color, 1.0, 1.0, 1.0, alpha);
+        if (alpha < 1) {
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, wpN);
+        if (alpha < 1) gl.disable(gl.BLEND);
         gl.bindVertexArray(null);
+      };
+
+      const buildUnitChain = (id: number): number[] | null => {
+        const queue = world.orderQueue.get(id);
+        if (!queue || queue.length === 0) return null;
+        const chain: number[] = [e.posX[id]!, e.posY[id]!];
+        for (const o of queue) {
+          if (o.kind !== 'move' && o.kind !== 'attack-move') continue;
+          chain.push(o.targetX, o.targetY);
+        }
+        return chain.length >= 4 ? chain : null;
+      };
+
+      // Faded chains for unselected, alive, player-team units.
+      // Cluster units by the location of their final move waypoint so a squad
+      // that was group-moved collapses into a single centroid arrow rather
+      // than one faint arrow per soldier. Bucket size > the spread radius
+      // produced by `spreadTarget` for typical squad sizes.
+      const CLUSTER_R = 12;
+      const buckets = new Map<string, number[]>();
+      for (const id of world.orderQueue.keys()) {
+        if (e.alive[id] !== 1) continue;
+        if (sel.ids.has(id)) continue;
+        if (e.team[id] !== PLAYER_TEAM) continue;
+        const queue = world.orderQueue.get(id)!;
+        let lastTx = NaN, lastTy = NaN;
+        for (let k = queue.length - 1; k >= 0; k--) {
+          const o = queue[k]!;
+          if (o.kind === 'move' || o.kind === 'attack-move') {
+            lastTx = o.targetX; lastTy = o.targetY;
+            break;
+          }
+        }
+        if (Number.isNaN(lastTx)) continue;
+        const key = `${Math.floor(lastTx / CLUSTER_R)},${Math.floor(lastTy / CLUSTER_R)}`;
+        let arr = buckets.get(key);
+        if (!arr) { arr = []; buckets.set(key, arr); }
+        arr.push(id);
       }
+      const otherChains: number[][] = [];
+      for (const ids of buckets.values()) {
+        if (ids.length === 1) {
+          const chain = buildUnitChain(ids[0]!);
+          if (chain) otherChains.push(chain);
+          continue;
+        }
+        let cx = 0, cy = 0;
+        for (const id of ids) {
+          cx += e.posX[id]!;
+          cy += e.posY[id]!;
+        }
+        cx /= ids.length;
+        cy /= ids.length;
+        const chain: number[] = [cx, cy];
+        for (let k = 0; ; k++) {
+          let sumX = 0, sumY = 0, count = 0;
+          for (const id of ids) {
+            const q = world.orderQueue.get(id);
+            if (!q || k >= q.length) continue;
+            const o = q[k]!;
+            if (o.kind !== 'move' && o.kind !== 'attack-move') continue;
+            sumX += o.targetX;
+            sumY += o.targetY;
+            count++;
+          }
+          if (count === 0) break;
+          chain.push(sumX / count, sumY / count);
+        }
+        if (chain.length >= 4) otherChains.push(chain);
+      }
+      renderChains(otherChains, 0.2);
+
+      // Full-opacity chain(s) for the active selection.
+      const liveSelected: number[] = [];
+      for (const id of sel.ids) {
+        if (e.alive[id] === 1) liveSelected.push(id);
+      }
+      const selectedChains: number[][] = [];
+      if (liveSelected.length > 1) {
+        let cx = 0, cy = 0;
+        for (const id of liveSelected) {
+          cx += e.posX[id]!;
+          cy += e.posY[id]!;
+        }
+        cx /= liveSelected.length;
+        cy /= liveSelected.length;
+        const chain: number[] = [cx, cy];
+        for (let k = 0; ; k++) {
+          let sumX = 0, sumY = 0, count = 0;
+          for (const id of liveSelected) {
+            const queue = world.orderQueue.get(id);
+            if (!queue || k >= queue.length) continue;
+            const o = queue[k]!;
+            if (o.kind !== 'move' && o.kind !== 'attack-move') continue;
+            sumX += o.targetX;
+            sumY += o.targetY;
+            count++;
+          }
+          if (count === 0) break;
+          chain.push(sumX / count, sumY / count);
+        }
+        if (chain.length >= 4) selectedChains.push(chain);
+      } else {
+        for (const id of liveSelected) {
+          const chain = buildUnitChain(id);
+          if (chain) selectedChains.push(chain);
+        }
+      }
+      renderChains(selectedChains, 1.0);
 
       // Drag-rect overlay: 1px marching-ants in world space.
       if (drag.active) {
@@ -186,8 +351,49 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
         gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
         gl.uniform1f(dragU.u_time, performance.now() * 0.001);
+        gl.uniform3f(dragU.u_color, 1.0, 1.0, 1.0); // white — selection drag
         gl.drawArrays(gl.LINES, 0, 8);
         gl.bindVertexArray(null);
+      }
+
+      // Formation preview: marching-ants outline + per-slot pips.
+      if (formation) {
+        const { rect, slots } = formation;
+        const verts = new Float32Array([
+          rect.tl.x, rect.tl.y,  rect.tr.x, rect.tr.y,
+          rect.tr.x, rect.tr.y,  rect.br.x, rect.br.y,
+          rect.br.x, rect.br.y,  rect.bl.x, rect.bl.y,
+          rect.bl.x, rect.bl.y,  rect.tl.x, rect.tl.y,
+        ]);
+        gl.useProgram(dragProg);
+        gl.bindVertexArray(dragVao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, dragBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+        gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
+        gl.uniform1f(dragU.u_time, performance.now() * 0.001);
+        gl.uniform3f(dragU.u_color, 0.55, 1.0, 0.6); // green — formation
+        gl.drawArrays(gl.LINES, 0, 8);
+        gl.bindVertexArray(null);
+
+        const m = Math.min(slots.length, capacity);
+        if (m > 0) {
+          for (let i = 0; i < m; i++) {
+            pipScratch[i * 2 + 0] = slots[i]!.x;
+            pipScratch[i * 2 + 1] = slots[i]!.y;
+          }
+          gl.useProgram(pipProg);
+          gl.bindVertexArray(pipVao);
+          gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, m * 2));
+          gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
+          gl.uniform1f(pipU.u_size, 1.2); // world units; ~1m square pip
+          gl.uniform3f(pipU.u_color, 0.55, 1.0, 0.6);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, m);
+          gl.disable(gl.BLEND);
+          gl.bindVertexArray(null);
+        }
       }
     },
   };
