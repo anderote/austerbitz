@@ -11,7 +11,7 @@ layout(location = 6) in vec3 a_secondary;  // per-instance secondary uniform col
 layout(location = 7) in float a_pattern;   // 0 = none, 1 = check, 2 = h-stripes
 
 out vec2 v_uv;
-out vec2 v_quadUv;
+out vec2 v_world;
 out vec4 v_color;
 out vec3 v_primary;
 out vec3 v_secondary;
@@ -27,7 +27,7 @@ void main() {
   gl_Position = vec4(clip.xy, 0.0, 1.0);
   vec2 quadUv = a_corner + 0.5;            // 0..1 across quad
   v_uv = a_uvRect.xy + quadUv * a_uvRect.zw;
-  v_quadUv = quadUv;
+  v_world = wp;
   v_color = a_color;
   v_primary = a_primary;
   v_secondary = a_secondary;
@@ -39,7 +39,7 @@ export const SPRITE_FS = `#version 300 es
 precision highp float;
 
 in vec2 v_uv;
-in vec2 v_quadUv;
+in vec2 v_world;
 in vec4 v_color;
 in vec3 v_primary;
 in vec3 v_secondary;
@@ -47,6 +47,7 @@ in float v_pattern;
 out vec4 outColor;
 
 uniform sampler2D u_atlas;
+uniform float u_patternFeatureWorld; // size in world units of one check cell / one stripe band
 
 void main() {
   vec4 tex = texture(u_atlas, v_uv);
@@ -56,16 +57,18 @@ void main() {
   // through as pure (1,0,1) and (0,1,1) — no interpolation, exact match.
   if (col.r > 0.95 && col.g < 0.05 && col.b > 0.95) col = v_primary;
   else if (col.r < 0.05 && col.g > 0.95 && col.b > 0.95) col = v_secondary;
-  // Dot patterns. Atlas sample is the solid white tint cell, so col=(1,1,1)
-  // here — we override based on local quad coords for category-coded dots.
+  // Dot patterns. Sampled atlas cell is solid white, so col=(1,1,1) here —
+  // we override based on the fragment's WORLD position so adjacent overlapping
+  // dots tile a single coherent pattern across the merged formation blob,
+  // rather than each dot stamping its own pattern in isolation.
   if (v_pattern > 0.5 && v_pattern < 1.5) {
-    // Cavalry: 2x2 checker — alternates white and team primary.
-    vec2 cell = floor(v_quadUv * 2.0);
+    // Cavalry: checker, white + team primary.
+    vec2 cell = floor(v_world / u_patternFeatureWorld);
     bool teamCell = mod(cell.x + cell.y, 2.0) >= 0.5;
     col = teamCell ? v_primary : vec3(1.0);
   } else if (v_pattern > 1.5) {
-    // Artillery: 3 horizontal bands — white | team primary | gray (top→bottom).
-    float band = floor(v_quadUv.y * 3.0);
+    // Artillery: 3-band horizontal cycle — white | team primary | gray.
+    float band = mod(floor(v_world.y / u_patternFeatureWorld), 3.0);
     if (band < 0.5) col = vec3(1.0);
     else if (band < 1.5) col = v_primary;
     else col = vec3(0.55);

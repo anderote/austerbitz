@@ -41,7 +41,7 @@ const FALLBACK_TEAM = TEAM_COLORS[0]!;
 
 export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): SpritePass {
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
-  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas'] as const);
+  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld'] as const);
 
   const vao = createVertexArray(gl);
   gl.bindVertexArray(vao);
@@ -141,8 +141,12 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
     draw(world, cam) {
       const UNIT_DOT_ZOOM = 4;
       const INFANTRY_DOT_PIXELS = 3;
-      const CAVALRY_DOT_PIXELS = 8;   // 2x2 checker — 4 px per cell
-      const ARTILLERY_DOT_PIXELS = 12; // 3 horizontal bands — 4 px per band
+      const CAVALRY_DOT_PIXELS = 8;
+      const ARTILLERY_DOT_PIXELS = 12;
+      // Pattern is anchored to world-space, sized in screen pixels.
+      // Each unit's quad is much larger than this feature size (8/12 px vs 4 px),
+      // so neighboring quads overlap and tile the same pattern → merged blob.
+      const PATTERN_FEATURE_PIXELS = 4;
       const e = world.entities;
       sortIdx.length = 0;
       for (let i = 0; i < e.capacity; i++) {
@@ -269,6 +273,7 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
       gl.bindTexture(gl.TEXTURE_2D, atlas);
       gl.uniform1i(u.u_atlas, 0);
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
+      gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
