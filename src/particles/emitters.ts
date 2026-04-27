@@ -11,9 +11,9 @@ const DUST_PER_SEC = 1.2;     // particles per moving unit per second
 const DUST_MERGE_RADIUS = 1.2;
 const DUST_MERGE_RADIUS_SQ = DUST_MERGE_RADIUS * DUST_MERGE_RADIUS;
 const DUST_CELL = DUST_MERGE_RADIUS;
-const DUST_MAX_SIZE = 1.0;
+const DUST_MAX_SIZE = 0.75;
 const DUST_MAX_LIFE = 12.0;
-const DUST_SIZE_PER_MERGE = 0.08;
+const DUST_SIZE_PER_MERGE = 0.06;
 const DUST_LIFE_PER_MERGE = 0.5;
 
 function dustCellKey(cx: number, cy: number): number {
@@ -98,14 +98,14 @@ export function emitDust(world: World, particles: Particles, dt: number): void {
       x: fx,
       y: fy,
       // Drift backward (opposite to motion) and gently upward (negative Y).
-      vx: -dirX * 0.3 + jitter() * 0.3,
-      vy: -dirY * 0.3 - world.rng.range(0.3, 0.7),
+      vx: -dirX * 0.16 + jitter() * 0.18,
+      vy: -dirY * 0.16 - world.rng.range(0.18, 0.4),
       life: 2.4 + world.rng.next() * 2.0,
       size: 0.3 + Math.min(speed * 0.04, 0.25),
       r: 0.34, g: 0.34, b: 0.36,
       drag: 0.985,
-      accelY: -0.18,
-      sizeGrowth: 0.55,
+      accelY: -0.1,
+      sizeGrowth: 0.32,
       klass: ParticleClass.Dust,
     });
     // Add to the grid so later emissions in the same frame can coalesce too.

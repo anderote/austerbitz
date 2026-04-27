@@ -17,6 +17,7 @@ export interface FormationInput {
 export interface FormationSlots {
   slots: Vec2[];
   rect: { tl: Vec2; tr: Vec2; br: Vec2; bl: Vec2 };
+  forward: Vec2;
 }
 
 export function computeFormationSlots(input: FormationInput): FormationSlots {
@@ -73,39 +74,44 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
   const br = { x: tr.x + px * depth, y: tr.y + py * depth };
   const bl = { x: tl.x + px * depth, y: tl.y + py * depth };
 
-  return { slots, rect: { tl, tr, br, bl } };
+  return { slots, rect: { tl, tr, br, bl }, forward: { x: fx, y: fy } };
 }
 
-export function assignFormationSlots(units: FormationUnit[], slots: Vec2[]): Vec2[] {
+// Lateral-sort assignment: sort both units and slots by lateral position along
+// the formation's facing axis (drag direction), tiebreak by depth (front rank
+// first), and match by index. Guarantees no left/right crossings and biases
+// each unit toward marching forward into its column rather than across the line.
+export function assignFormationSlots(
+  units: FormationUnit[],
+  slots: Vec2[],
+  forward: Vec2,
+): Vec2[] {
   if (units.length !== slots.length) {
     throw new Error(`assignFormationSlots: length mismatch (${units.length} vs ${slots.length})`);
   }
   const N = units.length;
-  const taken = new Uint8Array(N);
-  const out: Vec2[] = new Array(N);
 
-  // Pre-sort indices: units farthest from slot centroid pick first.
-  let cx = 0, cy = 0;
-  for (const s of slots) { cx += s.x; cy += s.y; }
-  if (N > 0) { cx /= N; cy /= N; }
-  const order = units.map((_, i) => i).sort((a, b) => {
-    const da = (units[a]!.x - cx) ** 2 + (units[a]!.y - cy) ** 2;
-    const db = (units[b]!.x - cx) ** 2 + (units[b]!.y - cy) ** 2;
-    return db - da;
+  // Lateral axis = drag direction (along front rank). Depth axis = 90° left of it.
+  const lx = forward.x, ly = forward.y;
+  const dx = -forward.y, dy = forward.x;
+
+  const byLateralThenDepth = (
+    arr: { x: number; y: number }[],
+  ) => arr.map((_, i) => i).sort((a, b) => {
+    const la = arr[a]!.x * lx + arr[a]!.y * ly;
+    const lb = arr[b]!.x * lx + arr[b]!.y * ly;
+    if (la !== lb) return la - lb;
+    const da = arr[a]!.x * dx + arr[a]!.y * dy;
+    const db = arr[b]!.x * dx + arr[b]!.y * dy;
+    return da - db;
   });
 
-  for (const i of order) {
-    let best = -1;
-    let bestD = Infinity;
-    for (let j = 0; j < N; j++) {
-      if (taken[j]) continue;
-      const dx = units[i]!.x - slots[j]!.x;
-      const dy = units[i]!.y - slots[j]!.y;
-      const d = dx * dx + dy * dy;
-      if (d < bestD) { bestD = d; best = j; }
-    }
-    taken[best] = 1;
-    out[i] = slots[best]!;
+  const unitOrder = byLateralThenDepth(units);
+  const slotOrder = byLateralThenDepth(slots);
+
+  const out: Vec2[] = new Array(N);
+  for (let k = 0; k < N; k++) {
+    out[unitOrder[k]!] = slots[slotOrder[k]!]!;
   }
   return out;
 }

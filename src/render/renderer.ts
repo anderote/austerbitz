@@ -11,8 +11,8 @@ import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
 import type { Projectiles } from '../sim/projectiles';
 
-const DUST_MASK = 1 << ParticleClass.Dust;
 const ABOVE_SOLDIER_MASK =
+  (1 << ParticleClass.Dust) |
   (1 << ParticleClass.Smoke) |
   (1 << ParticleClass.Flash) |
   (1 << ParticleClass.Blood) |
@@ -60,11 +60,9 @@ export function createRenderer(
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);
       selectionPass.drawDiscs(world, cam, sel, drag);
-      // Ground-level dust draws before sprites so soldiers in front occlude it.
-      particlesPass.draw(particlePool, cam, DUST_MASK);
       sprites.draw(world, cam);
       projectilesPass.draw(projectiles, cam);
-      // Above-soldier FX (smoke, flash, blood, debris) draw on top of sprites.
+      // Particle FX draw on top of sprites so dust clouds aren't hidden behind soldiers.
       particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK);
       selectionPass.draw(world, cam, sel, drag, formation);
       if (opts.showHealthBars) healthBarPass.draw(world, cam);

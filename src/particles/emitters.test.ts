@@ -124,10 +124,11 @@ describe('emitDust merging', () => {
     let idx = -1;
     for (let i = 0; i < p.capacity; i++) if (p.alive[i] === 1) { idx = i; break; }
     expect(p.klass[idx]).toBe(ParticleClass.Dust);
-    // Base spawn size at speed=1 is ~0.34; 7 merges add 7*0.08, so > 0.7.
-    expect(p.size[idx]!).toBeGreaterThan(0.7);
-    // Base spawn life ≤ 3.2; 7 merges add 7*0.4, so > 3.5.
-    expect(p.life[idx]!).toBeGreaterThan(3.5);
+    // Base spawn size at speed=1 is ~0.34; 7 merges add 7*0.06 → ~0.76, capped at 0.75.
+    expect(p.size[idx]!).toBeGreaterThan(0.6);
+    expect(p.size[idx]!).toBeLessThanOrEqual(0.75 + 1e-6);
+    // Base spawn life is 2.4–4.4; 7 merges add 7*0.5 = 3.5, so well above 3.5 either way.
+    expect(p.life[idx]!).toBeGreaterThan(5);
     // Renderer fades by life/lifeMax — must remain ≤ 1.
     expect(p.life[idx]!).toBeLessThanOrEqual(p.lifeMax[idx]! + 1e-6);
   });
@@ -159,7 +160,7 @@ describe('emitDust merging', () => {
     let idx = -1;
     for (let i = 0; i < p.capacity; i++) if (p.alive[i] === 1) { idx = i; break; }
     expect(idx).toBeGreaterThanOrEqual(0);
-    expect(p.size[idx]!).toBeLessThanOrEqual(1.0 + 1e-6);
+    expect(p.size[idx]!).toBeLessThanOrEqual(0.75 + 1e-6);
     expect(p.life[idx]!).toBeLessThanOrEqual(12.0 + 1e-6);
     expect(p.life[idx]!).toBeLessThanOrEqual(p.lifeMax[idx]! + 1e-6);
   });

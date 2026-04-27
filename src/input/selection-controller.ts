@@ -246,8 +246,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         const endW = screenToWorld(camera, formationDrag.current);
         const units = liveFormationUnits();
         if (units.length > 0) {
-          const { slots } = computeFormationSlots({ units, startW, endW });
-          const targets = assignFormationSlots(units, slots);
+          const { slots, forward } = computeFormationSlots({ units, startW, endW });
+          const targets = assignFormationSlots(units, slots, forward);
           const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
           issueFormationMove(world, assignments, opts);
           const mx = (startW.x + endW.x) / 2;
