@@ -1,5 +1,8 @@
+// The profile registry is a module-level singleton — every id is registered
+// once per process. Tests in this file must use unique ids if they need
+// separate fixtures; otherwise idempotency reuses the same slot.
 import { describe, it, expect } from 'vitest';
-import { registerProfile, getProfileByIndex, type PuffProfile } from './profile';
+import { registerProfile, getProfileByIndex, profileCount, type PuffProfile } from './profile';
 
 const sample: PuffProfile = {
   id: 'sample',
@@ -19,6 +22,7 @@ describe('profile registry', () => {
     const idx = registerProfile(sample);
     expect(idx).toBeGreaterThanOrEqual(0);
     expect(getProfileByIndex(idx)).toBe(sample);
+    expect(profileCount()).toBeGreaterThanOrEqual(1);
   });
 
   it('idempotently returns the same index for the same id', () => {
