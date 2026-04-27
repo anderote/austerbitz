@@ -126,7 +126,7 @@ function frame(t: number) {
   rebuildGrid(world);
   movementSystem(world, dt);
   facingSystem(world, dt);
-  tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
+  tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt, world.tickCount);
   tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
 

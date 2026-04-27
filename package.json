@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build:poses": "node scripts/build-pose-manifest.mjs",
+    "dev": "npm run build:poses && vite",
+    "build": "npm run build:poses && tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -285,7 +285,7 @@ describe('combat pipeline integration', () => {
     // Tick 1: combat picks the target and triggers Aiming. State-system advances stateT.
     rebuildGrid(world);
     combat(world, dt);
-    tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
+    tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt, world.tickCount);
     tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
 
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
@@ -298,7 +298,7 @@ describe('combat pipeline integration', () => {
     for (let i = 0; i < 12; i++) {
       rebuildGrid(world);
       combat(world, dt);
-      tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt);
+      tickStates(world.entities, projectiles, particles, world.rng, fireOrders, dt, world.tickCount);
       tickProjectiles(projectiles, world.entities, world.grid, particles, world.rng, dt, world.bloodSplats);
       peakProjectiles = Math.max(peakProjectiles, projectiles.count);
     }

@@ -5,6 +5,16 @@ import { createParticles } from '../../particles/particles';
 import { createRng } from '../../util/rng';
 import { getUnitKindByIndex, getUnitKindIndex } from '../../data/units';
 import { triggerFire, tickStates, type FireOrders } from './state-system';
+import { Pose } from '../../render/poses/pose-config';
+
+function pickClipRef(id: number, tick: number, n: number): number {
+  if (n <= 1) return 0;
+  let h = (Math.imul(id, 2654435761) ^ Math.imul(tick, 1597334677)) | 0;
+  h ^= h >>> 16; h = Math.imul(h, 2246822507);
+  h ^= h >>> 13; h = Math.imul(h, 3266489909);
+  h ^= h >>> 16;
+  return (h >>> 0) % n;
+}
 
 function setupLineInfantry() {
   const e = createEntities(8);
@@ -38,7 +48,7 @@ describe('tickStates', () => {
     triggerFire(e, fireOrders, id, 50, 0);
 
     // One big tick that overshoots the 0.15s windup.
-    tickStates(e, projectiles, particles, rng, fireOrders, 0.2);
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.2, 0);
 
     expect(e.state[id]).toBe(EntityState.Reloading);
     expect(projectiles.count).toBe(1);
@@ -54,7 +64,7 @@ describe('tickStates', () => {
     e.state[id] = EntityState.Reloading;
     e.reloadT[id] = 0.05;
 
-    tickStates(e, projectiles, particles, rng, fireOrders, 0.1);
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.1, 0);
 
     expect(e.state[id]).toBe(EntityState.Idle);
     expect(e.reloadT[id]).toBe(0);
@@ -65,7 +75,7 @@ describe('tickStates', () => {
     e.state[id] = EntityState.Flinch;
     e.stateT[id] = 0.1;
 
-    tickStates(e, projectiles, particles, rng, fireOrders, 0.2);
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.2, 0);
 
     expect(e.state[id]).toBe(EntityState.Idle);
   });
@@ -75,7 +85,7 @@ describe('tickStates', () => {
     e.state[id] = EntityState.Dying;
     e.stateT[id] = 0.1;
 
-    tickStates(e, projectiles, particles, rng, fireOrders, 0.2);
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.2, 0);
 
     expect(e.state[id]).toBe(EntityState.Dead);
     // Cleanup is a separate pass — alive must still be 1 here.
@@ -87,10 +97,10 @@ describe('tickStates', () => {
     e.recoilT[id] = 0.12;
     e.state[id] = EntityState.Idle;
 
-    tickStates(e, projectiles, particles, rng, fireOrders, 0.05);
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.05, 0);
     expect(e.recoilT[id]).toBeCloseTo(0.07, 6);
 
-    tickStates(e, projectiles, particles, rng, fireOrders, 1.0);
+    tickStates(e, projectiles, particles, rng, fireOrders, 1.0, 0);
     expect(e.recoilT[id]).toBe(0);
   });
 
@@ -100,9 +110,118 @@ describe('tickStates', () => {
     e.stateT[id] = 0.05;
     // Deliberately no fireOrders entry.
 
-    tickStates(e, projectiles, particles, rng, fireOrders, 0.1);
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.1, 0);
 
     expect(e.state[id]).toBe(EntityState.Reloading);
     expect(projectiles.count).toBe(0);
+  });
+});
+
+describe('tickStates pose mapping', () => {
+  it('new entity starts with idle pose, poseT=0, clipIndex=0', () => {
+    const { e, id } = setupLineInfantry();
+    expect(e.pose[id]).toBe(Pose.idle);
+    expect(e.poseT[id]).toBe(0);
+    expect(e.clipIndex[id]).toBe(0);
+  });
+
+  it('Moving + walking speed → walking pose with reset poseT and deterministic clipIndex', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Moving;
+    e.velX[id] = 10;
+    e.velY[id] = 0;
+
+    const tick = 7;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.05, tick);
+
+    expect(e.pose[id]).toBe(Pose.walking);
+    expect(e.poseT[id]).toBe(0);
+    expect(e.clipIndex[id]).toBe(pickClipRef(id, tick, 256) & 0xff);
+  });
+
+  it('crossing run threshold mid-Moving transitions walking → running and resets poseT', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Moving;
+    e.velX[id] = 10;
+    e.velY[id] = 0;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.05, 1);
+    expect(e.pose[id]).toBe(Pose.walking);
+
+    e.velX[id] = 100;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.05, 2);
+
+    expect(e.pose[id]).toBe(Pose.running);
+    expect(e.poseT[id]).toBe(0);
+  });
+
+  it('poseT accumulates dt while pose stays the same', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Moving;
+    e.velX[id] = 10;
+    e.velY[id] = 0;
+
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.1, 0);
+    expect(e.pose[id]).toBe(Pose.walking);
+    expect(e.poseT[id]).toBe(0);
+
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.1, 1);
+    expect(e.pose[id]).toBe(Pose.walking);
+    expect(e.poseT[id]).toBeCloseTo(0.1, 6);
+
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.1, 2);
+    expect(e.poseT[id]).toBeCloseTo(0.2, 6);
+  });
+
+  it('Aiming → aiming pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Aiming;
+    e.stateT[id] = 1;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.aiming);
+  });
+
+  it('Firing → firing pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Firing;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.firing);
+  });
+
+  it('Reloading → reloading pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Reloading;
+    e.reloadT[id] = 5;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.reloading);
+  });
+
+  it('Flinch → flinch pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Flinch;
+    e.stateT[id] = 1;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.flinch);
+  });
+
+  it('Ragdoll → ragdoll pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Ragdoll;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.ragdoll);
+  });
+
+  it('Dying → dying pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Dying;
+    e.stateT[id] = 1;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.dying);
+  });
+
+  it('Dead → dead pose', () => {
+    const { e, projectiles, particles, rng, fireOrders, id } = setupLineInfantry();
+    e.state[id] = EntityState.Dead;
+    tickStates(e, projectiles, particles, rng, fireOrders, 0.01, 0);
+    expect(e.pose[id]).toBe(Pose.dead);
   });
 });

@@ -5,6 +5,31 @@ import type { Rng } from '../../util/rng';
 import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
 import { writeFacingIntent } from './facing-system';
+import { Pose, RUN_THRESHOLD_PX_S } from '../../render/poses/pose-config';
+
+function poseFor(state: EntityState, speed: number): Pose {
+  switch (state) {
+    case EntityState.Idle:      return Pose.idle;
+    case EntityState.Moving:    return speed > RUN_THRESHOLD_PX_S ? Pose.running : Pose.walking;
+    case EntityState.Aiming:    return Pose.aiming;
+    case EntityState.Firing:    return Pose.firing;
+    case EntityState.Reloading: return Pose.reloading;
+    case EntityState.Flinch:    return Pose.flinch;
+    case EntityState.Ragdoll:   return Pose.ragdoll;
+    case EntityState.Dying:     return Pose.dying;
+    case EntityState.Dead:      return Pose.dead;
+    default:                    return Pose.idle;
+  }
+}
+
+function pickClip(id: number, tick: number, n: number): number {
+  if (n <= 1) return 0;
+  let h = (Math.imul(id, 2654435761) ^ Math.imul(tick, 1597334677)) | 0;
+  h ^= h >>> 16; h = Math.imul(h, 2246822507);
+  h ^= h >>> 13; h = Math.imul(h, 3266489909);
+  h ^= h >>> 16;
+  return (h >>> 0) % n;
+}
 
 /** Side-table mapping entity id → aim point. Populated by `triggerFire`. */
 export type FireOrders = Map<number, { tx: number; ty: number }>;
@@ -46,6 +71,7 @@ export function tickStates(
   rng: Rng,
   fireOrders: FireOrders,
   dt: number,
+  tick: number,
 ): void {
   for (let i = 0; i < e.capacity; i++) {
     if (e.alive[i] === 0) continue;
@@ -109,6 +135,16 @@ export function tickStates(
       default:
         // Idle, Moving, Firing (transient), Ragdoll, Dead — no transition here.
         break;
+    }
+
+    const speed = Math.hypot(e.velX[i]!, e.velY[i]!);
+    const desired = poseFor(e.state[i] as EntityState, speed);
+    if (e.pose[i] !== desired) {
+      e.pose[i] = desired;
+      e.poseT[i] = 0;
+      e.clipIndex[i] = pickClip(i, tick, 256) & 0xff;
+    } else {
+      e.poseT[i] = e.poseT[i]! + dt;
     }
   }
 }
