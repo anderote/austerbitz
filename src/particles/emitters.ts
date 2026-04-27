@@ -1,0 +1,27 @@
+import type { World } from '../sim/world';
+import { spawnParticle, type Particles } from './particles';
+
+const DUST_PER_SEC = 4;       // particles per moving unit per second
+
+export function emitDust(world: World, particles: Particles, dt: number): void {
+  const e = world.entities;
+  const expected = DUST_PER_SEC * dt;
+  for (let i = 0; i < e.capacity; i++) {
+    if (e.alive[i] === 0) continue;
+    const vx = e.velX[i]!;
+    const vy = e.velY[i]!;
+    if (vx === 0 && vy === 0) continue;
+    if (world.rng.next() > expected) continue;
+    const speed = Math.hypot(vx, vy);
+    const jitter = () => world.rng.range(-0.4, 0.4);
+    spawnParticle(particles, {
+      x: e.posX[i]! + jitter(),
+      y: e.posY[i]! + jitter() + 0.2,
+      vx: -vx * 0.1 + jitter() * 0.5,
+      vy: -vy * 0.1 + jitter() * 0.5,
+      life: 0.4 + world.rng.next() * 0.4,
+      size: 0.4 + Math.min(speed * 0.05, 0.4),
+      r: 0.65, g: 0.55, b: 0.42,
+    });
+  }
+}

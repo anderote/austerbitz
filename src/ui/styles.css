@@ -1,0 +1,148 @@
+:root {
+  --ui-bg: rgba(20, 24, 28, 0.85);
+  --ui-border: #444;
+  --ui-text: #e5e7eb;
+  --ui-accent: #80cf80;
+}
+
+#ui-root * {
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--ui-text);
+}
+
+#ui-root .panel {
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  pointer-events: auto;
+}
+
+#ui-root .hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: pre;
+}
+
+#ui-root .selection-panel {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border-radius: 6px;
+  min-width: 220px;
+  text-align: center;
+}
+
+#ui-root .build-menu {
+  position: absolute;
+  top: 80px;
+  right: 0;
+  width: 180px;
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+  transition: transform 0.18s ease-out;
+  padding: 8px;
+}
+
+#ui-root .build-menu.collapsed {
+  transform: translateX(160px);
+}
+
+#ui-root .build-menu .toggle {
+  position: absolute;
+  left: -22px;
+  top: 8px;
+  width: 22px;
+  height: 32px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+#ui-root .build-menu h3 {
+  margin: 4px 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui-accent);
+}
+
+#ui-root .build-menu button {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 6px 8px;
+  background: #2c343c;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+#ui-root .build-menu button:hover {
+  background: #3a444f;
+}
+
+#ui-root .scale-bar {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+#ui-root .minimap {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  border: 1px solid var(--ui-border);
+  background: rgba(20, 24, 28, 0.55);
+  border-radius: 4px;
+  pointer-events: auto;
+  line-height: 0;
+  cursor: crosshair;
+}
+
+#ui-root .minimap canvas {
+  display: block;
+}
+
+#ui-root .scale-bar .bar {
+  height: 2px;
+  background: #fff;
+  position: relative;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+
+#ui-root .scale-bar .bar::before,
+#ui-root .scale-bar .bar::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 10px;
+  background: #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+
+#ui-root .scale-bar .bar::before { left: 0; }
+#ui-root .scale-bar .bar::after { right: 0; }
+
+#ui-root .scale-bar .label {
+  text-align: center;
+  margin-top: 4px;
+  font-size: 11px;
+}
