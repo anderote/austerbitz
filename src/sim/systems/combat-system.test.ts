@@ -155,7 +155,7 @@ describe('combatSystem', () => {
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
     spawnLineInfantry(world, 1, 50, 0);
-    // line-infantry moveSpeed is 2.5 m/s — well above the 0.05 m/s gate.
+    // line-infantry moveSpeed is 2.5 m/s — well above the 1.0 m/s gate.
     world.entities.velX[shooter] = 2.5;
     world.entities.velY[shooter] = 0;
 
@@ -173,8 +173,28 @@ describe('combatSystem', () => {
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
     const target  = spawnLineInfantry(world, 1, 50, 0);
-    // Below the 0.05 m/s gate.
+    // Below the 1.0 m/s gate.
     world.entities.velX[shooter] = 0.01;
+    world.entities.velY[shooter] = 0;
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(target);
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+  });
+
+  it('fires while drifting back to rest anchor at settle speed', () => {
+    // orders-system sends parked/idle units back to their rest anchor at
+    // baseSpeed * 0.3 ≈ 0.75 m/s for line-infantry. Without this allowance,
+    // a single collision shove silences a unit for the entire drift back.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const target  = spawnLineInfantry(world, 1, 50, 0);
+    world.entities.velX[shooter] = 0.75;
     world.entities.velY[shooter] = 0;
 
     rebuildGrid(world);

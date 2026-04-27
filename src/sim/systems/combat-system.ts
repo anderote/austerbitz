@@ -4,7 +4,15 @@ import { EntityState } from '../entities';
 import { gridQueryRect } from '../spatial/grid';
 import { getUnitKindByIndex } from '../../data/units';
 
-const VEL_EPS_SQ = 0.05 * 0.05;
+// Block firing while marching at full speed, but allow the formation
+// "settle drift" (orders-system sends parked/idle units back to their rest
+// anchor at baseSpeed * 0.3 ≈ 0.75 m/s for line-infantry). Without this
+// allowance, any collision shove would silence a unit until it fully
+// re-anchored — fine in the worktree where rest-drift didn't exist, but
+// after the main-branch rest-pose-drift behavior landed it suppressed
+// most subsequent volleys. 1.0 m/s clears 0.75 m/s drift but still blocks
+// the 2.5 m/s line-infantry march.
+const VEL_EPS_SQ = 1.0 * 1.0;
 const candidateBuf = new Int32Array(2048);
 
 export function createCombatSystem(fireOrders: FireOrders): System {
