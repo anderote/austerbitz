@@ -346,6 +346,32 @@
   pointer-events: none;
 }
 
+#ui-root .formation-controls {
+  position: absolute;
+  bottom: 8px;
+  left: 196px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+#ui-root .formation-controls .fc-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+}
+#ui-root .formation-controls .fc-key {
+  color: var(--ui-accent);
+  font-weight: bold;
+}
+#ui-root .formation-controls .fc-label { color: #9ca3af; }
+#ui-root .formation-controls .fc-val   { text-align: right; }
+
 #ui-root .group-badges {
   position: absolute;
   inset: 0;

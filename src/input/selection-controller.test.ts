@@ -470,3 +470,61 @@ describe('selection-controller — formation drag (RMB)', () => {
     expect(world.orderQueue.has(b)).toBe(false);
   });
 });
+
+describe('formation hotkeys', () => {
+  it('] bumps spacing index up; [ bumps it down', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(id);
+
+    ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.spacingIndex).toBe(2); // default 1 → 2
+
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.spacingIndex).toBe(1);
+  });
+
+  it(', and . cycle ranks', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(id);
+
+    ctrl._internals.onKeyDown({ key: '.', code: 'Period', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.ranks).toBe(1);
+
+    ctrl._internals.onKeyDown({ key: ',', code: 'Comma', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.ranks).toBe(null);
+  });
+
+  it('hotkeys are no-op when selection is empty', () => {
+    const { ctrl } = makeDeps();
+    ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.spacingIndex).toBe(1); // unchanged
+  });
+
+  it('issues a move order on hotkey press with non-empty selection', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(id);
+    expect(world.orderQueue.has(id)).toBe(false);
+    ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(world.orderQueue.has(id)).toBe(true);
+    expect(world.orderQueue.get(id)![0]!.kind).toBe('move');
+  });
+
+  it('selection change resets formation params', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id1 = spawn(world, 'line-infantry', 0, 0, 0);
+    const id2 = spawn(world, 'line-infantry', 0, 5, 0);
+    selection.ids.add(id1);
+    ctrl.update(0);                     // bind initial signature
+
+    ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.formationParams.spacingIndex).toBe(2);
+
+    selection.ids.clear();
+    selection.ids.add(id2);
+    ctrl.update(0);                     // detect change → reset
+    expect(ctrl.formationParams.spacingIndex).toBe(1);
+  });
+});

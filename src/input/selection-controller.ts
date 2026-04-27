@@ -3,10 +3,14 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove } from './commands';
-import { computeFormationSlots, assignFormationSlots, type FormationUnit } from './formation';
-import { getUnitKindByIndex } from '../data/units';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueReformInPlace } from './commands';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits } from './formation';
 import { isDead } from '../sim/entities';
+import {
+  createFormationParams, resetFormationParams,
+  bumpSpacing, bumpRanks, spacingMultiplier,
+  type FormationParams,
+} from './formation-params';
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
 import type { Vec2 } from '../util/math';
@@ -30,6 +34,7 @@ export interface SelectionControllerDeps {
 
 export interface SelectionController {
   readonly cursorMode: CursorMode;
+  readonly formationParams: FormationParams;
   /** Called once per frame. Currently a no-op; reserved for per-frame work. */
   update(dt: number): void;
   destroy(): void;
@@ -71,6 +76,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   }
 
   let cursorMode: CursorMode = 'normal';
+  const formationParams = createFormationParams();
+  let lastSelectionSig = 0;
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
@@ -99,22 +106,23 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     return target != null && overlayRoot.contains(target as Node);
   }
 
-  function liveFormationUnits(): FormationUnit[] {
-    const out: FormationUnit[] = [];
+  function averageFacing(): { x: number; y: number } {
     const e = world.entities;
+    let sx = 0, sy = 0, n = 0;
     for (const id of selection.ids) {
       if (e.alive[id] !== 1) continue;
-      if (isDead(e, id)) continue;
-      const kind = getUnitKindByIndex(e.kindId[id]!);
-      out.push({
-        id,
-        x: e.posX[id]!,
-        y: e.posY[id]!,
-        spacingX: kind.baseStats.formationSpacing.x,
-        spacingY: kind.baseStats.formationSpacing.y,
-      });
+      const a = (e.restFacing[id]! * Math.PI) / 4;
+      sx += Math.cos(a); sy += Math.sin(a); n++;
     }
-    return out;
+    if (n === 0) return { x: 1, y: 0 };
+    const len = Math.hypot(sx, sy);
+    if (len < 1e-6) return { x: 1, y: 0 };
+    return { x: sx / len, y: sy / len };
+  }
+
+  function reformNow(): void {
+    const fwd = averageFacing();
+    issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), formationParams.ranks);
   }
 
   function onMouseDown(e: { button: number; clientX: number; clientY: number; target: EventTarget | null }): void {
@@ -249,9 +257,13 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (formationDrag.active && pendingFormationStart) {
         const startW = formationDrag.startWorld;
         const endW = screenToWorld(camera, formationDrag.currentScreen);
-        const units = liveFormationUnits();
+        const units = materializeUnits(world, selection.ids);
         if (units.length > 0) {
-          const { slots, forward } = computeFormationSlots({ units, startW, endW });
+          const { slots, forward } = computeFormationSlots({
+            units, startW, endW,
+            spacingMult: spacingMultiplier(formationParams),
+            ranksOverride: formationParams.ranks,
+          });
           const targets = assignFormationSlots(units, slots, forward);
           const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
           issueFormationMove(world, assignments, opts);
@@ -324,6 +336,25 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
 
+    if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
+      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (selection.ids.size === 0) return;
+      bumpSpacing(formationParams, e.code === 'BracketLeft' ? -1 : +1);
+      reformNow();
+      return;
+    }
+    if (e.code === 'Comma' || e.code === 'Period') {
+      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
+      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (selection.ids.size === 0) return;
+      bumpRanks(formationParams, e.code === 'Comma' ? -1 : +1);
+      reformNow();
+      return;
+    }
+
     // Letter hotkeys — guard with code so they're layout-independent and not affected by Shift.
     if (e.code === 'KeyR') {
       if (selection.ids.size > 0 && cursorMode === 'normal') cursorMode = 'attack-move';
@@ -365,16 +396,21 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   function formationPreview(): FormationPreview | null {
     if (!formationDrag.active) return null;
     if (cursorMode !== 'normal') return null;
-    const units = liveFormationUnits();
+    const units = materializeUnits(world, selection.ids);
     if (units.length === 0) return null;
     const startW = formationDrag.startWorld;
     const endW = screenToWorld(camera, formationDrag.currentScreen);
-    const { slots, rect } = computeFormationSlots({ units, startW, endW });
+    const { slots, rect } = computeFormationSlots({
+      units, startW, endW,
+      spacingMult: spacingMultiplier(formationParams),
+      ranksOverride: formationParams.ranks,
+    });
     return { rect, slots };
   }
 
   return {
     get cursorMode() { return cursorMode; },
+    get formationParams() { return formationParams; },
     formationPreview,
     update(_dt) {
       const e = world.entities;
@@ -383,6 +419,17 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       }
       if (cursorMode === 'attack-move' && selection.ids.size === 0) cursorMode = 'normal';
       canvas.style.cursor = cursorMode === 'attack-move' ? 'crosshair' : 'default';
+      let sig = selection.ids.size;
+      let first = -1, last = -1;
+      for (const id of selection.ids) {
+        if (first === -1) first = id;
+        last = id;
+      }
+      sig = (sig * 2654435761) ^ first ^ (last << 1);
+      if (sig !== lastSelectionSig) {
+        resetFormationParams(formationParams);
+        lastSelectionSig = sig;
+      }
     },
     destroy() {
       if (typeof window !== 'undefined') {

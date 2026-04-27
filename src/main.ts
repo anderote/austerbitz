@@ -28,6 +28,7 @@ import { createScaleBar } from './ui/scale-bar';
 import { createWindIndicator } from './ui/wind-indicator';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
+import { createFormationControlsPanel } from './ui/formation-controls-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
@@ -267,6 +268,7 @@ const scaleBar = createScaleBar(overlay);
 const windIndicator = createWindIndicator(overlay);
 const minimap = createMinimap(overlay, map.size, camera);
 const cgPanel = createControlGroupsPanel(overlay);
+const fcPanel = createFormationControlsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
 const placementInfo = createPlacementInfo(overlay);
 const movePreview = createMovePreview(overlay);
@@ -316,6 +318,7 @@ function frame(t: number) {
   scaleBar.update(camera);
   minimap.update(world, camera);
   cgPanel.update(world, controlGroups);
+  fcPanel.update(selection, controller.formationParams);
   groupBadges.update(world, camera, selection, controlGroups);
   requestAnimationFrame(frame);
 }
