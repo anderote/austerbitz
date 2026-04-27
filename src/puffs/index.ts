@@ -1,0 +1,10 @@
+export { createPuffs, allocPuff, updatePuffs, type Puffs } from './puffs';
+export { registerProfile, getProfileByIndex, profileCount, type PuffProfile } from './profile';
+export { emitPuff, emitPuffBurst, emitPuffWithCoalesce } from './emit';
+export { buildCoalesceGrid, gridInsert, tryMergeOrSpawn } from './coalesce';
+export { DUST, DUST_INDEX } from './profiles/dust';
+export { MUSKET_SMOKE, MUSKET_SMOKE_INDEX } from './profiles/musket-smoke';
+export { CANNON_SMOKE, CANNON_SMOKE_INDEX } from './profiles/cannon-smoke';
+export { SHELL_BILLOW, SHELL_BILLOW_INDEX } from './profiles/shell-billow';
+export { CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX } from './profiles/cannonball-trail';
+export { CLOUD, CLOUD_INDEX } from './profiles/cloud';
