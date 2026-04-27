@@ -25,7 +25,7 @@ import { createParticles, updateParticles } from './particles/particles';
 import { emitDust } from './particles/emitters';
 import { createProjectiles } from './sim/projectiles';
 
-const CAPACITY = 4096;
+const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
 const PROJECTILE_CAPACITY = 2048;
 

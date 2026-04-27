@@ -1,0 +1,1 @@
+- [Transparent waypoint paths are intentional](feedback_waypoint_paths.md) — unselected-unit chains render low-alpha by design; don't simplify away
