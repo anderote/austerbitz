@@ -16,8 +16,8 @@ const DYING_DURATION = 0.5;
  * order — that ordering is the caller's responsibility.
  */
 export function tickRagdoll(e: Entities, dt: number): void {
-  for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 0) continue;
+  for (let n = 0; n < e.count; n++) {
+    const i = e.aliveIds[n]!;
     if (e.state[i] !== EntityState.Ragdoll) continue;
 
     e.velX[i] = e.velX[i]! * FRICTION_PER_TICK;

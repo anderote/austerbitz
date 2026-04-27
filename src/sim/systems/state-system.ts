@@ -75,8 +75,8 @@ export function tickStates(
   dt: number,
   tick: number,
 ): void {
-  for (let i = 0; i < e.capacity; i++) {
-    if (e.alive[i] === 0) continue;
+  for (let n = 0; n < e.count; n++) {
+    const i = e.aliveIds[n]!;
 
     // Visual recoil timer always counts down regardless of state. When it
     // hits zero the render-only peak vector is cleared so the entity

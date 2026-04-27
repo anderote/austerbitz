@@ -19,6 +19,11 @@ import { composeCombinedAtlas } from '../poses/combined-atlas';
 
 const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
 
+// Module-scoped sort state so the comparator closure isn't re-allocated each
+// frame. `sortPosY` is set just before each `sortIdx.sort(sortByY)` call.
+let sortPosY: Float32Array | null = null;
+const sortByY = (a: number, b: number) => sortPosY![a]! - sortPosY![b]!;
+
 export interface SpritePass {
   draw(world: World, cam: Camera): void;
 }
@@ -168,15 +173,13 @@ export function createSpritePass(
       const PATTERN_FEATURE_PIXELS = 4;
       const e = world.entities;
       sortIdx.length = 0;
-      for (let i = 0; i < e.capacity; i++) {
-        if (e.alive[i] === 1) sortIdx.push(i);
-      }
+      for (let n = 0; n < e.count; n++) sortIdx.push(e.aliveIds[n]!);
       const n = sortIdx.length;
       if (n === 0) return;
       // World Y grows downward, so larger Y = in front. Draw ascending by Y
       // so front sprites overwrite back ones (painter's algorithm).
-      const posY = e.posY;
-      sortIdx.sort((a, b) => posY[a]! - posY[b]!);
+      sortPosY = e.posY;
+      sortIdx.sort(sortByY);
 
       const useDots = cam.zoom < UNIT_DOT_ZOOM;
       const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
