@@ -8,13 +8,13 @@ const DUST_PER_SEC = 1.2;     // particles per moving unit per second
 // Coalescence: when many soldiers march in the same area, new dust emissions
 // merge into the nearest existing dust puff rather than spawning a new one.
 // The result is a single growing, longer-lived cloud per cluster of marchers.
-const DUST_MERGE_RADIUS = 1.6;
+const DUST_MERGE_RADIUS = 1.0;
 const DUST_MERGE_RADIUS_SQ = DUST_MERGE_RADIUS * DUST_MERGE_RADIUS;
 const DUST_CELL = DUST_MERGE_RADIUS;
-const DUST_MAX_SIZE = 0.85;
-const DUST_MAX_LIFE = 18.0;
-const DUST_SIZE_PER_MERGE = 0.08;
-const DUST_LIFE_PER_MERGE = 0.7;
+const DUST_MAX_SIZE = 0.5;
+const DUST_MAX_LIFE = 9.0;
+const DUST_SIZE_PER_MERGE = 0.035;
+const DUST_LIFE_PER_MERGE = 0.35;
 
 function dustCellKey(cx: number, cy: number): number {
   // Small risk of collisions across distant cells, but the radius check below
@@ -100,12 +100,12 @@ export function emitDust(world: World, particles: Particles, dt: number): void {
       // Drift backward (opposite to motion) and gently upward (negative Y).
       vx: -dirX * 0.16 + jitter() * 0.18,
       vy: -dirY * 0.16 - world.rng.range(0.18, 0.4),
-      life: 3.5 + world.rng.next() * 2.5,
+      life: 2.4 + world.rng.next() * 1.6,
       size: 0.3 + Math.min(speed * 0.04, 0.25),
       r: 0.30, g: 0.30, b: 0.34,
       drag: 0.985,
       accelY: -0.1,
-      sizeGrowth: 0.5,
+      sizeGrowth: 0.28,
       klass: ParticleClass.Dust,
     });
     // Add to the grid so later emissions in the same frame can coalesce too.
