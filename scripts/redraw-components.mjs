@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Hand-painted chibi pixel components for the British line infantry kit.
-// Each call writes one 16x36 RGBA PNG with transparent background.
+// Each call writes one 32x36 RGBA PNG with transparent background.
+// (coords below shifted +8 from original 16-wide layout to keep figure centered.)
 //
-// S-facing row layout (16w x 36h) -- chibi grenadier, port arms pose:
+// S-facing row layout (32w x 36h) -- chibi grenadier, port arms pose:
 //   7     plume tip white at x=8
 //   8     plume body red at x=8
 //   9-13  shako body (5 rows tall, 5 wide x=6..10) -- grenadier height
@@ -21,6 +22,12 @@
 // muzzle (12,13) -> bayonet up-right to (14,10). Brass band mid-barrel.
 // Right hand grips at (4,20) beside the lock; left hand grips mid-barrel
 // at (10,15).
+//
+// Bayonet rule (idle pose, all 8 facings): 5 px of blade in the offset
+// bayonet column (1 tip + 4 mid) plus 1 in-line steel pixel in the barrel
+// column at the bayonet base row (T-shape socket; no diagonal jog). For S
+// idle the blade occupies (4, rows 3-7) -- tip at row 3, mid at rows 4-7 --
+// with the in-line socket pixel at (3,7) and muzzle at (3,8).
 
 import { PNG } from 'pngjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -31,7 +38,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const COMPONENTS = resolve(ROOT, 'public/sprites/components');
 
-const W = 16;
+const W = 32;
 const H = 36;
 
 const PAL = {
@@ -99,45 +106,45 @@ function save(p, relPath) {
 
 function drawShadowSouth() {
   const p = makeSprite();
-  row(p, 30, 4, 11, PAL.shadow, 110);
-  row(p, 29, 5, 10, PAL.shadow, 70);
+  row(p, 30, 12, 19, PAL.shadow, 110);
+  row(p, 29, 13, 18, PAL.shadow, 70);
   save(p, 'shadow/south/default.png');
 }
 
 function drawBodySouth() {
   const p = makeSprite();
-  // 6-px face blob (3 wide x 2 tall), x=7..9, rows 15-16. No features.
-  set(p, 7, 15, PAL.skinShade);
-  set(p, 8, 15, PAL.skinShade);
-  set(p, 9, 15, PAL.skinDeep);
-  set(p, 7, 16, PAL.skinHi);
-  set(p, 8, 16, PAL.skinHi);
-  set(p, 9, 16, PAL.skinShade);
+  // 6-px face blob (3 wide x 2 tall), x=15..17, rows 15-16. No features.
+  set(p, 15, 15, PAL.skinShade);
+  set(p, 16, 15, PAL.skinShade);
+  set(p, 17, 15, PAL.skinDeep);
+  set(p, 15, 16, PAL.skinHi);
+  set(p, 16, 16, PAL.skinHi);
+  set(p, 17, 16, PAL.skinShade);
   save(p, 'anatomy/body/south/base.png');
 }
 
 function drawTrousersSouth() {
   const p = makeSprite();
-  // Leg columns x=6..9 (4 wide, centered under coat). Same range for trousers, gaiters, row 28.
+  // Leg columns x=14..17 (4 wide, centered under coat). Same range for trousers, gaiters, row 28.
   for (let y = 24; y <= 25; y++) {
-    set(p, 6, y, PAL.trouserHi);
-    set(p, 7, y, PAL.trouserMid);
-    set(p, 8, y, PAL.trouserMid);
-    set(p, 9, y, PAL.trouserShade);
+    set(p, 14, y, PAL.trouserHi);
+    set(p, 15, y, PAL.trouserMid);
+    set(p, 16, y, PAL.trouserMid);
+    set(p, 17, y, PAL.trouserShade);
   }
   for (let y = 26; y <= 27; y++) {
-    set(p, 6, y, PAL.gaiterBlack);
-    set(p, 7, y, PAL.gaiterBlack);
-    set(p, 8, y, PAL.gaiterBlack);
-    set(p, 9, y, PAL.gaiterBlack);
+    set(p, 14, y, PAL.gaiterBlack);
+    set(p, 15, y, PAL.gaiterBlack);
+    set(p, 16, y, PAL.gaiterBlack);
+    set(p, 17, y, PAL.gaiterBlack);
   }
   // Edge highlight on lit side, one row.
-  set(p, 6, 26, PAL.gaiterHi);
+  set(p, 14, 26, PAL.gaiterHi);
   // Brass buttons on inner two columns of leg block.
-  set(p, 7, 26, PAL.brass);
-  set(p, 8, 26, PAL.brass);
+  set(p, 15, 26, PAL.brass);
+  set(p, 16, 26, PAL.brass);
   // Row 28: square off the leg, same columns as gaiters.
-  row(p, 28, 6, 9, PAL.gaiterBlack);
+  row(p, 28, 14, 17, PAL.gaiterBlack);
   save(p, 'uniform/lower/trousers/south.png');
 }
 
@@ -145,75 +152,77 @@ function drawCoatSouth() {
   const p = makeSprite();
   // Torso fill rows 17-22 (6 rows).
   for (let y = 17; y <= 22; y++) {
-    row(p, y, 5, 10, PAL.coatMid);
-    set(p, 5, y, PAL.coatHi);
-    set(p, 10, y, PAL.coatShade);
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
   }
   // White X-crossbelts on rows 17-22.
-  const belt1 = [[5, 17], [6, 18], [7, 19], [8, 20], [9, 21], [10, 22]];
-  const belt2 = [[10, 17], [9, 18], [8, 19], [7, 20], [6, 21], [5, 22]];
+  const belt1 = [[13, 17], [14, 18], [15, 19], [16, 20], [17, 21], [18, 22]];
+  const belt2 = [[18, 17], [17, 18], [16, 19], [15, 20], [14, 21], [13, 22]];
   for (const [x, y] of belt1) set(p, x, y, PAL.beltWhite);
   for (const [x, y] of belt2) set(p, x, y, PAL.beltWhite);
   // Brass buckle/plate at chest center.
-  set(p, 8, 19, PAL.brass);
-  // Right sleeve (viewer's left, lit side) hangs straight down x=4 rows 17-19.
-  set(p, 4, 17, PAL.coatHi);
-  set(p, 4, 18, PAL.coatMid);
-  set(p, 4, 19, PAL.coatShade);
-  // Left sleeve (viewer's right, shaded side) hangs straight down x=11.
-  set(p, 11, 17, PAL.coatShade);
-  set(p, 11, 18, PAL.coatShade);
-  set(p, 11, 19, PAL.coatMid);
-  set(p, 11, 20, PAL.coatMid);
-  set(p, 11, 21, PAL.coatDeep);
+  set(p, 16, 19, PAL.brass);
+  // Right sleeve (viewer's left, lit side) hangs straight down x=12 rows 17-19.
+  set(p, 12, 17, PAL.coatHi);
+  set(p, 12, 18, PAL.coatMid);
+  set(p, 12, 19, PAL.coatShade);
+  // Left sleeve (viewer's right, shaded side) hangs straight down x=19.
+  set(p, 19, 17, PAL.coatShade);
+  set(p, 19, 18, PAL.coatShade);
+  set(p, 19, 19, PAL.coatMid);
+  set(p, 19, 20, PAL.coatMid);
+  set(p, 19, 21, PAL.coatDeep);
   // Coat hem row 23.
-  row(p, 23, 5, 10, PAL.coatShade);
-  set(p, 5, 23, PAL.coatDeep);
-  set(p, 10, 23, PAL.coatDeep);
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
   save(p, 'uniform/coat-line/south/base.png');
 }
 
 function drawShakoSouth() {
   const p = makeSprite();
-  set(p, 8, 7, PAL.plumeTip);
-  set(p, 8, 8, PAL.plumeRed);
+  set(p, 16, 7, PAL.plumeTip);
+  set(p, 16, 8, PAL.plumeRed);
   for (let y = 9; y <= 13; y++) {
-    row(p, y, 6, 10, PAL.shakoMid);
-    set(p, 6, y, PAL.shakoHi);
-    set(p, 10, y, PAL.shakoShade);
+    row(p, y, 14, 18, PAL.shakoMid);
+    set(p, 14, y, PAL.shakoHi);
+    set(p, 18, y, PAL.shakoShade);
   }
-  set(p, 8, 11, PAL.brass);
+  set(p, 16, 11, PAL.brass);
   // Brim overhangs only the LEFT side for S (one-side preferring rule).
-  row(p, 14, 5, 10, PAL.shakoShade);
-  set(p, 5, 14, PAL.shakoMid);
+  row(p, 14, 13, 18, PAL.shakoShade);
+  set(p, 13, 14, PAL.shakoMid);
   save(p, 'uniform/head/shako-standard/south.png');
 }
 
 function drawMusketSouth() {
   const p = makeSprite();
-  // Vertical musket along x=3 (soldier's right side, viewer's left).
-  // Socket bayonet: blade offset 1 column right (x=4) from barrel axis (x=3),
+  // Vertical musket along x=11 (soldier's right side, viewer's left).
+  // Socket bayonet: blade offset 1 column right (x=12) from barrel axis (x=11),
   // attached via the socket that wraps around the muzzle.
-  set(p, 4, 5, PAL.bayonetTip);     // bayonet tip (offset right of barrel)
-  set(p, 4, 6, PAL.bayonet);
-  set(p, 4, 7, PAL.bayonet);
+  set(p, 12, 3, PAL.bayonetTip);     // bayonet tip (offset right of barrel)
+  set(p, 12, 4, PAL.bayonet);
+  set(p, 12, 5, PAL.bayonet);
+  set(p, 12, 6, PAL.bayonet);
+  set(p, 12, 7, PAL.bayonet);
   // Socket transition: in-line steel pixel in the barrel column at bayonet base
   // so both columns have steel at row 7 (forms T-shape socket; no diagonal jog).
-  set(p, 3, 7, PAL.bayonet);
-  // Muzzle / socket: barrel column at x=3.
-  set(p, 3, 8, PAL.musketMuzzle);   // muzzle (top of barrel, darkest)
+  set(p, 11, 7, PAL.bayonet);
+  // Muzzle / socket: barrel column at x=11.
+  set(p, 11, 8, PAL.musketMuzzle);   // muzzle (top of barrel, darkest)
   // Barrel rows 9-19 (long brown column, Brown Bess).
-  for (let y = 9; y <= 19; y++) set(p, 3, y, PAL.musketBarrel);
+  for (let y = 9; y <= 19; y++) set(p, 11, y, PAL.musketBarrel);
   // Brass barrel band (mid-barrel accent at chest height).
-  set(p, 3, 14, PAL.brass);
+  set(p, 11, 14, PAL.brass);
   // Lock (brass) row 20 with hammer outboard.
-  set(p, 3, 20, PAL.brass);
-  set(p, 2, 20, PAL.hammer);
+  set(p, 11, 20, PAL.brass);
+  set(p, 10, 20, PAL.hammer);
   // Stock (small): 2 wood pixels.
-  set(p, 3, 21, PAL.musketStockHi);
-  set(p, 3, 22, PAL.musketStock);
+  set(p, 11, 21, PAL.musketStockHi);
+  set(p, 11, 22, PAL.musketStock);
   // Right hand grips the lock from the body side.
-  set(p, 4, 20, PAL.skinHi);
+  set(p, 12, 20, PAL.skinHi);
   save(p, 'weapon/musket/south/idle.png');
 }
 
@@ -240,142 +249,117 @@ function drawCoatSouthMakeReady() {
   const p = makeSprite();
   // Torso fill rows 17-22 (unchanged from idle).
   for (let y = 17; y <= 22; y++) {
-    row(p, y, 5, 10, PAL.coatMid);
-    set(p, 5, y, PAL.coatHi);
-    set(p, 10, y, PAL.coatShade);
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
   }
   // White X-crossbelts (unchanged).
-  const belt1 = [[5, 17], [6, 18], [7, 19], [8, 20], [9, 21], [10, 22]];
-  const belt2 = [[10, 17], [9, 18], [8, 19], [7, 20], [6, 21], [5, 22]];
+  const belt1 = [[13, 17], [14, 18], [15, 19], [16, 20], [17, 21], [18, 22]];
+  const belt2 = [[18, 17], [17, 18], [16, 19], [15, 20], [14, 21], [13, 22]];
   for (const [x, y] of belt1) set(p, x, y, PAL.beltWhite);
   for (const [x, y] of belt2) set(p, x, y, PAL.beltWhite);
-  set(p, 8, 19, PAL.brass);
+  set(p, 16, 19, PAL.brass);
   // Coat hem.
-  row(p, 23, 5, 10, PAL.coatShade);
-  set(p, 5, 23, PAL.coatDeep);
-  set(p, 10, 23, PAL.coatDeep);
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
   // Right sleeve (viewer's left, lit) lifted up across chest to forestock grip.
-  // From shoulder cap at (5,17) angling up-right to grip near (7,15).
-  set(p, 5, 17, PAL.coatHi);          // shoulder cap (lit)
-  set(p, 6, 16, PAL.coatMid);         // upper arm rising
-  set(p, 7, 15, PAL.coatHi);          // forearm/hand near forestock
+  // From shoulder cap at (13,17) angling up-right to grip near (15,15).
+  set(p, 13, 17, PAL.coatHi);          // shoulder cap (lit)
+  set(p, 14, 16, PAL.coatMid);         // upper arm rising
+  set(p, 15, 15, PAL.coatHi);          // forearm/hand near forestock
   // Left sleeve (viewer's right, shaded) rises to thumb hammer at lock height.
-  // From shoulder cap at (10,17) angling up-right to lock grip near (9,18).
+  // From shoulder cap at (18,17) angling up-right to lock grip near (17,18).
   // Stays close to torso; gives a "thumb-cocking" silhouette.
-  set(p, 10, 17, PAL.coatShade);      // shoulder cap (shaded)
-  set(p, 10, 18, PAL.coatShade);
-  set(p, 9, 18, PAL.coatMid);         // forearm crossing to lock area (under belt)
+  set(p, 18, 17, PAL.coatShade);      // shoulder cap (shaded)
+  set(p, 18, 18, PAL.coatShade);
+  set(p, 17, 18, PAL.coatMid);         // forearm crossing to lock area (under belt)
   save(p, 'uniform/coat-line/south/make-ready.png');
+}
+
+function paintFiringCoat(p) {
+  // Shared coat geometry for present + fire poses. Soldier facing the camera
+  // with musket pointed south (downward). Both arms reach inward to grip
+  // the vertical musket centered on the body axis.
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);
+    set(p, 18, y, PAL.coatShade);
+  }
+  const belt1 = [[13, 17], [14, 18], [15, 19], [16, 20], [17, 21], [18, 22]];
+  const belt2 = [[18, 17], [17, 18], [16, 19], [15, 20], [14, 21], [13, 22]];
+  for (const [x, y] of belt1) set(p, x, y, PAL.beltWhite);
+  for (const [x, y] of belt2) set(p, x, y, PAL.beltWhite);
+  set(p, 16, 19, PAL.brass);
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+  // Right arm reaching to butt at chest center.
+  set(p, 12, 17, PAL.coatHi);          // shoulder cap outboard
+  set(p, 14, 18, PAL.coatMid);         // forearm crossing inward toward butt
+  set(p, 15, 18, PAL.skinHi);          // right hand on butt
+  // Left arm dropping to forestock grip lower on the barrel.
+  set(p, 19, 17, PAL.coatShade);      // shoulder cap outboard
+  set(p, 18, 19, PAL.coatMid);        // forearm dropping
+  set(p, 18, 20, PAL.coatMid);        // forearm continuing
+  set(p, 17, 21, PAL.skinHi);          // left hand on forestock
 }
 
 function drawCoatSouthPresent() {
   const p = makeSprite();
-  // Torso fill rows 17-22.
-  for (let y = 17; y <= 22; y++) {
-    row(p, y, 5, 10, PAL.coatMid);
-    set(p, 5, y, PAL.coatHi);
-    set(p, 10, y, PAL.coatShade);
-  }
-  const belt1 = [[5, 17], [6, 18], [7, 19], [8, 20], [9, 21], [10, 22]];
-  const belt2 = [[10, 17], [9, 18], [8, 19], [7, 20], [6, 21], [5, 22]];
-  for (const [x, y] of belt1) set(p, x, y, PAL.beltWhite);
-  for (const [x, y] of belt2) set(p, x, y, PAL.beltWhite);
-  set(p, 8, 19, PAL.brass);
-  row(p, 23, 5, 10, PAL.coatShade);
-  set(p, 5, 23, PAL.coatDeep);
-  set(p, 10, 23, PAL.coatDeep);
-  // Diagonal aim: musket angled up-right. Butt against right shoulder
-  // (viewer's left), muzzle at viewer's upper-right.
-  // Right shoulder cap above the butt; trigger hand under the lock.
-  set(p, 4, 17, PAL.coatHi);          // right shoulder cap outboard
-  set(p, 5, 18, PAL.skinHi);          // trigger hand under lock
-  // Left arm raised, elbow flared outboard, forearm rising to forestock.
-  set(p, 11, 17, PAL.coatShade);      // left shoulder cap outboard
-  set(p, 11, 16, PAL.coatShade);      // upper bicep
-  set(p, 12, 15, PAL.coatShade);      // elbow flared
-  set(p, 12, 14, PAL.coatMid);        // elbow apex
-  set(p, 12, 13, PAL.coatHi);         // forearm
-  set(p, 12, 12, PAL.coatHi);         // wrist alongside barrel
+  paintFiringCoat(p);
   save(p, 'uniform/coat-line/south/present.png');
 }
 
 function drawCoatSouthFire() {
   const p = makeSprite();
-  // Same as present, every pixel y-shifted by -1 (recoil hop).
-  for (let y = 16; y <= 21; y++) {
-    row(p, y, 5, 10, PAL.coatMid);
-    set(p, 5, y, PAL.coatHi);
-    set(p, 10, y, PAL.coatShade);
-  }
-  const belt1 = [[5, 16], [6, 17], [7, 18], [8, 19], [9, 20], [10, 21]];
-  const belt2 = [[10, 16], [9, 17], [8, 18], [7, 19], [6, 20], [5, 21]];
-  for (const [x, y] of belt1) set(p, x, y, PAL.beltWhite);
-  for (const [x, y] of belt2) set(p, x, y, PAL.beltWhite);
-  set(p, 8, 18, PAL.brass);
-  row(p, 22, 5, 10, PAL.coatShade);
-  set(p, 5, 22, PAL.coatDeep);
-  set(p, 10, 22, PAL.coatDeep);
-  set(p, 4, 16, PAL.coatHi);
-  set(p, 5, 17, PAL.skinHi);
-  set(p, 11, 16, PAL.coatShade);
-  set(p, 11, 15, PAL.coatShade);
-  set(p, 12, 14, PAL.coatShade);
-  set(p, 12, 13, PAL.coatMid);
-  set(p, 12, 12, PAL.coatHi);
-  set(p, 12, 11, PAL.coatHi);
+  paintFiringCoat(p);
   save(p, 'uniform/coat-line/south/fire.png');
 }
 
 function drawMusketSouthMakeReady() {
   const p = makeSprite();
-  // Vertical musket along x=8 (body centerline), rows 5-18.
-  // Bayonet at x=8 rows 2-4 (offset above muzzle, no socket cheat: aimed up).
-  set(p, 8, 2, PAL.bayonetTip);
-  set(p, 8, 3, PAL.bayonet);
-  set(p, 8, 4, PAL.bayonet);
+  // Vertical musket along x=16 (body centerline), rows 5-18.
+  // Bayonet at x=16 rows 2-4 (offset above muzzle, no socket cheat: aimed up).
+  set(p, 16, 2, PAL.bayonetTip);
+  set(p, 16, 3, PAL.bayonet);
+  set(p, 16, 4, PAL.bayonet);
   // Muzzle (top of barrel, dark).
-  set(p, 8, 5, PAL.musketMuzzle);
+  set(p, 16, 5, PAL.musketMuzzle);
   // Barrel rows 6-18 brown.
-  for (let y = 6; y <= 18; y++) set(p, 8, y, PAL.musketBarrel);
+  for (let y = 6; y <= 18; y++) set(p, 16, y, PAL.musketBarrel);
   // Brass barrel band mid-shaft.
-  set(p, 8, 12, PAL.brass);
-  // Hammer cocked back at (7,17) just outboard of the lock.
-  set(p, 7, 17, PAL.hammer);
+  set(p, 16, 12, PAL.brass);
+  // Hammer cocked back at (15,17) just outboard of the lock.
+  set(p, 15, 17, PAL.hammer);
   // Stock pixels at the butt end below the lock.
-  set(p, 8, 19, PAL.musketStockHi);
-  set(p, 8, 20, PAL.musketStock);
+  set(p, 16, 19, PAL.musketStockHi);
+  set(p, 16, 20, PAL.musketStock);
   save(p, 'weapon/musket/south/make-ready.png');
+}
+
+function paintFiringMusket(p) {
+  // Vertical musket pointed south (down). Centered on body axis (x=16),
+  // butt at chest, muzzle/bayonet projecting past the figure feet.
+  set(p, 16, 17, PAL.musketStock);     // butt top
+  set(p, 16, 18, PAL.musketStock);     // butt
+  set(p, 16, 19, PAL.brass);           // lock at hip
+  for (let y = 20; y <= 26; y++) set(p, 16, y, PAL.musketBarrel);
+  set(p, 16, 23, PAL.brass);           // brass barrel band
+  set(p, 16, 27, PAL.musketMuzzle);    // muzzle
+  set(p, 16, 28, PAL.bayonet);
+  set(p, 16, 29, PAL.bayonetTip);      // bayonet tip past the feet
 }
 
 function drawMusketSouthPresent() {
   const p = makeSprite();
-  // Diagonal musket aimed up-right: butt at (4,18), muzzle at (13,9), 45°.
-  const barrel = [[4,18],[5,17],[6,16],[7,15],[8,14],[9,13],[10,12],[11,11],[12,10],[13,9]];
-  for (const [x, y] of barrel) set(p, x, y, PAL.musketBarrel);
-  set(p, 3, 18, PAL.musketStockHi);   // butt extension outboard of body
-  set(p, 4, 18, PAL.musketStock);     // butt
-  set(p, 5, 17, PAL.brass);           // lock plate
-  set(p, 5, 16, PAL.hammer);          // hammer cocked above lock
-  set(p, 9, 13, PAL.brass);           // brass barrel band mid-shaft
-  set(p, 13, 9, PAL.musketMuzzle);    // muzzle (darkest)
-  set(p, 14, 8, PAL.bayonet);         // bayonet blade
-  set(p, 15, 7, PAL.bayonetTip);      // bayonet tip
+  paintFiringMusket(p);
   save(p, 'weapon/musket/south/present.png');
 }
 
 function drawMusketSouthFire() {
   const p = makeSprite();
-  // Same diagonal layout, shifted -1y (recoil hop).
-  const barrel = [[4,17],[5,16],[6,15],[7,14],[8,13],[9,12],[10,11],[11,10],[12,9],[13,8]];
-  for (const [x, y] of barrel) set(p, x, y, PAL.musketBarrel);
-  set(p, 3, 17, PAL.musketStockHi);
-  set(p, 4, 17, PAL.musketStock);
-  set(p, 5, 16, PAL.brass);
-  set(p, 5, 15, PAL.hammer);
-  set(p, 9, 12, PAL.brass);
-  set(p, 13, 8, PAL.musketMuzzle);
-  set(p, 14, 7, PAL.bayonet);
-  set(p, 15, 6, PAL.bayonetTip);
+  paintFiringMusket(p);
   save(p, 'weapon/musket/south/fire.png');
 }
 

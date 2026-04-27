@@ -11,12 +11,13 @@
 //   - Single visible leg (legs aligned in profile).
 //   - Musket vertical, held in front of body on the camera-side.
 //
-// 16w x 36h, 22 px tall, feet on row 28. Row layout matches S exactly:
-//   7-8   plume tip (white) + plume body (red) at x=8 (E) / x=8 (W mirror)
-//   9-13  shako body (4 wide x=7..10 in E)
-//   14    brim (5 wide x=6..10 in E)
+// 32w x 36h, 22 px tall, feet on row 28. Row layout matches S exactly:
+// (coords below shifted +8 from original 16-wide layout to keep figure centered.)
+//   7-8   plume tip (white) + plume body (red) at x=16 (E) / x=16 (W mirror)
+//   9-13  shako body (4 wide x=15..18 in E)
+//   14    brim (5 wide x=14..18 in E)
 //   15-16 face (profile, 2 px wide, with nose hint)
-//   17-22 coat torso (4 wide x=7..10 in E) + sleeve + belt + backpack
+//   17-22 coat torso (4 wide x=15..18 in E) + sleeve + belt + backpack
 //   23    coat hem (4 wide)
 //   24-25 trousers
 //   26-27 gaiters
@@ -32,7 +33,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const COMPONENTS = resolve(ROOT, 'public/sprites/components');
 
-const W = 16;
+const W = 32;
 const H = 36;
 
 const PAL = {
@@ -108,14 +109,14 @@ function clearPixel(p, x, y) {
   p.data[i + 3] = 0;
 }
 
-// Mirror an E-facing sprite horizontally around the 16-px frame center.
-// For pixel x in E, the mirrored W pixel sits at (15 - x).
+// Mirror an E-facing sprite horizontally around the 32-px frame center.
+// For pixel x in E, the mirrored W pixel sits at (31 - x).
 function mirrorHorizontal(src) {
   const dst = makeSprite();
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const si = (y * W + x) * 4;
-      const dx = 15 - x;
+      const dx = 31 - x;
       const di = (y * W + dx) * 4;
       dst.data[di + 0] = src.data[si + 0];
       dst.data[di + 1] = src.data[si + 1];
@@ -131,126 +132,177 @@ function mirrorHorizontal(src) {
 function drawShadowEast() {
   const p = makeSprite();
   // Slightly narrower than S, since profile silhouette is narrower.
-  row(p, 30, 5, 10, PAL.shadow, 110);
-  row(p, 29, 6, 9, PAL.shadow, 70);
+  row(p, 30, 13, 18, PAL.shadow, 110);
+  row(p, 29, 14, 17, PAL.shadow, 70);
   return p;
 }
 
 function drawBodyEast() {
   const p = makeSprite();
   // Profile face: 2 px wide, with nose tip protruding to the right (camera-side).
-  // Row 15 (forehead/eye): x=8 skinShade, x=9 skinDeep (brow + nose-bridge shadow).
-  set(p, 8, 15, PAL.skinShade);
-  set(p, 9, 15, PAL.skinDeep);
-  // Nose tip at x=10 row 15 (1 px nub).
-  set(p, 10, 15, PAL.skinDeep);
-  // Row 16 (cheek/chin): x=8 skinHi, x=9 skinShade.
-  set(p, 8, 16, PAL.skinHi);
-  set(p, 9, 16, PAL.skinShade);
+  // Row 15 (forehead/eye): x=16 skinShade, x=17 skinDeep (brow + nose-bridge shadow).
+  set(p, 16, 15, PAL.skinShade);
+  set(p, 17, 15, PAL.skinDeep);
+  // Nose tip at x=18 row 15 (1 px nub).
+  set(p, 18, 15, PAL.skinDeep);
+  // Row 16 (cheek/chin): x=16 skinHi, x=17 skinShade.
+  set(p, 16, 16, PAL.skinHi);
+  set(p, 17, 16, PAL.skinShade);
   return p;
 }
 
 function drawTrousersEast() {
   const p = makeSprite();
-  // Leg columns x=8..9 (2 wide, profile leg on viewer's right).
+  // Leg columns x=16..17 (2 wide, profile leg on viewer's right).
   // Same range for trousers, gaiters, and row 28.
   for (let y = 24; y <= 25; y++) {
-    set(p, 8, y, PAL.trouserHi);
-    set(p, 9, y, PAL.trouserShade);
+    set(p, 16, y, PAL.trouserHi);
+    set(p, 17, y, PAL.trouserShade);
   }
   for (let y = 26; y <= 27; y++) {
-    set(p, 8, y, PAL.gaiterBlack);
-    set(p, 9, y, PAL.gaiterBlack);
+    set(p, 16, y, PAL.gaiterBlack);
+    set(p, 17, y, PAL.gaiterBlack);
   }
   // Edge highlight on lit side, one row.
-  set(p, 8, 26, PAL.gaiterHi);
+  set(p, 16, 26, PAL.gaiterHi);
   // Single brass button for 2-wide profile.
-  set(p, 9, 26, PAL.brass);
+  set(p, 17, 26, PAL.brass);
   // Row 28: square off the leg, same columns as gaiters.
-  row(p, 28, 8, 9, PAL.gaiterBlack);
+  row(p, 28, 16, 17, PAL.gaiterBlack);
   return p;
 }
 
 function drawCoatEast() {
   const p = makeSprite();
-  // Torso 4 wide, x=7..10, rows 17-22.
+  // Torso 4 wide, x=15..18, rows 17-22.
   for (let y = 17; y <= 22; y++) {
-    row(p, y, 7, 10, PAL.coatMid);
-    set(p, 7, y, PAL.coatShade); // back of torso (camera-rear) shaded
-    set(p, 10, y, PAL.coatHi);   // front (camera-side) lit
+    row(p, y, 15, 18, PAL.coatMid);
+    set(p, 15, y, PAL.coatShade); // back of torso (camera-rear) shaded
+    set(p, 18, y, PAL.coatHi);   // front (camera-side) lit
   }
   // Single white cartridge-box belt: over near (camera-side) shoulder
   // diagonally back to the far hip. From profile the belt is a narrow
   // diagonal sitting on the camera-side face of the torso.
   const belt = [
-    [10, 17],
-    [9, 18],
-    [9, 19],
-    [8, 20],
-    [8, 21],
+    [18, 17],
+    [17, 18],
+    [17, 19],
+    [16, 20],
+    [16, 21],
   ];
   for (const [x, y] of belt) set(p, x, y, PAL.beltWhite);
   // Backpack hump at BACK of soldier (camera-LEFT in E view), 2 wide, rows 18-21.
   for (let y = 18; y <= 21; y++) {
-    set(p, 5, y, PAL.packShade);
-    set(p, 6, y, PAL.packTan);
+    set(p, 13, y, PAL.packShade);
+    set(p, 14, y, PAL.packTan);
   }
-  // Backpack strap going over the visible shoulder (1 px white at x=7 row 17).
-  set(p, 7, 17, PAL.beltWhite);
-  // Near arm (camera-side, lit) hangs straight down at x=11 rows 17-21.
-  set(p, 11, 17, PAL.coatHi);
-  set(p, 11, 18, PAL.coatHi);
-  set(p, 11, 19, PAL.coatMid);
-  set(p, 11, 20, PAL.coatMid);
-  set(p, 11, 21, PAL.coatShade);
+  // Backpack strap going over the visible shoulder (1 px white at x=15 row 17).
+  set(p, 15, 17, PAL.beltWhite);
+  // Near arm (camera-side, lit) hangs straight down at x=19 rows 17-21.
+  set(p, 19, 17, PAL.coatHi);
+  set(p, 19, 18, PAL.coatHi);
+  set(p, 19, 19, PAL.coatMid);
+  set(p, 19, 20, PAL.coatMid);
+  set(p, 19, 21, PAL.coatShade);
   // Coat hem row 23 (4 wide, matching torso).
-  row(p, 23, 7, 10, PAL.coatShade);
-  set(p, 7, 23, PAL.coatDeep);
-  set(p, 10, 23, PAL.coatDeep);
+  row(p, 23, 15, 18, PAL.coatShade);
+  set(p, 15, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
   return p;
 }
 
 function drawShakoEast() {
   const p = makeSprite();
   // Plume at top-center of shako (shifted slightly toward viewer side).
-  set(p, 9, 7, PAL.plumeTip);
-  set(p, 9, 8, PAL.plumeRed);
-  // Shako body 4 wide, x=7..10, rows 9-13.
+  set(p, 17, 7, PAL.plumeTip);
+  set(p, 17, 8, PAL.plumeRed);
+  // Shako body 4 wide, x=15..18, rows 9-13.
   for (let y = 9; y <= 13; y++) {
-    row(p, y, 7, 10, PAL.shakoMid);
-    set(p, 7, y, PAL.shakoShade); // back of shako shaded
-    set(p, 10, y, PAL.shakoHi);   // front of shako lit
+    row(p, y, 15, 18, PAL.shakoMid);
+    set(p, 15, y, PAL.shakoShade); // back of shako shaded
+    set(p, 18, y, PAL.shakoHi);   // front of shako lit
   }
   // Brass plate on FRONT of shako (camera-side = right edge).
-  set(p, 10, 11, PAL.brass);
-  // Brim: east-leaning, overhangs only on the right (body x=7..10, brim x=7..11).
-  row(p, 14, 7, 11, PAL.shakoShade);
+  set(p, 18, 11, PAL.brass);
+  // Brim: east-leaning, overhangs only on the right (body x=15..18, brim x=15..19).
+  row(p, 14, 15, 19, PAL.shakoShade);
   return p;
 }
 
 function drawMusketEast() {
   const p = makeSprite();
-  // Vertical Brown Bess on viewer's right (camera-side of figure, x=12).
-  // Socket bayonet: blade offset 1 column right of barrel axis (x=13).
-  set(p, 13, 5, PAL.bayonetTip);
-  set(p, 13, 6, PAL.bayonet);
-  set(p, 13, 7, PAL.bayonet);
+  // Vertical Brown Bess on viewer's right (camera-side of figure, x=20).
+  // Socket bayonet: blade offset 1 column right of barrel axis (x=21).
+  set(p, 21, 3, PAL.bayonetTip);
+  set(p, 21, 4, PAL.bayonet);
+  set(p, 21, 5, PAL.bayonet);
+  set(p, 21, 6, PAL.bayonet);
+  set(p, 21, 7, PAL.bayonet);
   // T-shape socket: in-line steel pixel in barrel column at bayonet base row.
-  set(p, 12, 7, PAL.bayonet);
+  set(p, 20, 7, PAL.bayonet);
   // Muzzle / socket.
-  set(p, 12, 8, PAL.musketMuzzle);
+  set(p, 20, 8, PAL.musketMuzzle);
   // Barrel rows 9-19.
-  for (let y = 9; y <= 19; y++) set(p, 12, y, PAL.musketBarrel);
+  for (let y = 9; y <= 19; y++) set(p, 20, y, PAL.musketBarrel);
   // Brass barrel band mid-barrel.
-  set(p, 12, 14, PAL.brass);
+  set(p, 20, 14, PAL.brass);
   // Lock (brass) row 20 with hammer outboard (camera-side, to the right).
-  set(p, 12, 20, PAL.brass);
-  set(p, 13, 20, PAL.hammer);
+  set(p, 20, 20, PAL.brass);
+  set(p, 21, 20, PAL.hammer);
   // Stock.
-  set(p, 12, 21, PAL.musketStockHi);
-  set(p, 12, 22, PAL.musketStock);
+  set(p, 20, 21, PAL.musketStockHi);
+  set(p, 20, 22, PAL.musketStock);
   // Right hand grips lock from body-side (left of barrel).
-  set(p, 11, 20, PAL.skinHi);
+  set(p, 19, 20, PAL.skinHi);
+  return p;
+}
+
+// --- FIRING POSE (E) ---
+// Horizontal musket at chest height, pointed east (right). Butt extends just
+// past the body's back (viewer's left), bayonet projects past viewer's right.
+// Both arms reach forward to grip the gun (front arm at the forestock, rear
+// arm crossing torso to butt).
+
+function drawCoatEastFiring() {
+  const p = makeSprite();
+  // Same torso/hem/backpack as idle.
+  for (let y = 17; y <= 22; y++) {
+    row(p, y, 15, 18, PAL.coatMid);
+    set(p, 15, y, PAL.coatShade);
+    set(p, 18, y, PAL.coatHi);
+  }
+  const belt = [[18, 17], [17, 18], [17, 19], [16, 20], [16, 21]];
+  for (const [x, y] of belt) set(p, x, y, PAL.beltWhite);
+  for (let y = 18; y <= 21; y++) {
+    set(p, 13, y, PAL.packShade);
+    set(p, 14, y, PAL.packTan);
+  }
+  set(p, 15, 17, PAL.beltWhite);
+  row(p, 23, 15, 18, PAL.coatShade);
+  set(p, 15, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
+  // Front arm extended forward at chest level to grip the forestock.
+  set(p, 19, 17, PAL.coatHi);     // front shoulder cap
+  set(p, 20, 17, PAL.coatHi);     // bicep
+  set(p, 21, 17, PAL.coatMid);    // forearm
+  set(p, 22, 17, PAL.skinHi);     // hand on forestock (above barrel)
+  // Rear arm crossing the torso to grip the butt at the rear shoulder.
+  set(p, 15, 17, PAL.coatShade);   // rear shoulder cap (overrides strap)
+  set(p, 14, 17, PAL.coatShade);   // bicep reaching back to butt
+  return p;
+}
+
+function drawMusketEastFiring() {
+  const p = makeSprite();
+  // Horizontal Brown Bess along row 18, butt at viewer's left, bayonet at right.
+  set(p, 13, 18, PAL.musketStockHi);   // butt extension outboard
+  set(p, 14, 18, PAL.musketStock);     // butt
+  set(p, 15, 18, PAL.brass);           // lock plate
+  for (let x = 16; x <= 20; x++) set(p, x, 18, PAL.musketBarrel);
+  set(p, 18, 18, PAL.brass);          // brass barrel band
+  set(p, 21, 18, PAL.musketMuzzle);   // muzzle
+  set(p, 22, 18, PAL.bayonet);        // bayonet blade
+  set(p, 23, 18, PAL.bayonetTip);     // bayonet tip
   return p;
 }
 
@@ -270,6 +322,12 @@ function drawAll() {
   save(eShako, 'uniform/head/shako-standard/east.png');
   const eMusket = drawMusketEast();
   save(eMusket, 'weapon/musket/east/idle.png');
+  const eCoatFire = drawCoatEastFiring();
+  save(eCoatFire, 'uniform/coat-line/east/present.png');
+  save(eCoatFire, 'uniform/coat-line/east/fire.png');
+  const eMusketFire = drawMusketEastFiring();
+  save(eMusketFire, 'weapon/musket/east/present.png');
+  save(eMusketFire, 'weapon/musket/east/fire.png');
 
   console.log('Drawing W facing components (mirrored from E):');
   save(mirrorHorizontal(eShadow), 'shadow/west/default.png');
@@ -281,6 +339,10 @@ function drawAll() {
   save(mirrorHorizontal(eCoat), 'uniform/coat-line/west/base.png');
   save(mirrorHorizontal(eShako), 'uniform/head/shako-standard/west.png');
   save(mirrorHorizontal(eMusket), 'weapon/musket/west/idle.png');
+  save(mirrorHorizontal(eCoatFire), 'uniform/coat-line/west/present.png');
+  save(mirrorHorizontal(eCoatFire), 'uniform/coat-line/west/fire.png');
+  save(mirrorHorizontal(eMusketFire), 'weapon/musket/west/present.png');
+  save(mirrorHorizontal(eMusketFire), 'weapon/musket/west/fire.png');
 }
 
 drawAll();

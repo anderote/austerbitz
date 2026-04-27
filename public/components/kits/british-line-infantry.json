@@ -127,6 +127,20 @@
         "coat-line-south-present",
         "shako-standard-south",
         "musket-brown-bess-south-present"
+      ],
+      "E": [
+        "body-east-base",
+        "trousers-east",
+        "coat-line-east-present",
+        "shako-standard-east",
+        "musket-brown-bess-east-present"
+      ],
+      "W": [
+        "body-west-base",
+        "trousers-west",
+        "coat-line-west-present",
+        "shako-standard-west",
+        "musket-brown-bess-west-present"
       ]
     },
     "fire": {
@@ -136,6 +150,20 @@
         "coat-line-south-fire",
         "shako-standard-south",
         "musket-brown-bess-south-fire"
+      ],
+      "E": [
+        "body-east-base",
+        "trousers-east",
+        "coat-line-east-fire",
+        "shako-standard-east",
+        "musket-brown-bess-east-fire"
+      ],
+      "W": [
+        "body-west-base",
+        "trousers-west",
+        "coat-line-west-fire",
+        "shako-standard-west",
+        "musket-brown-bess-west-fire"
       ]
     }
   }

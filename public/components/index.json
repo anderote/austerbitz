@@ -747,6 +747,70 @@
       ],
       "path": "shadow/northwest/default.png",
       "notes": "Ground shadow strip."
+    },
+    {
+      "id": "coat-line-east-present",
+      "type": "uniform",
+      "category": "upper",
+      "facings": ["E"],
+      "path": "uniform/coat-line/east/present.png",
+      "notes": "Coat with arms forward gripping horizontal musket (firing pose)."
+    },
+    {
+      "id": "coat-line-east-fire",
+      "type": "uniform",
+      "category": "upper",
+      "facings": ["E"],
+      "path": "uniform/coat-line/east/fire.png",
+      "notes": "Coat with arms forward gripping horizontal musket (fire moment)."
+    },
+    {
+      "id": "musket-brown-bess-east-present",
+      "type": "weapon",
+      "category": "primary",
+      "facings": ["E"],
+      "path": "weapon/musket/east/present.png",
+      "notes": "Brown Bess horizontal pointed east at chest height."
+    },
+    {
+      "id": "musket-brown-bess-east-fire",
+      "type": "weapon",
+      "category": "primary",
+      "facings": ["E"],
+      "path": "weapon/musket/east/fire.png",
+      "notes": "Brown Bess at fire frame pointed east."
+    },
+    {
+      "id": "coat-line-west-present",
+      "type": "uniform",
+      "category": "upper",
+      "facings": ["W"],
+      "path": "uniform/coat-line/west/present.png",
+      "notes": "Coat with arms forward gripping horizontal musket (firing pose, mirrored from E)."
+    },
+    {
+      "id": "coat-line-west-fire",
+      "type": "uniform",
+      "category": "upper",
+      "facings": ["W"],
+      "path": "uniform/coat-line/west/fire.png",
+      "notes": "Coat with arms forward gripping horizontal musket (fire moment, mirrored from E)."
+    },
+    {
+      "id": "musket-brown-bess-west-present",
+      "type": "weapon",
+      "category": "primary",
+      "facings": ["W"],
+      "path": "weapon/musket/west/present.png",
+      "notes": "Brown Bess horizontal pointed west at chest height."
+    },
+    {
+      "id": "musket-brown-bess-west-fire",
+      "type": "weapon",
+      "category": "primary",
+      "facings": ["W"],
+      "path": "weapon/musket/west/fire.png",
+      "notes": "Brown Bess at fire frame pointed west."
     }
   ]
 }

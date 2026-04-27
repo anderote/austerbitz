@@ -222,7 +222,9 @@ function drawShakoSE() {
 function drawMusketSE() {
   const p = makeSprite();
   // Vertical musket along x=3 (same column as S), socket bayonet offset at x=4.
-  set(p, 4, 5, PAL.bayonetTip);
+  set(p, 4, 3, PAL.bayonetTip);
+  set(p, 4, 4, PAL.bayonet);
+  set(p, 4, 5, PAL.bayonet);
   set(p, 4, 6, PAL.bayonet);
   set(p, 4, 7, PAL.bayonet);
   // T-shape socket: in-line steel pixel in barrel column at bayonet base row.

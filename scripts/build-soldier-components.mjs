@@ -10,8 +10,9 @@ const ROOT = resolve(__dirname, '..');
 const REGISTRY_PATH = resolve(ROOT, 'public/components/index.json');
 const COMPONENT_ROOT = resolve(ROOT, 'public/sprites/components');
 const OFFSETS_PATH = resolve(ROOT, 'public/components/offsets.json');
+const PIXEL_EDITS_PATH = resolve(ROOT, 'public/components/pixel-edits.json');
 
-const CELL_W = 16;
+const CELL_W = 32;
 const CELL_H = 36;
 
 function parseArgs(argv) {
@@ -39,6 +40,62 @@ function loadOffsets(path) {
   } catch (_err) {
     return {};
   }
+}
+
+function loadPixelEdits(path) {
+  try {
+    const raw = readFileSync(path, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') return parsed;
+    return {};
+  } catch (_err) {
+    return {};
+  }
+}
+
+function parseHexColor(hex) {
+  if (typeof hex !== 'string') return null;
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return null;
+  const v = m[1];
+  return {
+    r: parseInt(v.slice(0, 2), 16),
+    g: parseInt(v.slice(2, 4), 16),
+    b: parseInt(v.slice(4, 6), 16),
+  };
+}
+
+function applyPixelEdits(target, col, row, edits) {
+  if (!Array.isArray(edits) || edits.length === 0) return 0;
+  const { x: baseX, y: baseY, sheetWidth } = getCellOffset(col, row, target.width);
+  let applied = 0;
+  for (const edit of edits) {
+    if (!edit || typeof edit !== 'object') continue;
+    const px = Number(edit.x);
+    const py = Number(edit.y);
+    if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+    const ix = Math.trunc(px);
+    const iy = Math.trunc(py);
+    if (ix < 0 || ix >= CELL_W) continue;
+    if (iy < 0 || iy >= CELL_H) continue;
+    const dstIdx = ((baseY + iy) * sheetWidth + (baseX + ix)) * 4;
+    if (edit.color === 'clear') {
+      target.data[dstIdx + 0] = 0;
+      target.data[dstIdx + 1] = 0;
+      target.data[dstIdx + 2] = 0;
+      target.data[dstIdx + 3] = 0;
+      applied++;
+      continue;
+    }
+    const rgb = parseHexColor(edit.color);
+    if (!rgb) continue;
+    target.data[dstIdx + 0] = rgb.r;
+    target.data[dstIdx + 1] = rgb.g;
+    target.data[dstIdx + 2] = rgb.b;
+    target.data[dstIdx + 3] = 255;
+    applied++;
+  }
+  return applied;
 }
 
 function getCellOffset(col, row, sheetWidth) {
@@ -117,7 +174,37 @@ async function main() {
   const componentsById = new Map(registry.components.map((entry) => [entry.id, entry]));
 
   const allOffsets = loadOffsets(OFFSETS_PATH);
-  const kitOffsets = (allOffsets && typeof allOffsets[kitId] === 'object' && allOffsets[kitId]) || {};
+  const kitOffsetsByPose = (allOffsets && typeof allOffsets[kitId] === 'object' && allOffsets[kitId]) || {};
+
+  const allPixelEdits = loadPixelEdits(PIXEL_EDITS_PATH);
+  const kitPixelEditsByPose = (allPixelEdits && typeof allPixelEdits[kitId] === 'object' && allPixelEdits[kitId]) || {};
+
+  function poseFacingMap(rootByPose, poseId, facing) {
+    const poseMap = (rootByPose && typeof rootByPose[poseId] === 'object' && rootByPose[poseId]) || null;
+    if (!poseMap) return {};
+    const facingMap = (poseMap[facing] && typeof poseMap[facing] === 'object') ? poseMap[facing] : {};
+    return facingMap;
+  }
+
+  function lookupOffset(poseId, facing, componentId) {
+    const own = poseFacingMap(kitOffsetsByPose, poseId, facing);
+    if (Array.isArray(own[componentId])) return own[componentId];
+    if (poseId !== 'idle') {
+      const fallback = poseFacingMap(kitOffsetsByPose, 'idle', facing);
+      if (Array.isArray(fallback[componentId])) return fallback[componentId];
+    }
+    return [0, 0];
+  }
+
+  function lookupPixelEdits(poseId, facing, componentId) {
+    const own = poseFacingMap(kitPixelEditsByPose, poseId, facing);
+    if (Array.isArray(own[componentId])) return own[componentId];
+    if (poseId !== 'idle') {
+      const fallback = poseFacingMap(kitPixelEditsByPose, 'idle', facing);
+      if (Array.isArray(fallback[componentId])) return fallback[componentId];
+    }
+    return null;
+  }
 
   const baseAtlasPath = resolve(ROOT, args.get('base') ?? kit.baseAtlas ?? 'public/sprites/british-line-infantry.png');
   const outputAtlasPath = resolve(
@@ -138,7 +225,7 @@ async function main() {
 
   const previewScale = clampScale(scale);
 
-  function compositeAndWrite(layerOverrides, atlasPath, previewPath, headerLabel) {
+  function compositeAndWrite(poseId, layerOverrides, atlasPath, previewPath, headerLabel) {
     const target = new PNG({ width: baseAtlas.width, height: baseAtlas.height });
     target.data.set(baseAtlas.data);
 
@@ -150,7 +237,6 @@ async function main() {
       }
       const [col, row] = config.cell;
       const layers = (layerOverrides && layerOverrides[facing]) || config.layers;
-      const facingOffsets = (kitOffsets[facing] && typeof kitOffsets[facing] === 'object') ? kitOffsets[facing] : {};
       console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
       clearCell(target, col, row);
       for (const id of layers) {
@@ -160,10 +246,14 @@ async function main() {
         }
         const componentPath = resolve(COMPONENT_ROOT, entry.path);
         const componentPng = PNG.sync.read(readFileSync(componentPath));
-        const offset = Array.isArray(facingOffsets[id]) ? facingOffsets[id] : [0, 0];
+        const offset = lookupOffset(poseId, facing, id);
         blitComponent(target, col, row, componentPng, offset);
-        const tag = (offset[0] || offset[1]) ? ` (offset ${offset[0]},${offset[1]})` : '';
-        console.log(`  + ${id}${tag}`);
+        const layerEdits = lookupPixelEdits(poseId, facing, id);
+        const editsApplied = layerEdits ? applyPixelEdits(target, col, row, layerEdits) : 0;
+        const tagParts = [`pose=${poseId}`];
+        if (offset[0] || offset[1]) tagParts.push(`offset ${offset[0]},${offset[1]}`);
+        if (editsApplied > 0) tagParts.push(`+${editsApplied} pixel edits`);
+        console.log(`  + ${id} (${tagParts.join(', ')})`);
       }
     }
 
@@ -180,14 +270,14 @@ async function main() {
   }
 
   // Base composite (idle pose).
-  compositeAndWrite(null, outputAtlasPath, outputPreviewPath, 'Compositing base (idle)');
+  compositeAndWrite('idle', null, outputAtlasPath, outputPreviewPath, 'Compositing base (idle)');
 
   // Per-pose composites (S-only overrides for now; other facings fall back to base layers).
   if (kit.poses && typeof kit.poses === 'object') {
     for (const [poseId, override] of Object.entries(kit.poses)) {
       const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}`);
       const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}`) : null;
-      compositeAndWrite(override, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId}`);
+      compositeAndWrite(poseId, override, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId}`);
     }
   }
 }

@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import { resolve } from 'node:path';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, readFile, readdir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 
 const PROJECT_ROOT = __dirname;
@@ -39,10 +39,59 @@ function offsetsApiPlugin(): Plugin {
         const url = req.url ?? '';
         const method = req.method ?? '';
 
+        if (method === 'GET' && url === '/api/kits') {
+          try {
+            const kitsDir = resolve(PROJECT_ROOT, 'public/components/kits');
+            const entries = await readdir(kitsDir);
+            const jsonFiles = entries.filter(
+              (name) => name.toLowerCase().endsWith('.json') && name !== 'index.json'
+            );
+            jsonFiles.sort();
+            const result: Array<{ id: string; label: string; poses: string[] }> = [];
+            for (const file of jsonFiles) {
+              const fullPath = resolve(kitsDir, file);
+              const raw = await readFile(fullPath, 'utf8');
+              let parsed: any;
+              try {
+                parsed = JSON.parse(raw);
+              } catch {
+                continue;
+              }
+              const id = file.replace(/\.json$/i, '');
+              const label = (parsed && typeof parsed.label === 'string' && parsed.label) || id;
+              const poses = ['idle'];
+              if (parsed && typeof parsed.poses === 'object' && parsed.poses) {
+                for (const poseId of Object.keys(parsed.poses)) {
+                  if (poseId !== 'idle') poses.push(poseId);
+                }
+              }
+              result.push({ id, label, poses });
+            }
+            sendJson(res, 200, result);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 500, { ok: false, error: message });
+          }
+          return;
+        }
+
         if (method === 'POST' && url === '/api/offsets') {
           try {
             const body = await readJsonBody(req);
             const target = resolve(PROJECT_ROOT, 'public/components/offsets.json');
+            await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
+            sendJson(res, 200, { ok: true });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 400, { ok: false, error: message });
+          }
+          return;
+        }
+
+        if (method === 'POST' && url === '/api/pixel-edits') {
+          try {
+            const body = await readJsonBody(req);
+            const target = resolve(PROJECT_ROOT, 'public/components/pixel-edits.json');
             await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
             sendJson(res, 200, { ok: true });
           } catch (err) {

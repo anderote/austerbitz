@@ -4,7 +4,8 @@
 // rotation, so viewer sees more of the soldier's right side, which is camera-LEFT of figure).
 // NW is the mirror around x=7.5.
 //
-// Row layout (16w x 36h) -- identical to S:
+// Row layout (32w x 36h) -- identical to S:
+// (coords below shifted +8 from original 16-wide layout to keep figure centered.)
 //   7     plume tip white at x=8
 //   8     plume body red at x=8
 //   9-13  shako body (5 wide x=6..10)
@@ -33,7 +34,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const COMPONENTS = resolve(ROOT, 'public/sprites/components');
 
-const W = 16;
+const W = 32;
 const H = 36;
 
 const PAL = {
@@ -101,125 +102,127 @@ function save(p, relPath) {
 
 function drawShadowNE() {
   const p = makeSprite();
-  row(p, 30, 4, 11, PAL.shadow, 110);
-  row(p, 29, 5, 10, PAL.shadow, 70);
+  row(p, 30, 12, 19, PAL.shadow, 110);
+  row(p, 29, 13, 18, PAL.shadow, 70);
   save(p, 'shadow/northeast/default.png');
 }
 
 function drawBodyNE() {
-  // Back-of-head: hair pixels (musketStock dark brown) across rows 15-16, x=7..9.
-  // One skin "cheek peek" pixel at (10, 16) showing the rotated jaw.
+  // Back-of-head: hair pixels (musketStock dark brown) across rows 15-16, x=15..17.
+  // One skin "cheek peek" pixel at (18, 16) showing the rotated jaw.
   const p = makeSprite();
-  row(p, 15, 7, 9, PAL.musketStock);
-  row(p, 16, 7, 9, PAL.musketStockShade); // slightly darker on lower row
+  row(p, 15, 15, 17, PAL.musketStock);
+  row(p, 16, 15, 17, PAL.musketStockShade); // slightly darker on lower row
   // Add a subtle highlight on the back of head (one pixel of musketStockHi)
-  set(p, 8, 15, PAL.musketStockHi);
+  set(p, 16, 15, PAL.musketStockHi);
   // Cheek peek -- visible jaw on viewer's right side (camera-RIGHT) due to rotation.
-  set(p, 10, 16, PAL.skinShade);
+  set(p, 18, 16, PAL.skinShade);
   save(p, 'anatomy/body/northeast/base.png');
 }
 
 function drawTrousersNE() {
   const p = makeSprite();
-  // Leg columns x=6..9 (4 wide, centered under coat).
+  // Leg columns x=14..17 (4 wide, centered under coat).
   // Same range for trousers, gaiters, and row 28.
   for (let y = 24; y <= 25; y++) {
-    set(p, 6, y, PAL.trouserHi);
-    set(p, 7, y, PAL.trouserMid);
-    set(p, 8, y, PAL.trouserMid);
-    set(p, 9, y, PAL.trouserShade);
+    set(p, 14, y, PAL.trouserHi);
+    set(p, 15, y, PAL.trouserMid);
+    set(p, 16, y, PAL.trouserMid);
+    set(p, 17, y, PAL.trouserShade);
   }
   for (let y = 26; y <= 27; y++) {
-    set(p, 6, y, PAL.gaiterBlack);
-    set(p, 7, y, PAL.gaiterBlack);
-    set(p, 8, y, PAL.gaiterBlack);
-    set(p, 9, y, PAL.gaiterBlack);
+    set(p, 14, y, PAL.gaiterBlack);
+    set(p, 15, y, PAL.gaiterBlack);
+    set(p, 16, y, PAL.gaiterBlack);
+    set(p, 17, y, PAL.gaiterBlack);
   }
   // Edge highlight on lit side, one row.
-  set(p, 6, 26, PAL.gaiterHi);
+  set(p, 14, 26, PAL.gaiterHi);
   // Brass buttons on inner two columns of the leg block.
-  set(p, 7, 26, PAL.brass);
-  set(p, 8, 26, PAL.brass);
+  set(p, 15, 26, PAL.brass);
+  set(p, 16, 26, PAL.brass);
   // Row 28: square off the leg, same columns as gaiters.
-  row(p, 28, 6, 9, PAL.gaiterBlack);
+  row(p, 28, 14, 17, PAL.gaiterBlack);
   save(p, 'uniform/lower/trousers/northeast.png');
 }
 
 function drawCoatNE() {
   // Back of coat: solid red, NO X-belts, NO chest brass.
-  // One sleeve visible on camera-near side (viewer's left, x=4).
-  // Backpack overlaid on top of torso, shifted 1 px right (x=7..10) to
+  // One sleeve visible on camera-near side (viewer's left, x=12).
+  // Backpack overlaid on top of torso, shifted 1 px right (x=15..18) to
   // emphasize the rightward rotation of NE.
   const p = makeSprite();
   // Torso fill rows 17-22.
   for (let y = 17; y <= 22; y++) {
-    row(p, y, 5, 10, PAL.coatMid);
-    set(p, 5, y, PAL.coatHi);   // viewer's left = lit
-    set(p, 10, y, PAL.coatShade); // viewer's right = shaded
+    row(p, y, 13, 18, PAL.coatMid);
+    set(p, 13, y, PAL.coatHi);   // viewer's left = lit
+    set(p, 18, y, PAL.coatShade); // viewer's right = shaded
   }
-  // Sleeve on the camera-near side (viewer's left, x=4).
-  set(p, 4, 17, PAL.coatHi);
-  set(p, 4, 18, PAL.coatMid);
-  set(p, 4, 19, PAL.coatShade);
-  set(p, 4, 20, PAL.coatShade);
-  // Far-side sleeve barely visible (camera-RIGHT, x=11) due to back-3/4 rotation.
-  set(p, 11, 17, PAL.coatShade);
-  set(p, 11, 18, PAL.coatDeep);
-  // Backpack: 4 wide x 4 tall, x=7..10, rows 17-20 (shifted 1 px right).
+  // Sleeve on the camera-near side (viewer's left, x=12).
+  set(p, 12, 17, PAL.coatHi);
+  set(p, 12, 18, PAL.coatMid);
+  set(p, 12, 19, PAL.coatShade);
+  set(p, 12, 20, PAL.coatShade);
+  // Far-side sleeve barely visible (camera-RIGHT, x=19) due to back-3/4 rotation.
+  set(p, 19, 17, PAL.coatShade);
+  set(p, 19, 18, PAL.coatDeep);
+  // Backpack: 4 wide x 4 tall, x=15..18, rows 17-20 (shifted 1 px right).
   // Fill with mid tan, then shade the camera-right edge.
   for (let y = 17; y <= 20; y++) {
-    set(p, 7, y, PAL.musketStockHi);    // lit edge
-    set(p, 8, y, PAL.musketStockHi);
-    set(p, 9, y, PAL.musketStock);      // mid
-    set(p, 10, y, PAL.musketStockShade); // shaded edge
+    set(p, 15, y, PAL.musketStockHi);    // lit edge
+    set(p, 16, y, PAL.musketStockHi);
+    set(p, 17, y, PAL.musketStock);      // mid
+    set(p, 18, y, PAL.musketStockShade); // shaded edge
   }
   // Shoulder strap pixels (white) at top corners of pack -- straps come over the shoulders.
-  set(p, 7, 17, PAL.beltWhite);
-  set(p, 10, 17, PAL.beltWhite);
+  set(p, 15, 17, PAL.beltWhite);
+  set(p, 18, 17, PAL.beltWhite);
   // Bottom strap tying pack to belt (thin grey/cream line).
-  set(p, 8, 21, PAL.beltShade);
-  set(p, 9, 21, PAL.beltShade);
+  set(p, 16, 21, PAL.beltShade);
+  set(p, 17, 21, PAL.beltShade);
   // Coat hem.
-  row(p, 23, 5, 10, PAL.coatShade);
-  set(p, 5, 23, PAL.coatDeep);
-  set(p, 10, 23, PAL.coatDeep);
+  row(p, 23, 13, 18, PAL.coatShade);
+  set(p, 13, 23, PAL.coatDeep);
+  set(p, 18, 23, PAL.coatDeep);
   save(p, 'uniform/coat-line/northeast/base.png');
 }
 
 function drawShakoNE() {
   // Same shape as S but NO BRASS PLATE (frontal badge omitted on back view).
   const p = makeSprite();
-  set(p, 8, 7, PAL.plumeTip);
-  set(p, 8, 8, PAL.plumeRed);
+  set(p, 16, 7, PAL.plumeTip);
+  set(p, 16, 8, PAL.plumeRed);
   for (let y = 9; y <= 13; y++) {
-    row(p, y, 6, 10, PAL.shakoMid);
-    set(p, 6, y, PAL.shakoHi);   // viewer's left = lit
-    set(p, 10, y, PAL.shakoShade); // viewer's right = shaded
+    row(p, y, 14, 18, PAL.shakoMid);
+    set(p, 14, y, PAL.shakoHi);   // viewer's left = lit
+    set(p, 18, y, PAL.shakoShade); // viewer's right = shaded
   }
   // No brass plate on back.
   // Brim: east-leaning, overhangs only on the right.
-  row(p, 14, 6, 11, PAL.shakoShade);
+  row(p, 14, 14, 19, PAL.shakoShade);
   save(p, 'uniform/head/shako-standard/northeast.png');
 }
 
 function drawMusketNE() {
-  // Vertical musket on camera-near side (viewer's left, x=3).
-  // Bayonet offset 1 column right (x=4) above muzzle.
+  // Vertical musket on camera-near side (viewer's left, x=11).
+  // Bayonet offset 1 column right (x=12) above muzzle.
   const p = makeSprite();
-  set(p, 4, 5, PAL.bayonetTip);
-  set(p, 4, 6, PAL.bayonet);
-  set(p, 4, 7, PAL.bayonet);
+  set(p, 12, 3, PAL.bayonetTip);
+  set(p, 12, 4, PAL.bayonet);
+  set(p, 12, 5, PAL.bayonet);
+  set(p, 12, 6, PAL.bayonet);
+  set(p, 12, 7, PAL.bayonet);
   // T-shape socket: in-line steel pixel in barrel column at bayonet base row.
-  set(p, 3, 7, PAL.bayonet);
-  set(p, 3, 8, PAL.musketMuzzle);
-  for (let y = 9; y <= 19; y++) set(p, 3, y, PAL.musketBarrel);
-  set(p, 3, 14, PAL.brass);
-  set(p, 3, 20, PAL.brass);
-  set(p, 2, 20, PAL.hammer);
-  set(p, 3, 21, PAL.musketStockHi);
-  set(p, 3, 22, PAL.musketStock);
+  set(p, 11, 7, PAL.bayonet);
+  set(p, 11, 8, PAL.musketMuzzle);
+  for (let y = 9; y <= 19; y++) set(p, 11, y, PAL.musketBarrel);
+  set(p, 11, 14, PAL.brass);
+  set(p, 11, 20, PAL.brass);
+  set(p, 10, 20, PAL.hammer);
+  set(p, 11, 21, PAL.musketStockHi);
+  set(p, 11, 22, PAL.musketStock);
   // Hand grips lock from the body side.
-  set(p, 4, 20, PAL.skinHi);
+  set(p, 12, 20, PAL.skinHi);
   save(p, 'weapon/musket/northeast/idle.png');
 }
 
@@ -328,7 +331,9 @@ function drawShakoNW() {
 function drawMusketNW() {
   // Mirror of NE musket: barrel at x=12 (mirror of x=3), bayonet offset to x=11.
   const p = makeSprite();
-  set(p, 11, 5, PAL.bayonetTip);
+  set(p, 11, 3, PAL.bayonetTip);
+  set(p, 11, 4, PAL.bayonet);
+  set(p, 11, 5, PAL.bayonet);
   set(p, 11, 6, PAL.bayonet);
   set(p, 11, 7, PAL.bayonet);
   // T-shape socket: in-line steel pixel in barrel column at bayonet base row.

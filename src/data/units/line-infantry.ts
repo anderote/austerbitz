@@ -19,7 +19,7 @@ export const lineInfantry: UnitKind = {
     weaponAccuracy: 0.4,
     armor: 0,
     massKg: 80,
-    formationSpacing: { x: 1.2, y: 1.6 },
+    formationSpacing: { x: 0.9, y: 1.6 },
     bodyRadius: 0.45,
   },
   bodyZ: { low: 0, high: 1.8 },
