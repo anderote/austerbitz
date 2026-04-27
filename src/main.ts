@@ -10,6 +10,7 @@ import { createDefaultMap } from './map/world-map';
 import { ordersSystem } from './sim/systems/orders-system';
 import { movementSystem } from './sim/systems/movement-system';
 import { collisionSystem } from './sim/systems/collision-system';
+import { facingSystem } from './sim/systems/facing-system';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
 import './ui/styles.css';
@@ -47,7 +48,7 @@ const controlGroups = createControlGroups();
 const world = createWorld({ seed: 1, capacity: CAPACITY, mapSize: map.size.w });
 const particles = createParticles(PARTICLE_CAPACITY);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
-world.systems = [ordersSystem, movementSystem, collisionSystem];
+world.systems = [ordersSystem, movementSystem, facingSystem, collisionSystem];
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
@@ -62,6 +63,8 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
   world.entities.kindId[id] = getUnitKindIndex(kindId);
   world.entities.team[id] = team;
   world.entities.facing[id] = facing;
+  world.entities.facingIntentX[id] = Math.cos((facing * Math.PI) / 4);
+  world.entities.facingIntentY[id] = Math.sin((facing * Math.PI) / 4);
   world.entities.hp[id] = kind.baseStats.hp;
   world.entities.bodyRadius[id] = kind.baseStats.bodyRadius;
   world.entities.massKg[id] = kind.baseStats.massKg;
@@ -154,7 +157,8 @@ function frame(t: number) {
   }
   clearBloodSplats(bs);
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
-  renderer.render(world, projectiles, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars });
+  const showMovePreview = input.state.keys.has('Space');
+  renderer.render(world, projectiles, particles, camera, selection, drag, controller.formationPreview(), { showHealthBars, showMovePreview });
   hud.update(smoothedFps, world, controller.cursorMode);
   selPanel.update(world, selection);
   buildMenu.update();

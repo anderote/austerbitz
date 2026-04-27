@@ -4,6 +4,7 @@ import type { Particles } from '../../particles/particles';
 import type { Rng } from '../../util/rng';
 import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
+import { writeFacingIntent } from './facing-system';
 
 /** Side-table mapping entity id → aim point. Populated by `triggerFire`. */
 export type FireOrders = Map<number, { tx: number; ty: number }>;
@@ -25,6 +26,7 @@ export function triggerFire(
   e.state[id] = EntityState.Aiming;
   e.stateT[id] = AIMING_WINDUP;
   fireOrders.set(id, { tx: targetX, ty: targetY });
+  writeFacingIntent(e, id, targetX - e.posX[id]!, targetY - e.posY[id]!);
 }
 
 /**

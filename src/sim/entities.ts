@@ -28,6 +28,8 @@ export interface Entities {
   velX: Float32Array;
   velY: Float32Array;
   facing: Uint8Array;       // 0..7
+  facingIntentX: Float32Array;
+  facingIntentY: Float32Array;
 
   // Combat
   hp: Uint16Array;
@@ -79,6 +81,8 @@ export function createEntities(capacity: number): Entities {
     velX: new Float32Array(capacity),
     velY: new Float32Array(capacity),
     facing: new Uint8Array(capacity),
+    facingIntentX: new Float32Array(capacity),
+    facingIntentY: new Float32Array(capacity),
     hp: new Uint16Array(capacity),
     morale: new Uint8Array(capacity),
     state: new Uint8Array(capacity),
@@ -116,6 +120,8 @@ export function allocEntity(e: Entities): number {
   e.posX[id] = 0; e.posY[id] = 0;
   e.velX[id] = 0; e.velY[id] = 0;
   e.facing[id] = 0;
+  e.facingIntentX[id] = 1;
+  e.facingIntentY[id] = 0;
   e.hp[id] = 0;
   e.morale[id] = 200;
   e.state[id] = EntityState.Idle;

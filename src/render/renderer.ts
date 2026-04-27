@@ -21,6 +21,7 @@ const ABOVE_SOLDIER_MASK =
 
 export interface RenderOptions {
   showHealthBars: boolean;
+  showMovePreview: boolean;
 }
 
 export interface Renderer {
@@ -76,6 +77,7 @@ export function createRenderer(
       // Particle FX draw on top of sprites so dust clouds aren't hidden behind soldiers.
       particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK);
       selectionPass.draw(world, cam, sel, drag, formation);
+      if (opts.showMovePreview) selectionPass.drawMovePreview(world, cam, sel);
       if (opts.showHealthBars) healthBarPass.draw(world, cam);
     },
   };

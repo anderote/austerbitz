@@ -35,6 +35,10 @@ describe('Entities SoA', () => {
     expect(e.posX.length).toBe(16);
     expect(e.team.length).toBe(16);
     expect(e.kindId.length).toBe(16);
+    expect(e.facingIntentX).toBeInstanceOf(Float32Array);
+    expect(e.facingIntentX.length).toBe(16);
+    expect(e.facingIntentY).toBeInstanceOf(Float32Array);
+    expect(e.facingIntentY.length).toBe(16);
     expect(e.bodyRadius).toBeInstanceOf(Float32Array);
     expect(e.bodyRadius.length).toBe(16);
     expect(e.massKg).toBeInstanceOf(Float32Array);
@@ -116,6 +120,9 @@ describe('Entities SoA', () => {
     expect(e.impulseY[id]).toBe(0);
     expect(e.ragdollT[id]).toBe(0);
     expect(e.state[id]).toBe(EntityState.Idle);
+    expect(e.facing[id]).toBe(0);
+    expect(e.facingIntentX[id]).toBe(1);
+    expect(e.facingIntentY[id]).toBe(0);
   });
 
   it('exposes state-machine transient buffers at the expected length and type', () => {

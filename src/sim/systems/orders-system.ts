@@ -1,5 +1,6 @@
 import type { System } from '../world';
 import { getUnitKindByIndex } from '../../data/units';
+import { writeFacingIntent } from './facing-system';
 
 const ARRIVE_RADIUS = 0.1; // m
 
@@ -32,6 +33,7 @@ export const ordersSystem: System = (world, _dt) => {
       const speed = getUnitKindByIndex(e.kindId[id]!).baseStats.moveSpeed;
       e.velX[id] = (dx / dist) * speed;
       e.velY[id] = (dy / dist) * speed;
+      writeFacingIntent(e, id, dx, dy);
     } else if (order.kind === 'attack') {
       // Stub until combat lands. If the target is dead or out of bounds, drop the order.
       if (e.alive[order.targetId] !== 1) {
@@ -41,6 +43,9 @@ export const ordersSystem: System = (world, _dt) => {
       }
       e.velX[id] = 0;
       e.velY[id] = 0;
+      const tx = world.entities.posX[order.targetId]!;
+      const ty = world.entities.posY[order.targetId]!;
+      writeFacingIntent(e, id, tx - e.posX[id]!, ty - e.posY[id]!);
     }
   }
 };

@@ -77,18 +77,22 @@ export function computeFormationSlots(input: FormationInput): FormationSlots {
   return { slots, rect: { tl, tr, br, bl }, forward: { x: fx, y: fy } };
 }
 
+// Threshold under which we run the O(N³) Hungarian matcher. At N=256 the
+// inner loops execute ~1.7e7 ops which still completes in well under a frame.
+// Above this we fall back to lateral-sort, whose O(N log N) cost stays cheap.
+const HUNGARIAN_MAX_N = 256;
+
 // Lateral-sort assignment: sort both units and slots by lateral position along
 // the formation's facing axis (drag direction), tiebreak by depth (front rank
 // first), and match by index. Guarantees no left/right crossings and biases
-// each unit toward marching forward into its column rather than across the line.
-export function assignFormationSlots(
+// each unit toward marching forward into its column rather than across the
+// line. Used as a fast fallback for large selections where Hungarian's O(N³)
+// cost would be prohibitive.
+function assignByLateralSort(
   units: FormationUnit[],
   slots: Vec2[],
   forward: Vec2,
 ): Vec2[] {
-  if (units.length !== slots.length) {
-    throw new Error(`assignFormationSlots: length mismatch (${units.length} vs ${slots.length})`);
-  }
   const N = units.length;
 
   // Lateral axis = drag direction (along front rank). Depth axis = 90° left of it.
@@ -114,4 +118,109 @@ export function assignFormationSlots(
     out[unitOrder[k]!] = slots[slotOrder[k]!]!;
   }
   return out;
+}
+
+// Hungarian algorithm (Jonker–Volgenant style O(N³) shortest-augmenting-path
+// with potentials). Given an NxN cost matrix flattened row-major, returns
+// `assignment[i] = j` meaning unit i is matched to slot j. Squared distances
+// are passed in by caller — algorithm itself is metric-agnostic.
+function hungarian(cost: Float64Array, N: number): Int32Array {
+  // 1-indexed internally (index 0 reserved as the sentinel "unmatched row").
+  const u = new Float64Array(N + 1);
+  const v = new Float64Array(N + 1);
+  const p = new Int32Array(N + 1);
+  const way = new Int32Array(N + 1);
+  const minv = new Float64Array(N + 1);
+  const used = new Uint8Array(N + 1);
+  const INF = Number.POSITIVE_INFINITY;
+
+  for (let i = 1; i <= N; i++) {
+    p[0] = i;
+    let j0 = 0;
+    minv.fill(INF);
+    used.fill(0);
+
+    do {
+      used[j0] = 1;
+      const i0 = p[j0]!;
+      let delta = INF;
+      let j1 = -1;
+      const rowBase = (i0 - 1) * N;
+      for (let j = 1; j <= N; j++) {
+        if (used[j]) continue;
+        const cur = cost[rowBase + (j - 1)]! - u[i0]! - v[j]!;
+        if (cur < minv[j]!) {
+          minv[j] = cur;
+          way[j] = j0;
+        }
+        if (minv[j]! < delta) {
+          delta = minv[j]!;
+          j1 = j;
+        }
+      }
+      for (let j = 0; j <= N; j++) {
+        if (used[j]) {
+          u[p[j]!] += delta;
+          v[j] -= delta;
+        } else {
+          minv[j] -= delta;
+        }
+      }
+      j0 = j1;
+    } while (p[j0]! !== 0);
+
+    while (j0 !== 0) {
+      const j1 = way[j0]!;
+      p[j0] = p[j1]!;
+      j0 = j1;
+    }
+  }
+
+  const result = new Int32Array(N);
+  for (let j = 1; j <= N; j++) {
+    if (p[j] !== 0) result[p[j]! - 1] = j - 1;
+  }
+  return result;
+}
+
+function assignByHungarian(units: FormationUnit[], slots: Vec2[]): Vec2[] {
+  const N = units.length;
+  if (N === 0) return [];
+  if (N === 1) return [slots[0]!];
+
+  const cost = new Float64Array(N * N);
+  for (let i = 0; i < N; i++) {
+    const ux = units[i]!.x;
+    const uy = units[i]!.y;
+    const base = i * N;
+    for (let j = 0; j < N; j++) {
+      const ddx = ux - slots[j]!.x;
+      const ddy = uy - slots[j]!.y;
+      cost[base + j] = ddx * ddx + ddy * ddy;
+    }
+  }
+
+  const assignment = hungarian(cost, N);
+  const out: Vec2[] = new Array(N);
+  for (let i = 0; i < N; i++) out[i] = slots[assignment[i]!]!;
+  return out;
+}
+
+// Assign each unit to a slot. For small selections (N ≤ HUNGARIAN_MAX_N) we
+// run Hungarian with squared-distance cost for a globally-minimum total
+// travel — important so already-positioned soldiers don't shuffle around
+// during row↔column reshapes. For larger selections we fall back to the
+// O(N log N) lateral-sort heuristic.
+export function assignFormationSlots(
+  units: FormationUnit[],
+  slots: Vec2[],
+  forward: Vec2,
+): Vec2[] {
+  if (units.length !== slots.length) {
+    throw new Error(`assignFormationSlots: length mismatch (${units.length} vs ${slots.length})`);
+  }
+  const N = units.length;
+  if (N === 0) return [];
+  if (N <= HUNGARIAN_MAX_N) return assignByHungarian(units, slots);
+  return assignByLateralSort(units, slots, forward);
 }

@@ -317,7 +317,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     }
 
     // Letter hotkeys — guard with code so they're layout-independent and not affected by Shift.
-    if (e.code === 'KeyA') {
+    if (e.code === 'KeyR') {
       if (selection.ids.size > 0 && cursorMode === 'normal') cursorMode = 'attack-move';
       return;
     }
