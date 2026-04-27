@@ -36,18 +36,26 @@ import { emitDustForFrame } from './puffs/emit-dust';
 import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clouds';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
+import { loadPoseAtlas } from './render/poses/atlas';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
 const PUFF_CAPACITY = 1024;
 const PROJECTILE_CAPACITY = 2048;
 
+async function start(): Promise<void> {
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const gl = getGL2(canvas);
 const map = createDefaultMap();
+let poseAtlas = null;
+try {
+  poseAtlas = await loadPoseAtlas(gl);
+} catch (err) {
+  console.warn('[main] pose atlas load failed; continuing without it:', err);
+}
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
-  map.size.w, map.size.h,
+  map.size.w, map.size.h, poseAtlas,
 );
 const camera = createCamera();
 const input = createInputManager(canvas);
@@ -69,7 +77,7 @@ const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
-  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt);
+  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount);
 const projectileSystem: System = (w, dt) =>
   tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
@@ -119,7 +127,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 60;      // metres between the two armies' front ranks (within musket range, 80m)
+const BATTLE_GAP = 50;      // metres between the two armies' front ranks (within musket range, 80m)
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 
@@ -203,16 +211,9 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// Three echelons of infantry, each spaced ~2.3 musket-ranges (80 m) apart. Cavalry sits
-// well behind the rear echelon as a reserve.
-const INFANTRY_ECHELON_DEPTH = 30;
-const CAVALRY_BACK = 420;
-
+// One long line: 5000 line-infantry per side, 5 ranks deep, split into ten 100-file regiments.
 const lineRegiments: RegimentPlan[] = [
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: 0 },
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH },
-  { kindId: 'line-infantry', files: 100, ranks: 3, count: 6, gap: 8, backOffset: INFANTRY_ECHELON_DEPTH * 2 },
-  { kindId: 'cuirassier',    files: 50,  ranks: 3, count: 6, gap: 30, backOffset: CAVALRY_BACK },
+  { kindId: 'line-infantry', files: 100, ranks: 5, count: 10, gap: 8, backOffset: 0 },
 ];
 
 const friendlyArmy: ArmyPlan = {
@@ -297,3 +298,6 @@ function frame(t: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+}
+
+void start();

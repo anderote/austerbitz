@@ -119,28 +119,28 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     if (isOnHud(e.target)) return;
     if (e.button === 0) {
       pendingClickStart = { x: e.clientX, y: e.clientY };
-      drag.start = { x: e.clientX, y: e.clientY };
-      drag.current = { x: e.clientX, y: e.clientY };
+      drag.startWorld = screenToWorld(camera, { x: e.clientX, y: e.clientY });
+      drag.currentScreen = { x: e.clientX, y: e.clientY };
       drag.active = false;
       return;
     }
     if (e.button === 2) {
       pendingFormationStart = { x: e.clientX, y: e.clientY };
-      formationDrag.start = { x: e.clientX, y: e.clientY };
-      formationDrag.current = { x: e.clientX, y: e.clientY };
+      formationDrag.startWorld = screenToWorld(camera, { x: e.clientX, y: e.clientY });
+      formationDrag.currentScreen = { x: e.clientX, y: e.clientY };
       formationDrag.active = false;
     }
   }
 
   function onMouseMove(e: { clientX: number; clientY: number }): void {
     if (pendingClickStart) {
-      drag.current = { x: e.clientX, y: e.clientY };
+      drag.currentScreen = { x: e.clientX, y: e.clientY };
       const dx = e.clientX - pendingClickStart.x;
       const dy = e.clientY - pendingClickStart.y;
       if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) drag.active = true;
     }
     if (pendingFormationStart) {
-      formationDrag.current = { x: e.clientX, y: e.clientY };
+      formationDrag.currentScreen = { x: e.clientX, y: e.clientY };
       const dx = e.clientX - pendingFormationStart.x;
       const dy = e.clientY - pendingFormationStart.y;
       if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) formationDrag.active = true;
@@ -163,8 +163,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (!pendingClickStart) return;
       const additive = e.shiftKey;
       if (drag.active) {
-        const a = screenToWorld(camera, drag.start);
-        const b = screenToWorld(camera, drag.current);
+        const a = drag.startWorld;
+        const b = screenToWorld(camera, drag.currentScreen);
         const own = hitTestRect(world, a.x, a.y, b.x, b.y, { team: PLAYER_TEAM });
         let picked = own;
         if (own.length === 0) {
@@ -245,8 +245,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       const opts = { queue: e.shiftKey };
 
       if (formationDrag.active && pendingFormationStart) {
-        const startW = screenToWorld(camera, formationDrag.start);
-        const endW = screenToWorld(camera, formationDrag.current);
+        const startW = formationDrag.startWorld;
+        const endW = screenToWorld(camera, formationDrag.currentScreen);
         const units = liveFormationUnits();
         if (units.length > 0) {
           const { slots, forward } = computeFormationSlots({ units, startW, endW });
@@ -365,8 +365,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     if (cursorMode !== 'normal') return null;
     const units = liveFormationUnits();
     if (units.length === 0) return null;
-    const startW = screenToWorld(camera, formationDrag.start);
-    const endW = screenToWorld(camera, formationDrag.current);
+    const startW = formationDrag.startWorld;
+    const endW = screenToWorld(camera, formationDrag.currentScreen);
     const { slots, rect } = computeFormationSlots({ units, startW, endW });
     return { rect, slots };
   }

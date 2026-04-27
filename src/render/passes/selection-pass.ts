@@ -462,8 +462,8 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       // Preview: yellow on own-team units inside the active drag rect, skipping
       // any already drawn as selected.
       if (drag.active) {
-        const a = screenToWorld(cam, drag.start);
-        const b = screenToWorld(cam, drag.current);
+        const a = drag.startWorld;
+        const b = screenToWorld(cam, drag.currentScreen);
         const candidates = hitTestRect(world, a.x, a.y, b.x, b.y, { team: PLAYER_TEAM });
         for (const id of candidates) {
           if (sel.ids.has(id)) continue;
@@ -713,8 +713,8 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
       // Drag-rect overlay: 1px marching-ants in world space.
       if (drag.active) {
-        const a = screenToWorld(cam, drag.start);
-        const b = screenToWorld(cam, drag.current);
+        const a = drag.startWorld;
+        const b = screenToWorld(cam, drag.currentScreen);
         const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
         const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
         const verts = new Float32Array([

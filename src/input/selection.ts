@@ -7,8 +7,11 @@ export interface Selection {
 }
 
 export interface DragRect {
-  start: Vec2;       // screen
-  current: Vec2;     // screen
+  // World-anchored start point: captured once at mousedown so panning leaves it on the ground.
+  startWorld: Vec2;
+  // Live mouse position in screen space; converted to world at consumption time so panning
+  // re-maps the cursor to whatever world cell it's currently over.
+  currentScreen: Vec2;
   active: boolean;
 }
 
@@ -33,22 +36,24 @@ export function createSelection(): Selection {
 
 export function createDragRect(): DragRect {
   return {
-    start: { x: 0, y: 0 },
-    current: { x: 0, y: 0 },
+    startWorld: { x: 0, y: 0 },
+    currentScreen: { x: 0, y: 0 },
     active: false,
   };
 }
 
 export interface FormationDrag {
-  start: Vec2;     // screen-space
-  current: Vec2;   // screen-space
+  // World-anchored start point: stays put on the ground as the camera pans.
+  startWorld: Vec2;
+  // Live mouse position in screen space; converted to world at consumption time.
+  currentScreen: Vec2;
   active: boolean;
 }
 
 export function createFormationDrag(): FormationDrag {
   return {
-    start: { x: 0, y: 0 },
-    current: { x: 0, y: 0 },
+    startWorld: { x: 0, y: 0 },
+    currentScreen: { x: 0, y: 0 },
     active: false,
   };
 }

@@ -40,7 +40,7 @@ describe('tickStates', () => {
     triggerFire(e, fireOrders, id, 50, 0);
 
     // One big tick that overshoots the 0.15s windup.
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.2);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.2, 0);
 
     expect(e.state[id]).toBe(EntityState.Reloading);
     expect(projectiles.count).toBe(1);
@@ -56,7 +56,7 @@ describe('tickStates', () => {
     e.state[id] = EntityState.Reloading;
     e.reloadT[id] = 0.05;
 
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.1);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.1, 0);
 
     expect(e.state[id]).toBe(EntityState.Idle);
     expect(e.reloadT[id]).toBe(0);
@@ -67,7 +67,7 @@ describe('tickStates', () => {
     e.state[id] = EntityState.Flinch;
     e.stateT[id] = 0.1;
 
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.2);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.2, 0);
 
     expect(e.state[id]).toBe(EntityState.Idle);
   });
@@ -77,7 +77,7 @@ describe('tickStates', () => {
     e.state[id] = EntityState.Dying;
     e.stateT[id] = 0.1;
 
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.2);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.2, 0);
 
     expect(e.state[id]).toBe(EntityState.Dead);
     // Cleanup is a separate pass — alive must still be 1 here.
@@ -89,10 +89,10 @@ describe('tickStates', () => {
     e.recoilT[id] = 0.12;
     e.state[id] = EntityState.Idle;
 
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.05);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.05, 0);
     expect(e.recoilT[id]).toBeCloseTo(0.07, 6);
 
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 1.0);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 1.0, 0);
     expect(e.recoilT[id]).toBe(0);
   });
 
@@ -102,7 +102,7 @@ describe('tickStates', () => {
     e.stateT[id] = 0.05;
     // Deliberately no fireOrders entry.
 
-    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.1);
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 0.1, 0);
 
     expect(e.state[id]).toBe(EntityState.Reloading);
     expect(projectiles.count).toBe(0);

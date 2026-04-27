@@ -67,8 +67,9 @@ export interface Entities {
   massKg: Float32Array;
 
   // Animation
-  frame: Uint8Array;
-  frameTime: Float32Array;
+  pose: Uint8Array;         // Pose enum (0..9)
+  poseT: Float32Array;      // seconds since pose entry
+  clipIndex: Uint8Array;    // selected variant (0..255)
 
   // Free-list
   freeListHead: number;
@@ -114,8 +115,9 @@ export function createEntities(capacity: number): Entities {
     formationId: new Int32Array(capacity).fill(-1),
     bodyRadius: new Float32Array(capacity),
     massKg: new Float32Array(capacity),
-    frame: new Uint8Array(capacity),
-    frameTime: new Float32Array(capacity),
+    pose: new Uint8Array(capacity),
+    poseT: new Float32Array(capacity),
+    clipIndex: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -156,8 +158,9 @@ export function allocEntity(e: Entities): number {
   e.formationId[id] = -1;
   e.bodyRadius[id] = 0;
   e.massKg[id] = 0;
-  e.frame[id] = 0;
-  e.frameTime[id] = 0;
+  e.pose[id] = 0;
+  e.poseT[id] = 0;
+  e.clipIndex[id] = 0;
   return id;
 }
 
