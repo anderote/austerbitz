@@ -4,8 +4,9 @@ export const cuirassier: UnitKind = {
   id: 'cuirassier',
   category: 'cavalry',
   name: 'Cuirassier',
-  placeholderColor: [60, 90, 200],
+  placeholderColor: [255, 255, 255],
   placeholderSize: { w: 1.4, h: 2.4 },
+  spriteCell: { col: 1, row: 1 },
   baseStats: {
     hp: 140,
     moveSpeed: 7.5,

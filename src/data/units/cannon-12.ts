@@ -5,8 +5,9 @@ export const cannon12: UnitKind = {
   id: 'cannon-12',
   category: 'artillery',
   name: '12-Pounder Cannon',
-  placeholderColor: [110, 110, 110],
+  placeholderColor: [255, 255, 255],
   placeholderSize: { w: 2.2, h: 2.8 },
+  spriteCell: { col: 1, row: 1 },
   baseStats: {
     hp: 200,
     moveSpeed: 1.2,

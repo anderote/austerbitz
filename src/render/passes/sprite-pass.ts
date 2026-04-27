@@ -8,14 +8,14 @@ import type { World } from '../../sim/world';
 import { getUnitKindByIndex } from '../../data/units';
 import { RECOIL_T, RECOIL_PUSH_END, RECOIL_HOLD_END } from '../../sim/fire-resolver';
 import {
-  generateBritishSoldierSheet,
-  SOLDIER_SHEET_W,
-  SOLDIER_SHEET_H,
-  SOLDIER_CELL_W,
-  SOLDIER_CELL_H,
-  SOLDIER_TINT_CELL,
-  POSE_CELLS,
-} from '../british-soldier-sprite';
+  KIND_ATLAS,
+  COMBINED_SHEET_W,
+  COMBINED_SHEET_H,
+  generateCombinedAtlas,
+  type KindAtlasMeta,
+} from '../sprite-atlas';
+
+const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
 
 export interface SpritePass {
   draw(world: World, cam: Camera): void;
@@ -93,28 +93,33 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
 
   gl.bindVertexArray(null);
 
-  // Atlas: don't tile-wrap (each cell occupies a sub-rect, sampling outside
-  // the cell would bleed into neighbours).
+  // Combined atlas: don't tile-wrap (each cell occupies a sub-rect, sampling
+  // outside the cell would bleed into neighbours).
   const atlas = createTextureRGBA(
     gl,
-    SOLDIER_SHEET_W,
-    SOLDIER_SHEET_H,
-    generateBritishSoldierSheet(),
+    COMBINED_SHEET_W,
+    COMBINED_SHEET_H,
+    generateCombinedAtlas(),
     { wrap: gl.CLAMP_TO_EDGE },
   );
 
-  // Per-cell UV rect cache (col*rows + row).
-  const cellUv = (col: number, row: number): [number, number, number, number] => {
-    // Inset a half-texel so NEAREST sampling stays clear of cell borders.
-    const halfTexelU = 0.5 / SOLDIER_SHEET_W;
-    const halfTexelV = 0.5 / SOLDIER_SHEET_H;
-    const u0 = (col * SOLDIER_CELL_W) / SOLDIER_SHEET_W + halfTexelU;
-    const v0 = (row * SOLDIER_CELL_H) / SOLDIER_SHEET_H + halfTexelV;
-    const us = SOLDIER_CELL_W / SOLDIER_SHEET_W - 2 * halfTexelU;
-    const vs = SOLDIER_CELL_H / SOLDIER_SHEET_H - 2 * halfTexelV;
+  // Cell UV rect for a given kind. `col`/`row` are local to that kind's
+  // 3x3 region; we add the region's pixel offset before normalizing.
+  const cellUv = (
+    meta: KindAtlasMeta,
+    col: number,
+    row: number,
+  ): [number, number, number, number] => {
+    const halfTexelU = 0.5 / COMBINED_SHEET_W;
+    const halfTexelV = 0.5 / COMBINED_SHEET_H;
+    const px = meta.region.x + col * meta.cellW;
+    const py = meta.region.y + row * meta.cellH;
+    const u0 = px / COMBINED_SHEET_W + halfTexelU;
+    const v0 = py / COMBINED_SHEET_H + halfTexelV;
+    const us = meta.cellW / COMBINED_SHEET_W - 2 * halfTexelU;
+    const vs = meta.cellH / COMBINED_SHEET_H - 2 * halfTexelV;
     return [u0, v0, us, vs];
   };
-  const tintUv = cellUv(SOLDIER_TINT_CELL.col, SOLDIER_TINT_CELL.row);
 
   const scratchPos = new Float32Array(capacity * 2);
   const scratchSize = new Float32Array(capacity * 2);
@@ -174,12 +179,12 @@ export function createSpritePass(gl: WebGL2RenderingContext, capacity: number): 
         scratchSecondary[k * 3 + 0] = team.secondary[0] / 255;
         scratchSecondary[k * 3 + 1] = team.secondary[1] / 255;
         scratchSecondary[k * 3 + 2] = team.secondary[2] / 255;
+        const meta = KIND_ATLAS[kind.id] ?? SOLDIER_FALLBACK;
         const facing = e.facing[i]!;
-        const overrideCell = facing >= 1 && facing <= POSE_CELLS.length
-          ? POSE_CELLS[facing - 1]!
-          : undefined;
-        const cell = overrideCell ?? kind.spriteCell;
-        const uv = cell ? cellUv(cell.col, cell.row) : tintUv;
+        const cell = facing >= 1 && facing <= meta.poseCells.length
+          ? meta.poseCells[facing - 1]!
+          : (kind.spriteCell ?? meta.tintCell);
+        const uv = cellUv(meta, cell.col, cell.row);
         scratchUv[k * 4 + 0] = uv[0];
         scratchUv[k * 4 + 1] = uv[1];
         scratchUv[k * 4 + 2] = uv[2];
