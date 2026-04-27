@@ -4,19 +4,20 @@ import { createCameraControls } from './camera-controls';
 import type { InputManager } from './input-manager';
 
 function fakeInput(): InputManager {
+  const state = {
+    mouse: { x: 0, y: 0, buttons: 0 },
+    wheelDelta: 0,
+    keys: new Set<string>(),
+    consumedWheel: 0,
+  };
   return {
-    state: {
-      mouse: { x: 0, y: 0, buttons: 0 },
-      wheelDelta: 0,
-      keys: new Set(),
-      consumedWheel: 0,
-    },
+    state,
     beginFrame() {
-      this.state.consumedWheel = this.state.wheelDelta;
-      this.state.wheelDelta = 0;
+      state.consumedWheel = state.wheelDelta;
+      state.wheelDelta = 0;
     },
     destroy() {},
-  } as unknown as InputManager;
+  };
 }
 
 describe('camera-controls zoom anchoring', () => {

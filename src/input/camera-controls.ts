@@ -20,7 +20,7 @@ export interface CameraControlsConfig {
 
 const DEFAULTS: CameraControlsConfig = {
   zoomMin: 0.5,
-  zoomMax: 32,
+  zoomMax: 64,
   panKeySpeed: 600,
   sprintMultiplier: 2.5,
 };
