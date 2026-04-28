@@ -52,25 +52,25 @@ const SOURCES = [
   {
     kind: 'line-infantry',
     pose: 'idle',
-    file: 'british-line-infantry-components.png',
+    file: 'line-infantry-components.png',
     cells: COMPASS_CELLS,
   },
   {
     kind: 'line-infantry',
     pose: 'reloading',
-    file: 'british-line-infantry-components-make-ready.png',
+    file: 'line-infantry-components-make-ready.png',
     cells: [S_CELL],
   },
   {
     kind: 'line-infantry',
     pose: 'aiming',
-    file: 'british-line-infantry-components-present.png',
+    file: 'line-infantry-components-present.png',
     cells: [S_CELL],
   },
   {
     kind: 'line-infantry',
     pose: 'firing',
-    file: 'british-line-infantry-components-fire.png',
+    file: 'line-infantry-components-fire.png',
     cells: [S_CELL],
   },
 ];
