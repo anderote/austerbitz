@@ -51,6 +51,10 @@ export const ordersSystem: System = (world, dt) => {
       }
 
       // 'march' phase — same arrival/march logic as 'move' but at march speed.
+      // Facing always tracks group.forward (the formation's intended march
+      // direction) rather than each unit's individual walk-to-slot vector,
+      // so a wheeling formation maintains a consistent rank/file orientation
+      // and lands facing the way it marched in.
       const dx = order.targetX - e.posX[id]!;
       const dy = order.targetY - e.posY[id]!;
       const dist = Math.hypot(dx, dy);
@@ -60,7 +64,8 @@ export const ordersSystem: System = (world, dt) => {
         e.pushedT[id] = 0;
         e.restPosX[id] = order.targetX;
         e.restPosY[id] = order.targetY;
-        e.restFacing[id] = e.facing[id]!;
+        e.restFacing[id] = quantizeDirectionToFacing(group.forward.x, group.forward.y);
+        writeFacingIntent(e, id, group.forward.x, group.forward.y);
         if (queue.length > 1) {
           queue.shift();
         } else {
@@ -79,14 +84,14 @@ export const ordersSystem: System = (world, dt) => {
         const settle = baseSpeed * settleFactor(dist);
         e.velX[id] = (dx / dist) * settle;
         e.velY[id] = (dy / dist) * settle;
-        writeFacingIntent(e, id, dx, dy);
+        writeFacingIntent(e, id, group.forward.x, group.forward.y);
       } else {
         const marchSpeed = baseSpeed * MARCH_SPEED_FACTOR;
         const pace = group.paceMaxDist > 0 ? Math.min(1, dist / group.paceMaxDist) : 0;
         const speed = marchSpeed * pace;
         e.velX[id] = (dx / dist) * speed;
         e.velY[id] = (dy / dist) * speed;
-        writeFacingIntent(e, id, dx, dy);
+        writeFacingIntent(e, id, group.forward.x, group.forward.y);
       }
       continue;
     }

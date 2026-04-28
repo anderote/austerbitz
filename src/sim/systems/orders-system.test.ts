@@ -81,15 +81,18 @@ describe('ordersSystem march-formation handler', () => {
     expect(world.entities.facingIntentY[id]).toBeCloseTo(1, 5);
   });
 
-  it('arrival at slot parks the unit, updates rest, and sets arrived=true (queue length 1)', () => {
+  it('arrival at slot parks the unit, updates rest, sets restFacing to group.forward, sets arrived=true (queue length 1)', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const id = allocEntity(world.entities);
     world.entities.kindId[id] = getUnitKindIndex('line-infantry');
     world.entities.posX[id] = 99.95; // within ARRIVE_RADIUS=0.1 of (100, 0)
     world.entities.posY[id] = 0;
     world.entities.state[id] = EntityState.Idle;
+    // Pre-arrival facing is unrelated to the formation's forward — restFacing
+    // on arrival must come from group.forward, not from e.facing.
     world.entities.facing[id] = 2;
     const gid = 1;
+    // group.forward = (1, 0) → facing octant 0 (east).
     world.marchGroups.set(gid, createMarchGroup(gid, [id], { x: 1, y: 0 }, 0));
     const order: Extract<Order, { kind: 'march-formation' }> = { kind: 'march-formation', targetX: 100, targetY: 0, groupId: gid };
     world.orderQueue.set(id, [order]);
@@ -100,11 +103,33 @@ describe('ordersSystem march-formation handler', () => {
     expect(world.entities.velY[id]).toBe(0);
     expect(world.entities.restPosX[id]).toBe(100);
     expect(world.entities.restPosY[id]).toBe(0);
-    expect(world.entities.restFacing[id]).toBe(2);
+    expect(world.entities.restFacing[id]).toBe(0); // group.forward (1, 0) → octant 0
+    expect(world.entities.facingIntentX[id]).toBeCloseTo(1, 5);
+    expect(world.entities.facingIntentY[id]).toBeCloseTo(0, 5);
     expect(order.arrived).toBe(true);
     // Order stays parked; group untouched at this layer.
     expect(world.orderQueue.get(id)?.length).toBe(1);
     expect(world.marchGroups.has(gid)).toBe(true);
+  });
+
+  it('march phase facingIntent tracks group.forward, not the slot vector', () => {
+    // Unit must walk +x to reach its slot, but the formation's forward is +y
+    // (a wheel). Facing should be +y (group.forward), not +x (walk vector).
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const id = allocEntity(world.entities);
+    world.entities.kindId[id] = getUnitKindIndex('line-infantry');
+    world.entities.posX[id] = 0;
+    world.entities.posY[id] = 0;
+    world.entities.state[id] = EntityState.Idle;
+    const gid = 1;
+    world.marchGroups.set(gid, createMarchGroup(gid, [id], { x: 0, y: 1 }, 0));
+    world.marchGroups.get(gid)!.paceMaxDist = 100;
+    world.orderQueue.set(id, [{ kind: 'march-formation', targetX: 100, targetY: 0, groupId: gid }]);
+
+    _ordersSystem(world, 1 / 60);
+
+    expect(world.entities.facingIntentX[id]).toBeCloseTo(0, 5);
+    expect(world.entities.facingIntentY[id]).toBeCloseTo(1, 5);
   });
 
   it('missing group: order is shifted off and unit idles', () => {

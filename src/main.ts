@@ -103,6 +103,7 @@ world.systems = [
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
+  suppressArrowsWhen: () => selection.ids.size > 0,
 });
 
 function spawn(kindId: string, team: number, x: number, y: number, facing = 0): number {
