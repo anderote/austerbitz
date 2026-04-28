@@ -15,6 +15,7 @@ import { movementSystem } from '../sim/systems/movement-system';
 import { facingSystem } from '../sim/systems/facing-system';
 import { tickStates, type FireOrders } from '../sim/systems/state-system';
 import { tickProjectiles } from '../sim/systems/projectile-system';
+import { tickDebris } from '../sim/systems/debris-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
 import { createDeathDropsSystem } from '../sim/systems/death-drops-system';
 import { EntityState } from '../sim/entities';
@@ -178,6 +179,7 @@ function frame(t: number) {
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
   tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
+  tickDebris(world.debris, dt);
   deathDropsSystem(world, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.

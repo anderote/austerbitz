@@ -13,6 +13,7 @@ import { collisionSystem } from './sim/systems/collision-system';
 import { facingSystem } from './sim/systems/facing-system';
 import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
+import { tickDebris } from './sim/systems/debris-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
 import { createDeathDropsSystem } from './sim/systems/death-drops-system';
@@ -131,6 +132,7 @@ const stateSystem: System = (w, dt) =>
 const projectileSystem: System = (w, dt) =>
   tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.debris, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
+const debrisSystem: System = (w, dt) => tickDebris(w.debris, dt);
 const deathDropsSystem = createDeathDropsSystem(kits);
 
 world.systems = [
@@ -143,6 +145,7 @@ world.systems = [
   stateSystem,
   projectileSystem,
   ragdollSystem,
+  debrisSystem,
   deathDropsSystem,
 ];
 
