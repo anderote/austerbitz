@@ -2,6 +2,7 @@ import { createEntities, type Entities } from './entities';
 import { createGrid, gridRebuild, type Grid } from './spatial/grid';
 import { createRng, type Rng } from '../util/rng';
 import { createBloodSplats, type BloodSplats } from './blood-splats';
+import { createDroppedItems, type DroppedItems } from './dropped-items';
 import { createFireSignal, type FireSignal } from './fire-signal';
 import type { MarchGroup } from './march-groups';
 
@@ -33,6 +34,8 @@ export interface World {
   orderQueue: Map<number, Order[]>;
   /** Per-frame blood-stain splat queue, drained by the renderer each frame. */
   bloodSplats: BloodSplats;
+  /** Weapons dropped by dying units. Persists indefinitely. */
+  droppedItems: DroppedItems;
   /** Per-cell-per-team most-recent-fire-tick — drives volley contagion. */
   fireSignal: FireSignal;
   /** Active march groups, keyed by groupId. Lifecycle managed by march-system. */
@@ -59,6 +62,7 @@ export function createWorld(cfg: WorldConfig): World {
     systems: [],
     orderQueue: new Map(),
     bloodSplats: createBloodSplats(4096),
+    droppedItems: createDroppedItems(cfg.capacity),
     marchGroups: new Map(),
     nextMarchGroupId: 1,
     fireSignal: createFireSignal(grid),

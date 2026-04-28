@@ -183,13 +183,14 @@ describe('resolveWeaponPoseTransform', () => {
         NW: { layers: [], weapon: { x: 5, y: 6, rot: 30 } },
       },
     };
-    // x and rot negate through flipX; y is unchanged. The inherited offset
-    // sits on top of the canonical NE sprite (NW with flipX) — no per-pose
-    // flip flag, since per-pose authoring can't pick a different sprite.
+    // x and rot negate through flipX; y is unchanged. The inherited entry
+    // also picks up `flipX: true` so the runtime mirrors the source UV (the
+    // NE sprite is rendered as the NW sprite with horizontal flip).
     expect(resolveWeaponPoseTransform(poses, 'present', 'NE', MUSKET_BLOCK)).toEqual({
       x: -5,
       y: 6,
       rot: -30,
+      flipX: true,
     });
   });
 
@@ -216,6 +217,7 @@ describe('resolveWeaponPoseTransform', () => {
       x: -2,
       y: -1,
       rot: 10,
+      flipX: true,
     });
   });
 

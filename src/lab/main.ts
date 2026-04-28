@@ -16,6 +16,7 @@ import { facingSystem } from '../sim/systems/facing-system';
 import { tickStates, type FireOrders } from '../sim/systems/state-system';
 import { tickProjectiles } from '../sim/systems/projectile-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
+import { createDeathDropsSystem } from '../sim/systems/death-drops-system';
 import { EntityState } from '../sim/entities';
 import '../ui/styles.css';
 
@@ -118,6 +119,7 @@ const fireOrders: FireOrders = new Map();
 const wind: WindState = { accelX: 0 };
 const timeScale: TimeScaleState = { scale: 1.0 };
 const gridToggle: GridToggle = { on: false };
+const deathDropsSystem = createDeathDropsSystem(kits);
 
 const handlers: ActionHandlers = {
   march: () => actMarch(world, stage),
@@ -176,6 +178,7 @@ function frame(t: number) {
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
   tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
+  deathDropsSystem(world, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.
   // (Manual `actFire` no longer self-gates, so auto-fire must check here.)

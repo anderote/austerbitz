@@ -218,11 +218,12 @@ describe('end-to-end weapon resolution (kit + atlas)', () => {
     expect(resolved.spriteKey).toBe('musket-brown-bess-NW');
     expect(resolved.transform).toBe('flipX');
 
-    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot). The
-    // canonical NE sprite is already the flipX'd NW, so the inherited offset
-    // carries no per-pose flip flag.
+    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot, flipX).
+    // The runtime flips the source UV horizontally so the NE sprite is the
+    // NW sprite mirrored — the editor authors per-pose `flipX: true` for the
+    // same reason and the resolver mirrors that convention here.
     const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'NE', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: -1, y: -1, rot: -5 });
+    expect(offset).toEqual({ x: -1, y: -1, rot: -5, flipX: true });
   });
 
   it('derived SE facing during fire inherits NW via rot180 (both x and y negate, rot unchanged)', () => {

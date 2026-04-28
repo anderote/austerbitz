@@ -5,7 +5,7 @@ import { SPRITE_VS, SPRITE_FS } from '../shaders/sprite.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
-import { isDead } from '../../sim/entities';
+import { EntityState, isDead } from '../../sim/entities';
 import { getUnitKindByIndex } from '../../data/units';
 import { RECOIL_T, RECOIL_PUSH_END, RECOIL_HOLD_END } from '../../sim/fire-resolver';
 import {
@@ -44,6 +44,12 @@ export interface SpritePass {
    * full `texImage2D` call (otherwise `texSubImage2D` is used).
    */
   replaceAtlasTexture(image: ImageBitmap | ImageData | HTMLCanvasElement): void;
+  /** Combined-atlas GL texture. Shared with the dropped-items pass. */
+  getAtlas(): WebGLTexture;
+  /** Combined-atlas pixel dimensions + the Y offset where the pose atlas was packed. */
+  getSheetDims(): { w: number; h: number; poseAtlasY: number };
+  /** Pre-resolved per-kit weapon UVs keyed by `kit.weapon.layerPrefix`. */
+  getWeaponUvByPrefix(): ReadonlyMap<string, ReadonlyArray<readonly [number, number, number, number] | null>>;
 }
 
 interface FactionPalette {
@@ -475,8 +481,10 @@ export function createSpritePass(
           // JSON. Behind-facings (N/NE/NW) emit into a separate set drawn
           // BEFORE bodies so the body occludes the weapon; front-facings emit
           // into the regular set drawn AFTER bodies (overlay on top).
+          const stateNow = e.state[i]!;
+          const isDyingOrDead = stateNow === EntityState.Dying || stateNow === EntityState.Dead;
           const kit = kits.get(kind.id);
-          if (kit && kit.weapon) {
+          if (kit && kit.weapon && !isDyingOrDead) {
             const uvList = weaponUvByPrefix.get(kit.weapon.layerPrefix);
             const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
             const editorPose = runtimePoseToEditorPoseName(pose);
@@ -681,6 +689,15 @@ export function createSpritePass(
       gl.disable(gl.BLEND);
 
       gl.bindVertexArray(null);
+    },
+    getAtlas() {
+      return atlas;
+    },
+    getSheetDims() {
+      return { w: sheetW, h: sheetH, poseAtlasY };
+    },
+    getWeaponUvByPrefix() {
+      return weaponUvByPrefix;
     },
     replaceAtlasTexture(image) {
       // Width/height inference: ImageBitmap exposes width/height directly;

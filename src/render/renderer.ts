@@ -2,6 +2,7 @@ import { resizeToDisplay } from '../gl/context';
 import type { Camera } from './camera';
 import { createTerrainPass } from './passes/terrain-pass';
 import { createSpritePass } from './passes/sprite-pass';
+import { createDroppedItemsPass } from './passes/dropped-items-pass';
 import { createSelectionPass } from './passes/selection-pass';
 import { createParticlePass } from './passes/particle-pass';
 import { createProjectilePass } from './passes/projectile-pass';
@@ -66,6 +67,13 @@ export function createRenderer(
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
   terrain.setBlood(bloodStain.texture, worldW, worldH);
   const sprites = createSpritePass(gl, capacity, poseAtlas, kits);
+  const droppedItems = createDroppedItemsPass(
+    gl,
+    capacity,
+    kits,
+    sprites.getAtlas(),
+    sprites.getWeaponUvByPrefix(),
+  );
   const selectionPass = createSelectionPass(gl, capacity);
   const particlesPass = createParticlePass(gl, particleCapacity);
   const puffsPass = createPuffPass(gl, puffCapacity);
@@ -93,6 +101,7 @@ export function createRenderer(
         selectionPass.drawTeamRange(world, cam, sel, PLAYER_TEAM);
       }
       selectionPass.drawDiscs(world, cam, sel, drag);
+      droppedItems.draw(world, cam);
       sprites.draw(world, cam);
       projectilesPass.draw(projectiles, cam);
       // Puffs first (under), sparks after (over).

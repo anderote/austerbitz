@@ -15,6 +15,7 @@ import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
+import { createDeathDropsSystem } from './sim/systems/death-drops-system';
 import { marchSystem } from './sim/systems/march-system';
 import { assignIdentity } from './sim/spawn-identity';
 import type { System } from './sim/world';
@@ -130,6 +131,7 @@ const stateSystem: System = (w, dt) =>
 const projectileSystem: System = (w, dt) =>
   tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
+const deathDropsSystem = createDeathDropsSystem(kits);
 
 world.systems = [
   marchSystem,
@@ -141,6 +143,7 @@ world.systems = [
   stateSystem,
   projectileSystem,
   ragdollSystem,
+  deathDropsSystem,
 ];
 
 const cameraControls = createCameraControls(camera, input, {
