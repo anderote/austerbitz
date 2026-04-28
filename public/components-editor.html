@@ -1206,6 +1206,33 @@
         }
       }
 
+      // For a marker hex (magenta/cyan/yellow family), return the RGB that the
+      // runtime recolor pass would render under `reg`. Mirrors the per-pixel
+      // formula in recolorImageData. Used to preview swatches in regiment colors.
+      function resolveMarkerHexForRegiment(hex, reg) {
+        if (!reg) return hex;
+        const rgb = hexToRgb(hex);
+        if (!rgb) return hex;
+        const r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
+        const eps = 0.01;
+        const isMag = Math.abs(r - b) < eps && g < r - eps && r > 0.1;
+        const isCyn = Math.abs(g - b) < eps && r < g - eps && g > 0.1;
+        const isYel = Math.abs(r - g) < eps && b < r - eps && r > 0.1;
+        let slot = null, factor = 0, off = 0;
+        if (isMag) { slot = reg.primary; factor = r; off = g; }
+        else if (isCyn) { slot = reg.secondary; factor = g; off = r; }
+        else if (isYel) { slot = reg.tertiary; factor = r; off = b; }
+        if (!slot) return hex;
+        let oR = Math.min(255, slot[0] * factor);
+        let oG = Math.min(255, slot[1] * factor);
+        let oB = Math.min(255, slot[2] * factor);
+        const lift = off * 0.5;
+        oR = oR * (1 - lift) + 255 * lift;
+        oG = oG * (1 - lift) + 255 * lift;
+        oB = oB * (1 - lift) + 255 * lift;
+        return rgbToHex([Math.round(oR), Math.round(oG), Math.round(oB)]);
+      }
+
       function rgbToHex(rgb) {
         if (!Array.isArray(rgb) || rgb.length < 3) return '#000000';
         return '#' + rgb.slice(0, 3).map(function (v) {
@@ -1267,6 +1294,8 @@
         state.regiment[slot] = rgb;
         state.layerCanvasCache.clear();
         recoloredAtlasCache.clear();
+        refreshPaletteSwatches();
+        updatePaletteUi();
         redraw().catch(function (err) {
           showToast('Redraw failed: ' + (err.message || err), { error: true });
         });
@@ -1722,8 +1751,6 @@
           const sw = document.createElement('div');
           sw.className = 'swatch';
           sw.style.backgroundImage = 'none';
-          sw.style.backgroundColor = hex;
-          sw.title = name + ' ' + hex;
           sw.dataset.colorName = name;
           sw.dataset.colorHex = hex;
           sw.addEventListener('click', () => {
@@ -1733,15 +1760,32 @@
           });
           paletteEl.appendChild(sw);
         }
+        refreshPaletteSwatches();
         updatePaletteUi();
+      }
+
+      // Repaints each swatch's displayed color so marker swatches preview the
+      // active regiment's resolved color. Underlying paint hex (dataset.colorHex)
+      // stays as the marker so painted pixels remain regiment-aware.
+      function refreshPaletteSwatches() {
+        for (const sw of paletteEl.querySelectorAll('.swatch')) {
+          const name = sw.dataset.colorName;
+          const hex = sw.dataset.colorHex;
+          const display = resolveMarkerHexForRegiment(hex, state.regiment);
+          sw.style.backgroundColor = display;
+          sw.title = display !== hex ? name + ' ' + hex + ' → ' + display : name + ' ' + hex;
+        }
       }
 
       function updatePaletteUi() {
         for (const sw of paletteEl.querySelectorAll('.swatch')) {
           sw.classList.toggle('active', sw.dataset.colorHex === state.activeColor);
         }
-        selectedChipEl.style.backgroundColor = state.activeColor;
-        selectedHexEl.textContent = state.activeColor;
+        const display = resolveMarkerHexForRegiment(state.activeColor, state.regiment);
+        selectedChipEl.style.backgroundColor = display;
+        selectedHexEl.textContent = display !== state.activeColor
+          ? state.activeColor + ' → ' + display
+          : state.activeColor;
       }
 
       // Returns the canvas-content-box origin (in client coords) and the
@@ -2420,6 +2464,8 @@
             state.layerCanvasCache.clear();
             recoloredAtlasCache.clear();
             syncRegimentPaletteInputs();
+            refreshPaletteSwatches();
+            updatePaletteUi();
             redraw().catch(function (err) {
               showToast('Redraw failed: ' + (err.message || err), { error: true });
             });
