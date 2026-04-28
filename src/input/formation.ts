@@ -1,7 +1,6 @@
 import type { Vec2 } from '../util/math';
 import type { World } from '../sim/world';
 import type { FormationParams } from './formation-params';
-import { spacingMultiplier } from './formation-params';
 import { getUnitKindByIndex } from '../data/units';
 import { isDead } from '../sim/entities';
 
