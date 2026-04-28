@@ -3,7 +3,6 @@ import {
   createDebris,
   allocDebris,
   freeDebris,
-  type Debris,
 } from './debris';
 
 describe('Debris', () => {
