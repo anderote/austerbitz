@@ -3,6 +3,7 @@ import type { World } from '../sim/world';
 import type { Selection } from '../input/selection';
 import { getUnitKindByIndex } from '../data/units';
 import type { UnitKind } from '../data/types';
+import { RANK_NAMES, RANK_THRESHOLDS, MAX_RANK } from '../sim/veterancy';
 
 export interface StatsCard {
   update(world: World, sel: Selection): void;
@@ -14,6 +15,10 @@ interface KindAggregate {
   hpCurr: number;
   hpMax: number;
   moraleSum: number;
+  rankCounts: number[];
+  /** Single-entity progression detail; populated only when count === 1. */
+  soloRank?: number;
+  soloXp?: number;
 }
 
 export function createStatsCard(root: HTMLElement): StatsCard {
@@ -39,6 +44,7 @@ export function createStatsCard(root: HTMLElement): StatsCard {
             hpCurr: 0,
             hpMax: 0,
             moraleSum: 0,
+            rankCounts: [0, 0, 0, 0, 0],
           };
           groups.set(kIdx, g);
         }
@@ -46,6 +52,9 @@ export function createStatsCard(root: HTMLElement): StatsCard {
         g.hpCurr += world.entities.hp[id]!;
         g.hpMax += g.kind.baseStats.hp;
         g.moraleSum += world.entities.morale[id]!;
+        g.rankCounts[world.entities.rank[id]!]!++;
+        g.soloRank = world.entities.rank[id]!;
+        g.soloXp = world.entities.xp[id]!;
       }
       if (groups.size === 0) {
         el.style.display = 'none';
@@ -135,5 +144,38 @@ function renderKindEntry(g: KindAggregate): HTMLDivElement {
     grid.appendChild(v);
   }
   card.appendChild(grid);
+
+  if (g.count === 1 && g.soloRank !== undefined && g.soloXp !== undefined) {
+    card.appendChild(renderSoloRankRow(g.soloRank, g.soloXp));
+  } else {
+    const rankRow = renderRankMix(g.rankCounts);
+    if (rankRow) card.appendChild(rankRow);
+  }
   return card;
+}
+
+function renderSoloRankRow(rank: number, xp: number): HTMLDivElement {
+  const div = document.createElement('div');
+  div.className = 'stats-card-rankmix';
+  const name = RANK_NAMES[rank]!;
+  const xpLabel = rank >= MAX_RANK ? '—' : `${xp} / ${RANK_THRESHOLDS[rank]!}`;
+  div.textContent = `Rank: ${name}  ·  XP ${xpLabel}`;
+  return div;
+}
+
+function renderRankMix(rankCounts: number[]): HTMLDivElement | null {
+  // Hide if everyone is Recruit (no advanced ranks at all).
+  let advanced = 0;
+  for (let r = 1; r < rankCounts.length; r++) advanced += rankCounts[r]!;
+  if (advanced === 0) return null;
+
+  const tags = ['Rec', 'Vet', 'Sgt', 'SgtMaj', 'Cpt'];
+  const parts: string[] = [];
+  for (let r = 0; r < rankCounts.length; r++) {
+    if (rankCounts[r]! > 0) parts.push(`${rankCounts[r]} ${tags[r]}`);
+  }
+  const div = document.createElement('div');
+  div.className = 'stats-card-rankmix';
+  div.textContent = `Rank: ${parts.join(' · ')}`;
+  return div;
 }
