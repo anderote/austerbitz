@@ -325,7 +325,7 @@
         ],
         "weapon": {
           "x": 1,
-          "y": -2,
+          "y": -1,
           "rot": 20
         }
       },
@@ -674,7 +674,9 @@
         "weapon": {
           "x": -3,
           "y": 4,
-          "rot": 0
+          "rot": 0,
+          "src": "N",
+          "transform": "none"
         }
       },
       "S": {
@@ -682,7 +684,9 @@
         "weapon": {
           "x": -6,
           "y": 7,
-          "rot": 0
+          "rot": 0,
+          "src": "SW",
+          "transform": "none"
         }
       },
       "SE": {

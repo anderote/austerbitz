@@ -458,22 +458,30 @@ export function computeMarchSlots(
     };
   });
 
-  // Bounding rect: AABB of unit-local offsets (padded by max body radius),
-  // then rotate and translate the 4 corners. Renderer draws marching-ants
-  // around this quad.
+  // Bounding rect: AABB taken in the formation's LOCAL frame (lateral along
+  // front rank, depth along -facing) — not the world frame — so the rect's
+  // tl→tr edge tracks the front rank and tl→bl tracks the depth axis,
+  // matching `computeFormationSlots`'s convention. Padded by max body radius.
+  // Lateral basis = 90° CCW of facing; depth basis = -facing (toward back).
+  const latCurX = -curFy, latCurY = curFx;
+  const depCurX = -curFx, depCurY = -curFy;
   let lminX = Infinity, lminY = Infinity, lmaxX = -Infinity, lmaxY = -Infinity;
   let pad = 0;
   for (const u of units) {
     const dx = u.x - cx, dy = u.y - cy;
-    if (dx < lminX) lminX = dx; if (dy < lminY) lminY = dy;
-    if (dx > lmaxX) lmaxX = dx; if (dy > lmaxY) lmaxY = dy;
+    const lx = dx * latCurX + dy * latCurY;
+    const ly = dx * depCurX + dy * depCurY;
+    if (lx < lminX) lminX = lx; if (ly < lminY) lminY = ly;
+    if (lx > lmaxX) lmaxX = lx; if (ly > lmaxY) lmaxY = ly;
     if (u.bodyRadius != null && u.bodyRadius > pad) pad = u.bodyRadius;
   }
   if (!Number.isFinite(lminX)) { lminX = lminY = lmaxX = lmaxY = 0; }
   lminX -= pad; lminY -= pad; lmaxX += pad; lmaxY += pad;
+  const latNewX = -nfy, latNewY = nfx;
+  const depNewX = -nfx, depNewY = -nfy;
   const xform = (lx: number, ly: number): Vec2 => ({
-    x: target.x + cosT * lx - sinT * ly,
-    y: target.y + sinT * lx + cosT * ly,
+    x: target.x + lx * latNewX + ly * depNewX,
+    y: target.y + lx * latNewY + ly * depNewY,
   });
   const rect = {
     tl: xform(lminX, lminY),

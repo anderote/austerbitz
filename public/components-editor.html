@@ -406,6 +406,8 @@
         <div class='stage-header'>
           <span class='stage-title' id='stage-title'>Composite</span>
           <span class='selected-info' id='selected-info'>Selected: &mdash;</span>
+          <button id='play-frame-btn' style='display:none;font-size:11px;padding:4px 8px;' title='Play / pause walk cycle'>&#9654; Play</button>
+          <button id='step-frame-btn' style='display:none;font-size:11px;padding:4px 8px;' title='Step to next frame'>Frame 0/0</button>
           <button id='rot90-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Rotate 90&deg;</button>
           <button id='flipx-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Mirror</button>
           <button id='reset-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Reset weapon</button>
@@ -444,16 +446,19 @@
             </div>
             <div class='keys-help'><kbd>Left-click</kbd> paints with the selected color, <kbd>Right-click</kbd> erases. Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px.</div>
           </div>
-          <div class='facing-grid' id='facing-grid'>
-            <button class='facing-cell' data-facing='NW' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>NW</span></button>
-            <button class='facing-cell' data-facing='N' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>N</span></button>
-            <button class='facing-cell' data-facing='NE' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>NE</span></button>
-            <button class='facing-cell' data-facing='W' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>W</span></button>
-            <div class='facing-cell-empty'></div>
-            <button class='facing-cell' data-facing='E' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>E</span></button>
-            <button class='facing-cell' data-facing='SW' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SW</span></button>
-            <button class='facing-cell' data-facing='S' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>S</span></button>
-            <button class='facing-cell' data-facing='SE' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SE</span></button>
+          <div>
+            <div style='font-size:12px;color:#4b5563;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;'>Unit pose orientation</div>
+            <div class='facing-grid' id='facing-grid'>
+              <button class='facing-cell' data-facing='NW' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>NW</span></button>
+              <button class='facing-cell' data-facing='N' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>N</span></button>
+              <button class='facing-cell' data-facing='NE' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>NE</span></button>
+              <button class='facing-cell' data-facing='W' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>W</span></button>
+              <div class='facing-cell-empty'></div>
+              <button class='facing-cell' data-facing='E' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>E</span></button>
+              <button class='facing-cell' data-facing='SW' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SW</span></button>
+              <button class='facing-cell' data-facing='S' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>S</span></button>
+              <button class='facing-cell' data-facing='SE' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SE</span></button>
+            </div>
           </div>
           <div id='weapon-pose-grid' style='display:none;margin-top:12px;'>
             <div style='font-size:12px;color:#4b5563;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;'>Per-pose weapon orientation</div>
@@ -468,30 +473,12 @@
               <button class='facing-cell' data-facing='S'  type='button' data-wpose='1'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>S</span></button>
               <button class='facing-cell' data-facing='SE' type='button' data-wpose='1'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SE</span></button>
             </div>
-            <div style='display:flex;gap:12px;align-items:center;margin-top:10px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;flex-wrap:wrap;'>
-              <span>Override for facing <strong id='wpose-facing-label'>—</strong>:</span>
-              <label>src
-                <select id='wpose-src' style='font:inherit;margin-left:4px;'>
-                  <option value=''>inherit (use global)</option>
-                  <option value='self'>self (own PNG)</option>
-                  <option value='N'>N</option>
-                  <option value='NE'>NE</option>
-                  <option value='E'>E</option>
-                  <option value='SE'>SE</option>
-                  <option value='S'>S</option>
-                  <option value='SW'>SW</option>
-                  <option value='W'>W</option>
-                  <option value='NW'>NW</option>
-                </select>
-              </label>
-              <label>transform
-                <select id='wpose-transform' style='font:inherit;margin-left:4px;'>
-                  <option value='none'>none</option>
-                  <option value='flipX'>flipX</option>
-                  <option value='flipY'>flipY</option>
-                  <option value='rot180'>rot180</option>
-                </select>
-              </label>
+            <div style='display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;flex-wrap:wrap;'>
+              <span>Body facing <strong id='wpose-facing-label'>—</strong> · transform:</span>
+              <button id='wpose-xf-none'   type='button' class='wpose-xf-btn' data-xf='none'   style='font:inherit;padding:4px 10px;'>None</button>
+              <button id='wpose-xf-flipX'  type='button' class='wpose-xf-btn' data-xf='flipX'  style='font:inherit;padding:4px 10px;'>flipX</button>
+              <button id='wpose-xf-flipY'  type='button' class='wpose-xf-btn' data-xf='flipY'  style='font:inherit;padding:4px 10px;'>flipY</button>
+              <button id='wpose-xf-rot180' type='button' class='wpose-xf-btn' data-xf='rot180' style='font:inherit;padding:4px 10px;'>rot180</button>
             </div>
             <div style='display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;flex-wrap:wrap;'>
               <button id='wpose-save-variant' type='button' class='primary' style='font:inherit;padding:8px 16px;background:#2563eb;color:#fff;border:1px solid #1d4ed8;border-radius:6px;cursor:pointer;font-weight:600;'>+ Save as variant</button>
@@ -569,14 +556,25 @@
       function facingLong(f) { return FACING_LONG[f] || String(f).toLowerCase(); }
 
       // ---- JS port of resolver helpers (kept in sync with src/render/poses/resolver.ts) ----
-      // True when `raw` is a multi-frame entry (array of frame layer-arrays).
+      // A facing's pose entry can be a bare array of frames (`[[id,id],...]`)
+      // or the wrapped form `{ layers: [[id,...],...], weapon: {...} }` (added
+      // when per-pose weapon attachment landed). Returns the inner frames
+      // array, regardless of which shape `raw` uses.
+      function framesOfFacingEntry(raw) {
+        if (Array.isArray(raw)) return raw;
+        if (raw && typeof raw === 'object' && Array.isArray(raw.layers)) return raw.layers;
+        return null;
+      }
+      // True when `raw` resolves to multiple frames of layer arrays.
       function isMultiFrameFacingEntry(raw) {
-        return Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]);
+        const frames = framesOfFacingEntry(raw);
+        return !!frames && frames.length > 0 && Array.isArray(frames[0]);
       }
       // How many frames does this facing entry expose? 1 for any single-frame
-      // shape (object form, or array-of-strings).
+      // shape (wrapper with a flat layers array, or bare array-of-strings).
       function frameCountForFacingEntry(raw) {
-        return isMultiFrameFacingEntry(raw) ? raw.length : 1;
+        const frames = framesOfFacingEntry(raw);
+        return (frames && Array.isArray(frames[0])) ? frames.length : 1;
       }
       // Frame count for the current pose, looking across all facings (poses
       // with a multi-frame facing entry have the same length on every facing).
@@ -592,8 +590,11 @@
       }
       function normalizePoseFacingEntry(raw) {
         if (isMultiFrameFacingEntry(raw)) {
-          const idx = Math.max(0, Math.min((state.frameIdx | 0), raw.length - 1));
-          return { layers: raw[idx] || [], frames: raw };
+          const frames = framesOfFacingEntry(raw);
+          const idx = Math.max(0, Math.min((state.frameIdx | 0), frames.length - 1));
+          const out = { layers: frames[idx] || [], frames };
+          if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.weapon) out.weapon = raw.weapon;
+          return out;
         }
         if (Array.isArray(raw)) return { layers: raw };
         if (raw && typeof raw === 'object') return raw;
@@ -765,9 +766,6 @@
         pixelEdits: {},
         facing: 'S',
         // Independent facing for the weapon-pose grid below the main grid.
-        // Lets the user pick which (pose, facing) to edit weapon orientation
-        // without changing the body view (state.facing).
-        weaponEditFacing: 'S',
         selectedLayerId: null,
         cacheBust: 0,
         imageCache: new Map(),
@@ -787,7 +785,11 @@
         // Drag state for weapon attachment.
         weaponDrag: null,
         kitDirty: false,
+        // Walk-cycle autoplay state for multi-frame poses.
+        framePlaying: false,
+        framePlayTimerId: null,
       };
+      const FRAME_PLAY_INTERVAL_MS = 140; // ~7 fps — readable march cadence
 
       // Per-pose, per-regiment recolored atlas data-URL cache.
       // keyed: poseId|regimentId -> dataURL
@@ -799,6 +801,8 @@
       const poseSelectEl = document.getElementById('pose-select');
       const frameSelectEl = document.getElementById('frame-select');
       const frameSelectGroupEl = document.getElementById('frame-select-group');
+      const playFrameBtnEl = document.getElementById('play-frame-btn');
+      const stepFrameBtnEl = document.getElementById('step-frame-btn');
       const regimentSelectEl = document.getElementById('regiment-select');
       const poseNoteEl = document.getElementById('pose-note');
       const selectedInfoEl = document.getElementById('selected-info');
@@ -1191,13 +1195,14 @@
           return fc && Array.isArray(fc.layers) ? fc.layers : null;
         }
         const poseDef = state.kit.poses && state.kit.poses[poseId];
-        if (poseDef && Array.isArray(poseDef[facing])) {
-          const raw = poseDef[facing];
-          if (isMultiFrameFacingEntry(raw)) {
-            const idx = Math.max(0, Math.min((state.frameIdx | 0), raw.length - 1));
-            return raw[idx];
+        const raw = poseDef && poseDef[facing];
+        const frames = framesOfFacingEntry(raw);
+        if (frames) {
+          if (Array.isArray(frames[0])) {
+            const idx = Math.max(0, Math.min((state.frameIdx | 0), frames.length - 1));
+            return frames[idx];
           }
-          return raw;
+          return frames;
         }
         // No pose override: fall back to mutating idle (matches what's rendered).
         const fc = state.kit.facings && state.kit.facings[facing];
@@ -1231,8 +1236,9 @@
           facingsEl.appendChild(btn);
         }
         updateFacingButtons();
-        // Wire click handlers on the 3x3 facing grid.
-        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+        // Wire click handlers on the main facing grid only — the weapon-pose
+        // grid below has its own (assign-source) click handler.
+        document.querySelectorAll('#facing-grid .facing-cell').forEach(function (cell) {
           cell.addEventListener('click', function () { switchFacing(cell.dataset.facing); });
         });
         refreshFacingGridArtwork();
@@ -1249,7 +1255,7 @@
       // Render mirror-source badges on the 5 derived facings + a small "src"
       // dot on N / NW / W. Pulls from kit.weapon.facings when the kit has one.
       function renderMirrorBadges() {
-        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+        document.querySelectorAll('#facing-grid .facing-cell').forEach(function (cell) {
           // Clear any prior decorations.
           cell.querySelectorAll('.mirror-badge, .source-dot').forEach(function (el) { el.remove(); });
           if (!kitHasWeapon()) return;
@@ -1271,7 +1277,7 @@
       }
 
       function updateFacingButtons() {
-        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+        document.querySelectorAll('#facing-grid .facing-cell').forEach(function (cell) {
           cell.classList.toggle('active', cell.dataset.facing === state.facing);
         });
         for (const btn of facingsEl.querySelectorAll('button.facing-btn')) {
@@ -1281,12 +1287,6 @@
 
       function switchFacing(facing) {
         state.facing = facing;
-        // Main facing grid drives both — keep the weapon-pose grid in sync so
-        // the dropdowns/save-variant aim at the facing the user just picked.
-        // The reverse direction (clicking the weapon-pose grid) does NOT touch
-        // state.facing, so authoring weapon orientation across facings is
-        // possible without dragging the body view along.
-        state.weaponEditFacing = facing;
         const layers = getCurrentLayers();
         // Keep weaponActive when present on body poses; clear on weapon view.
         if (state.poseId === WEAPON_POSE_ID) state.weaponActive = false;
@@ -2007,13 +2007,8 @@
       // flipX, src, transform) and append it to weaponVariants on this entry.
       function saveCurrentAsVariant() {
         if (!kitHasWeapon() || state.poseId === WEAPON_POSE_ID) return;
-        // Snapshot the authoring for the weapon-pose grid's selected facing
-        // (state.weaponEditFacing). When that facing has no direct authoring
-        // yet, fall back to the body's facing (state.facing) so a freshly
-        // tweaked weapon can still be banked.
-        const target = state.weaponEditFacing;
+        const target = state.facing;
         const cur = readWeaponXformAuthored(state.poseId, target)
-          || readWeaponXformAuthored(state.poseId, state.facing)
           || resolveWeaponXformLive(state.poseId, target);
         const v = { x: cur.x | 0, y: cur.y | 0, rot: +cur.rot || 0 };
         if (cur.flipX === true) v.flipX = true;
@@ -2103,20 +2098,28 @@
         if (!visible) return;
         // Highlight the cell matching the weapon-pose-grid's own selection
         // (decoupled from state.facing — the body view stays put).
+        // Highlight the cell matching the current weapon source for state.facing
+        // (the body's facing). When there's a per-pose src override, that wins;
+        // otherwise the active cell is just state.facing itself (default = self).
+        const override = readWeaponPoseSourceOverride(state.poseId, state.facing);
+        const activeCell = override
+          ? (override.src === 'self' ? state.facing : override.src)
+          : state.facing;
         const cells = wrap.querySelectorAll('.facing-cell');
         cells.forEach(function (cell) {
-          cell.classList.toggle('active', cell.dataset.facing === state.weaponEditFacing);
+          cell.classList.toggle('active', cell.dataset.facing === activeCell);
         });
         const label = document.getElementById('wpose-facing-label');
-        if (label) label.textContent = state.weaponEditFacing;
-        const override = readWeaponPoseSourceOverride(state.poseId, state.weaponEditFacing);
-        const srcSel = document.getElementById('wpose-src');
-        const xfSel = document.getElementById('wpose-transform');
-        if (srcSel) srcSel.value = override ? override.src : '';
-        if (xfSel) {
-          xfSel.value = override && override.src !== 'self' ? (override.transform || 'none') : 'none';
-          xfSel.disabled = !override || override.src === 'self';
-        }
+        if (label) label.textContent = state.facing;
+        // Transform buttons: highlight the active one; disable all when there's
+        // no non-self override (transforms are only meaningful when the weapon
+        // pulls from a different facing's source PNG).
+        const xfActive = override && override.src !== 'self' ? (override.transform || 'none') : 'none';
+        const xfDisabled = !override || override.src === 'self';
+        wrap.querySelectorAll('.wpose-xf-btn').forEach(function (btn) {
+          btn.classList.toggle('toggle-on', btn.dataset.xf === xfActive && !xfDisabled);
+          btn.disabled = xfDisabled;
+        });
         renderVariantsList();
         redrawWeaponPoseGridArt();
       }
@@ -2125,7 +2128,7 @@
         const summary = document.getElementById('wpose-variants-summary');
         const list = document.getElementById('wpose-variants-list');
         if (!summary || !list) return;
-        const variants = readWeaponVariants(state.poseId, state.weaponEditFacing);
+        const variants = readWeaponVariants(state.poseId, state.facing);
         summary.textContent = variants.length + (variants.length === 1 ? ' variant' : ' variants');
         list.innerHTML = '';
         variants.forEach(function (v, i) {
@@ -2148,7 +2151,7 @@
           txt.style.cursor = 'pointer';
           txt.style.color = '#1e3a8a';
           txt.addEventListener('click', function () {
-            loadVariantToPrimary(state.poseId, state.weaponEditFacing, i);
+            loadVariantToPrimary(state.poseId, state.facing, i);
           });
           const x = document.createElement('button');
           x.type = 'button';
@@ -2162,7 +2165,7 @@
           x.style.color = '#1e3a8a';
           x.addEventListener('click', function (ev) {
             ev.stopPropagation();
-            deleteVariant(state.poseId, state.weaponEditFacing, i);
+            deleteVariant(state.poseId, state.facing, i);
           });
           pill.appendChild(txt);
           pill.appendChild(x);
@@ -2189,17 +2192,21 @@
         }
       }
 
-      // Compose ONLY the weapon overlay (no body) for (poseId, facing) into
-      // an output canvas. Used by the weapon-pose grid below the main grid.
-      async function composeWeaponOnlyPreview(targetCanvas, poseId, facing) {
+      // Render JUST the canonical weapon source PNG for `facing` — no body,
+      // no per-pose offsets, no transforms. Each cell of the weapon-pose grid
+      // shows the raw source so the user can pick visually.
+      async function composeWeaponOnlyPreview(targetCanvas, _poseId, facing) {
         const off = document.createElement('canvas');
         off.width = CELL_W;
         off.height = CELL_H;
         const offCtx = off.getContext('2d');
         offCtx.imageSmoothingEnabled = false;
         offCtx.clearRect(0, 0, CELL_W, CELL_H);
-        if (kitHasWeapon() && poseId !== WEAPON_POSE_ID) {
-          await compositeWeaponOverlay(offCtx, poseId, facing);
+        if (kitHasWeapon()) {
+          const lp = state.kit.weapon.layerPrefix;
+          const spriteKey = lp + '-' + facingLong(facing);
+          const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, facing, spriteKey);
+          if (baseCanvas) offCtx.drawImage(baseCanvas, 0, 0);
         }
         const ctx = targetCanvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
@@ -2220,7 +2227,9 @@
         if (_gridRedrawPending) return;
         _gridRedrawPending = true;
         try {
-          const cells = document.querySelectorAll('.facing-grid .facing-cell');
+          // Main facing grid only — the weapon-pose grid below has its own
+          // weapons-only render (redrawWeaponPoseGridArt).
+          const cells = document.querySelectorAll('#facing-grid .facing-cell');
           await Promise.all(Array.from(cells).map(async function (cell) {
             const f = cell.dataset.facing;
             const canvas = cell.querySelector('canvas.facing-preview');
@@ -2780,23 +2789,92 @@
       // Multi-frame poses (walking, running, …) display 0..N-1; single-frame
       // poses hide the dropdown entirely.
       function renderFrameSelect() {
-        if (!frameSelectEl || !frameSelectGroupEl) return;
         const count = frameCountForCurrentPose();
-        if (count <= 1) {
-          frameSelectGroupEl.style.display = 'none';
-          state.frameIdx = 0;
+        if (frameSelectEl && frameSelectGroupEl) {
+          if (count <= 1) {
+            frameSelectGroupEl.style.display = 'none';
+          } else {
+            frameSelectGroupEl.style.display = '';
+            if (state.frameIdx >= count) state.frameIdx = 0;
+            frameSelectEl.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+              const opt = document.createElement('option');
+              opt.value = String(i);
+              opt.textContent = String(i);
+              if (i === state.frameIdx) opt.selected = true;
+              frameSelectEl.appendChild(opt);
+            }
+          }
+        }
+        if (count <= 1) state.frameIdx = 0;
+        renderFrameControls();
+      }
+
+      // Update Play / Frame button visibility + labels in the composite header.
+      // Hidden for single-frame poses; visible (with current frame readout)
+      // when the active pose is multi-frame.
+      function renderFrameControls() {
+        const count = frameCountForCurrentPose();
+        const visible = count > 1;
+        if (playFrameBtnEl) {
+          playFrameBtnEl.style.display = visible ? '' : 'none';
+          playFrameBtnEl.innerHTML = state.framePlaying ? '&#10074;&#10074; Pause' : '&#9654; Play';
+        }
+        if (stepFrameBtnEl) {
+          stepFrameBtnEl.style.display = visible ? '' : 'none';
+          stepFrameBtnEl.textContent = visible
+            ? ('Frame ' + state.frameIdx + '/' + (count - 1))
+            : 'Frame 0/0';
+        }
+      }
+
+      // Programmatic frame change — used by the dropdown, the step button,
+      // and the autoplay tick. Refreshes the cached layer canvases, the
+      // facing grid, the layers panel, and the main composite redraw.
+      function setFrameIdx(idx) {
+        const count = frameCountForCurrentPose();
+        if (count <= 1) return;
+        const next = ((idx % count) + count) % count;
+        if (next === state.frameIdx) {
+          renderFrameControls();
           return;
         }
-        frameSelectGroupEl.style.display = '';
-        if (state.frameIdx >= count) state.frameIdx = 0;
-        frameSelectEl.innerHTML = '';
-        for (let i = 0; i < count; i++) {
-          const opt = document.createElement('option');
-          opt.value = String(i);
-          opt.textContent = String(i);
-          if (i === state.frameIdx) opt.selected = true;
-          frameSelectEl.appendChild(opt);
+        state.frameIdx = next;
+        if (frameSelectEl && frameSelectEl.value !== String(next)) {
+          frameSelectEl.value = String(next);
         }
+        invalidateAllLayerCache();
+        refreshFacingGridArtwork();
+        renderLayersList();
+        renderOffsetReadout();
+        renderFrameControls();
+        redraw().catch(function (err) {
+          showToast('Redraw failed: ' + (err.message || err), { error: true });
+        });
+      }
+
+      function stopFramePlayback() {
+        if (state.framePlayTimerId !== null) {
+          clearInterval(state.framePlayTimerId);
+          state.framePlayTimerId = null;
+        }
+        state.framePlaying = false;
+        renderFrameControls();
+      }
+
+      function startFramePlayback() {
+        if (frameCountForCurrentPose() <= 1) return;
+        if (state.framePlayTimerId !== null) return;
+        state.framePlaying = true;
+        state.framePlayTimerId = setInterval(function () {
+          setFrameIdx(state.frameIdx + 1);
+        }, FRAME_PLAY_INTERVAL_MS);
+        renderFrameControls();
+      }
+
+      function toggleFramePlayback() {
+        if (state.framePlaying) stopFramePlayback();
+        else startFramePlayback();
       }
 
       function poseAtlasPath(poseId) {
@@ -2906,6 +2984,7 @@
         await loadKit(kitId);
         const kitMeta = state.kits.find(function (k) { return k.id === kitId; });
         const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
+        stopFramePlayback();
         state.poseId = poses.includes('idle') ? 'idle' : (poses[0] || 'idle');
         state.frameIdx = 0;
         state.weaponActive = false;
@@ -2933,6 +3012,7 @@
 
       async function switchPose(poseId) {
         if (state.poseId === poseId) return;
+        stopFramePlayback();
         state.poseId = poseId;
         state.frameIdx = 0;
         invalidateAllLayerCache();
@@ -3105,37 +3185,33 @@
             setWeaponFacingSource(state.facing, cur.src, wxfEl.value);
           });
           // Per-pose weapon orientation override (3x3 grid + src/transform dropdowns).
-          // Clicking a cell only updates state.weaponEditFacing — the body view
-          // (state.facing) stays put so authoring weapon orientation for one
-          // facing doesn't pull the canvas off whatever you were looking at.
+          // Clicking a cell ASSIGNS that cell's facing as the weapon source for
+          // the body's current facing (state.facing) — the composite immediately
+          // shows the new weapon. Body view stays put.
+          // Clicking the cell that matches state.facing clears the override (so
+          // the global kit.weapon.facings[F] takes over again).
           const wposeGrid = document.getElementById('weapon-pose-facing-grid');
           if (wposeGrid) {
             wposeGrid.querySelectorAll('.facing-cell').forEach(function (cell) {
               cell.addEventListener('click', function () {
-                state.weaponEditFacing = cell.dataset.facing;
-                renderWeaponPoseGrid();
+                const cellFacing = cell.dataset.facing;
+                if (cellFacing === state.facing) {
+                  setWeaponPoseSourceOverride(state.poseId, state.facing, null, null);
+                } else {
+                  setWeaponPoseSourceOverride(state.poseId, state.facing, cellFacing, 'none');
+                }
               });
             });
           }
-          const wpSrcEl = document.getElementById('wpose-src');
-          const wpXfEl = document.getElementById('wpose-transform');
-          if (wpSrcEl) wpSrcEl.addEventListener('change', function () {
-            const v = wpSrcEl.value;
-            const target = state.weaponEditFacing;
-            if (v === '') {
-              setWeaponPoseSourceOverride(state.poseId, target, null, null);
-            } else if (v === 'self') {
-              setWeaponPoseSourceOverride(state.poseId, target, 'self', null);
-            } else {
-              const xf = wpXfEl ? (wpXfEl.value || 'none') : 'none';
-              setWeaponPoseSourceOverride(state.poseId, target, v, xf);
-            }
-          });
-          if (wpXfEl) wpXfEl.addEventListener('change', function () {
-            const target = state.weaponEditFacing;
-            const cur = readWeaponPoseSourceOverride(state.poseId, target);
-            if (!cur || cur.src === 'self') return;
-            setWeaponPoseSourceOverride(state.poseId, target, cur.src, wpXfEl.value);
+          // Transform buttons: only meaningful when there's a non-self
+          // per-pose src override; clicking sets that override's transform.
+          document.querySelectorAll('.wpose-xf-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              const target = state.facing;
+              const cur = readWeaponPoseSourceOverride(state.poseId, target);
+              if (!cur || cur.src === 'self') return;
+              setWeaponPoseSourceOverride(state.poseId, target, cur.src, btn.dataset.xf);
+            });
           });
           const wposeSaveBtn = document.getElementById('wpose-save-variant');
           if (wposeSaveBtn) wposeSaveBtn.addEventListener('click', saveCurrentAsVariant);
@@ -3147,15 +3223,20 @@
           if (frameSelectEl) {
             frameSelectEl.addEventListener('change', function (ev) {
               const idx = parseInt(ev.target.value, 10);
-              if (!Number.isFinite(idx) || idx === state.frameIdx) return;
-              state.frameIdx = idx;
-              invalidateAllLayerCache();
-              refreshFacingGridArtwork();
-              renderLayersList();
-              renderOffsetReadout();
-              redraw().catch(function (err) {
-                showToast('Redraw failed: ' + (err.message || err), { error: true });
-              });
+              if (!Number.isFinite(idx)) return;
+              stopFramePlayback();
+              setFrameIdx(idx);
+            });
+          }
+          if (playFrameBtnEl) {
+            playFrameBtnEl.addEventListener('click', function () {
+              toggleFramePlayback();
+            });
+          }
+          if (stepFrameBtnEl) {
+            stepFrameBtnEl.addEventListener('click', function () {
+              stopFramePlayback();
+              setFrameIdx(state.frameIdx + 1);
             });
           }
           regimentSelectEl.addEventListener('change', function () {

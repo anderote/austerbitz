@@ -197,13 +197,22 @@ function recolorMarkers(png, regiment) {
   }
 }
 
+// A facing's pose entry can be either a bare array of frames
+// (`[[layer-a, layer-b], ...]`) or the wrapped form
+// `{ layers: [[...]], weapon: {...} }` introduced when per-pose weapon
+// attachment was added. Returns the underlying frames array (or null).
+function framesOfFacingEntry(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object' && Array.isArray(value.layers)) return value.layers;
+  return null;
+}
+
 export function isMultiFrameOverride(override) {
   if (!override || typeof override !== 'object') return false;
   for (const value of Object.values(override)) {
-    if (Array.isArray(value) && value.length > 0) {
-      const first = value[0];
-      if (Array.isArray(first)) return true;
-      return false;
+    const frames = framesOfFacingEntry(value);
+    if (frames && frames.length > 0) {
+      return Array.isArray(frames[0]);
     }
   }
   return false;
@@ -211,16 +220,18 @@ export function isMultiFrameOverride(override) {
 
 export function frameCount(override) {
   let n = 0;
-  for (const frames of Object.values(override)) {
-    if (Array.isArray(frames)) n = Math.max(n, frames.length);
+  for (const value of Object.values(override)) {
+    const frames = framesOfFacingEntry(value);
+    if (frames) n = Math.max(n, frames.length);
   }
   return n;
 }
 
 export function frameSliceOverride(override, frameIdx) {
   const out = {};
-  for (const [facing, frames] of Object.entries(override)) {
-    if (!Array.isArray(frames) || frames.length === 0) continue;
+  for (const [facing, value] of Object.entries(override)) {
+    const frames = framesOfFacingEntry(value);
+    if (!frames || frames.length === 0) continue;
     const useIdx = Math.min(frameIdx, frames.length - 1);
     const layers = frames[useIdx];
     if (!Array.isArray(layers)) {
