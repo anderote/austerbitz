@@ -32,6 +32,7 @@ import {
 import { applyWind } from './wind';
 import { createLabUi, type ActionHandlers, type GridToggle, type TimeScaleState, type WindState } from './lab-ui';
 import { loadPoseAtlas } from '../render/poses/atlas';
+import { loadDebrisAtlas } from '../render/debris-atlas';
 import { loadKits } from '../render/poses/kit-loader';
 import { startLiveReload } from '../render/poses/live-reload';
 import { composeCombinedAtlas } from '../render/poses/combined-atlas';
@@ -52,10 +53,12 @@ try {
 } catch (err) {
   console.warn('[lab] pose atlas load failed; continuing without it:', err);
 }
+const debrisAtlas = await loadDebrisAtlas(gl);
 const kits = await loadKits();
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   LAB_MAP_SIZE, LAB_MAP_SIZE, poseAtlas, kits,
+  debrisAtlas,
 );
 
 // Dev-mode live-reload (see src/main.ts for rationale).
