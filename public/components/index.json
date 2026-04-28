@@ -752,7 +752,9 @@
       "id": "coat-line-east-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/coat-line/east/present.png",
       "notes": "Coat with arms forward gripping horizontal musket (firing pose)."
     },
@@ -760,7 +762,9 @@
       "id": "coat-line-east-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/coat-line/east/fire.png",
       "notes": "Coat with arms forward gripping horizontal musket (fire moment)."
     },
@@ -768,7 +772,9 @@
       "id": "musket-brown-bess-east-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "weapon/musket/east/present.png",
       "notes": "Brown Bess horizontal pointed east at chest height."
     },
@@ -776,7 +782,9 @@
       "id": "musket-brown-bess-east-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "weapon/musket/east/fire.png",
       "notes": "Brown Bess at fire frame pointed east."
     },
@@ -784,7 +792,9 @@
       "id": "coat-line-west-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/coat-line/west/present.png",
       "notes": "Coat with arms forward gripping horizontal musket (firing pose, mirrored from E)."
     },
@@ -792,7 +802,9 @@
       "id": "coat-line-west-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/coat-line/west/fire.png",
       "notes": "Coat with arms forward gripping horizontal musket (fire moment, mirrored from E)."
     },
@@ -800,7 +812,9 @@
       "id": "musket-brown-bess-west-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "weapon/musket/west/present.png",
       "notes": "Brown Bess horizontal pointed west at chest height."
     },
@@ -808,7 +822,9 @@
       "id": "musket-brown-bess-west-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "weapon/musket/west/fire.png",
       "notes": "Brown Bess at fire frame pointed west."
     },
@@ -816,7 +832,9 @@
       "id": "coat-line-north-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/coat-line/north/present.png",
       "notes": "Coat with arms up gripping vertical musket pointed north (firing pose, back view)."
     },
@@ -824,7 +842,9 @@
       "id": "coat-line-north-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/coat-line/north/fire.png",
       "notes": "Coat with arms up gripping vertical musket pointed north (fire moment)."
     },
@@ -832,7 +852,9 @@
       "id": "musket-brown-bess-north-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "weapon/musket/north/present.png",
       "notes": "Brown Bess vertical pointed north, butt at chest."
     },
@@ -840,7 +862,9 @@
       "id": "musket-brown-bess-north-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "weapon/musket/north/fire.png",
       "notes": "Brown Bess at fire frame pointed north."
     },
@@ -848,7 +872,9 @@
       "id": "coat-line-northeast-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/coat-line/northeast/present.png",
       "notes": "Coat with arms up-right gripping diagonal musket (firing pose, 3/4 back view)."
     },
@@ -856,7 +882,9 @@
       "id": "coat-line-northeast-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/coat-line/northeast/fire.png",
       "notes": "Coat with arms up-right gripping diagonal musket (fire moment)."
     },
@@ -864,7 +892,9 @@
       "id": "musket-brown-bess-northeast-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "weapon/musket/northeast/present.png",
       "notes": "Brown Bess diagonal pointed northeast at ~45 deg."
     },
@@ -872,7 +902,9 @@
       "id": "musket-brown-bess-northeast-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "weapon/musket/northeast/fire.png",
       "notes": "Brown Bess at fire frame pointed northeast."
     },
@@ -880,7 +912,9 @@
       "id": "coat-line-southeast-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/coat-line/southeast/present.png",
       "notes": "Coat with arms down-right gripping diagonal musket (firing pose, 3/4 front view)."
     },
@@ -888,7 +922,9 @@
       "id": "coat-line-southeast-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/coat-line/southeast/fire.png",
       "notes": "Coat with arms down-right gripping diagonal musket (fire moment)."
     },
@@ -896,7 +932,9 @@
       "id": "musket-brown-bess-southeast-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "weapon/musket/southeast/present.png",
       "notes": "Brown Bess diagonal pointed southeast at ~45 deg."
     },
@@ -904,7 +942,9 @@
       "id": "musket-brown-bess-southeast-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "weapon/musket/southeast/fire.png",
       "notes": "Brown Bess at fire frame pointed southeast."
     },
@@ -912,7 +952,9 @@
       "id": "coat-line-northwest-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/coat-line/northwest/present.png",
       "notes": "Coat with arms up-left gripping diagonal musket (firing pose, mirrored from NE)."
     },
@@ -920,7 +962,9 @@
       "id": "coat-line-northwest-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/coat-line/northwest/fire.png",
       "notes": "Coat with arms up-left gripping diagonal musket (fire moment, mirrored from NE)."
     },
@@ -928,7 +972,9 @@
       "id": "musket-brown-bess-northwest-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "weapon/musket/northwest/present.png",
       "notes": "Brown Bess diagonal pointed northwest at ~45 deg."
     },
@@ -936,7 +982,9 @@
       "id": "musket-brown-bess-northwest-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "weapon/musket/northwest/fire.png",
       "notes": "Brown Bess at fire frame pointed northwest."
     },
@@ -944,7 +992,9 @@
       "id": "coat-line-southwest-present",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/coat-line/southwest/present.png",
       "notes": "Coat with arms down-left gripping diagonal musket (firing pose, mirrored from SE)."
     },
@@ -952,7 +1002,9 @@
       "id": "coat-line-southwest-fire",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/coat-line/southwest/fire.png",
       "notes": "Coat with arms down-left gripping diagonal musket (fire moment, mirrored from SE)."
     },
@@ -960,7 +1012,9 @@
       "id": "musket-brown-bess-southwest-present",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "weapon/musket/southwest/present.png",
       "notes": "Brown Bess diagonal pointed southwest at ~45 deg."
     },
@@ -968,7 +1022,9 @@
       "id": "musket-brown-bess-southwest-fire",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "weapon/musket/southwest/fire.png",
       "notes": "Brown Bess at fire frame pointed southwest."
     },
@@ -976,7 +1032,9 @@
       "id": "coat-line-south-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "uniform/coat-line/south/hit.png",
       "notes": "Coat with arm flung outward (impact moment)."
     },
@@ -984,7 +1042,9 @@
       "id": "musket-brown-bess-south-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "weapon/musket/south/hit.png",
       "notes": "Brown Bess mid-fall, dropping from grip."
     },
@@ -992,7 +1052,9 @@
       "id": "blood-south-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "fx/blood/south/hit.png",
       "notes": "Blood spray erupting from chest at impact."
     },
@@ -1000,7 +1062,9 @@
       "id": "body-south-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "anatomy/body/south/dying.png",
       "notes": "Head sagged forward (dying)."
     },
@@ -1008,7 +1072,9 @@
       "id": "shako-standard-south-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "uniform/head/shako-standard/south-dying.png",
       "notes": "Shako tilted forward (dying)."
     },
@@ -1016,7 +1082,9 @@
       "id": "coat-line-south-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "uniform/coat-line/south/dying.png",
       "notes": "Coat slumped, arms hanging limp (dying)."
     },
@@ -1024,7 +1092,9 @@
       "id": "trousers-south-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "uniform/lower/trousers/south-dying.png",
       "notes": "Buckled knees splayed outward (dying)."
     },
@@ -1032,7 +1102,9 @@
       "id": "musket-brown-bess-south-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "weapon/musket/south/dying.png",
       "notes": "Brown Bess fallen flat on ground beside soldier."
     },
@@ -1040,7 +1112,9 @@
       "id": "blood-south-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["S"],
+      "facings": [
+        "S"
+      ],
       "path": "fx/blood/south/dying.png",
       "notes": "Blood pool spreading under fallen soldier."
     },
@@ -1048,7 +1122,9 @@
       "id": "coat-line-north-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/coat-line/north/make-ready.png",
       "notes": "Coat overlay, make-ready firing pose (back view, arms up to vertical musket)."
     },
@@ -1056,7 +1132,9 @@
       "id": "musket-brown-bess-north-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "weapon/musket/north/make-ready.png",
       "notes": "Brown Bess vertical at centerline, hammer cocked (N make-ready)."
     },
@@ -1064,7 +1142,9 @@
       "id": "coat-line-north-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/coat-line/north/hit.png",
       "notes": "Coat with arms flung outward (N impact moment)."
     },
@@ -1072,7 +1152,9 @@
       "id": "musket-brown-bess-north-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "weapon/musket/north/hit.png",
       "notes": "Brown Bess mid-fall (N hit)."
     },
@@ -1080,7 +1162,9 @@
       "id": "blood-north-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "fx/blood/north/hit.png",
       "notes": "Blood spray erupting from upper-back (N exit wound)."
     },
@@ -1088,7 +1172,9 @@
       "id": "body-north-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "anatomy/body/north/dying.png",
       "notes": "Head sagged forward (N dying)."
     },
@@ -1096,7 +1182,9 @@
       "id": "shako-standard-north-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/head/shako-standard/north-dying.png",
       "notes": "Shako tilted forward (N dying)."
     },
@@ -1104,7 +1192,9 @@
       "id": "coat-line-north-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/coat-line/north/dying.png",
       "notes": "Coat slumped (N dying)."
     },
@@ -1112,7 +1202,9 @@
       "id": "trousers-north-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "uniform/lower/trousers/north-dying.png",
       "notes": "Knees splayed (N dying)."
     },
@@ -1120,7 +1212,9 @@
       "id": "musket-brown-bess-north-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "weapon/musket/north/dying.png",
       "notes": "Brown Bess fallen flat on ground (N dying)."
     },
@@ -1128,7 +1222,9 @@
       "id": "blood-north-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["N"],
+      "facings": [
+        "N"
+      ],
       "path": "fx/blood/north/dying.png",
       "notes": "Blood pool under fallen soldier (N dying)."
     },
@@ -1136,7 +1232,9 @@
       "id": "coat-line-east-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/coat-line/east/make-ready.png",
       "notes": "Coat overlay, make-ready firing pose (E profile, arms up to vertical musket)."
     },
@@ -1144,7 +1242,9 @@
       "id": "musket-brown-bess-east-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "weapon/musket/east/make-ready.png",
       "notes": "Brown Bess vertical at centerline, hammer cocked (E make-ready)."
     },
@@ -1152,7 +1252,9 @@
       "id": "coat-line-east-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/coat-line/east/hit.png",
       "notes": "Coat with arm flung forward (E impact moment)."
     },
@@ -1160,7 +1262,9 @@
       "id": "musket-brown-bess-east-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "weapon/musket/east/hit.png",
       "notes": "Brown Bess mid-fall (E hit)."
     },
@@ -1168,7 +1272,9 @@
       "id": "blood-east-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "fx/blood/east/hit.png",
       "notes": "Blood spray east (E exit wound)."
     },
@@ -1176,7 +1282,9 @@
       "id": "body-east-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "anatomy/body/east/dying.png",
       "notes": "Head sagged forward (E dying)."
     },
@@ -1184,7 +1292,9 @@
       "id": "shako-standard-east-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/head/shako-standard/east-dying.png",
       "notes": "Shako tilted forward (E dying)."
     },
@@ -1192,7 +1302,9 @@
       "id": "coat-line-east-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/coat-line/east/dying.png",
       "notes": "Coat slumped (E dying)."
     },
@@ -1200,7 +1312,9 @@
       "id": "trousers-east-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "uniform/lower/trousers/east-dying.png",
       "notes": "Knee buckled (E dying)."
     },
@@ -1208,7 +1322,9 @@
       "id": "musket-brown-bess-east-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "weapon/musket/east/dying.png",
       "notes": "Brown Bess fallen flat on ground (E dying)."
     },
@@ -1216,7 +1332,9 @@
       "id": "blood-east-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["E"],
+      "facings": [
+        "E"
+      ],
       "path": "fx/blood/east/dying.png",
       "notes": "Blood pool under fallen soldier (E dying)."
     },
@@ -1224,7 +1342,9 @@
       "id": "coat-line-west-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/coat-line/west/make-ready.png",
       "notes": "Coat overlay, make-ready (W mirror of E)."
     },
@@ -1232,7 +1352,9 @@
       "id": "musket-brown-bess-west-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "weapon/musket/west/make-ready.png",
       "notes": "Brown Bess vertical (W make-ready)."
     },
@@ -1240,7 +1362,9 @@
       "id": "coat-line-west-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/coat-line/west/hit.png",
       "notes": "Coat hit pose (W mirror of E)."
     },
@@ -1248,7 +1372,9 @@
       "id": "musket-brown-bess-west-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "weapon/musket/west/hit.png",
       "notes": "Brown Bess mid-fall (W hit)."
     },
@@ -1256,7 +1382,9 @@
       "id": "blood-west-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "fx/blood/west/hit.png",
       "notes": "Blood spray west (W exit wound)."
     },
@@ -1264,7 +1392,9 @@
       "id": "body-west-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "anatomy/body/west/dying.png",
       "notes": "Head sagged (W dying)."
     },
@@ -1272,7 +1402,9 @@
       "id": "shako-standard-west-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/head/shako-standard/west-dying.png",
       "notes": "Shako tilted (W dying)."
     },
@@ -1280,7 +1412,9 @@
       "id": "coat-line-west-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/coat-line/west/dying.png",
       "notes": "Coat slumped (W dying)."
     },
@@ -1288,7 +1422,9 @@
       "id": "trousers-west-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "uniform/lower/trousers/west-dying.png",
       "notes": "Knee buckled (W dying)."
     },
@@ -1296,7 +1432,9 @@
       "id": "musket-brown-bess-west-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "weapon/musket/west/dying.png",
       "notes": "Brown Bess fallen flat (W dying)."
     },
@@ -1304,7 +1442,9 @@
       "id": "blood-west-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["W"],
+      "facings": [
+        "W"
+      ],
       "path": "fx/blood/west/dying.png",
       "notes": "Blood pool under fallen soldier (W dying)."
     },
@@ -1312,7 +1452,9 @@
       "id": "coat-line-northeast-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/coat-line/northeast/make-ready.png",
       "notes": "Coat overlay, make-ready (NE 3/4 back, arms up to vertical musket)."
     },
@@ -1320,7 +1462,9 @@
       "id": "musket-brown-bess-northeast-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "weapon/musket/northeast/make-ready.png",
       "notes": "Brown Bess vertical (NE make-ready)."
     },
@@ -1328,7 +1472,9 @@
       "id": "coat-line-northeast-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/coat-line/northeast/hit.png",
       "notes": "Coat with arms flung (NE impact moment)."
     },
@@ -1336,7 +1482,9 @@
       "id": "musket-brown-bess-northeast-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "weapon/musket/northeast/hit.png",
       "notes": "Brown Bess mid-fall (NE hit)."
     },
@@ -1344,7 +1492,9 @@
       "id": "blood-northeast-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "fx/blood/northeast/hit.png",
       "notes": "Blood spray (NE exit wound)."
     },
@@ -1352,7 +1502,9 @@
       "id": "body-northeast-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "anatomy/body/northeast/dying.png",
       "notes": "Head sagged (NE dying)."
     },
@@ -1360,7 +1512,9 @@
       "id": "shako-standard-northeast-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/head/shako-standard/northeast-dying.png",
       "notes": "Shako tilted (NE dying)."
     },
@@ -1368,7 +1522,9 @@
       "id": "coat-line-northeast-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/coat-line/northeast/dying.png",
       "notes": "Coat slumped (NE dying)."
     },
@@ -1376,7 +1532,9 @@
       "id": "trousers-northeast-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "uniform/lower/trousers/northeast-dying.png",
       "notes": "Knees splayed (NE dying)."
     },
@@ -1384,7 +1542,9 @@
       "id": "musket-brown-bess-northeast-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "weapon/musket/northeast/dying.png",
       "notes": "Brown Bess fallen flat (NE dying)."
     },
@@ -1392,7 +1552,9 @@
       "id": "blood-northeast-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["NE"],
+      "facings": [
+        "NE"
+      ],
       "path": "fx/blood/northeast/dying.png",
       "notes": "Blood pool (NE dying)."
     },
@@ -1400,7 +1562,9 @@
       "id": "coat-line-northwest-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/coat-line/northwest/make-ready.png",
       "notes": "Coat overlay, make-ready (NW mirror of NE)."
     },
@@ -1408,7 +1572,9 @@
       "id": "musket-brown-bess-northwest-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "weapon/musket/northwest/make-ready.png",
       "notes": "Brown Bess vertical (NW make-ready)."
     },
@@ -1416,7 +1582,9 @@
       "id": "coat-line-northwest-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/coat-line/northwest/hit.png",
       "notes": "Coat hit pose (NW mirror of NE)."
     },
@@ -1424,7 +1592,9 @@
       "id": "musket-brown-bess-northwest-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "weapon/musket/northwest/hit.png",
       "notes": "Brown Bess mid-fall (NW hit)."
     },
@@ -1432,7 +1602,9 @@
       "id": "blood-northwest-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "fx/blood/northwest/hit.png",
       "notes": "Blood spray (NW exit wound)."
     },
@@ -1440,7 +1612,9 @@
       "id": "body-northwest-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "anatomy/body/northwest/dying.png",
       "notes": "Head sagged (NW dying)."
     },
@@ -1448,7 +1622,9 @@
       "id": "shako-standard-northwest-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/head/shako-standard/northwest-dying.png",
       "notes": "Shako tilted (NW dying)."
     },
@@ -1456,7 +1632,9 @@
       "id": "coat-line-northwest-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/coat-line/northwest/dying.png",
       "notes": "Coat slumped (NW dying)."
     },
@@ -1464,7 +1642,9 @@
       "id": "trousers-northwest-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "uniform/lower/trousers/northwest-dying.png",
       "notes": "Knees splayed (NW dying)."
     },
@@ -1472,7 +1652,9 @@
       "id": "musket-brown-bess-northwest-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "weapon/musket/northwest/dying.png",
       "notes": "Brown Bess fallen flat (NW dying)."
     },
@@ -1480,7 +1662,9 @@
       "id": "blood-northwest-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["NW"],
+      "facings": [
+        "NW"
+      ],
       "path": "fx/blood/northwest/dying.png",
       "notes": "Blood pool (NW dying)."
     },
@@ -1488,7 +1672,9 @@
       "id": "coat-line-southeast-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/coat-line/southeast/make-ready.png",
       "notes": "Coat overlay, make-ready (SE 3/4 front, arms up to vertical musket)."
     },
@@ -1496,7 +1682,9 @@
       "id": "musket-brown-bess-southeast-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "weapon/musket/southeast/make-ready.png",
       "notes": "Brown Bess vertical (SE make-ready)."
     },
@@ -1504,7 +1692,9 @@
       "id": "coat-line-southeast-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/coat-line/southeast/hit.png",
       "notes": "Coat with arms flung (SE impact moment)."
     },
@@ -1512,7 +1702,9 @@
       "id": "musket-brown-bess-southeast-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "weapon/musket/southeast/hit.png",
       "notes": "Brown Bess mid-fall (SE hit)."
     },
@@ -1520,7 +1712,9 @@
       "id": "blood-southeast-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "fx/blood/southeast/hit.png",
       "notes": "Blood spray (SE chest)."
     },
@@ -1528,7 +1722,9 @@
       "id": "body-southeast-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "anatomy/body/southeast/dying.png",
       "notes": "Head sagged (SE dying)."
     },
@@ -1536,7 +1732,9 @@
       "id": "shako-standard-southeast-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/head/shako-standard/southeast-dying.png",
       "notes": "Shako tilted (SE dying)."
     },
@@ -1544,7 +1742,9 @@
       "id": "coat-line-southeast-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/coat-line/southeast/dying.png",
       "notes": "Coat slumped (SE dying)."
     },
@@ -1552,7 +1752,9 @@
       "id": "trousers-southeast-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "uniform/lower/trousers/southeast-dying.png",
       "notes": "Knees splayed (SE dying)."
     },
@@ -1560,7 +1762,9 @@
       "id": "musket-brown-bess-southeast-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "weapon/musket/southeast/dying.png",
       "notes": "Brown Bess fallen flat (SE dying)."
     },
@@ -1568,7 +1772,9 @@
       "id": "blood-southeast-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["SE"],
+      "facings": [
+        "SE"
+      ],
       "path": "fx/blood/southeast/dying.png",
       "notes": "Blood pool (SE dying)."
     },
@@ -1576,7 +1782,9 @@
       "id": "coat-line-southwest-make-ready",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/coat-line/southwest/make-ready.png",
       "notes": "Coat overlay, make-ready (SW mirror of SE)."
     },
@@ -1584,7 +1792,9 @@
       "id": "musket-brown-bess-southwest-make-ready",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "weapon/musket/southwest/make-ready.png",
       "notes": "Brown Bess vertical (SW make-ready)."
     },
@@ -1592,7 +1802,9 @@
       "id": "coat-line-southwest-hit",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/coat-line/southwest/hit.png",
       "notes": "Coat hit pose (SW mirror of SE)."
     },
@@ -1600,7 +1812,9 @@
       "id": "musket-brown-bess-southwest-hit",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "weapon/musket/southwest/hit.png",
       "notes": "Brown Bess mid-fall (SW hit)."
     },
@@ -1608,7 +1822,9 @@
       "id": "blood-southwest-hit",
       "type": "fx",
       "category": "blood",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "fx/blood/southwest/hit.png",
       "notes": "Blood spray (SW chest)."
     },
@@ -1616,7 +1832,9 @@
       "id": "body-southwest-dying",
       "type": "anatomy",
       "category": "body",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "anatomy/body/southwest/dying.png",
       "notes": "Head sagged (SW dying)."
     },
@@ -1624,7 +1842,9 @@
       "id": "shako-standard-southwest-dying",
       "type": "uniform",
       "category": "headgear",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/head/shako-standard/southwest-dying.png",
       "notes": "Shako tilted (SW dying)."
     },
@@ -1632,7 +1852,9 @@
       "id": "coat-line-southwest-dying",
       "type": "uniform",
       "category": "upper",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/coat-line/southwest/dying.png",
       "notes": "Coat slumped (SW dying)."
     },
@@ -1640,7 +1862,9 @@
       "id": "trousers-southwest-dying",
       "type": "uniform",
       "category": "lower",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "uniform/lower/trousers/southwest-dying.png",
       "notes": "Knees splayed (SW dying)."
     },
@@ -1648,7 +1872,9 @@
       "id": "musket-brown-bess-southwest-dying",
       "type": "weapon",
       "category": "primary",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "weapon/musket/southwest/dying.png",
       "notes": "Brown Bess fallen flat (SW dying)."
     },
@@ -1656,7 +1882,9 @@
       "id": "blood-southwest-dying",
       "type": "fx",
       "category": "blood",
-      "facings": ["SW"],
+      "facings": [
+        "SW"
+      ],
       "path": "fx/blood/southwest/dying.png",
       "notes": "Blood pool (SW dying)."
     },
@@ -1667,6 +1895,726 @@
     { "id": "horse-bay-south",     "type": "anatomy", "category": "horse", "facings": ["S"],  "path": "anatomy/horse/south/idle.png" },
     { "id": "horse-bay-southwest", "type": "anatomy", "category": "horse", "facings": ["SW"], "path": "anatomy/horse/southwest/idle.png" },
     { "id": "horse-bay-west",      "type": "anatomy", "category": "horse", "facings": ["W"],  "path": "anatomy/horse/west/idle.png" },
-    { "id": "horse-bay-northwest", "type": "anatomy", "category": "horse", "facings": ["NW"], "path": "anatomy/horse/northwest/idle.png" }
+    { "id": "horse-bay-northwest", "type": "anatomy", "category": "horse", "facings": ["NW"], "path": "anatomy/horse/northwest/idle.png" },
+    {
+      "id": "trousers-north-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-walk-0.png"
+    },
+    {
+      "id": "trousers-north-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-walk-1.png"
+    },
+    {
+      "id": "trousers-north-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-walk-2.png"
+    },
+    {
+      "id": "trousers-north-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-walk-3.png"
+    },
+    {
+      "id": "trousers-north-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-run-0.png"
+    },
+    {
+      "id": "trousers-north-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-run-1.png"
+    },
+    {
+      "id": "trousers-north-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-run-2.png"
+    },
+    {
+      "id": "trousers-north-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-run-3.png"
+    },
+    {
+      "id": "trousers-north-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-run-4.png"
+    },
+    {
+      "id": "trousers-north-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "N"
+      ],
+      "path": "uniform/lower/trousers/north-run-5.png"
+    },
+    {
+      "id": "trousers-northeast-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-walk-0.png"
+    },
+    {
+      "id": "trousers-northeast-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-walk-1.png"
+    },
+    {
+      "id": "trousers-northeast-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-walk-2.png"
+    },
+    {
+      "id": "trousers-northeast-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-walk-3.png"
+    },
+    {
+      "id": "trousers-northeast-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-run-0.png"
+    },
+    {
+      "id": "trousers-northeast-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-run-1.png"
+    },
+    {
+      "id": "trousers-northeast-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-run-2.png"
+    },
+    {
+      "id": "trousers-northeast-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-run-3.png"
+    },
+    {
+      "id": "trousers-northeast-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-run-4.png"
+    },
+    {
+      "id": "trousers-northeast-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NE"
+      ],
+      "path": "uniform/lower/trousers/northeast-run-5.png"
+    },
+    {
+      "id": "trousers-east-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-walk-0.png"
+    },
+    {
+      "id": "trousers-east-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-walk-1.png"
+    },
+    {
+      "id": "trousers-east-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-walk-2.png"
+    },
+    {
+      "id": "trousers-east-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-walk-3.png"
+    },
+    {
+      "id": "trousers-east-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-run-0.png"
+    },
+    {
+      "id": "trousers-east-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-run-1.png"
+    },
+    {
+      "id": "trousers-east-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-run-2.png"
+    },
+    {
+      "id": "trousers-east-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-run-3.png"
+    },
+    {
+      "id": "trousers-east-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-run-4.png"
+    },
+    {
+      "id": "trousers-east-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "E"
+      ],
+      "path": "uniform/lower/trousers/east-run-5.png"
+    },
+    {
+      "id": "trousers-southeast-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-walk-0.png"
+    },
+    {
+      "id": "trousers-southeast-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-walk-1.png"
+    },
+    {
+      "id": "trousers-southeast-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-walk-2.png"
+    },
+    {
+      "id": "trousers-southeast-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-walk-3.png"
+    },
+    {
+      "id": "trousers-southeast-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-run-0.png"
+    },
+    {
+      "id": "trousers-southeast-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-run-1.png"
+    },
+    {
+      "id": "trousers-southeast-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-run-2.png"
+    },
+    {
+      "id": "trousers-southeast-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-run-3.png"
+    },
+    {
+      "id": "trousers-southeast-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-run-4.png"
+    },
+    {
+      "id": "trousers-southeast-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SE"
+      ],
+      "path": "uniform/lower/trousers/southeast-run-5.png"
+    },
+    {
+      "id": "trousers-south-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-walk-0.png"
+    },
+    {
+      "id": "trousers-south-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-walk-1.png"
+    },
+    {
+      "id": "trousers-south-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-walk-2.png"
+    },
+    {
+      "id": "trousers-south-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-walk-3.png"
+    },
+    {
+      "id": "trousers-south-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-run-0.png"
+    },
+    {
+      "id": "trousers-south-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-run-1.png"
+    },
+    {
+      "id": "trousers-south-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-run-2.png"
+    },
+    {
+      "id": "trousers-south-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-run-3.png"
+    },
+    {
+      "id": "trousers-south-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-run-4.png"
+    },
+    {
+      "id": "trousers-south-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "S"
+      ],
+      "path": "uniform/lower/trousers/south-run-5.png"
+    },
+    {
+      "id": "trousers-southwest-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-walk-0.png"
+    },
+    {
+      "id": "trousers-southwest-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-walk-1.png"
+    },
+    {
+      "id": "trousers-southwest-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-walk-2.png"
+    },
+    {
+      "id": "trousers-southwest-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-walk-3.png"
+    },
+    {
+      "id": "trousers-southwest-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-run-0.png"
+    },
+    {
+      "id": "trousers-southwest-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-run-1.png"
+    },
+    {
+      "id": "trousers-southwest-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-run-2.png"
+    },
+    {
+      "id": "trousers-southwest-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-run-3.png"
+    },
+    {
+      "id": "trousers-southwest-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-run-4.png"
+    },
+    {
+      "id": "trousers-southwest-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "SW"
+      ],
+      "path": "uniform/lower/trousers/southwest-run-5.png"
+    },
+    {
+      "id": "trousers-west-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-walk-0.png"
+    },
+    {
+      "id": "trousers-west-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-walk-1.png"
+    },
+    {
+      "id": "trousers-west-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-walk-2.png"
+    },
+    {
+      "id": "trousers-west-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-walk-3.png"
+    },
+    {
+      "id": "trousers-west-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-run-0.png"
+    },
+    {
+      "id": "trousers-west-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-run-1.png"
+    },
+    {
+      "id": "trousers-west-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-run-2.png"
+    },
+    {
+      "id": "trousers-west-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-run-3.png"
+    },
+    {
+      "id": "trousers-west-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-run-4.png"
+    },
+    {
+      "id": "trousers-west-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "W"
+      ],
+      "path": "uniform/lower/trousers/west-run-5.png"
+    },
+    {
+      "id": "trousers-northwest-walk-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-walk-0.png"
+    },
+    {
+      "id": "trousers-northwest-walk-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-walk-1.png"
+    },
+    {
+      "id": "trousers-northwest-walk-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-walk-2.png"
+    },
+    {
+      "id": "trousers-northwest-walk-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-walk-3.png"
+    },
+    {
+      "id": "trousers-northwest-run-0",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-run-0.png"
+    },
+    {
+      "id": "trousers-northwest-run-1",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-run-1.png"
+    },
+    {
+      "id": "trousers-northwest-run-2",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-run-2.png"
+    },
+    {
+      "id": "trousers-northwest-run-3",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-run-3.png"
+    },
+    {
+      "id": "trousers-northwest-run-4",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-run-4.png"
+    },
+    {
+      "id": "trousers-northwest-run-5",
+      "type": "uniform",
+      "category": "lower",
+      "facings": [
+        "NW"
+      ],
+      "path": "uniform/lower/trousers/northwest-run-5.png"
+    }
   ]
 }

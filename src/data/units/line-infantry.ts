@@ -7,8 +7,12 @@ export const lineInfantry: UnitKind = {
   name: 'British Line Infantry',
   placeholderColor: [255, 255, 255],
   placeholderSize: { w: 1.0, h: 2.25 },
-  // Texture is 16×36 with the figure ending at row ~28 (shadow rows 29–30,
-  // empty padding rows 31–35). Foot line ≈ (28/36 - 0.5) * 2.25 = 0.625.
+  // Sprite cell is 32×36 (figure centered in the middle 16, side padding
+  // reserved for muskets). Display width = 32 * 0.0625 = 2.0 keeps texels
+  // square against the 2.25 world-unit height (36 * 0.0625).
+  spriteSize: { w: 2.0, h: 2.25 },
+  // Figure ends at row ~28 (shadow rows 29–30, empty padding rows 31–35).
+  // Foot line ≈ (28/36 - 0.5) * 2.25 = 0.625.
   footYFromCenter: 0.625,
   spriteCell: { col: 1, row: 1 },
   baseStats: {
@@ -19,7 +23,7 @@ export const lineInfantry: UnitKind = {
     weaponRange: 80,
     weaponDamage: 12,
     weaponReload: 10,
-    weaponAccuracy: 0.4,
+    weaponAccuracy: 0.2,
     armor: 0,
     massKg: 80,
     formationSpacing: { x: 1.0, y: 1.2 },

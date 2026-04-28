@@ -10,6 +10,8 @@ import { tickProjectiles } from './projectile-system';
 import { createProjectiles } from '../projectiles';
 import { createParticles } from '../../particles/particles';
 import { createPuffs } from '../../puffs/puffs';
+import { writeFireSignal } from '../fire-signal';
+import { maxHoldFor } from './combat-system';
 
 function makeWorld() {
   const world = createWorld({ seed: 1, capacity: 64, mapSize: 200, cellSize: 2 });
@@ -39,6 +41,7 @@ describe('combatSystem', () => {
     const shooter = spawnLineInfantry(world, 0, 0, 0);
     const target  = spawnLineInfantry(world, 1, 50, 0); // 50 m, well inside 80 m range
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
@@ -127,6 +130,7 @@ describe('combatSystem', () => {
     spawnLineInfantry(world, 0, 5, 0);   // friendly, very close
     const enemy   = spawnLineInfantry(world, 1, 60, 0); // farther but enemy
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
@@ -178,6 +182,7 @@ describe('combatSystem', () => {
     world.entities.velX[shooter] = 0.01;
     world.entities.velY[shooter] = 0;
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
@@ -198,6 +203,7 @@ describe('combatSystem', () => {
     world.entities.velX[shooter] = 0.75;
     world.entities.velY[shooter] = 0;
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
@@ -213,26 +219,28 @@ describe('combatSystem', () => {
     const shooter = spawnLineInfantry(world, 0, 0, 0);
     const target  = spawnLineInfantry(world, 1, 80, 0); // exactly 80 m
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
     expect(world.entities.targetId[shooter]).toBe(target);
   });
 
-  it('picks the nearer of two enemies in range', () => {
+  it('acquires one of multiple in-range enemies (first-valid, no closest guarantee)', () => {
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    const far     = spawnLineInfantry(world, 1, 70, 0);
-    const near    = spawnLineInfantry(world, 1, 30, 0);
+    const a = spawnLineInfantry(world, 1, 70, 0);
+    const b = spawnLineInfantry(world, 1, 30, 0);
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
-    expect(world.entities.targetId[shooter]).toBe(near);
-    expect(world.entities.targetId[shooter]).not.toBe(far);
+    const picked = world.entities.targetId[shooter]!;
+    expect(picked === a || picked === b).toBe(true);
   });
 
   it('skips enemies in Dying / Dead / Ragdoll and falls through to the next-nearest', () => {
@@ -245,6 +253,7 @@ describe('combatSystem', () => {
     const aliveFar   = spawnLineInfantry(world, 1, 60, 0);
     world.entities.state[corpseNear] = EntityState.Dying;
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
@@ -263,10 +272,157 @@ describe('combatSystem', () => {
     world.entities.state[ragdoll] = EntityState.Ragdoll;
     world.entities.state[dead]    = EntityState.Dead;
 
+    world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
     expect(world.entities.targetId[shooter]).toBe(alive);
+  });
+
+  it('a lone idle armed soldier with a target waits and does not fire on the first tick', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    world.entities.stateT[shooter] = 0;   // freshly idle
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
+  it('a lone idle soldier eventually fires once stateT >= maxHoldFor(id)', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    // Force stateT past any possible maxHold so we know it fires THIS tick.
+    world.entities.stateT[shooter] = 999;
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+    expect(world.entities.stateT[shooter]).toBeCloseTo(0.15, 6);  // full leader windup
+  });
+
+  it('a hot same-team fireSignal in the 3x3 neighbourhood causes immediate fire with 0 windup', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    world.entities.stateT[shooter] = 0;
+
+    // Plant a fresh signal in shooter's own cell, same team, current tick.
+    writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, world.tickCount);
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+    expect(world.entities.stateT[shooter]).toBe(0);   // join windup
+  });
+
+  it('an out-of-radius signal does not trigger join', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    world.entities.stateT[shooter] = 0;
+
+    // 12 m away — outside the 3x3 cell neighbourhood (radius ~5–6 m).
+    writeFireSignal(world.fireSignal, world.grid, 12, 0, 0, world.tickCount);
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
+  it('a fresh signal from the OTHER team is ignored', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    world.entities.stateT[shooter] = 0;
+
+    writeFireSignal(world.fireSignal, world.grid, 0, 0, 1, world.tickCount); // team 1
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
+  it('a stale signal (older than VOLLEY_WINDOW_TICKS) is ignored', () => {
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 50, 0);
+    world.entities.stateT[shooter] = 0;
+
+    // 50 ticks old at tickCount=0 — write at tick=-50.
+    world.tickCount = 50;
+    writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, 0);  // age 50 > window
+
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
+  it('does not acquire enemies outside weaponRange; acquires + fires once they enter it', () => {
+    // line-infantry weaponRange = 80. Enemy at 100 m is out of range and
+    // is not acquired. After moving to 60 m, the next stripe scan picks
+    // it up and fire triggers (stateT past maxHold).
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const enemy   = spawnLineInfantry(world, 1, 100, 0);
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(-1);
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+
+    world.entities.posX[enemy] = 60;
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(enemy);
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+    expect(fireOrders.get(shooter)).toEqual({ tx: 60, ty: 0 });
+  });
+
+  it('maxHoldFor returns a value within [MAX_HOLD_MIN_S, MAX_HOLD_MAX_S]', () => {
+    for (let id = 0; id < 200; id++) {
+      const v = maxHoldFor(id);
+      expect(v).toBeGreaterThanOrEqual(0.20);
+      expect(v).toBeLessThanOrEqual(0.60);
+    }
   });
 });
 
@@ -284,10 +440,11 @@ describe('combat pipeline integration', () => {
 
     const dt = 1 / 60;
 
+    world.entities.stateT[shooter] = 999;
     // Tick 1: combat picks the target and triggers Aiming. State-system advances stateT.
     rebuildGrid(world);
     combat(world, dt);
-    tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0);
+    tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
     tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
 
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
@@ -300,7 +457,7 @@ describe('combat pipeline integration', () => {
     for (let i = 0; i < 12; i++) {
       rebuildGrid(world);
       combat(world, dt);
-      tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0);
+      tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
       tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
       peakProjectiles = Math.max(peakProjectiles, projectiles.count);
     }

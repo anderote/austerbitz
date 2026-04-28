@@ -1,10 +1,31 @@
 import type { Camera } from '../render/camera';
+import { isDead } from '../sim/entities';
 import type { World } from '../sim/world';
 import { clamp } from '../util/math';
 
 const SIZE = 180;
 const TEAM_COLORS = ['#6ec1ff', '#ff6b6b', '#9bd76b', '#e8c46a'];
 const NEUTRAL_COLOR = '#aaa';
+// Minimap target window is the viewport scaled by this; clamped to map bounds.
+// Larger value = more context around the camera; viewport rect occupies ~1/SCALE of the minimap.
+const WINDOW_SCALE = 4;
+
+interface MinimapWindow {
+  minX: number;
+  minY: number;
+  w: number;
+  h: number;
+}
+
+function computeWindow(cam: Camera, mapSize: { w: number; h: number }): MinimapWindow {
+  const viewW = cam.viewport.w / cam.zoom;
+  const viewH = cam.viewport.h / cam.zoom;
+  const w = Math.min(Math.max(viewW * WINDOW_SCALE, viewW), mapSize.w);
+  const h = Math.min(Math.max(viewH * WINDOW_SCALE, viewH), mapSize.h);
+  const minX = clamp(cam.center.x - w / 2, 0, mapSize.w - w);
+  const minY = clamp(cam.center.y - h / 2, 0, mapSize.h - h);
+  return { minX, minY, w, h };
+}
 
 export interface Minimap {
   update(world: World, cam: Camera): void;
@@ -31,8 +52,9 @@ export function createMinimap(
     const rect = canvas.getBoundingClientRect();
     const px = (clientX - rect.left) / rect.width;
     const py = (clientY - rect.top) / rect.height;
-    cam.center.x = clamp(px * mapSize.w, 0, mapSize.w);
-    cam.center.y = clamp(py * mapSize.h, 0, mapSize.h);
+    const win = computeWindow(cam, mapSize);
+    cam.center.x = clamp(win.minX + px * win.w, 0, mapSize.w);
+    cam.center.y = clamp(win.minY + py * win.h, 0, mapSize.h);
   }
 
   const onDown = (e: MouseEvent) => {
@@ -56,8 +78,9 @@ export function createMinimap(
 
   return {
     update(world, cam) {
-      const sx = SIZE / mapSize.w;
-      const sy = SIZE / mapSize.h;
+      const win = computeWindow(cam, mapSize);
+      const sx = SIZE / win.w;
+      const sy = SIZE / win.h;
 
       ctx.clearRect(0, 0, SIZE, SIZE);
       ctx.fillStyle = 'rgba(40, 50, 40, 0.45)';
@@ -67,20 +90,22 @@ export function createMinimap(
       const r = 1.5;
       for (let i = 0; i < e.capacity; i++) {
         if (e.alive[i] !== 1) continue;
+        if (isDead(e, i)) continue;
+        const x = (e.posX[i]! - win.minX) * sx;
+        const y = (e.posY[i]! - win.minY) * sy;
+        if (x < -r || x > SIZE + r || y < -r || y > SIZE + r) continue;
         const team = e.team[i]!;
         ctx.fillStyle = TEAM_COLORS[team] ?? NEUTRAL_COLOR;
-        const x = e.posX[i]! * sx;
-        const y = e.posY[i]! * sy;
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
 
       // Camera viewport rectangle (clipped to the minimap).
       const halfW = (cam.viewport.w / cam.zoom) * 0.5;
       const halfH = (cam.viewport.h / cam.zoom) * 0.5;
-      const x0 = clamp((cam.center.x - halfW) * sx, 0, SIZE);
-      const y0 = clamp((cam.center.y - halfH) * sy, 0, SIZE);
-      const x1 = clamp((cam.center.x + halfW) * sx, 0, SIZE);
-      const y1 = clamp((cam.center.y + halfH) * sy, 0, SIZE);
+      const x0 = clamp((cam.center.x - halfW - win.minX) * sx, 0, SIZE);
+      const y0 = clamp((cam.center.y - halfH - win.minY) * sy, 0, SIZE);
+      const x1 = clamp((cam.center.x + halfW - win.minX) * sx, 0, SIZE);
+      const y1 = clamp((cam.center.y + halfH - win.minY) * sy, 0, SIZE);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.lineWidth = 1;
       ctx.strokeRect(

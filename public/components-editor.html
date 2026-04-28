@@ -69,8 +69,22 @@
       .layer-item.selected {
         background: #2563eb; color: #ffffff; border-color: #1d4ed8;
       }
-      .layer-name { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; }
+      .layer-name { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; flex: 1; }
       .layer-offset { font-size: 11px; opacity: 0.85; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+      .layer-reorder { display: flex; gap: 2px; margin-right: 6px; }
+      .layer-reorder button {
+        font: inherit; font-size: 10px; line-height: 1;
+        width: 18px; height: 18px; padding: 0;
+        border: 1px solid rgba(55, 65, 81, 0.3); border-radius: 3px;
+        background: #ffffff; color: #1f2937; cursor: pointer;
+      }
+      .layer-reorder button:disabled { opacity: 0.35; cursor: not-allowed; }
+      .layer-item.selected .layer-reorder button {
+        background: rgba(255,255,255,0.15); color: #ffffff; border-color: rgba(255,255,255,0.4);
+      }
+      .layer-item.selected .layer-reorder button:hover:not(:disabled) {
+        background: rgba(255,255,255,0.3);
+      }
       .offset-controls {
         margin-top: 14px; padding-top: 14px;
         border-top: 1px solid rgba(55, 65, 81, 0.15);
@@ -303,9 +317,17 @@
       .autosave-indicator.saving { background: #fef3c7; color: #92400e; }
       .autosave-indicator.saved { background: #d1fae5; color: #047857; }
       .autosave-indicator.error { background: #fee2e2; color: #b91c1c; }
+
+      .mode-tab { padding: 6px 14px; background: transparent; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font: inherit; }
+      .mode-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
     </style>
   </head>
   <body>
+    <div class="mode-tabs" style="display:flex; gap:8px; padding:8px 16px; border-bottom:1px solid #d1d5db; background:#f9fafb;">
+      <button id="mode-components" class="mode-tab active">Components</button>
+      <button id="mode-pose-frames" class="mode-tab">Pose Frames</button>
+    </div>
+    <div id="components-mode">
     <div class='header'>
       <h1>Component Offset Editor</h1>
       <div class='header-actions'>
@@ -339,7 +361,7 @@
 
     <div class='layout'>
       <div class='panel'>
-        <h2>Layers (bottom &rarr; top)</h2>
+        <h2>Layers (top &rarr; bottom of stack)</h2>
         <div class='layers' id='layers'></div>
         <div class='offset-controls'>
           <div class='offset-row'><span>dx</span><span id='dx-value'>0</span></div>
@@ -410,6 +432,28 @@
     </div>
 
     <div class='toast' id='toast'></div>
+    </div>
+    <div id="pose-frames-mode" style="display:none">
+      <div style="padding: 16px;">
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+          <label>Kind <select id="pf-kind"></select></label>
+          <label>Pose <select id="pf-pose"></select></label>
+          <label>Dir <select id="pf-dir"></select></label>
+          <label>Clip <select id="pf-clip"></select></label>
+          <label>Frame <select id="pf-frame"></select></label>
+          <span id="pf-edit-count" style="font-size:13px; color:#374151;">0 edits</span>
+        </div>
+        <canvas id="pf-canvas" style="border:1px solid #d1d5db; image-rendering:pixelated; cursor:crosshair;"></canvas>
+        <div style="display:flex; gap:8px; margin-top:12px; align-items:center;">
+          <button id="pf-save">Save</button>
+          <button id="pf-build">Build</button>
+          <button id="pf-clear">Clear edits for this frame</button>
+          <input type="color" id="pf-color" value="#ff0000" />
+          <label><input type="checkbox" id="pf-erase"/> Erase</label>
+          <span id="pf-toast" style="margin-left:auto; font-size:12px; color:#374151;"></span>
+        </div>
+      </div>
+    </div>
 
     <script>
       'use strict';
@@ -604,6 +648,7 @@
         weaponActive: false,
         // Drag state for weapon attachment.
         weaponDrag: null,
+        kitDirty: false,
       };
 
       // Per-pose, per-regiment recolored atlas data-URL cache.
@@ -952,6 +997,53 @@
         return getIdleLayers(facing);
       }
 
+      // Returns the underlying mutable array that getCurrentLayers reads from,
+      // so reorders persist into state.kit (and then to disk via saveKit).
+      function getCurrentLayersMut() {
+        if (!state.kit) return null;
+        const poseId = state.poseId;
+        const facing = state.facing;
+        if (poseId === 'idle') {
+          const fc = state.kit.facings && state.kit.facings[facing];
+          return fc && Array.isArray(fc.layers) ? fc.layers : null;
+        }
+        const poseDef = state.kit.poses && state.kit.poses[poseId];
+        if (poseDef && Array.isArray(poseDef[facing])) return poseDef[facing];
+        // No pose override: fall back to mutating idle (matches what's rendered).
+        const fc = state.kit.facings && state.kit.facings[facing];
+        return fc && Array.isArray(fc.layers) ? fc.layers : null;
+      }
+
+      function moveLayer(componentId, direction) {
+        const arr = getCurrentLayersMut();
+        if (!arr) return;
+        const idx = arr.indexOf(componentId);
+        if (idx < 0) return;
+        // direction: +1 = up in display = later in array (toward top of stack);
+        //           -1 = down in display = earlier in array (toward bottom).
+        const target = idx + direction;
+        if (target < 0 || target >= arr.length) return;
+        arr[idx] = arr[target];
+        arr[target] = componentId;
+        state.kitDirty = true;
+        renderLayersList();
+        redraw();
+        scheduleAutoSave();
+      }
+
+      async function saveKit() {
+        if (!state.kitDirty || !state.kitId || !state.kit) return;
+        const res = await fetch('/api/kit/' + encodeURIComponent(state.kitId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state.kit),
+        });
+        if (!res.ok) throw new Error('Save kit failed: HTTP ' + res.status);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save kit failed');
+        state.kitDirty = false;
+      }
+
       function buildFacingButtons() {
         for (const f of FACINGS) {
           const btn = document.createElement('button');
@@ -1070,11 +1162,14 @@
 
       function renderLayersList() {
         // Display top-to-bottom: topmost (drawn last) first, bottom (drawn first) last.
-        const layers = [...getCurrentLayers()].reverse();
+        const arr = getCurrentLayers();
+        const reorderable = !!getCurrentLayersMut();
+        const display = [...arr].reverse();
         layersEl.innerHTML = '';
 
         // For body poses with a weapon, prepend a synthetic "weapon" entry as
         // the top-most layer. Selecting it switches into weaponActive mode.
+        // No reorder controls — it isn't a real layer in kit.facings.
         const showWeaponEntry = state.poseId !== WEAPON_POSE_ID && kitHasWeapon();
         if (showWeaponEntry) {
           const item = document.createElement('div');
@@ -1102,10 +1197,27 @@
           layersEl.appendChild(item);
         }
 
-        for (const id of layers) {
+        display.forEach((id, displayIdx) => {
+          const arrIdx = arr.length - 1 - displayIdx; // position in underlying array
           const item = document.createElement('div');
           const isSelected = !state.weaponActive && id === state.selectedLayerId;
           item.className = 'layer-item' + (isSelected ? ' selected' : '');
+          const reorder = document.createElement('span');
+          reorder.className = 'layer-reorder';
+          const upBtn = document.createElement('button');
+          upBtn.type = 'button';
+          upBtn.title = 'Move up (toward top of stack)';
+          upBtn.textContent = '▲';
+          upBtn.disabled = !reorderable || arrIdx === arr.length - 1;
+          upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveLayer(id, +1); });
+          const downBtn = document.createElement('button');
+          downBtn.type = 'button';
+          downBtn.title = 'Move down (toward bottom of stack)';
+          downBtn.textContent = '▼';
+          downBtn.disabled = !reorderable || arrIdx === 0;
+          downBtn.addEventListener('click', (e) => { e.stopPropagation(); moveLayer(id, -1); });
+          reorder.appendChild(upBtn);
+          reorder.appendChild(downBtn);
           const name = document.createElement('span');
           name.className = 'layer-name';
           name.textContent = id;
@@ -1113,6 +1225,7 @@
           const offsetTag = document.createElement('span');
           offsetTag.className = 'layer-offset';
           offsetTag.textContent = (off[0] || off[1]) ? '[' + off[0] + ',' + off[1] + ']' : '';
+          item.appendChild(reorder);
           item.appendChild(name);
           item.appendChild(offsetTag);
           item.addEventListener('click', () => {
@@ -1124,7 +1237,7 @@
             redraw();
           });
           layersEl.appendChild(item);
-        }
+        });
       }
 
       function renderOffsetReadout() {
@@ -2067,7 +2180,7 @@
         setAutoStatus('saving', 'saving');
         _autoInFlight = (async function () {
           try {
-            await Promise.all([saveOffsets(), savePixelEdits()]);
+            await Promise.all([saveOffsets(), savePixelEdits(), saveKit()]);
             await rebuildAtlas();
             state.cacheBust = Date.now();
             state.imageCache.clear();
@@ -2482,6 +2595,278 @@
       }
 
       init();
+
+      // === Pose Frames mode ===
+
+      state.mode = 'components';
+      state.poseFrames = {
+        kind: 'cuirassier',
+        pose: 'idle',
+        dir: 'S',
+        clip: 0,
+        frame: 0,
+        edits: {},
+        manifest: null,
+        zoom: 8,
+        baseImage: null,
+      };
+
+      async function loadPoseFramesState() {
+        try {
+          const m = await fetch('/sprites/poses/manifest.json').then(r => r.json());
+          state.poseFrames.manifest = m;
+        } catch (_) {
+          state.poseFrames.manifest = { kinds: {} };
+        }
+        try {
+          const e = await fetch('/sprites/poses/edits.json?v=' + Date.now()).then(r => r.json());
+          state.poseFrames.edits = e || {};
+        } catch (_) {
+          state.poseFrames.edits = {};
+        }
+      }
+
+      function lookupPfEdits(tree, kind, pose, dir, clip, frame) {
+        return tree?.[kind]?.[pose]?.[dir]?.[String(clip)]?.[String(frame)] ?? [];
+      }
+
+      function ensurePfEditsArray() {
+        const t = state.poseFrames.edits;
+        const { kind, pose, dir, clip, frame } = state.poseFrames;
+        if (!t[kind]) t[kind] = {};
+        if (!t[kind][pose]) t[kind][pose] = {};
+        if (!t[kind][pose][dir]) t[kind][pose][dir] = {};
+        if (!t[kind][pose][dir][String(clip)]) t[kind][pose][dir][String(clip)] = {};
+        if (!t[kind][pose][dir][String(clip)][String(frame)]) t[kind][pose][dir][String(clip)][String(frame)] = [];
+        return t[kind][pose][dir][String(clip)][String(frame)];
+      }
+
+      function updatePfEditCount() {
+        const list = lookupPfEdits(state.poseFrames.edits, state.poseFrames.kind, state.poseFrames.pose, state.poseFrames.dir, state.poseFrames.clip, state.poseFrames.frame);
+        const el = document.getElementById('pf-edit-count');
+        if (el) el.textContent = `${list.length} edits`;
+      }
+
+      function populatePfDropdowns() {
+        const m = state.poseFrames.manifest;
+        // Kind
+        const kSel = document.getElementById('pf-kind');
+        kSel.innerHTML = '';
+        const kinds = Object.keys(m?.kinds || {});
+        for (const k of kinds) {
+          const opt = document.createElement('option');
+          opt.value = k; opt.textContent = k;
+          kSel.appendChild(opt);
+        }
+        if (!kinds.includes(state.poseFrames.kind)) state.poseFrames.kind = kinds[0] || 'cuirassier';
+        kSel.value = state.poseFrames.kind;
+        // Pose
+        const pSel = document.getElementById('pf-pose');
+        pSel.innerHTML = '';
+        const kindEntry = m?.kinds[state.poseFrames.kind];
+        const poses = Object.keys(kindEntry?.poses || {});
+        for (const p of poses) {
+          const opt = document.createElement('option');
+          opt.value = p; opt.textContent = p;
+          pSel.appendChild(opt);
+        }
+        if (!poses.includes(state.poseFrames.pose)) state.poseFrames.pose = poses[0] || 'idle';
+        pSel.value = state.poseFrames.pose;
+        // Dir
+        const dSel = document.getElementById('pf-dir');
+        dSel.innerHTML = '';
+        const poseEntry = kindEntry?.poses[state.poseFrames.pose];
+        const dirs = poseEntry?.dirs || [];
+        for (const d of dirs) {
+          const opt = document.createElement('option');
+          opt.value = d; opt.textContent = d;
+          dSel.appendChild(opt);
+        }
+        if (!dirs.includes(state.poseFrames.dir)) state.poseFrames.dir = dirs[0] || 'S';
+        dSel.value = state.poseFrames.dir;
+        // Clip (currently always 0; placeholder for future)
+        const cSel = document.getElementById('pf-clip');
+        cSel.innerHTML = '<option value="0">0</option>';
+        state.poseFrames.clip = 0;
+        cSel.value = '0';
+        // Frame
+        const fSel = document.getElementById('pf-frame');
+        fSel.innerHTML = '';
+        const clips = poseEntry?.clips;
+        const dirClips = clips?.[state.poseFrames.dir];
+        const frameCount = (dirClips && dirClips[state.poseFrames.clip]?.length) || 1;
+        for (let i = 0; i < frameCount; i++) {
+          const opt = document.createElement('option');
+          opt.value = String(i); opt.textContent = String(i);
+          fSel.appendChild(opt);
+        }
+        if (state.poseFrames.frame >= frameCount) state.poseFrames.frame = 0;
+        fSel.value = String(state.poseFrames.frame);
+      }
+
+      async function loadPfFrameImage() {
+        const { kind, pose, dir, clip, frame } = state.poseFrames;
+        const url = `/sprites/poses/${kind}/${pose}/${dir}/${clip}/${frame}.png?v=${Date.now()}`;
+        const img = new Image();
+        await new Promise((resolveImg, rejectImg) => {
+          img.onload = resolveImg;
+          img.onerror = () => rejectImg(new Error('failed to load ' + url));
+          img.src = url;
+        });
+        const off = document.createElement('canvas');
+        off.width = img.naturalWidth; off.height = img.naturalHeight;
+        off.getContext('2d').drawImage(img, 0, 0);
+        state.poseFrames.baseImage = off.getContext('2d').getImageData(0, 0, off.width, off.height);
+      }
+
+      function redrawPfCanvas() {
+        const canvas = document.getElementById('pf-canvas');
+        const { baseImage, edits, kind, pose, dir, clip, frame, zoom } = state.poseFrames;
+        if (!canvas) return;
+        if (!baseImage) {
+          canvas.width = 1; canvas.height = 1;
+          return;
+        }
+        canvas.width = baseImage.width * zoom;
+        canvas.height = baseImage.height * zoom;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Base image scaled.
+        const tmp = document.createElement('canvas');
+        tmp.width = baseImage.width; tmp.height = baseImage.height;
+        tmp.getContext('2d').putImageData(baseImage, 0, 0);
+        ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+        // Overlay edits.
+        const list = lookupPfEdits(edits, kind, pose, dir, clip, frame);
+        for (const e of list) {
+          if (e.color === 'clear') {
+            ctx.clearRect(e.x * zoom, e.y * zoom, zoom, zoom);
+          } else {
+            ctx.fillStyle = e.color;
+            ctx.fillRect(e.x * zoom, e.y * zoom, zoom, zoom);
+          }
+        }
+      }
+
+      async function renderPoseFramesUI() {
+        populatePfDropdowns();
+        try {
+          await loadPfFrameImage();
+        } catch (err) {
+          state.poseFrames.baseImage = null;
+          showPfToast('Frame load failed: ' + err.message, true);
+        }
+        redrawPfCanvas();
+        updatePfEditCount();
+      }
+
+      function attachPfHandlers() {
+        document.getElementById('pf-kind').addEventListener('change', (ev) => { state.poseFrames.kind = ev.target.value; renderPoseFramesUI(); });
+        document.getElementById('pf-pose').addEventListener('change', (ev) => { state.poseFrames.pose = ev.target.value; renderPoseFramesUI(); });
+        document.getElementById('pf-dir').addEventListener('change', (ev) => { state.poseFrames.dir = ev.target.value; renderPoseFramesUI(); });
+        document.getElementById('pf-clip').addEventListener('change', (ev) => { state.poseFrames.clip = parseInt(ev.target.value, 10); renderPoseFramesUI(); });
+        document.getElementById('pf-frame').addEventListener('change', (ev) => { state.poseFrames.frame = parseInt(ev.target.value, 10); renderPoseFramesUI(); });
+
+        document.getElementById('pf-canvas').addEventListener('click', (ev) => {
+          const canvas = ev.currentTarget;
+          const r = canvas.getBoundingClientRect();
+          const z = state.poseFrames.zoom;
+          const x = Math.floor((ev.clientX - r.left) / z);
+          const y = Math.floor((ev.clientY - r.top) / z);
+          if (!state.poseFrames.baseImage) return;
+          if (x < 0 || x >= state.poseFrames.baseImage.width || y < 0 || y >= state.poseFrames.baseImage.height) return;
+          const erase = document.getElementById('pf-erase').checked;
+          const color = erase ? 'clear' : document.getElementById('pf-color').value;
+          const arr = ensurePfEditsArray();
+          arr.push({ x, y, color });
+          redrawPfCanvas();
+          updatePfEditCount();
+        });
+
+        document.getElementById('pf-save').addEventListener('click', async () => {
+          try {
+            const res = await fetch('/api/pose-frame-edits', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(state.poseFrames.edits),
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            showPfToast('Saved');
+          } catch (err) {
+            showPfToast('Save failed: ' + err.message, true);
+          }
+        });
+
+        document.getElementById('pf-build').addEventListener('click', async () => {
+          showPfToast('Building...');
+          try {
+            const res = await fetch('/api/build', { method: 'POST' });
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({}));
+              throw new Error(j.error || 'HTTP ' + res.status);
+            }
+            showPfToast('Build OK');
+            await renderPoseFramesUI();
+          } catch (err) {
+            showPfToast('Build failed: ' + err.message, true);
+          }
+        });
+
+        document.getElementById('pf-clear').addEventListener('click', () => {
+          const t = state.poseFrames.edits;
+          const { kind, pose, dir, clip, frame } = state.poseFrames;
+          if (t?.[kind]?.[pose]?.[dir]?.[String(clip)]?.[String(frame)]) {
+            delete t[kind][pose][dir][String(clip)][String(frame)];
+          }
+          redrawPfCanvas();
+          updatePfEditCount();
+        });
+
+        document.getElementById('mode-components').addEventListener('click', () => {
+          state.mode = 'components';
+          document.getElementById('mode-components').classList.add('active');
+          document.getElementById('mode-pose-frames').classList.remove('active');
+          renderActiveMode();
+        });
+        document.getElementById('mode-pose-frames').addEventListener('click', async () => {
+          state.mode = 'pose-frames';
+          document.getElementById('mode-pose-frames').classList.add('active');
+          document.getElementById('mode-components').classList.remove('active');
+          renderActiveMode();
+        });
+      }
+
+      function renderActiveMode() {
+        const cm = document.getElementById('components-mode');
+        const pm = document.getElementById('pose-frames-mode');
+        if (!cm || !pm) return;
+        if (state.mode === 'pose-frames') {
+          cm.style.display = 'none';
+          pm.style.display = '';
+          renderPoseFramesUI();
+        } else {
+          cm.style.display = '';
+          pm.style.display = 'none';
+        }
+      }
+
+      function showPfToast(msg, isError) {
+        const el = document.getElementById('pf-toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.style.color = isError ? '#b91c1c' : '#15803d';
+      }
+
+      // Initialize Pose Frames mode on page load. Run after the existing init.
+      (async function initPoseFramesMode() {
+        // Wait for the existing components init to finish if it's async-running.
+        // We just attach handlers and load state; the actual UI render happens
+        // lazily when the user clicks the tab.
+        await loadPoseFramesState();
+        attachPfHandlers();
+        renderActiveMode();
+      })();
     </script>
   </body>
 </html>

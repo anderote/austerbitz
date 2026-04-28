@@ -54,7 +54,7 @@ function placeLineInfantry(
 describe('tickProjectiles — integration', () => {
   it('musket integrates flat and writes prevX', () => {
     const s = setup();
-    const pid = spawnMusketBall(s.projectiles, 0, 0, 1, 0, /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4);
+    const pid = spawnMusketBall(s.projectiles, 0, 0, 1, 0, /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4, /*ownerId*/ -1);
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.01);
 
@@ -72,6 +72,7 @@ describe('tickProjectiles — integration', () => {
       0, 0, 0.7,
       20, 0, 10,
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
+      /*ownerId*/ -1,
     );
 
     const dt = 1 / 30;
@@ -97,6 +98,7 @@ describe('tickProjectiles — ricochet & rolling', () => {
       0, 0, 0,        // already on the ground
       10, 0, -5,      // descending
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 1 / 60);
@@ -120,6 +122,7 @@ describe('tickProjectiles — ricochet & rolling', () => {
       0, 0, 0,
       2, 0, 0,        // below ROLL_STOP_SPEED of 3 m/s
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 0,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 1 / 60);
@@ -136,6 +139,7 @@ describe('tickProjectiles — entity collision', () => {
     const pid = spawnMusketBall(
       s.projectiles, 0, 0, 1, 0,
       /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.1);
@@ -150,6 +154,7 @@ describe('tickProjectiles — entity collision', () => {
     spawnMusketBall(
       s.projectiles, 0, 0, 1, 0,
       /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.1);
@@ -166,6 +171,7 @@ describe('tickProjectiles — entity collision', () => {
       0, 0, 1.0,
       50, 0, 0,
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.2);
@@ -184,6 +190,7 @@ describe('tickProjectiles — entity collision', () => {
       0, 0, 5.0,      // 5 m up — well above the 1.8 m body height
       50, 0, 0,
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.2);
@@ -200,6 +207,7 @@ describe('tickProjectiles — shell behaviour', () => {
       0, 0, 1.0,
       10, 0, 0,
       /*team*/ 1, /*dmg*/ 0, /*mass*/ 6, /*life*/ 6, /*fuse*/ 0.01,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.02);
@@ -217,6 +225,7 @@ describe('tickProjectiles — shell behaviour', () => {
       0, 0, 1.0,
       30, 0, 0,
       /*team*/ 1, /*dmg*/ 0, /*mass*/ 6, /*life*/ 6, /*fuse*/ 1.5,
+      /*ownerId*/ -1,
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, 0.2);
@@ -235,6 +244,7 @@ describe('tickProjectiles — trail emission', () => {
       0, 0, 1.5,
       20, 0, 0,
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
+      /*ownerId*/ -1,
     );
 
     expect(s.puffs.count).toBe(0);

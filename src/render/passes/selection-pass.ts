@@ -1,6 +1,6 @@
 import { linkProgram, getUniforms } from '../../gl/program';
 import { createBuffer, createVertexArray } from '../../gl/buffer';
-import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, PIP_VS, PIP_FS, RANGE_VS, RANGE_FS } from '../shaders/selection.glsl';
+import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, RANGE_VS, RANGE_FS } from '../shaders/selection.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
@@ -24,7 +24,7 @@ export interface SelectionPass {
   drawTeamRange(world: World, cam: Camera, sel: Selection, team: number): void;
   // Waypoint chains, drag rectangle, and formation preview — call AFTER sprites so they overlay.
   draw(world: World, cam: Camera, sel: Selection, drag: DragRect, formation: FormationPreview | null): void;
-  // Yellow per-soldier destination squares (Total War-style placement preview). Call AFTER sprites.
+  // Yellow per-soldier destination discs (same marker as selection base). Call AFTER sprites.
   drawMovePreview(world: World, cam: Camera, sel: Selection): void;
 }
 
@@ -77,26 +77,6 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
-
-  // Formation slot pips — instanced hollow-square quads.
-  const pipProg = linkProgram(gl, PIP_VS, PIP_FS);
-  const pipU = getUniforms(gl, pipProg, ['u_viewProj', 'u_size', 'u_color'] as const);
-  const pipVao = createVertexArray(gl);
-  gl.bindVertexArray(pipVao);
-  const pipCornersBuf = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array([
-    -0.5, -0.5,  0.5, -0.5, -0.5, 0.5,
-    -0.5,  0.5,  0.5, -0.5,  0.5, 0.5,
-  ]), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-  const pipPosBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
-  gl.bufferData(gl.ARRAY_BUFFER, capacity * 2 * 4, gl.DYNAMIC_DRAW);
-  gl.enableVertexAttribArray(1);
-  gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
-  gl.vertexAttribDivisor(1, 1);
-  gl.bindVertexArray(null);
-  const pipScratch = new Float32Array(capacity * 2);
-  void pipCornersBuf;
 
   // Waypoint polylines — solid-color line segments through queued orders
   const wpProg = linkProgram(gl, WAYPOINT_VS, WAYPOINT_FS);
@@ -537,7 +517,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const arrowLen = 7 / cam.zoom;
       const arrowHalf = 5 / cam.zoom;
 
-      const renderChains = (chains: number[][], alpha: number, rgb?: readonly [number, number, number]): void => {
+      const renderChains = (chains: number[][], alpha: number, rgb?: readonly [number, number, number], noArrow?: boolean): void => {
         if (chains.length === 0) return;
         let wpN = 0;
         const writeVert = (x: number, y: number): void => {
@@ -563,7 +543,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
             writeVert(x0 - px, y0 - py);
             writeVert(x1 - px, y1 - py);
           }
-          if (wpN + 3 <= WP_MAX_VERTS) {
+          if (!noArrow && wpN + 3 <= WP_MAX_VERTS) {
             const ix = chain.length - 4;
             const x0 = chain[ix]!, y0 = chain[ix + 1]!;
             const x1 = chain[ix + 2]!, y1 = chain[ix + 3]!;
@@ -647,6 +627,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const candidates: number[] = [];
       for (const id of world.orderQueue.keys()) {
         if (e.alive[id] !== 1) continue;
+        if (isDead(e, id)) continue;
         if (sel.ids.has(id)) continue;
         if (e.team[id] !== PLAYER_TEAM) continue;
         const q = world.orderQueue.get(id)!;
@@ -692,7 +673,9 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       // Full-opacity chain(s) for the active selection.
       const liveSelected: number[] = [];
       for (const id of sel.ids) {
-        if (e.alive[id] === 1) liveSelected.push(id);
+        if (e.alive[id] !== 1) continue;
+        if (isDead(e, id)) continue;
+        liveSelected.push(id);
       }
       const selectedChains: number[][] = [];
       if (liveSelected.length > 1) {
@@ -807,17 +790,41 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
         const m = Math.min(slots.length, capacity);
         if (m > 0) {
-          for (let i = 0; i < m; i++) {
-            pipScratch[i * 2 + 0] = slots[i]!.x;
-            pipScratch[i * 2 + 1] = slots[i]!.y;
+          // Per-slot base discs in formation green — same ellipse shape as
+          // selection / move-preview discs. Size derives from the widest
+          // selected unit's placeholder, so mixed selections still fit.
+          let maxW = 0;
+          let repFootY = 0;
+          for (const id of sel.ids) {
+            if (e.alive[id] !== 1) continue;
+            if (isDead(e, id)) continue;
+            const kind = getUnitKindByIndex(e.kindId[id]!);
+            if (kind.placeholderSize.w > maxW) {
+              maxW = kind.placeholderSize.w;
+              repFootY = kind.footYFromCenter ?? kind.placeholderSize.h * 0.5;
+            }
           }
-          gl.useProgram(pipProg);
-          gl.bindVertexArray(pipVao);
-          gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, m * 2));
-          gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
-          gl.uniform1f(pipU.u_size, 1.2); // world units; ~1m square pip
-          gl.uniform3f(pipU.u_color, 0.55, 1.0, 0.6);
+          if (maxW <= 0) maxW = 1;
+          const sx = maxW * 1.25;
+          const sy = maxW * 0.55;
+          for (let i = 0; i < m; i++) {
+            scratchPos[i * 2 + 0] = slots[i]!.x;
+            scratchPos[i * 2 + 1] = slots[i]!.y + repFootY;
+            scratchSize[i * 2 + 0] = sx;
+            scratchSize[i * 2 + 1] = sy;
+            scratchCol[i * 3 + 0] = 0.55;
+            scratchCol[i * 3 + 1] = 1.0;
+            scratchCol[i * 3 + 2] = 0.6;
+          }
+          gl.useProgram(prog);
+          gl.bindVertexArray(vao);
+          gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPos.subarray(0, m * 2));
+          gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSize.subarray(0, m * 2));
+          gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchCol.subarray(0, m * 3));
+          gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
           gl.enable(gl.BLEND);
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
           gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, m);
@@ -842,6 +849,50 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
           const tipX = cx + ux * half;
           const tipY = cy + uy * half;
           renderChains([[tailX, tailY, tipX, tipY]], 0.45, [0.55, 1.0, 0.6]);
+
+          // Firing-range preview: a dotted white line from the arrow tip
+          // forward by the longest weapon range in the selection, capped by
+          // a solid white perpendicular bar marking the max effective reach.
+          let maxRange = 0;
+          for (const id of sel.ids) {
+            if (e.alive[id] !== 1) continue;
+            if (isDead(e, id)) continue;
+            const kindIdx = e.kindId[id];
+            if (kindIdx === undefined) continue;
+            const kind = getUnitKindByIndex(kindIdx);
+            if (!kind.weapon) continue;
+            const r = kind.baseStats.weaponRange;
+            if (r > maxRange) maxRange = r;
+          }
+          if (maxRange > 0) {
+            // Anchor at the front-rank midpoint so the endpoint matches the
+            // yellow range overlay (which is measured from each unit outward).
+            const frontMidX = (rect.tl.x + rect.tr.x) * 0.5;
+            const frontMidY = (rect.tl.y + rect.tr.y) * 0.5;
+            const endX = frontMidX + ux * maxRange;
+            const endY = frontMidY + uy * maxRange;
+            const lv = DRAG_RECT_VERTS;
+            lv[0] = frontMidX; lv[1] = frontMidY;
+            lv[2] = endX;      lv[3] = endY;
+            gl.useProgram(dragProg);
+            gl.bindVertexArray(dragVao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, dragBuf);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, lv.subarray(0, 4));
+            gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
+            gl.uniform1f(dragU.u_time, performance.now() * 0.001);
+            gl.uniform3f(dragU.u_color, 1.0, 1.0, 1.0);
+            gl.drawArrays(gl.LINES, 0, 2);
+            gl.bindVertexArray(null);
+
+            const px = -uy;
+            const py = ux;
+            const tickHalf = Math.max(depthLen * 0.5, 3);
+            const aX = endX + px * tickHalf;
+            const aY = endY + py * tickHalf;
+            const bX = endX - px * tickHalf;
+            const bY = endY - py * tickHalf;
+            renderChains([[aX, aY, bX, bY]], 0.95, [1, 1, 1], true);
+          }
         }
       }
     },
@@ -852,58 +903,58 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         if (!queue || queue.length === 0) return null;
         for (let k = queue.length - 1; k >= 0; k--) {
           const o = queue[k]!;
-          if (o.kind === 'move' || o.kind === 'attack-move') {
+          if (o.kind === 'move' || o.kind === 'attack-move' || o.kind === 'march-formation') {
             return { x: o.targetX, y: o.targetY };
           }
         }
         return null;
       };
 
-      const drawBatch = (n: number, r: number, g: number, b: number): void => {
-        if (n === 0) return;
-        gl.useProgram(pipProg);
-        gl.bindVertexArray(pipVao);
-        gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, n * 2));
-        gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
-        gl.uniform1f(pipU.u_size, 1.2);
-        gl.uniform3f(pipU.u_color, r, g, b);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
-        gl.disable(gl.BLEND);
-        gl.bindVertexArray(null);
+      let n = 0;
+      const emit = (id: number, r: number, g: number, b: number): void => {
+        if (e.alive[id] !== 1) return;
+        if (isDead(e, id)) return;
+        const dst = finalDest(id);
+        if (!dst) return;
+        if (n >= capacity) return;
+        const kind = getUnitKindByIndex(e.kindId[id]!);
+        const w = kind.placeholderSize.w;
+        const h = kind.placeholderSize.h;
+        const footY = kind.footYFromCenter ?? h * 0.5;
+        scratchPos[n * 2 + 0] = dst.x;
+        scratchPos[n * 2 + 1] = dst.y + footY;
+        scratchSize[n * 2 + 0] = w * 1.25;
+        scratchSize[n * 2 + 1] = w * 0.55;
+        scratchCol[n * 3 + 0] = r;
+        scratchCol[n * 3 + 1] = g;
+        scratchCol[n * 3 + 2] = b;
+        n++;
       };
 
-      // Selected units: yellow pip at final destination.
-      let n = 0;
-      for (const id of sel.ids) {
-        if (e.alive[id] !== 1) continue;
-        if (isDead(e, id)) continue;
-        const dst = finalDest(id);
-        if (!dst) continue;
-        if (n >= capacity) break;
-        pipScratch[n * 2 + 0] = dst.x;
-        pipScratch[n * 2 + 1] = dst.y;
-        n++;
-      }
-      drawBatch(n, 1.0, 0.9, 0.2);
-
-      // Unselected player units: white pip at final destination.
-      n = 0;
+      // Selected units: yellow disc at final destination.
+      for (const id of sel.ids) emit(id, 1.0, 0.9, 0.2);
+      // Unselected player units: white disc at final destination.
       for (const id of world.orderQueue.keys()) {
-        if (e.alive[id] !== 1) continue;
-        if (isDead(e, id)) continue;
-        if (e.team[id] !== PLAYER_TEAM) continue;
         if (sel.ids.has(id)) continue;
-        const dst = finalDest(id);
-        if (!dst) continue;
-        if (n >= capacity) break;
-        pipScratch[n * 2 + 0] = dst.x;
-        pipScratch[n * 2 + 1] = dst.y;
-        n++;
+        if (e.team[id] !== PLAYER_TEAM) continue;
+        emit(id, 1.0, 1.0, 1.0);
       }
-      drawBatch(n, 1.0, 1.0, 1.0);
+
+      if (n === 0) return;
+      gl.useProgram(prog);
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPos.subarray(0, n * 2));
+      gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSize.subarray(0, n * 2));
+      gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchCol.subarray(0, n * 3));
+      gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+      gl.disable(gl.BLEND);
+      gl.bindVertexArray(null);
     },
   };
 }

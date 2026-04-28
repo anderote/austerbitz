@@ -15,6 +15,8 @@ import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
+import { marchSystem } from './sim/systems/march-system';
+import { assignIdentity } from './sim/spawn-identity';
 import type { System } from './sim/world';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
@@ -124,12 +126,13 @@ const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
-  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount);
+  tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
 const projectileSystem: System = (w, dt) =>
   tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
 
 world.systems = [
+  marchSystem,
   ordersSystem,
   combatSystem,
   movementSystem,
@@ -142,6 +145,7 @@ world.systems = [
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
+  suppressArrowsWhen: () => selection.ids.size > 0,
 });
 
 function spawn(kindId: string, team: number, x: number, y: number, facing = 0): number {
@@ -154,6 +158,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
   world.entities.restPosY[id] = y;
   world.entities.kindId[id] = getUnitKindIndex(kindId);
   world.entities.team[id] = team;
+  assignIdentity(world.entities, id, team, world.rng);
   world.entities.facing[id] = facing;
   world.entities.restFacing[id] = facing;
   world.entities.facingIntentX[id] = Math.cos((facing * Math.PI) / 4);
@@ -265,11 +270,12 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// Two parallel lines per side, 50m apart along the facing axis.
+// Three parallel lines per side, 50m apart along the facing axis.
 // Each line is 2000 line-infantry, 8 ranks deep, split into five 50-file regiments.
 const lineRegiments: RegimentPlan[] = [
   { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8 },
   { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8, backOffset: 50 },
+  { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8, backOffset: 100 },
 ];
 
 const friendlyArmy: ArmyPlan = {
@@ -335,9 +341,9 @@ function frame(t: number) {
   tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
   updatePuffs(puffs, dt);
   tickWind(windState, simElapsed, world.rng);
-  const currentWind = windAt(windState, simElapsed);
-  applyWindToPuffs(puffs, currentWind, dt);
-  windIndicator.update(currentWind);
+  const wind = windAt(windState, simElapsed);
+  applyWindToPuffs(puffs, wind.x, wind.y, dt);
+  windIndicator.update(wind.x, wind.y);
   coalesceStep(puffs, dt, world.rng, getProfileByIndex);
   updateParticles(particles, dt, world.bloodSplats);
   // Drain sim-queued blood splats into the GPU stain pass.

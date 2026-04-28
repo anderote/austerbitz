@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createFormationParams, resetFormationParams,
   bumpSpacing, bumpRanks, spacingMultiplier,
+  isTightStance,
   SPACING_STEPS, DEFAULT_SPACING_INDEX, MIN_RANKS, MAX_RANKS,
 } from './formation-params';
 
@@ -11,6 +12,18 @@ describe('formation-params', () => {
     expect(p.spacingIndex).toBe(DEFAULT_SPACING_INDEX);
     expect(p.ranks).toBe(null);
     expect(spacingMultiplier(p)).toBe(1);
+  });
+
+  it('isTightStance is true for indices 0..3 and false for 4..15', () => {
+    const p = createFormationParams();
+    for (let i = 0; i <= 3; i++) {
+      p.spacingIndex = i;
+      expect(isTightStance(p)).toBe(true);
+    }
+    for (let i = 4; i < SPACING_STEPS.length; i++) {
+      p.spacingIndex = i;
+      expect(isTightStance(p)).toBe(false);
+    }
   });
 
   it('bumpSpacing clamps at both ends', () => {

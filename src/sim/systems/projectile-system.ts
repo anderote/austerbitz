@@ -93,6 +93,7 @@ export function tickProjectiles(
           cannon12Shell.projectile.explosion!,
           undefined,
           splats,
+          p.ownerId[i]!,
         );
         freeProjectile(p, i);
         continue;
@@ -123,6 +124,7 @@ export function tickProjectiles(
           cannon12Shell.projectile.explosion!,
           undefined,
           splats,
+          p.ownerId[i]!,
         );
         freeProjectile(p, i);
         continue;
@@ -206,6 +208,7 @@ export function tickProjectiles(
             cannon12Shell.projectile.explosion!,
             undefined,
             splats,
+            p.ownerId[i]!,
           );
           freeProjectile(p, i);
           freed = true;
@@ -215,7 +218,7 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats);
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, p.ownerId[i]!);
 
         if (kind === ProjectileKind.Musket) {
           freeProjectile(p, i);

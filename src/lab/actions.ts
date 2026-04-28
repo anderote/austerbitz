@@ -149,6 +149,7 @@ export function actExplosiveShell(
     profile.projectile.mass,
     profile.projectile.maxLife,
     profile.projectile.fuse ?? 1.5,
+    -1,
   );
 
   // Direction for muzzle FX: prefer xy launch direction, fall back to facing.
@@ -202,7 +203,7 @@ export function actTakeMusketHit(
   const id = subject(world, stage);
   if (id === null) return;
   // Impulse from the west: +X direction. mass 0.03 kg × 400 m/s = 12 N·s.
-  applyHit(world.entities, particles, rng, id, 12, 12, 0, 'musket', world.bloodSplats);
+  applyHit(world.entities, particles, rng, id, 12, 12, 0, 'musket', world.bloodSplats, -1);
 }
 
 export function actTakeCannonHit(
@@ -214,7 +215,7 @@ export function actTakeCannonHit(
   const id = subject(world, stage);
   if (id === null) return;
   // Impulse from the west: +X direction. ~1500 N·s — well above KNOCKBACK.
-  applyHit(world.entities, particles, rng, id, 80, 1500, 0, 'cannon', world.bloodSplats);
+  applyHit(world.entities, particles, rng, id, 80, 1500, 0, 'cannon', world.bloodSplats, -1);
 }
 
 export function actDie(
@@ -227,5 +228,5 @@ export function actDie(
   if (id === null) return;
   // Drop HP to 1 then deliver a small hit so it transitions to Dying (not ragdoll).
   world.entities.hp[id] = 1;
-  applyHit(world.entities, particles, rng, id, 1, 1, 0, 'musket', world.bloodSplats);
+  applyHit(world.entities, particles, rng, id, 1, 1, 0, 'musket', world.bloodSplats, -1);
 }

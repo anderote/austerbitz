@@ -3,12 +3,13 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueReformInPlace } from './commands';
-import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits } from './formation';
-import { isDead } from '../sim/entities';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots, issueNudge } from './commands';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
+import { isDead, EntityState } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
-  bumpSpacing, bumpRanks, spacingMultiplier,
+  bumpSpacing, bumpRanks, spacingMultiplier, minSpacingIndexForMult,
+  MARCH_FLOOR_MULT, isTightStance,
   type FormationParams,
 } from './formation-params';
 import type { Particles } from '../particles/particles';
@@ -35,6 +36,10 @@ export interface SelectionControllerDeps {
 export interface SelectionController {
   readonly cursorMode: CursorMode;
   readonly formationParams: FormationParams;
+  /** True when units are packed (or about to pack) at a sub-march-floor spacing. */
+  readonly tightHeld: boolean;
+  /** Hidden rank snapshot used to preserve the rectangle across [/] presses. */
+  readonly lockedRanks: number | null;
   /** Called once per frame. Currently a no-op; reserved for per-frame work. */
   update(dt: number): void;
   destroy(): void;
@@ -49,11 +54,16 @@ interface ControllerInternals {
   onMouseMove(e: { clientX: number; clientY: number }): void;
   onMouseUp(e: { button: number; clientX: number; clientY: number; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void;
   onKeyDown(e: { key: string; code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void;
+  onKeyUp(e: { key: string; code: string }): void;
   onBlur(): void;
   getCursorMode(): CursorMode;
 }
 
 const DRAG_THRESHOLD_PX = 4;
+// World-space step per arrow-key nudge. OS key-repeat accumulates additional
+// presses, and issueNudge compounds against the previous move target so a held
+// key produces continuous motion rather than locking to (pos + step).
+const NUDGE_STEP_WORLD = 2;
 
 export function createSelectionController(deps: SelectionControllerDeps): SelectionController {
   const { canvas, overlayRoot, camera, world, selection, drag, formationDrag, controlGroups } = deps;
@@ -77,10 +87,24 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
 
   let cursorMode: CursorMode = 'normal';
   const formationParams = createFormationParams();
+  let tightHeld = false;
+  let ctrlHeld = false;
+  let lastCursorScreen: { x: number; y: number } | null = null;
   let lastSelectionSig = 0;
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
+  // Hold-F = "hurry to your slot." Each frame F is held, every selected unit
+  // is re-issued a full-speed move toward the position/facing it's already
+  // trying to reach (current move/march-formation target, or rest anchor).
+  // Does not change formation; just pre-empts the slow settle drift and
+  // dissolves any march pacing.
+  let fHeld = false;
+  // Hidden rank snapshot used to preserve the visual rectangle across spacing
+  // changes when the user has not set an explicit rank override. Separate from
+  // formationParams.ranks (which is user-facing and shown as "auto" when null)
+  // so that pressing [ ] never appears to change ranks in the UI.
+  let lockedRanks: number | null = null;
   const DOUBLE_CLICK_MS = 300;
   const DOUBLE_CLICK_PX = 6;
 
@@ -120,9 +144,27 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     return { x: sx / len, y: sy / len };
   }
 
+  function clearGridHold(): void {
+    fHeld = false;
+  }
+
+  // Resolve the rank count to reform with. User override (formationParams.ranks)
+  // wins. Otherwise fall back to the hidden snapshot — captured once from the
+  // current positions — so subsequent spacing changes preserve the rectangle
+  // even after units pack tight (which breaks live inference).
+  function effectiveReformRanks(fwd: { x: number; y: number }): number | null {
+    if (formationParams.ranks != null) return formationParams.ranks;
+    if (lockedRanks == null) {
+      const units = materializeUnits(world, selection.ids);
+      if (units.length > 0) lockedRanks = inferRanksFromPositions(units, fwd);
+    }
+    return lockedRanks;
+  }
+
   function reformNow(): void {
     const fwd = averageFacing();
-    issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), formationParams.ranks);
+    const ranks = effectiveReformRanks(fwd);
+    issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), ranks);
   }
 
   function onMouseDown(e: { button: number; clientX: number; clientY: number; target: EventTarget | null }): void {
@@ -143,6 +185,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   }
 
   function onMouseMove(e: { clientX: number; clientY: number }): void {
+    lastCursorScreen = { x: e.clientX, y: e.clientY };
     if (pendingClickStart) {
       drag.currentScreen = { x: e.clientX, y: e.clientY };
       const dx = e.clientX - pendingClickStart.x;
@@ -165,6 +208,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         const w = screenToWorld(camera, { x: e.clientX, y: e.clientY });
         issueAttackMove(world, selection, w, { queue: e.shiftKey });
         puff(w.x, w.y);
+        tightHeld = false;
         cursorMode = 'normal';
         drag.active = false;
         pendingClickStart = null;
@@ -259,17 +303,23 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         const endW = screenToWorld(camera, formationDrag.currentScreen);
         const units = materializeUnits(world, selection.ids);
         if (units.length > 0) {
+          // Drag tool is independent of the hotkey rank lock — drag length
+          // alone determines the rank count.
           const { slots, forward } = computeFormationSlots({
             units, startW, endW,
-            spacingMult: spacingMultiplier(formationParams),
-            ranksOverride: formationParams.ranks,
+            spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
+            ranksOverride: null,
           });
           const targets = assignFormationSlots(units, slots, forward);
-          const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+          // Unit facing is perpendicular to the front-rank axis, opposite the
+          // depth direction so units face away from the back of the formation.
+          const face = { x: forward.y, y: -forward.x };
+          const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]!, face }));
           issueFormationMove(world, assignments, opts);
           const mx = (startW.x + endW.x) / 2;
           const my = (startW.y + endW.y) / 2;
           puff(mx, my);
+          tightHeld = false;
         }
         pendingFormationStart = null;
         formationDrag.active = false;
@@ -280,22 +330,43 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       formationDrag.active = false;
 
       const w = screenToWorld(camera, { x: e.clientX, y: e.clientY });
+
+      // Ctrl + RMB: march in formation. Skips queueing (Shift is ignored here).
+      if ((e.ctrlKey || e.metaKey) && selection.ids.size > 0) {
+        issueMarchFormation(world, selection, w, formationParams);
+        puff(w.x, w.y);
+        return;
+      }
+
       const hit = hitTestPoint(world, w);
       if (hit !== -1 && world.entities.team[hit] !== PLAYER_TEAM) {
         issueAttack(world, selection, hit, opts);
         puff(w.x, w.y);
+        tightHeld = false;
       } else {
-        const assignments = issueMove(world, selection, w, opts);
+        let assignments;
+        if (isTightStance(formationParams)) {
+          const fwd = averageFacing();
+          const ranks = effectiveReformRanks(fwd);
+          assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, ranks, opts);
+        } else {
+          assignments = issueMove(world, selection, w, opts);
+        }
         puff(w.x, w.y);
         if (deps.movePreview && assignments.length > 0) {
           deps.movePreview.add(assignments.map(a => a.target));
         }
+        tightHeld = false;
       }
       return;
     }
   }
 
   function onKeyDown(e: { key: string; code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void {
+    if (e.key === 'Control' || e.key === 'Meta') {
+      ctrlHeld = true;
+      // fall through; other modifiers may still drive other handlers below
+    }
     if (e.key === 'Escape') {
       if (formationDrag.active) {
         pendingFormationStart = null;
@@ -341,8 +412,18 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (selection.ids.size === 0) return;
-      bumpSpacing(formationParams, e.code === 'BracketLeft' ? -1 : +1);
+      // Floor: never pack units inside their own body radius.
+      const units = materializeUnits(world, selection.ids);
+      let minMult = 0;
+      for (const u of units) {
+        const r = u.bodyRadius ?? 0;
+        const m = (2 * r) / Math.min(u.spacingX, u.spacingY);
+        if (m > minMult) minMult = m;
+      }
+      const floorIdx = minSpacingIndexForMult(minMult);
+      bumpSpacing(formationParams, e.code === 'BracketLeft' ? -1 : +1, floorIdx);
       reformNow();
+      tightHeld = isTightStance(formationParams);
       return;
     }
     if (e.code === 'Comma' || e.code === 'Period') {
@@ -351,7 +432,11 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (selection.ids.size === 0) return;
       bumpRanks(formationParams, e.code === 'Comma' ? -1 : +1);
+      // Drop the hidden snapshot — user is taking explicit control of ranks,
+      // and if they cycle back to "auto" we want a fresh inference.
+      lockedRanks = null;
       reformNow();
+      tightHeld = isTightStance(formationParams);
       return;
     }
 
@@ -361,12 +446,44 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
     if (e.code === 'KeyF') {
-      issueRegroup(world, selection);
+      // F = "hurry to your slot." Each frame F is held, every selected unit
+      // gets pushed toward the position/facing it's already trying to reach
+      // (active move/march target, or rest anchor) at full base speed.
+      // Does NOT reform — formation, ranks, and centroid are untouched.
+      if (fHeld) return; // OS key-repeat: state already captured
+      if (selection.ids.size === 0) return;
+      fHeld = true;
+      tightHeld = false;
       return;
     }
     if (e.code === 'Delete' || e.code === 'Backspace') {
       issueStop(world, selection);
       return;
+    }
+
+    if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
+      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (selection.ids.size === 0) return;
+      const fwd = averageFacing();
+      const leftX = -fwd.y, leftY = fwd.x;
+      const s = NUDGE_STEP_WORLD;
+      let dx = 0, dy = 0;
+      if (e.code === 'ArrowUp') { dx = fwd.x * s; dy = fwd.y * s; }
+      else if (e.code === 'ArrowDown') { dx = -fwd.x * s; dy = -fwd.y * s; }
+      else if (e.code === 'ArrowLeft') { dx = leftX * s; dy = leftY * s; }
+      else { dx = -leftX * s; dy = -leftY * s; }
+      issueNudge(world, selection, dx, dy, fwd, { queue: e.shiftKey });
+      tightHeld = false;
+      return;
+    }
+  }
+
+  function onKeyUp(e: { key: string; code: string }): void {
+    if (e.key === 'Control' || e.key === 'Meta') ctrlHeld = false;
+    if (e.code === 'KeyF') {
+      clearGridHold();
     }
   }
 
@@ -376,6 +493,9 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     pendingFormationStart = null;
     formationDrag.active = false;
     cursorMode = 'normal';
+    clearGridHold();
+    ctrlHeld = false;
+    lastCursorScreen = null;
   }
 
   // DOM bindings — narrow event types pass through to the pure handlers above.
@@ -383,6 +503,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   const mm = (e: MouseEvent) => onMouseMove({ clientX: e.clientX, clientY: e.clientY });
   const mu = (e: MouseEvent) => onMouseUp({ button: e.button, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
   const kd = (e: KeyboardEvent) => onKeyDown({ key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
+  const ku = (e: KeyboardEvent) => onKeyUp({ key: e.key, code: e.code });
   const bl = () => onBlur();
 
   if (typeof window !== 'undefined') {
@@ -390,27 +511,43 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     window.addEventListener('mousemove', mm);
     window.addEventListener('mouseup', mu);
     window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
     window.addEventListener('blur', bl);
   }
 
   function formationPreview(): FormationPreview | null {
-    if (!formationDrag.active) return null;
     if (cursorMode !== 'normal') return null;
-    const units = materializeUnits(world, selection.ids);
-    if (units.length === 0) return null;
-    const startW = formationDrag.startWorld;
-    const endW = screenToWorld(camera, formationDrag.currentScreen);
-    const { slots, rect } = computeFormationSlots({
-      units, startW, endW,
-      spacingMult: spacingMultiplier(formationParams),
-      ranksOverride: formationParams.ranks,
-    });
-    return { rect, slots };
+
+    // Drag preview wins when an RMB drag is active.
+    if (formationDrag.active) {
+      const units = materializeUnits(world, selection.ids);
+      if (units.length === 0) return null;
+      const startW = formationDrag.startWorld;
+      const endW = screenToWorld(camera, formationDrag.currentScreen);
+      const { slots, rect } = computeFormationSlots({
+        units, startW, endW,
+        spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
+        ranksOverride: null,
+      });
+      return { rect, slots };
+    }
+
+    // March preview when Ctrl is held over the canvas with a non-empty selection.
+    if (ctrlHeld && selection.ids.size > 0 && lastCursorScreen) {
+      const w = screenToWorld(camera, lastCursorScreen);
+      const r = computeMarchSlots(world, selection.ids, w, formationParams);
+      if (!r) return null;
+      return { rect: r.rect, slots: r.slots };
+    }
+
+    return null;
   }
 
   return {
     get cursorMode() { return cursorMode; },
     get formationParams() { return formationParams; },
+    get tightHeld() { return tightHeld; },
+    get lockedRanks() { return lockedRanks; },
     formationPreview,
     update(_dt) {
       const e = world.entities;
@@ -428,7 +565,33 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       sig = (sig * 2654435761) ^ first ^ (last << 1);
       if (sig !== lastSelectionSig) {
         resetFormationParams(formationParams);
+        lockedRanks = null;
+        tightHeld = false;
+        clearGridHold();
         lastSelectionSig = sig;
+      }
+
+      // F = hurry. Each frame F is held, push every selected unit toward the
+      // position/facing it's already trying to reach at full base speed.
+      // Re-issuing every frame pre-empts the slow settle drift and keeps
+      // jostled units sprinting back to their slot.
+      if (fHeld && selection.ids.size > 0) {
+        issueHurryToSlots(world, selection);
+      }
+
+      // Auto-pack on idle when in tight stance.
+      if (selection.ids.size > 0 && isTightStance(formationParams) && !tightHeld) {
+        let allIdle = true;
+        for (const id of selection.ids) {
+          if (e.alive[id] !== 1) continue;
+          const q = world.orderQueue.get(id);
+          if (q && q.length > 0) { allIdle = false; break; }
+          if (e.state[id] === EntityState.Moving) { allIdle = false; break; }
+        }
+        if (allIdle) {
+          reformNow();
+          tightHeld = true;
+        }
       }
     },
     destroy() {
@@ -437,9 +600,10 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         window.removeEventListener('mousemove', mm);
         window.removeEventListener('mouseup', mu);
         window.removeEventListener('keydown', kd);
+        window.removeEventListener('keyup', ku);
         window.removeEventListener('blur', bl);
       }
     },
-    _internals: { onMouseDown, onMouseMove, onMouseUp, onKeyDown, onBlur, getCursorMode: () => cursorMode },
+    _internals: { onMouseDown, onMouseMove, onMouseUp, onKeyDown, onKeyUp, onBlur, getCursorMode: () => cursorMode },
   };
 }

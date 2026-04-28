@@ -5,6 +5,7 @@ import { SPRITE_VS, SPRITE_FS } from '../shaders/sprite.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
+import { isDead } from '../../sim/entities';
 import { getUnitKindByIndex } from '../../data/units';
 import { RECOIL_T, RECOIL_PUSH_END, RECOIL_HOLD_END } from '../../sim/fire-resolver';
 import {
@@ -320,8 +321,13 @@ export function createSpritePass(
       // so neighboring quads overlap and tile the same pattern → merged blob.
       const PATTERN_FEATURE_PIXELS = 4;
       const e = world.entities;
+      const useDots = cam.zoom < UNIT_DOT_ZOOM;
       sortIdx.length = 0;
-      for (let n = 0; n < e.count; n++) sortIdx.push(e.aliveIds[n]!);
+      for (let m = 0; m < e.count; m++) {
+        const id = e.aliveIds[m]!;
+        if (useDots && isDead(e, id)) continue;
+        sortIdx.push(id);
+      }
       const n = sortIdx.length;
       if (n === 0) return;
       // World Y grows downward, so larger Y = in front. Draw ascending by Y
@@ -329,7 +335,6 @@ export function createSpritePass(
       sortPosY = e.posY;
       sortIdx.sort(sortByY);
 
-      const useDots = cam.zoom < UNIT_DOT_ZOOM;
       const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
       const cavalryDot = CAVALRY_DOT_PIXELS / cam.zoom;
       const artilleryDot = ARTILLERY_DOT_PIXELS / cam.zoom;
@@ -409,8 +414,10 @@ export function createSpritePass(
           scratchUv[k * 4 + 2] = uv[2];
           scratchUv[k * 4 + 3] = uv[3];
         } else {
-          scratchSize[k * 2 + 0] = kind.placeholderSize.w;
-          scratchSize[k * 2 + 1] = kind.placeholderSize.h;
+          const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;
+          const sprH = kind.spriteSize?.h ?? kind.placeholderSize.h;
+          scratchSize[k * 2 + 0] = sprW;
+          scratchSize[k * 2 + 1] = sprH;
           scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;
           scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
           scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;

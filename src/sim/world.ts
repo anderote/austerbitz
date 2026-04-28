@@ -2,6 +2,8 @@ import { createEntities, type Entities } from './entities';
 import { createGrid, gridRebuild, type Grid } from './spatial/grid';
 import { createRng, type Rng } from '../util/rng';
 import { createBloodSplats, type BloodSplats } from './blood-splats';
+import { createFireSignal, type FireSignal } from './fire-signal';
+import type { MarchGroup } from './march-groups';
 
 export type System = (world: World, dt: number) => void;
 
@@ -13,10 +15,11 @@ export interface WorldConfig {
 }
 
 export type Order =
-  | { kind: 'move'; targetX: number; targetY: number; arrived?: boolean }
+  | { kind: 'move'; targetX: number; targetY: number; arrived?: boolean; faceX?: number; faceY?: number }
   | { kind: 'attack'; targetId: number }
   | { kind: 'attack-move'; targetX: number; targetY: number; arrived?: boolean }
-  | { kind: 'stop' };
+  | { kind: 'stop' }
+  | { kind: 'march-formation'; targetX: number; targetY: number; groupId: number; arrived?: boolean };
 
 export interface World {
   cfg: WorldConfig;
@@ -30,25 +33,35 @@ export interface World {
   orderQueue: Map<number, Order[]>;
   /** Per-frame blood-stain splat queue, drained by the renderer each frame. */
   bloodSplats: BloodSplats;
+  /** Per-cell-per-team most-recent-fire-tick — drives volley contagion. */
+  fireSignal: FireSignal;
+  /** Active march groups, keyed by groupId. Lifecycle managed by march-system. */
+  marchGroups: Map<number, MarchGroup>;
+  /** Monotonic counter for new march-group ids; never reused. Starts at 1 so 0 stays a sentinel. */
+  nextMarchGroupId: number;
 }
 
 export function createWorld(cfg: WorldConfig): World {
   const cellSize = cfg.cellSize ?? 2;
+  const grid = createGrid({
+    minX: 0, minY: 0,
+    maxX: cfg.mapSize, maxY: cfg.mapSize,
+    cellSize,
+    capacity: cfg.capacity,
+  });
   return {
     cfg,
     entities: createEntities(cfg.capacity),
-    grid: createGrid({
-      minX: 0, minY: 0,
-      maxX: cfg.mapSize, maxY: cfg.mapSize,
-      cellSize,
-      capacity: cfg.capacity,
-    }),
+    grid,
     rng: createRng(cfg.seed),
     tickCount: 0,
     simTime: 0,
     systems: [],
     orderQueue: new Map(),
     bloodSplats: createBloodSplats(4096),
+    marchGroups: new Map(),
+    nextMarchGroupId: 1,
+    fireSignal: createFireSignal(grid),
   };
 }
 

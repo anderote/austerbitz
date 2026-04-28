@@ -71,7 +71,7 @@ describe('movement + orders', () => {
     expect(world.entities.velX[id]).toBeGreaterThan(0);
   });
 
-  it('parked unit waits out pushedT before drifting back, then drifts slowly', () => {
+  it('parked unit waits out pushedT, then pushes back distance-scaled', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const id = allocEntity(world.entities);
     world.entities.kindId[id] = getUnitKindIndex('line-infantry');
@@ -95,15 +95,19 @@ describe('movement + orders', () => {
     expect(world.entities.velY[id]).toBe(0);
     expect(world.entities.pushedT[id]).toBeGreaterThan(0);
 
-    // Burn off the rest of the cooldown.
-    for (let i = 0; i < 90; i++) world.systems.forEach(s => s(world, 1 / 30));
+    // Burn cooldown to zero (74 ticks leaves pushedT just barely positive,
+    // 75 zeroes it but still locks vel for the tick), then run one more
+    // tick with the unit still ~1m out of place to read the recovery speed.
+    for (let i = 0; i < 76; i++) world.systems.forEach(s => s(world, 1 / 30));
 
-    // Cooldown elapsed: drift speed is base * SETTLE_SPEED_FACTOR (0.3).
+    // Cooldown elapsed: at ~1m displacement, settle factor =
+    // min(1, 0.3 + 1*0.5) = 0.8 — meaningful push, not the old 0.3 drift.
     const baseSpeed = getUnitKind('line-infantry').baseStats.moveSpeed;
-    const speed = Math.hypot(world.entities.velX[id]!, world.entities.velY[id]!);
     expect(world.entities.pushedT[id]).toBe(0);
     expect(world.entities.velX[id]).toBeLessThan(0); // toward target at x=0.05
-    expect(speed).toBeCloseTo(baseSpeed * 0.3, 4);
+    const speed = Math.hypot(world.entities.velX[id]!, world.entities.velY[id]!);
+    expect(speed).toBeGreaterThan(baseSpeed * 0.5); // pushing harder than old floor
+    expect(speed).toBeLessThanOrEqual(baseSpeed); // and at or below cap
   });
 
   it('idle unit (no order queue entry) drifts back to its rest anchor after pushedT cooldown', () => {
@@ -127,12 +131,14 @@ describe('movement + orders', () => {
     expect(world.entities.velX[id]).toBe(0);
     expect(world.entities.velY[id]).toBe(0);
 
-    // After cooldown it drifts back at SETTLE_SPEED_FACTOR (0.3) * baseSpeed.
-    for (let i = 0; i < 90; i++) world.systems.forEach(s => s(world, 1 / 30));
+    // After cooldown, with the unit still ~1m out of place, settle factor is
+    // min(1, 0.3 + 1.0*0.5) = 0.8 of base move speed.
+    for (let i = 0; i < 76; i++) world.systems.forEach(s => s(world, 1 / 30));
     const baseSpeed = getUnitKind('line-infantry').baseStats.moveSpeed;
     expect(world.entities.velX[id]).toBeLessThan(0); // toward rest x=50
     const speed = Math.hypot(world.entities.velX[id]!, world.entities.velY[id]!);
-    expect(speed).toBeCloseTo(baseSpeed * 0.3, 4);
+    expect(speed).toBeGreaterThan(baseSpeed * 0.5);
+    expect(speed).toBeLessThanOrEqual(baseSpeed);
   });
 
   it('initial trip ignores pushedT and uses full speed', () => {

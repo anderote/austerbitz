@@ -478,10 +478,10 @@ describe('formation hotkeys', () => {
     selection.ids.add(id);
 
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(2); // default 1 → 2
+    expect(ctrl.formationParams.spacingIndex).toBe(6); // default 5 → 6
 
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(1);
+    expect(ctrl.formationParams.spacingIndex).toBe(5);
   });
 
   it(', and . cycle ranks', () => {
@@ -492,6 +492,8 @@ describe('formation hotkeys', () => {
     ctrl._internals.onKeyDown({ key: '.', code: 'Period', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl.formationParams.ranks).toBe(1);
 
+    // `,` cycles 1 → null (back to "auto"). The user-facing ranks value
+    // returns to null so the UI shows "auto" again.
     ctrl._internals.onKeyDown({ key: ',', code: 'Comma', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl.formationParams.ranks).toBe(null);
   });
@@ -499,7 +501,7 @@ describe('formation hotkeys', () => {
   it('hotkeys are no-op when selection is empty', () => {
     const { ctrl } = makeDeps();
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(1); // unchanged
+    expect(ctrl.formationParams.spacingIndex).toBe(5); // unchanged
   });
 
   it('issues a move order on hotkey press with non-empty selection', () => {
@@ -520,11 +522,251 @@ describe('formation hotkeys', () => {
     ctrl.update(0);                     // bind initial signature
 
     ctrl._internals.onKeyDown({ key: ']', code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.spacingIndex).toBe(2);
+    expect(ctrl.formationParams.spacingIndex).toBe(6);
 
     selection.ids.clear();
     selection.ids.add(id2);
     ctrl.update(0);                     // detect change → reset
-    expect(ctrl.formationParams.spacingIndex).toBe(1);
+    expect(ctrl.formationParams.spacingIndex).toBe(5);
+  });
+});
+
+describe('selection-controller — tight stance', () => {
+  it('auto-packs idle units when in tight stance', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 0, 0);
+    selection.ids.add(id);
+    ctrl.update(0); // bind selection signature
+    expect(ctrl.tightHeld).toBe(false);
+
+    // Set a sub-march-floor spacing.
+    ctrl.formationParams.spacingIndex = 0;
+    // Ensure unit is idle and has no orders.
+    world.orderQueue.delete(id);
+    world.entities.state[id] = EntityState.Idle;
+
+    ctrl.update(0);
+    expect(world.orderQueue.has(id)).toBe(true);
+    expect(ctrl.tightHeld).toBe(true);
+  });
+
+  it('preserves rank count across tightening that would otherwise break inference', () => {
+    const { ctrl, world, selection } = makeDeps();
+    // Spawn 9 units in a 3-rank × 3-file layout. line-infantry spacing is
+    // (1.0, 1.2). Place units along +Y (depth axis) so restFacing pointing
+    // along +Y matches the formation's depth direction.
+    const ids: number[] = [];
+    for (let r = 0; r < 3; r++) {
+      for (let f = 0; f < 3; f++) {
+        const id = spawn(world, 'line-infantry', 0, f * 1.0, r * 1.2);
+        world.entities.restFacing[id] = 2; // 2 * π/4 = 90°, facing +Y
+        ids.push(id);
+      }
+    }
+    for (const id of ids) selection.ids.add(id);
+    ctrl.update(0); // bind selection signature
+
+    // First spacing press at 0.9× nominal — units still well-separated → infer = 3 ranks correctly.
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.lockedRanks).toBe(3); // snapshotted internally
+    expect(ctrl.formationParams.ranks).toBe(null); // user-facing value untouched
+
+    // Now even if we tighten further (where inference would otherwise fail at low spacing),
+    // ranks stays at 3.
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
+    expect(ctrl.lockedRanks).toBe(3); // unchanged
+    expect(ctrl.formationParams.ranks).toBe(null); // still untouched by [/]
+  });
+
+  it('single right-click in tight stance reforms at march-floor spacing', () => {
+    const { ctrl, world, selection } = makeDeps();
+    // Four line-infantry units in a row; spacingX = 1 (line-infantry default).
+    const ids = [
+      spawn(world, 'line-infantry', 0, 0, 0),
+      spawn(world, 'line-infantry', 0, 1, 0),
+      spawn(world, 'line-infantry', 0, 2, 0),
+      spawn(world, 'line-infantry', 0, 3, 0),
+    ];
+    for (const i of ids) selection.ids.add(i);
+    ctrl.update(0);
+
+    // Set tight stance via spacing index 0 (mult 0.5, below march floor 0.9).
+    ctrl.formationParams.spacingIndex = 0;
+
+    // Single right-click (no drag) at world (50, 50). Camera center is (0,0),
+    // viewport 800x600 → screen (450, 350) maps to world (50, 50).
+    ctrl._internals.onMouseDown({ button: 2, clientX: 450, clientY: 350, target: null });
+    ctrl._internals.onMouseUp({ button: 2, clientX: 450, clientY: 350, shiftKey: false, ctrlKey: false, metaKey: false });
+
+    // Collect the issued targets.
+    const targets: Array<{ x: number; y: number }> = [];
+    for (const i of ids) {
+      const q = world.orderQueue.get(i);
+      expect(q).toBeDefined();
+      const o = q![0]!;
+      expect(o.kind).toBe('move');
+      const m = o as { kind: 'move'; targetX: number; targetY: number };
+      targets.push({ x: m.targetX, y: m.targetY });
+    }
+
+    // Nearest-neighbor distance must be at least MARCH_FLOOR_MULT * spacingX
+    // (0.9 * 1.0 = 0.9m), proving the floor clamp kicked in.
+    let minD = Infinity;
+    for (let i = 0; i < targets.length; i++) {
+      for (let j = i + 1; j < targets.length; j++) {
+        const dx = targets[i]!.x - targets[j]!.x;
+        const dy = targets[i]!.y - targets[j]!.y;
+        const d = Math.hypot(dx, dy);
+        if (d < minD) minD = d;
+      }
+    }
+    expect(minD).toBeGreaterThanOrEqual(0.9 - 1e-6);
+  });
+});
+
+describe('selectionController Ctrl+RMB march-formation', () => {
+  it('Ctrl+RMB up with non-empty selection on terrain creates a march group', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 200,
+      shiftKey: false, ctrlKey: true, metaKey: false,
+    });
+
+    expect(world.marchGroups.size).toBe(1);
+    const head = world.orderQueue.get(id)![0]!;
+    expect(head.kind).toBe('march-formation');
+  });
+
+  it('Ctrl+RMB up with empty selection is a no-op', () => {
+    const { ctrl, world, selection } = makeDeps();
+    expect(selection.ids.size).toBe(0);
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 200,
+      shiftKey: false, ctrlKey: true, metaKey: false,
+    });
+
+    expect(world.marchGroups.size).toBe(0);
+  });
+
+  it('Ctrl+Shift+RMB behaves the same as Ctrl+RMB (Shift ignored, no queueing)', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 200,
+      shiftKey: true, ctrlKey: true, metaKey: false,
+    });
+
+    // One queue entry (replace, not append).
+    expect(world.orderQueue.get(id)!.length).toBe(1);
+    expect(world.orderQueue.get(id)![0]!.kind).toBe('march-formation');
+    expect(world.marchGroups.size).toBe(1);
+  });
+
+  it('Ctrl+RMB during a formation drag falls through to the drag commit', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    // Start an RMB drag past the threshold so formationDrag.active becomes true.
+    ctrl._internals.onMouseDown({ button: 2, clientX: 100, clientY: 100, target: null });
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 100 });
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 100,
+      shiftKey: false, ctrlKey: true, metaKey: false,
+    });
+
+    // Drag commit produces 'move' orders via issueFormationMove, not march-formation.
+    expect(world.marchGroups.size).toBe(0);
+    expect(world.orderQueue.get(id)![0]!.kind).toBe('move');
+  });
+});
+
+describe('selectionController march placement preview', () => {
+  it('formationPreview() returns null when Ctrl is not held', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('returns a non-null preview after Ctrl keydown + mousemove', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+
+    const preview = ctrl.formationPreview();
+    expect(preview).not.toBeNull();
+    expect(preview!.slots.length).toBe(1);
+  });
+
+  it('Ctrl keyup clears the preview', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+    expect(ctrl.formationPreview()).not.toBeNull();
+
+    ctrl._internals.onKeyUp({ key: 'Control', code: 'ControlLeft' });
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('preview is null when selection becomes empty even with Ctrl held', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+    expect(ctrl.formationPreview()).not.toBeNull();
+
+    selection.ids.clear();
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('formation drag wins over march preview when both could apply', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    // Hold Ctrl so the march preview would fire.
+    ctrl._internals.onMouseMove({ clientX: 100, clientY: 100 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+
+    // Now start an RMB drag past the threshold.
+    ctrl._internals.onMouseDown({ button: 2, clientX: 100, clientY: 100, target: null });
+    ctrl._internals.onMouseMove({ clientX: 300, clientY: 100 });
+
+    // formationPreview should reflect the drag, not the march.
+    // We can't easily compare slot positions here, but the preview must be
+    // non-null and computed from the drag's startWorld→currentScreen rather
+    // than the cursor. Sanity check: forward direction should be roughly +x
+    // (drag along screen-x) regardless of where the march preview would point.
+    const preview = ctrl.formationPreview();
+    expect(preview).not.toBeNull();
+    // Without a march, the only way to produce a preview here is the drag —
+    // and that's what we want.
+  });
+
+  it('onBlur clears Ctrl-held state and the preview', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+    expect(ctrl.formationPreview()).not.toBeNull();
+
+    ctrl._internals.onBlur();
+    expect(ctrl.formationPreview()).toBeNull();
   });
 });

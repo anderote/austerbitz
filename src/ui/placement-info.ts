@@ -27,21 +27,33 @@ export function createPlacementInfo(root: HTMLElement): PlacementInfo {
   card.style.display = 'none';
   layer.appendChild(card);
 
+  const rangeLabel = document.createElement('div');
+  rangeLabel.className = 'placement-range-label';
+  rangeLabel.style.display = 'none';
+  layer.appendChild(rangeLabel);
+
   return {
     update(world, cam, sel, preview) {
       if (!preview) {
         card.style.display = 'none';
+        rangeLabel.style.display = 'none';
         return;
       }
       const e = world.entities;
       const counts = new Map<number, number>();
+      let maxRange = 0;
       for (const id of sel.ids) {
         if (e.alive[id] !== 1) continue;
         const k = e.kindId[id]!;
         counts.set(k, (counts.get(k) ?? 0) + 1);
+        const kind = getUnitKindByIndex(k);
+        if (kind.weapon && kind.baseStats.weaponRange > maxRange) {
+          maxRange = kind.baseStats.weaponRange;
+        }
       }
       if (counts.size === 0) {
         card.style.display = 'none';
+        rangeLabel.style.display = 'none';
         return;
       }
 
@@ -68,6 +80,31 @@ export function createPlacementInfo(root: HTMLElement): PlacementInfo {
       card.style.left = `${bestX}px`;
       card.style.top = `${bestY - 12}px`;
       card.style.display = '';
+
+      // Range label: positioned at the end of the firing-range line
+      // (front-edge midpoint + forward * maxRange). Mirrors the geometry
+      // computed in selection-pass.ts so the label sits at the white tick.
+      if (maxRange > 0) {
+        const fdx = preview.rect.tl.x - preview.rect.bl.x;
+        const fdy = preview.rect.tl.y - preview.rect.bl.y;
+        const depth = Math.hypot(fdx, fdy);
+        if (depth > 1e-6) {
+          const ux = fdx / depth;
+          const uy = fdy / depth;
+          const frontMidX = (preview.rect.tl.x + preview.rect.tr.x) * 0.5;
+          const frontMidY = (preview.rect.tl.y + preview.rect.tr.y) * 0.5;
+          const endW = { x: frontMidX + ux * maxRange, y: frontMidY + uy * maxRange };
+          const s = worldToScreen(cam, endW);
+          rangeLabel.textContent = `${maxRange}m`;
+          rangeLabel.style.left = `${s.x}px`;
+          rangeLabel.style.top = `${s.y}px`;
+          rangeLabel.style.display = '';
+        } else {
+          rangeLabel.style.display = 'none';
+        }
+      } else {
+        rangeLabel.style.display = 'none';
+      }
     },
   };
 }

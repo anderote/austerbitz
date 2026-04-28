@@ -1,9 +1,10 @@
 import { type Entities, EntityState, isDead } from '../entities';
 import { getUnitKindByIndex } from '../../data/units';
 import type { Particles } from '../../particles/particles';
-import { spawnBlood } from '../../particles/emitters';
+import { emitPromotionSparkle, spawnBlood } from '../../particles/emitters';
 import type { Rng } from '../../util/rng';
 import type { BloodSplats } from '../blood-splats';
+import { effectiveArmor, promote } from '../veterancy';
 
 /** Impulse magnitude (N·s) at or above which a kill ragdolls instead of falling in place. */
 export const KILL_RAGDOLL_THRESHOLD = 8000;
@@ -60,17 +61,35 @@ export function applyHit(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _kind: HitKind,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _splats?: BloodSplats,
+  _splats: BloodSplats | undefined,
+  attackerId: number,
 ): void {
   if (e.alive[id] === 0) return;
   if (isDead(e, id)) return;
 
   const kind = getUnitKindByIndex(e.kindId[id]!);
-  const effDmg = Math.max(1, dmg - kind.baseStats.armor);
+  const effArmor = effectiveArmor(e, id, kind.baseStats.armor);
+  const effDmg = Math.max(1, dmg - effArmor);
+
+  // Attacker-validity guard — computed once and reused for damage credit
+  // (every hit) and kill / XP credit (lethal only).
+  const attackerValid =
+    attackerId !== -1 &&
+    e.alive[attackerId] === 1 &&
+    !isDead(e, attackerId) &&
+    e.team[attackerId] !== e.team[id];
+
+  // Damage credit fires on every hit, lethal or not (saturates at 0xffffffff).
+  if (attackerValid) {
+    const cur = e.damageDealt[attackerId]!;
+    const next = cur + effDmg;
+    e.damageDealt[attackerId] = next > 0xffffffff ? 0xffffffff : next;
+  }
 
   // hp is Uint16Array; clamp to 0 to avoid underflow.
   const hpNow = e.hp[id]!;
-  if (effDmg >= hpNow) {
+  const lethal = effDmg >= hpNow;
+  if (lethal) {
     e.hp[id] = 0;
   } else {
     e.hp[id] = hpNow - effDmg;
@@ -80,7 +99,7 @@ export function applyHit(
   const px = e.posX[id]!;
   const py = e.posY[id]!;
 
-  if (e.hp[id] === 0) {
+  if (lethal) {
     if (impMag > KILL_RAGDOLL_THRESHOLD) {
       // Ragdoll-system will transition to Dying once the body settles.
       enterRagdoll(e, id, impX, impY);
@@ -88,6 +107,15 @@ export function applyHit(
       enterDying(e, id);
     }
     spawnBlood(particles, px, py, impMag, rng, impX, impY);
+
+    // Kill + XP credit — same guard as damage credit, additionally requires lethal.
+    if (attackerValid) {
+      if (e.kills[attackerId]! < 0xffff) e.kills[attackerId] = e.kills[attackerId]! + 1;
+      if (e.xp[attackerId]! < 0xffff) e.xp[attackerId] = e.xp[attackerId]! + 1;
+      if (promote(e, attackerId)) {
+        emitPromotionSparkle(particles, e.posX[attackerId]!, e.posY[attackerId]!, rng);
+      }
+    }
     return;
   }
 

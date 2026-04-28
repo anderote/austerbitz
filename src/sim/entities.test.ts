@@ -158,6 +158,82 @@ describe('EntityState enum', () => {
   });
 });
 
+describe('entities — veterancy fields', () => {
+  it('initializes rank and xp to 0 on alloc', () => {
+    const e = createEntities(4);
+    const id = allocEntity(e);
+    expect(id).not.toBe(-1);
+    expect(e.rank[id]).toBe(0);
+    expect(e.xp[id]).toBe(0);
+  });
+
+  it('rank is a Uint8Array, xp is a Uint16Array', () => {
+    const e = createEntities(4);
+    expect(e.rank).toBeInstanceOf(Uint8Array);
+    expect(e.xp).toBeInstanceOf(Uint16Array);
+    expect(e.rank.length).toBe(4);
+    expect(e.xp.length).toBe(4);
+  });
+});
+
+describe('entities — identity and lifetime stats fields', () => {
+  it('initializes the new identity and lifetime-stats fields to 0 on alloc', () => {
+    const e = createEntities(4);
+    const id = allocEntity(e);
+    expect(id).not.toBe(-1);
+    expect(e.firstNameIdx[id]).toBe(0);
+    expect(e.lastNameIdx[id]).toBe(0);
+    expect(e.hometownIdx[id]).toBe(0);
+    expect(e.themeId[id]).toBe(0);
+    expect(e.ageYears[id]).toBe(0);
+    expect(e.kills[id]).toBe(0);
+    expect(e.damageDealt[id]).toBe(0);
+  });
+
+  it('exposes the new fields with the expected typed-array kinds and lengths', () => {
+    const e = createEntities(8);
+    expect(e.firstNameIdx).toBeInstanceOf(Uint16Array);
+    expect(e.lastNameIdx).toBeInstanceOf(Uint16Array);
+    expect(e.hometownIdx).toBeInstanceOf(Uint16Array);
+    expect(e.themeId).toBeInstanceOf(Uint8Array);
+    expect(e.ageYears).toBeInstanceOf(Uint8Array);
+    expect(e.kills).toBeInstanceOf(Uint16Array);
+    expect(e.damageDealt).toBeInstanceOf(Uint32Array);
+    expect(e.firstNameIdx.length).toBe(8);
+    expect(e.lastNameIdx.length).toBe(8);
+    expect(e.hometownIdx.length).toBe(8);
+    expect(e.themeId.length).toBe(8);
+    expect(e.ageYears.length).toBe(8);
+    expect(e.kills.length).toBe(8);
+    expect(e.damageDealt.length).toBe(8);
+  });
+
+  it('resets the new fields to 0 on a reused slot (alloc → write → free → alloc)', () => {
+    const e = createEntities(2);
+    const a = allocEntity(e);
+    expect(a).not.toBe(-1);
+    // Simulate Phase 3 / Phase 4 writes on the live entity.
+    e.firstNameIdx[a] = 123;
+    e.lastNameIdx[a] = 456;
+    e.hometownIdx[a] = 789;
+    e.themeId[a] = 1;
+    e.ageYears[a] = 42;
+    e.kills[a] = 7;
+    e.damageDealt[a] = 0xdeadbeef;
+    freeEntity(e, a);
+    // Re-alloc should hit the freed slot first (LIFO free-list).
+    const reused = allocEntity(e);
+    expect(reused).toBe(a);
+    expect(e.firstNameIdx[reused]).toBe(0);
+    expect(e.lastNameIdx[reused]).toBe(0);
+    expect(e.hometownIdx[reused]).toBe(0);
+    expect(e.themeId[reused]).toBe(0);
+    expect(e.ageYears[reused]).toBe(0);
+    expect(e.kills[reused]).toBe(0);
+    expect(e.damageDealt[reused]).toBe(0);
+  });
+});
+
 describe('isDead', () => {
   it('returns true only for Dying and Dead', () => {
     const e = createEntities(4);

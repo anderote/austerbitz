@@ -37,7 +37,7 @@ export function createGrid(cfg: GridConfig): Grid {
   };
 }
 
-function cellOf(g: Grid, x: number, y: number): number {
+export function cellOf(g: Grid, x: number, y: number): number {
   const cx = Math.max(0, Math.min(g.cols - 1, Math.floor((x - g.cfg.minX) / g.cfg.cellSize)));
   const cy = Math.max(0, Math.min(g.rows - 1, Math.floor((y - g.cfg.minY) / g.cfg.cellSize)));
   return cy * g.cols + cx;

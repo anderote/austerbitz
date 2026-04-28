@@ -3,6 +3,7 @@ import type { World } from '../sim/world';
 import type { Selection } from '../input/selection';
 import { getUnitKindByIndex } from '../data/units';
 import type { UnitKind } from '../data/types';
+import { RANK_NAMES, RANK_THRESHOLDS, MAX_RANK } from '../sim/veterancy';
 
 export interface StatsCard {
   update(world: World, sel: Selection): void;
@@ -14,6 +15,10 @@ interface KindAggregate {
   hpCurr: number;
   hpMax: number;
   moraleSum: number;
+  rankCounts: number[];
+  /** Single-entity progression detail; populated only when count === 1. */
+  soloRank?: number;
+  soloXp?: number;
 }
 
 export function createStatsCard(root: HTMLElement): StatsCard {
@@ -39,6 +44,7 @@ export function createStatsCard(root: HTMLElement): StatsCard {
             hpCurr: 0,
             hpMax: 0,
             moraleSum: 0,
+            rankCounts: [0, 0, 0, 0, 0],
           };
           groups.set(kIdx, g);
         }
@@ -46,6 +52,9 @@ export function createStatsCard(root: HTMLElement): StatsCard {
         g.hpCurr += world.entities.hp[id]!;
         g.hpMax += g.kind.baseStats.hp;
         g.moraleSum += world.entities.morale[id]!;
+        g.rankCounts[world.entities.rank[id]!]!++;
+        g.soloRank = world.entities.rank[id]!;
+        g.soloXp = world.entities.xp[id]!;
       }
       if (groups.size === 0) {
         el.style.display = 'none';
@@ -135,5 +144,52 @@ function renderKindEntry(g: KindAggregate): HTMLDivElement {
     grid.appendChild(v);
   }
   card.appendChild(grid);
+
+  const badge = renderRankBadge(g);
+  if (badge) card.appendChild(badge);
   return card;
+}
+
+function renderRankBadge(g: KindAggregate): HTMLDivElement | null {
+  if (g.count === 1 && g.soloRank !== undefined && g.soloXp !== undefined) {
+    if (g.soloRank === 0) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'stats-card-rank-badge';
+    wrap.appendChild(rankIcon(g.soloRank));
+    const xpLabel = g.soloRank >= MAX_RANK ? '—' : `${g.soloXp} / ${RANK_THRESHOLDS[g.soloRank]!}`;
+    const xp = document.createElement('span');
+    xp.className = 'stats-card-rank-xp';
+    xp.textContent = xpLabel;
+    wrap.appendChild(xp);
+    wrap.title = `${RANK_NAMES[g.soloRank]!} · XP ${xpLabel}`;
+    return wrap;
+  }
+  let advanced = 0;
+  for (let r = 1; r < g.rankCounts.length; r++) advanced += g.rankCounts[r]!;
+  if (advanced === 0) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'stats-card-rank-badge';
+  const titleParts: string[] = [];
+  for (let r = g.rankCounts.length - 1; r >= 1; r--) {
+    const c = g.rankCounts[r]!;
+    if (c === 0) continue;
+    const cell = document.createElement('span');
+    cell.className = 'stats-card-rank-cell';
+    cell.appendChild(rankIcon(r));
+    const num = document.createElement('span');
+    num.className = 'stats-card-rank-count';
+    num.textContent = String(c);
+    cell.appendChild(num);
+    wrap.appendChild(cell);
+    titleParts.push(`${c} ${RANK_NAMES[r]!}`);
+  }
+  wrap.title = titleParts.join(' · ');
+  return wrap;
+}
+
+function rankIcon(rank: number): HTMLSpanElement {
+  const icon = document.createElement('span');
+  icon.className = 'stats-card-rank-icon';
+  icon.style.backgroundPosition = `${-(rank - 1) * 16}px 0`;
+  return icon;
 }
