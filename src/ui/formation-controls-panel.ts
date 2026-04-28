@@ -34,7 +34,7 @@ export function createFormationControlsPanel(root: HTMLElement): FormationContro
 
   const stanceRow = document.createElement('div');
   stanceRow.className = 'fc-row';
-  const stanceKey = document.createElement('span'); stanceKey.className = 'fc-key'; stanceKey.textContent = '1234';
+  const stanceKey = document.createElement('span'); stanceKey.className = 'fc-key'; stanceKey.textContent = 'ZXCV';
   const stanceLabel = document.createElement('span'); stanceLabel.className = 'fc-label'; stanceLabel.textContent = 'Stance';
   const stanceVal = document.createElement('span'); stanceVal.className = 'fc-val';
   stanceRow.append(stanceKey, stanceLabel, stanceVal);

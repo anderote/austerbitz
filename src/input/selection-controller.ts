@@ -453,23 +453,27 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         }
         return;
       }
-      // Digits 1–4 with a non-empty selection: set fire stance.
-      if (digit >= 1 && digit <= 4 && selection.ids.size > 0) {
-        const stance = digit === 1 ? FireStance.AtWill
-                     : digit === 2 ? FireStance.Volley
-                     : digit === 3 ? FireStance.ByRanks
-                     :               FireStance.Hold;
-        const ents = world.entities;
-        for (const id of selection.ids) {
-          if (ents.alive[id] !== 1) continue;
-          ents.stance[id] = stance;
-        }
-        return;
-      }
       // Recall: replace selection with group (alive only).
       selection.ids.clear();
       for (const id of groups[digit]!) {
         if (world.entities.alive[id] === 1 && !isDead(world.entities, id)) selection.ids.add(id);
+      }
+      return;
+    }
+
+    if (e.code === 'KeyZ' || e.code === 'KeyX' || e.code === 'KeyC' || e.code === 'KeyV') {
+      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
+      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (selection.ids.size === 0) return;
+      const stance = e.code === 'KeyZ' ? FireStance.AtWill
+                   : e.code === 'KeyX' ? FireStance.Volley
+                   : e.code === 'KeyC' ? FireStance.ByRanks
+                   :                     FireStance.Hold;
+      const ents = world.entities;
+      for (const id of selection.ids) {
+        if (ents.alive[id] !== 1) continue;
+        ents.stance[id] = stance;
       }
       return;
     }
