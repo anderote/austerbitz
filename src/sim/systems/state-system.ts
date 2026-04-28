@@ -1,4 +1,4 @@
-import { type Entities, EntityState } from '../entities';
+import { type Entities, EntityState, FireStance } from '../entities';
 import type { Projectiles } from '../projectiles';
 import type { Particles } from '../../particles/particles';
 import type { Puffs } from '../../puffs/puffs';
@@ -108,11 +108,12 @@ export function tickStates(
         if (e.stateT[i]! <= 0) {
           // Logically traverse Firing for one resolve before going to Reloading.
           e.state[i] = EntityState.Firing;
+          e.holdLoaded[i] = 0;
           const order = fireOrders.get(i);
           if (order) {
             const fired = resolveFire(e, projectiles, particles, puffs, rng, i, order.tx, order.ty);
             if (fired) {
-              writeFireSignal(fireSignal, grid, e.posX[i]!, e.posY[i]!, e.team[i]!, tick);
+              writeFireSignal(fireSignal, grid, e.posX[i]!, e.posY[i]!, e.team[i]!, e.formationRank[i]!, tick);
             }
           }
           fireOrders.delete(i);
@@ -131,6 +132,7 @@ export function tickStates(
           e.state[i] = EntityState.Idle;
           e.reloadT[i] = 0;
           e.stateT[i] = 0;
+          e.holdLoaded[i] = e.stance[i] === FireStance.Hold ? 1 : 0;
         }
         break;
       }

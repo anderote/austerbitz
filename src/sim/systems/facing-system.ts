@@ -27,6 +27,12 @@ export function quantizeDirectionToFacing(dirX: number, dirY: number): number {
   return oct;
 }
 
+/** Octant (0..7) → unit vector (CCW from east). */
+export function facingToVec(facing: number): { x: number; y: number } {
+  const theta = (facing * Math.PI) / 4;
+  return { x: Math.cos(theta), y: Math.sin(theta) };
+}
+
 function angleDifference(a: number, b: number): number {
   let d = a - b;
   while (d > Math.PI) d -= Math.PI * 2;

@@ -1,4 +1,4 @@
-# Austerbitz — RTS-style Selection & Command Controls
+# Austerblitz — RTS-style Selection & Command Controls
 
 **Date:** 2026-04-26
 **Status:** Approved (pending implementation plan)

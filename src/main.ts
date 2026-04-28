@@ -73,7 +73,7 @@ const kits = await loadKits();
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   map.size.w, map.size.h, poseAtlas, kits,
-  debrisAtlas,
+  debrisAtlas, undefined, map,
 );
 
 // Dev-mode live-reload: poll kit JSONs for per-(pose, facing) weapon edits

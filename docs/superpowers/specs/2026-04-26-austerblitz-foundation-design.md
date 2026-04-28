@@ -1,11 +1,11 @@
-# Austerbitz — Foundation Design
+# Austerblitz — Foundation Design
 
 **Date:** 2026-04-26
 **Status:** Approved (pending spec review)
 
 ## Vision
 
-Austerbitz is a top-down 2D pixel-art Napoleonic real-time strategy game in the
+Austerblitz is a top-down 2D pixel-art Napoleonic real-time strategy game in the
 browser. The fantasy is commanding massed lines of infantry, cavalry, and
 artillery in classical Napoleonic-era battles. Visual style: sharp pixel art at
 small scale (~16×20 px per soldier), with a fixed top-down view and zoomable

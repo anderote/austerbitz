@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createEntities, allocEntity, freeEntity, isAlive, isDead, EntityState } from './entities';
+import { createEntities, allocEntity, freeEntity, isAlive, isDead, EntityState, FireStance, FORMATION_RANK_UNKNOWN } from './entities';
 
 describe('Entities SoA', () => {
   it('allocates entities with monotonically increasing ids until capacity', () => {
@@ -231,6 +231,17 @@ describe('entities — identity and lifetime stats fields', () => {
     expect(e.ageYears[reused]).toBe(0);
     expect(e.kills[reused]).toBe(0);
     expect(e.damageDealt[reused]).toBe(0);
+  });
+});
+
+describe('entities — firing fields', () => {
+  it('allocEntity initialises new firing fields to defaults', () => {
+    const e = createEntities(8);
+    const id = allocEntity(e);
+    expect(id).toBeGreaterThanOrEqual(0);
+    expect(e.stance[id]).toBe(FireStance.ByRanks);
+    expect(e.formationRank[id]).toBe(FORMATION_RANK_UNKNOWN);
+    expect(e.holdLoaded[id]).toBe(0);
   });
 });
 

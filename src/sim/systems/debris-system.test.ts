@@ -42,13 +42,24 @@ describe('tickDebris', () => {
     expect(d.bounces[id]).toBe(1);
   });
 
-  it('frees debris when ttl reaches zero', () => {
+  it('frees in-flight debris when ttl reaches zero', () => {
     const d = createDebris(4);
-    const id = spawnAt(d, 0, 0, 0);
+    // In-flight (z>0) so TTL ticks; settled gibs are persistent now.
+    const id = spawnAt(d, 0, 0, 5, 0, 0, 1);
     d.ttl[id] = 0.1;
     tickDebris(d, 0.2);
     expect(d.alive[id]).toBe(0);
     expect(d.count).toBe(0);
+  });
+
+  it('keeps settled debris alive past ttl expiry (persistence)', () => {
+    const d = createDebris(4);
+    const id = spawnAt(d, 0, 0, 0);
+    d.bounces[id] = 4; // forced-settled
+    d.ttl[id] = 0.01;
+    tickDebris(d, 1.0);
+    expect(d.alive[id]).toBe(1);
+    expect(d.count).toBe(1);
   });
 
   it('settles after multiple bounces', () => {

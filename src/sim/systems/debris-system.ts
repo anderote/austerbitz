@@ -6,10 +6,10 @@ import {
   GIB_BOUNCE_DAMP,
   GIB_GROUND_FRICTION,
   GIB_SPIN_DRAG,
+  GIB_SETTLE_BOUNCES,
   type Debris,
 } from '../debris';
 
-const SETTLE_BOUNCES = 3;
 const SETTLE_VZ_EPSILON = 0.5;
 
 export function tickDebris(d: Debris, dt: number): void {
@@ -17,16 +17,10 @@ export function tickDebris(d: Debris, dt: number): void {
   for (let i = d.count - 1; i >= 0; i--) {
     const id = d.aliveIds[i]!;
 
-    // TTL expiration.
-    d.ttl[id] = d.ttl[id]! - dt;
-    if (d.ttl[id]! <= 0) {
-      freeDebris(d, id);
-      continue;
-    }
-
-    // Settle check.
+    // Settle check. Once settled, gibs persist until evicted by the allocator
+    // (so corpses pile up across the battle), so skip TTL/integration entirely.
     const settled =
-      d.bounces[id]! >= SETTLE_BOUNCES ||
+      d.bounces[id]! >= GIB_SETTLE_BOUNCES ||
       (d.z[id] === 0 && Math.abs(d.velZ[id]!) < SETTLE_VZ_EPSILON && Math.hypot(d.velX[id]!, d.velY[id]!) < SETTLE_VZ_EPSILON);
     if (settled) {
       d.velX[id] = 0;
@@ -34,6 +28,14 @@ export function tickDebris(d: Debris, dt: number): void {
       d.velZ[id] = 0;
       d.spinRate[id] = d.spinRate[id]! * 0.2;
       d.spinDeg[id] = d.spinDeg[id]! + d.spinRate[id]! * dt;
+      continue;
+    }
+
+    // In-flight TTL — only ticks for unsettled gibs, as a safety net for ones
+    // that get stuck off-ground (slope edge, etc.) and never settle.
+    d.ttl[id] = d.ttl[id]! - dt;
+    if (d.ttl[id]! <= 0) {
+      freeDebris(d, id);
       continue;
     }
 

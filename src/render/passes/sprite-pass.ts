@@ -23,6 +23,18 @@ import {
   type WeaponOrientation,
 } from '../poses/resolver';
 import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader';
+import { Pose, POSE_CONFIG } from '../poses/pose-config';
+
+// Held-weapon vertical bob during locomotion. The body sprite's bob is baked
+// into its source frames, but the weapon overlay is anchored at one fixed
+// per-(pose, facing) position — without a synthesized match, it floats
+// steadily while the body bounces under it. Frequency = pose fps / 4 (one
+// full bob cycle per stride on a standard 4-frame gait); amplitude is in
+// source-sprite pixels and snapped to integers for pixel-art crispness.
+const WEAPON_BOB_WALK_PX = 1;
+const WEAPON_BOB_RUN_PX = 1;
+const WEAPON_BOB_WALK_HZ = POSE_CONFIG[Pose.walking].fps / 4;
+const WEAPON_BOB_RUN_HZ = POSE_CONFIG[Pose.running].fps / 4;
 
 const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
 
@@ -646,7 +658,13 @@ export function createSpritePass(
           scratchPattern[k] = 0;
           const facing = e.facing[i]!;
           const pose = e.pose[i]!;
-          const poseT = e.poseT[i]!;
+          // Running soldiers desync per-entity so a column doesn't animate in
+          // lockstep; walking pose (= marching/formation) stays synchronized.
+          // Stable hash → [0, 1) seconds, large enough to span any pose's loop.
+          const desync = pose === Pose.running
+            ? ((i * 2654435761) >>> 0) / 0x100000000
+            : 0;
+          const poseT = e.poseT[i]! + desync;
           const clipIdx = e.clipIndex[i]!;
           let uv: readonly [number, number, number, number] | null = null;
           // Detachable-part variant lookup: when a part bit is set, prefer the
@@ -707,7 +725,13 @@ export function createSpritePass(
               // composites against 1:1.
               const pxToWorld = sprW / SPRITE_CELL_PX;
               const dxWorld = offset.x * pxToWorld;
-              const dyWorld = offset.y * pxToWorld;
+              let bobPx = 0;
+              if (pose === Pose.walking) {
+                bobPx = Math.round(Math.sin(poseT * 2 * Math.PI * WEAPON_BOB_WALK_HZ) * WEAPON_BOB_WALK_PX);
+              } else if (pose === Pose.running) {
+                bobPx = Math.round(Math.sin(poseT * 2 * Math.PI * WEAPON_BOB_RUN_HZ) * WEAPON_BOB_RUN_PX);
+              }
+              const dyWorld = (offset.y + bobPx) * pxToWorld;
               const wWorldW = WEAPON_PX_W * pxToWorld;
               const wWorldH = WEAPON_PX_H * pxToWorld;
               const isBehind = RUNTIME_FACING_IS_BEHIND[facing]!;

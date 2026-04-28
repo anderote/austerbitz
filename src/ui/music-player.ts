@@ -3,7 +3,7 @@
 // expandable track list, minimize button, and volume slider. Ported from
 // beamline-tycoon's MusicPlayer.js.
 
-const STORAGE_KEY = 'austerbitz.music';
+const STORAGE_KEY = 'austerblitz.music';
 
 interface SavedState {
   selectedTheme: string | null;

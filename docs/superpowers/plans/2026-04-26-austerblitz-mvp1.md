@@ -1,14 +1,14 @@
-# Austerbitz MVP-1 Implementation Plan
+# Austerblitz MVP-1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the foundation slice of Austerbitz: a deployable static-site WebGL2 game with camera controls, a green-field map, three placeholder unit kinds, drag-select, right-click move, and a dust-particle stub.
+**Goal:** Stand up the foundation slice of Austerblitz: a deployable static-site WebGL2 game with camera controls, a green-field map, three placeholder unit kinds, drag-select, right-click move, and a dust-particle stub.
 
 **Architecture:** Three-layer split — pure simulation (SoA typed arrays, fixed timestep, seeded RNG, uniform spatial grid), WebGL2 renderer (instanced quad passes), and DOM input/UI overlay. Designed so each later milestone (combat, sprites, physics, formations) plugs in along an established seam.
 
 **Tech Stack:** TypeScript 5, Vite 5, Vitest 1, WebGL2 (raw), gl-matrix, plain HTML/CSS for UI. Static deploy target.
 
-**Spec:** [docs/superpowers/specs/2026-04-26-austerbitz-foundation-design.md](../specs/2026-04-26-austerbitz-foundation-design.md)
+**Spec:** [docs/superpowers/specs/2026-04-26-austerblitz-foundation-design.md](../specs/2026-04-26-austerblitz-foundation-design.md)
 
 ---
 
@@ -17,13 +17,13 @@
 - **Commits**: per the user's standing instructions, do NOT commit at the end of every task. The user controls commit boundaries. Implement and verify; the user will commit when they're ready.
 - **Tests are co-located**: `foo.ts` has `foo.test.ts` next to it. Vitest discovers them via `*.test.ts` pattern.
 - **TDD where it pays**: math, sim systems, data registries, spatial grid — write the test first, watch it fail, implement. Rendering and DOM UI tasks use **visual verification** (run dev server, describe expected outcome) since unit-testing a WebGL framebuffer or a slide-out panel is more cost than benefit at this stage.
-- **Paths are relative to repo root**: `/Users/andrewcote/Documents/software/austerbitz`.
+- **Paths are relative to repo root**: `/Users/andrewcote/Documents/software/austerblitz`.
 - **Strict TypeScript**: `strict: true` from day one. No `any` unless commented and justified.
 
 ## File structure overview
 
 ```
-austerbitz/
+austerblitz/
   package.json
   tsconfig.json
   vite.config.ts
@@ -121,7 +121,7 @@ coverage
 
 ```json
 {
-  "name": "austerbitz",
+  "name": "austerblitz",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -212,7 +212,7 @@ export default defineConfig({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Austerbitz</title>
+    <title>Austerblitz</title>
     <style>
       html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
       #game { position: fixed; inset: 0; display: block; }
@@ -254,7 +254,7 @@ requestAnimationFrame(frame);
 - [ ] **Step 9: Create `README.md`**
 
 ```markdown
-# Austerbitz
+# Austerblitz
 
 Top-down 2D Napoleonic RTS in WebGL2.
 

@@ -65,7 +65,10 @@ export function createWorld(cfg: WorldConfig): World {
     systems: [],
     orderQueue: new Map(),
     bloodSplats: createBloodSplats(4096),
-    debris: createDebris(256),
+    // Sized for "keep as much gibs as we can" — corpses persist past TTL
+    // (debris-system.ts), so the cap is the soft limit on how many can pile
+    // up before the allocator evicts the oldest settled one.
+    debris: createDebris(8192),
     droppedItems: createDroppedItems(cfg.capacity),
     marchGroups: new Map(),
     nextMarchGroupId: 1,

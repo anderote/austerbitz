@@ -10,6 +10,8 @@ import { createHealthBarPass } from './passes/health-bar-pass';
 import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
 import { createPuffPass } from './passes/puff-pass';
 import { createDebrisPass } from './passes/debris-pass';
+import { createGrassTuftsPass, type GrassTuftsPass } from './passes/grass-tufts-pass';
+import type { WorldMap } from '../map/world-map';
 import type { World } from '../sim/world';
 import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
@@ -71,7 +73,8 @@ export function createRenderer(
   poseAtlas: PoseAtlas | null,
   kits: ReadonlyMap<string, KitConfig> = new Map(),
   debrisAtlas: DebrisAtlas | null = null,
-  debrisCapacity = 256,
+  debrisCapacity = 8192,
+  map: WorldMap | null = null,
 ): Renderer {
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
@@ -91,6 +94,7 @@ export function createRenderer(
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
   const debrisPass = debrisAtlas ? createDebrisPass(gl, debrisCapacity) : null;
+  const grassTuftsPass: GrassTuftsPass | null = map ? createGrassTuftsPass(gl, map) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
 
   return {
@@ -109,6 +113,7 @@ export function createRenderer(
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       terrain.draw(cam);
+      if (grassTuftsPass) grassTuftsPass.draw(cam);
       if (opts.showMovePreview) {
         selectionPass.drawTeamRange(world, cam, sel, PLAYER_TEAM);
       }
