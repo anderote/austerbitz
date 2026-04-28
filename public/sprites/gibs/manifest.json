@@ -1,0 +1,10 @@
+{
+  "chunks": [
+    { "id": "head",      "path": "head.png",      "partType": "head",  "mass": "medium" },
+    { "id": "arm",       "path": "arm.png",       "partType": "arm",   "mass": "light"  },
+    { "id": "leg",       "path": "leg.png",       "partType": "leg",   "mass": "medium" },
+    { "id": "torso",     "path": "torso.png",     "partType": "torso", "mass": "medium" },
+    { "id": "hat",       "path": "hat.png",       "partType": "hat",   "mass": "light"  },
+    { "id": "meat-blob", "path": "meat-blob.png", "partType": "misc",  "mass": "light"  }
+  ]
+}

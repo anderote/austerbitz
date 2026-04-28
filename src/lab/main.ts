@@ -15,6 +15,7 @@ import { movementSystem } from '../sim/systems/movement-system';
 import { facingSystem } from '../sim/systems/facing-system';
 import { tickStates, type FireOrders } from '../sim/systems/state-system';
 import { tickProjectiles } from '../sim/systems/projectile-system';
+import { tickDebris } from '../sim/systems/debris-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
 import { createDeathDropsSystem } from '../sim/systems/death-drops-system';
 import { EntityState } from '../sim/entities';
@@ -31,6 +32,7 @@ import {
 import { applyWind } from './wind';
 import { createLabUi, type ActionHandlers, type GridToggle, type TimeScaleState, type WindState } from './lab-ui';
 import { loadPoseAtlas } from '../render/poses/atlas';
+import { loadDebrisAtlas } from '../render/debris-atlas';
 import { loadKits } from '../render/poses/kit-loader';
 import { startLiveReload } from '../render/poses/live-reload';
 import { composeCombinedAtlas } from '../render/poses/combined-atlas';
@@ -51,10 +53,12 @@ try {
 } catch (err) {
   console.warn('[lab] pose atlas load failed; continuing without it:', err);
 }
+const debrisAtlas = await loadDebrisAtlas(gl);
 const kits = await loadKits();
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   LAB_MAP_SIZE, LAB_MAP_SIZE, poseAtlas, kits,
+  debrisAtlas,
 );
 
 // Dev-mode live-reload (see src/main.ts for rationale).
@@ -176,8 +180,9 @@ function frame(t: number) {
   movementSystem(world, dt);
   facingSystem(world, dt);
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
-  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
+  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
+  tickDebris(world.debris, dt);
   deathDropsSystem(world, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.

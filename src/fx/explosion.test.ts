@@ -7,6 +7,7 @@ import { createRng } from '../util/rng';
 import { getUnitKindIndex } from '../data/units';
 import { cannon12Shell } from '../data/weapons/cannon-12-shell';
 import { spawnExplosion } from './explosion';
+import { createDebris } from '../sim/debris';
 
 const explosionProfile = cannon12Shell.projectile.explosion!;
 
@@ -16,6 +17,7 @@ interface Setup {
   puffs: Puffs;
   particles: Particles;
   rng: ReturnType<typeof createRng>;
+  debris: ReturnType<typeof createDebris>;
 }
 
 function setup(): Setup {
@@ -24,7 +26,8 @@ function setup(): Setup {
   const puffs = createPuffs(256);
   const particles = createParticles(256);
   const rng = createRng(1);
-  return { e, grid, puffs, particles, rng };
+  const debris = createDebris(64);
+  return { e, grid, puffs, particles, rng, debris };
 }
 
 function placeEntity(
@@ -47,7 +50,7 @@ function placeEntity(
 describe('spawnExplosion', () => {
   it('spawns flash + debris particles and smoke billow puffs', () => {
     const s = setup();
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, -1);
+    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
     // Particles pool: 1 flash + debris count (smoke now goes to puff pool)
     const expectedParticles = 1 + explosionProfile.debris.count;
     expect(s.particles.count).toBeGreaterThanOrEqual(expectedParticles);
@@ -57,7 +60,7 @@ describe('spawnExplosion', () => {
 
   it('flash particle has the configured size and color', () => {
     const s = setup();
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, -1);
+    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
 
     let flashIdx = -1;
     for (let i = 0; i < s.particles.capacity; i++) {
@@ -79,7 +82,7 @@ describe('spawnExplosion', () => {
     const s = setup();
     const id = placeEntity(s, 3, 0, { hp: 200 });
     const hpBefore = s.e.hp[id]!;
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, -1);
+    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
     expect(s.e.hp[id]!).toBeLessThan(hpBefore);
   });
 
@@ -88,7 +91,7 @@ describe('spawnExplosion', () => {
     // 10 m > 6 m radius; AABB query may include it, but the circle test rejects.
     const id = placeEntity(s, 10, 0, { hp: 200 });
     const hpBefore = s.e.hp[id]!;
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, -1);
+    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
     expect(s.e.hp[id]!).toBe(hpBefore);
   });
 
@@ -98,7 +101,7 @@ describe('spawnExplosion', () => {
     const far = placeEntity(s, 5, 0, { hp: 200 });
     const nearBefore = s.e.hp[near]!;
     const farBefore = s.e.hp[far]!;
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, -1);
+    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
     const nearLoss = nearBefore - s.e.hp[near]!;
     const farLoss = farBefore - s.e.hp[far]!;
     expect(nearLoss).toBeGreaterThan(farLoss);
@@ -112,7 +115,7 @@ describe('spawnExplosion', () => {
     const friendlyBefore = s.e.hp[friendly]!;
     const enemyBefore = s.e.hp[enemy]!;
 
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, 0, undefined, -1);
+    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, 0, undefined, s.debris, -1);
 
     expect(s.e.hp[friendly]!).toBe(friendlyBefore);
     expect(s.e.hp[enemy]!).toBeLessThan(enemyBefore);
@@ -124,7 +127,7 @@ describe('spawnExplosion', () => {
     const hpBefore = s.e.hp[id]!;
     const stateBefore = s.e.state[id]!;
     expect(() =>
-      spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, -1),
+      spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1),
     ).not.toThrow();
     expect(s.e.hp[id]!).toBe(hpBefore);
     expect(s.e.state[id]!).toBe(stateBefore);

@@ -9,6 +9,7 @@ import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
 import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
 import { createPuffPass } from './passes/puff-pass';
+import { createDebrisPass } from './passes/debris-pass';
 import type { World } from '../sim/world';
 import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
@@ -17,6 +18,7 @@ import type { Puffs } from '../puffs/puffs';
 import { PLAYER_TEAM } from '../sim/player';
 import type { PoseAtlas } from './poses/atlas';
 import type { KitConfig } from './poses/kit-loader';
+import type { DebrisAtlas } from './debris-atlas';
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
@@ -51,6 +53,12 @@ export interface Renderer {
   replaceSpriteAtlas(image: ImageBitmap | ImageData | HTMLCanvasElement): void;
 }
 
+// Match the soldier sprite scale: line-infantry sprites are 2.0 world units
+// wide for a 32-pixel cell. Gibs are 8 pixels per chunk, so the world size
+// per chunk pixel equals the unit pxToWorld ratio (sprW / SPRITE_CELL_PX),
+// keeping chunks consistent with the bodies they came from.
+const GIB_WORLD_UNITS_PER_PIXEL = 2.0 / 32;
+
 export function createRenderer(
   gl: WebGL2RenderingContext,
   canvas: HTMLCanvasElement,
@@ -62,6 +70,8 @@ export function createRenderer(
   worldH: number,
   poseAtlas: PoseAtlas | null,
   kits: ReadonlyMap<string, KitConfig> = new Map(),
+  debrisAtlas: DebrisAtlas | null = null,
+  debrisCapacity = 256,
 ): Renderer {
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
@@ -80,6 +90,7 @@ export function createRenderer(
   const puffsPass = createPuffPass(gl, puffCapacity);
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
+  const debrisPass = debrisAtlas ? createDebrisPass(gl, debrisCapacity) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
 
   return {
@@ -104,6 +115,12 @@ export function createRenderer(
       selectionPass.drawDiscs(world, cam, sel, drag);
       droppedItems.draw(world, cam);
       sprites.draw(world, cam);
+      // Gib chunks: drawn after bodies (so they overlay the soldier they came
+      // from) but before projectiles/puffs/particles (which are above-soldier
+      // FX). Health bars are still on top.
+      if (debrisPass && debrisAtlas) {
+        debrisPass.draw(world.debris, debrisAtlas, cam, GIB_WORLD_UNITS_PER_PIXEL);
+      }
       projectilesPass.draw(projectiles, cam);
       // Puffs first (under), sparks after (over).
       puffsPass.draw(puffs, cam);

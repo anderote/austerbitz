@@ -3,6 +3,7 @@ import { createWorld } from './world';
 import { allocEntity } from './entities';
 import { createParticles } from '../particles/particles';
 import { applyHit } from './systems/combat-events';
+import { createDebris } from './debris';
 import { Rank } from './veterancy';
 import { getUnitKindIndex } from '../data/units';
 
@@ -11,6 +12,7 @@ describe('end-to-end veterancy', () => {
     const w = createWorld({ seed: 1, capacity: 8, mapSize: 100 });
     const e = w.entities;
     const particles = createParticles(64);
+    const debris = createDebris(64);
 
     const a = allocEntity(e);
     const v = allocEntity(e);
@@ -24,7 +26,7 @@ describe('end-to-end veterancy', () => {
     expect(e.rank[a]).toBe(Rank.Recruit);
     expect(e.xp[a]).toBe(0);
 
-    applyHit(e, particles, w.rng, v, 100, 0, 0, 'musket', undefined, a);
+    applyHit(e, particles, w.rng, v, 100, 0, 0, 'musket', undefined, debris, a);
 
     expect(e.hp[v]).toBe(0);
     expect(e.rank[a]).toBe(Rank.Veteran);
@@ -35,6 +37,7 @@ describe('end-to-end veterancy', () => {
     const w = createWorld({ seed: 1, capacity: 64, mapSize: 100 });
     const e = w.entities;
     const particles = createParticles(64);
+    const debris = createDebris(64);
 
     const a = allocEntity(e);
     e.kindId[a] = getUnitKindIndex('line-infantry');
@@ -45,7 +48,7 @@ describe('end-to-end veterancy', () => {
       e.kindId[v] = getUnitKindIndex('line-infantry');
       e.team[v] = 1;
       e.hp[v] = 1;
-      applyHit(e, particles, w.rng, v, 100, 0, 0, 'musket', undefined, a);
+      applyHit(e, particles, w.rng, v, 100, 0, 0, 'musket', undefined, debris, a);
     }
 
     // Promotion path: 0 → Veteran (1 kill) → Sergeant (2 more, threshold 2)

@@ -5,6 +5,7 @@ import type { Rng } from '../util/rng';
 import type { ExplosionProfile } from '../data/weapons/types';
 import { applyHit } from '../sim/systems/combat-events';
 import type { BloodSplats } from '../sim/blood-splats';
+import type { Debris } from '../sim/debris';
 import type { Puffs } from '../puffs/puffs';
 import { emitPuffBurst } from '../puffs/emit';
 
@@ -31,6 +32,7 @@ export function spawnExplosion(
   profile: ExplosionProfile,
   excludeTeam: number | undefined,
   splats: BloodSplats | undefined,
+  debris: Debris,
   attackerId: number,
 ): void {
   // 1. Flash — one bright additive particle at the centre, snaps out via high drag.
@@ -61,16 +63,16 @@ export function spawnExplosion(
   );
 
   // 3. Debris — fast, short-lived brown-grey fan.
-  const debris = profile.debris;
-  for (let i = 0; i < debris.count; i++) {
+  const debrisParticleCfg = profile.debris;
+  for (let i = 0; i < debrisParticleCfg.count; i++) {
     const angle = rng.next() * Math.PI * 2;
-    const speed = rng.range(debris.speedMin, debris.speedMax);
+    const speed = rng.range(debrisParticleCfg.speedMin, debrisParticleCfg.speedMax);
     spawnParticle(particles, {
       x, y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      life: debris.life,
-      size: debris.size,
+      life: debrisParticleCfg.life,
+      size: debrisParticleCfg.size,
       r: 0.55, g: 0.45, b: 0.32,
       drag: 0.92,
       accelY: 0,
@@ -107,6 +109,7 @@ export function spawnExplosion(
       dirY * profile.impulse * falloff,
       'explosion',
       splats,
+      debris,
       attackerId,
     );
   }

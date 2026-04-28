@@ -5,6 +5,7 @@ import type { Particles } from '../../particles/particles';
 import type { Rng } from '../../util/rng';
 import { applyHit } from './combat-events';
 import type { BloodSplats } from '../blood-splats';
+import type { Debris } from '../debris';
 import {
   emitImpactDust,
   emitRicochetBurst,
@@ -57,6 +58,7 @@ export function tickProjectiles(
   puffs: Puffs,
   particles: Particles,
   rng: Rng,
+  debris: Debris,
   dt: number,
   splats?: BloodSplats,
 ): void {
@@ -93,6 +95,7 @@ export function tickProjectiles(
           cannon12Shell.projectile.explosion!,
           undefined,
           splats,
+          debris,
           p.ownerId[i]!,
         );
         freeProjectile(p, i);
@@ -124,6 +127,7 @@ export function tickProjectiles(
           cannon12Shell.projectile.explosion!,
           undefined,
           splats,
+          debris,
           p.ownerId[i]!,
         );
         freeProjectile(p, i);
@@ -208,6 +212,7 @@ export function tickProjectiles(
             cannon12Shell.projectile.explosion!,
             undefined,
             splats,
+            debris,
             p.ownerId[i]!,
           );
           freeProjectile(p, i);
@@ -218,7 +223,7 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, p.ownerId[i]!);
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!);
 
         if (kind === ProjectileKind.Musket) {
           freeProjectile(p, i);

@@ -13,6 +13,7 @@ import { collisionSystem } from './sim/systems/collision-system';
 import { facingSystem } from './sim/systems/facing-system';
 import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
+import { tickDebris } from './sim/systems/debris-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
 import { createDeathDropsSystem } from './sim/systems/death-drops-system';
@@ -45,6 +46,7 @@ import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clou
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
 import { loadPoseAtlas } from './render/poses/atlas';
+import { loadDebrisAtlas } from './render/debris-atlas';
 import { loadKits } from './render/poses/kit-loader';
 import { startLiveReload } from './render/poses/live-reload';
 import { composeCombinedAtlas } from './render/poses/combined-atlas';
@@ -65,10 +67,12 @@ try {
 } catch (err) {
   console.warn('[main] pose atlas load failed; continuing without it:', err);
 }
+const debrisAtlas = await loadDebrisAtlas(gl);
 const kits = await loadKits();
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   map.size.w, map.size.h, poseAtlas, kits,
+  debrisAtlas,
 );
 
 // Dev-mode live-reload: poll kit JSONs for per-(pose, facing) weapon edits
@@ -129,8 +133,9 @@ const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
   tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
 const projectileSystem: System = (w, dt) =>
-  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, dt, w.bloodSplats);
+  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.debris, dt, w.bloodSplats);
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
+const debrisSystem: System = (w, dt) => tickDebris(w.debris, dt);
 const deathDropsSystem = createDeathDropsSystem(kits);
 
 world.systems = [
@@ -143,6 +148,7 @@ world.systems = [
   stateSystem,
   projectileSystem,
   ragdollSystem,
+  debrisSystem,
   deathDropsSystem,
 ];
 

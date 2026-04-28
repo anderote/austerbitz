@@ -4,6 +4,8 @@ import type { Particles } from '../../particles/particles';
 import { emitPromotionSparkle, spawnBlood } from '../../particles/emitters';
 import type { Rng } from '../../util/rng';
 import type { BloodSplats } from '../blood-splats';
+import type { Debris } from '../debris';
+import { spawnGibs } from './debris-emit';
 import { effectiveArmor, promote } from '../veterancy';
 
 /** Impulse magnitude (N·s) at or above which a kill ragdolls instead of falling in place. */
@@ -58,17 +60,17 @@ export function applyHit(
   dmg: number,
   impX: number,
   impY: number,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _kind: HitKind,
+  kind: HitKind,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _splats: BloodSplats | undefined,
+  debris: Debris,
   attackerId: number,
 ): void {
   if (e.alive[id] === 0) return;
   if (isDead(e, id)) return;
 
-  const kind = getUnitKindByIndex(e.kindId[id]!);
-  const effArmor = effectiveArmor(e, id, kind.baseStats.armor);
+  const unitKind = getUnitKindByIndex(e.kindId[id]!);
+  const effArmor = effectiveArmor(e, id, unitKind.baseStats.armor);
   const effDmg = Math.max(1, dmg - effArmor);
 
   // Attacker-validity guard — computed once and reused for damage credit
@@ -107,6 +109,7 @@ export function applyHit(
       enterDying(e, id);
     }
     spawnBlood(particles, px, py, impMag, rng, impX, impY);
+    spawnGibs(debris, rng, kind, px, py, impX, impY, e.team[id]!);
 
     // Kill + XP credit — same guard as damage credit, additionally requires lethal.
     if (attackerValid) {
