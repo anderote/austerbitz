@@ -2237,9 +2237,14 @@
         refreshFacingGridArtwork();
         await detectCellSizeFromKit();
         invalidateAllLayerCache();
-        // Choose a sensible default selected layer.
-        const layers = getCurrentLayers();
-        state.selectedLayerId = layers[0] || null;
+        // Default selection to the weapon overlay when the kit has one; otherwise pick the first body layer.
+        if (state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) {
+          state.weaponActive = true;
+          state.selectedLayerId = 'weapon';
+        } else {
+          const layers = getCurrentLayers();
+          state.selectedLayerId = layers[0] || null;
+        }
         renderLayersList();
         renderOffsetReadout();
         renderPoseNote();
@@ -2252,7 +2257,13 @@
         state.poseId = poseId;
         invalidateAllLayerCache();
         // Weapon-pose-view always operates on the resolved sprite id; clear weaponActive.
-        if (poseId === WEAPON_POSE_ID) state.weaponActive = false;
+        if (poseId === WEAPON_POSE_ID) {
+          state.weaponActive = false;
+        } else if (kitHasWeapon()) {
+          // Default selection to the weapon overlay for body poses with a weapon.
+          state.weaponActive = true;
+          state.selectedLayerId = 'weapon';
+        }
         const layers = getCurrentLayers();
         if (!state.weaponActive && (!state.selectedLayerId || !layers.includes(state.selectedLayerId))) {
           state.selectedLayerId = layers[0] || null;

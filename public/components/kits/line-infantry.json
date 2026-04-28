@@ -244,8 +244,8 @@
           "shako-standard-west"
         ],
         "weapon": {
-          "x": 1,
-          "y": -1,
+          "x": -4,
+          "y": 2,
           "rot": 20
         }
       },
