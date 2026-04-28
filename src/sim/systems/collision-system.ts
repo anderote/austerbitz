@@ -29,6 +29,14 @@ export const collisionSystem: System = (world, _dt) => {
     // overlapping their neighbours, which kicks off a drift-back/jostle loop
     // the moment they tick back into Idle.
     if (e.state[i]! >= EntityState.Ragdoll) continue;
+    // Skip fully-parked units (vel=0 AND no recent push). Their pairs still get
+    // resolved via active neighbours' outer iteration (see dedup below), so we
+    // only lose pair resolution when BOTH endpoints are parked simultaneously —
+    // which can't happen in normal play because anything that landed in an
+    // overlap state was either moving or just pushed (pushedT > 0) the moment
+    // it overlapped. With 40k mostly-static units this skip cuts the dominant
+    // cost (gridQueryRadius per outer iteration) by ~95%.
+    if (e.velX[i] === 0 && e.velY[i] === 0 && e.pushedT[i] === 0) continue;
     const ri = e.bodyRadius[i]!;
     const mi = e.massKg[i]!;
     const xi = e.posX[i]!;
@@ -36,9 +44,13 @@ export const collisionSystem: System = (world, _dt) => {
     const nNeighbors = gridQueryRadius(world.grid, xi, yi, ri + MAX_BODY_RADIUS, NEIGHBOR_BUF);
     for (let k = 0; k < nNeighbors; k++) {
       const j = NEIGHBOR_BUF[k]!;
-      if (j <= i) continue;
+      if (j === i) continue;
       if (e.alive[j] !== 1) continue;
       if (e.state[j]! >= EntityState.Ragdoll) continue;
+      // Pair dedup: when both endpoints are active, only the smaller-id outer
+      // processes the pair. When neighbour j is parked, j's own outer is
+      // skipped — so we MUST process here regardless of id order.
+      if (j < i && (e.velX[j] !== 0 || e.velY[j] !== 0 || e.pushedT[j] !== 0)) continue;
       const rj = e.bodyRadius[j]!;
       const sumR = ri + rj;
       const dx = e.posX[j]! - e.posX[i]!;

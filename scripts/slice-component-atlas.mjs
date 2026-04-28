@@ -15,7 +15,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const SPRITES = resolve(REPO_ROOT, 'public', 'sprites');
 const POSES_OUT = resolve(SPRITES, 'poses');
-const KIT_PATH = resolve(REPO_ROOT, 'public', 'components', 'kits', 'line-infantry.json');
+const KITS_DIR = resolve(REPO_ROOT, 'public', 'components', 'kits');
+const KIT_INDEX_PATH = resolve(KITS_DIR, 'index.json');
+
+function parseArgs(argv) {
+  const result = new Map();
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith('--')) {
+      const [key, value] = arg.includes('=') ? arg.slice(2).split('=', 2) : [arg.slice(2), argv[++i]];
+      result.set(key, value ?? '');
+    }
+  }
+  return result;
+}
 
 const CELL_W = 32;
 const CELL_H = 36;
@@ -39,9 +52,9 @@ const KIT_TO_RUNTIME_POSE = {
   'fire':       'firing',
   'walking':    'walking',
   'running':    'running',
+  'hit':        'flinch',
   'dying':      'dying',
 };
-const SKIP_KIT_POSES = new Set(['musket', 'hit']);
 
 export function isMultiFrameOverride(override) {
   if (!override || typeof override !== 'object') return false;
@@ -79,7 +92,6 @@ export function buildWorkList(kit, kitId) {
 
   if (kit.poses && typeof kit.poses === 'object') {
     for (const [kitPose, override] of Object.entries(kit.poses)) {
-      if (SKIP_KIT_POSES.has(kitPose)) continue;
       const runtimePose = KIT_TO_RUNTIME_POSE[kitPose];
       if (!runtimePose) {
         console.warn(`[slice-component-atlas] no runtime mapping for kit pose '${kitPose}', skipping`);
@@ -144,15 +156,36 @@ async function writePng(path, png) {
   await writeFile(path, PNG.sync.write(png));
 }
 
-async function main() {
-  const kit = JSON.parse(await readFile(KIT_PATH, 'utf8'));
-  const editsTree = await loadEdits(REPO_ROOT);
-  const work = buildWorkList(kit, kit.id ?? 'line-infantry');
+async function loadKitIds(args) {
+  const explicit = args.get('kit');
+  if (explicit) return [explicit];
+  const raw = await readFile(KIT_INDEX_PATH, 'utf8');
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new Error('kit index must be an array of kit ids');
+  return parsed.filter((x) => typeof x === 'string');
+}
+
+async function sliceKit(kitId, editsTree) {
+  const kitPath = resolve(KITS_DIR, `${kitId}.json`);
+  const kit = JSON.parse(await readFile(kitPath, 'utf8'));
+  const work = buildWorkList(kit, kit.id ?? kitId);
 
   let written = 0;
   for (const w of work) {
     const srcPath = resolve(SPRITES, w.atlasFile);
-    const src = await loadPng(srcPath);
+    let src;
+    try {
+      src = await loadPng(srcPath);
+    } catch (err) {
+      if (err && err.code === 'ENOENT') {
+        // Some kits (e.g. cuirassier) render to per-frame PNGs directly via
+        // their own script instead of a component atlas. Skip work entries
+        // whose source atlas isn't on disk rather than failing the build.
+        console.warn(`[slice-component-atlas] skipping ${kitId} ${w.runtimePose}/${w.frameIdx}: ${w.atlasFile} not found`);
+        continue;
+      }
+      throw err;
+    }
     const expectW = 3 * CELL_W;
     const expectH = 3 * CELL_H;
     if (src.width !== expectW || src.height !== expectH) {
@@ -169,11 +202,22 @@ async function main() {
       }
       const outPath = resolve(POSES_OUT, w.kind, w.runtimePose, cell.dir, '0', `${w.frameIdx}.png`);
       await writePng(outPath, png);
-      console.log(`[slice-component-atlas] ${w.runtimePose}/${cell.dir}/${w.frameIdx} ← ${w.atlasFile}`);
+      console.log(`[slice-component-atlas] ${w.kind} ${w.runtimePose}/${cell.dir}/${w.frameIdx} ← ${w.atlasFile}`);
       written++;
     }
   }
-  console.log(`[slice-component-atlas] done — wrote ${written} sprite${written === 1 ? '' : 's'}`);
+  return written;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const kitIds = await loadKitIds(args);
+  const editsTree = await loadEdits(REPO_ROOT);
+  let total = 0;
+  for (const kitId of kitIds) {
+    total += await sliceKit(kitId, editsTree);
+  }
+  console.log(`[slice-component-atlas] done — wrote ${total} sprite${total === 1 ? '' : 's'} across ${kitIds.length} kit${kitIds.length === 1 ? '' : 's'}`);
 }
 
 // Only run main() if this file is executed directly (not imported).

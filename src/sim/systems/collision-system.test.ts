@@ -26,6 +26,10 @@ describe('collisionSystem', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const a = spawnAt(world, 'line-infantry', 100, 100);
     const b = spawnAt(world, 'line-infantry', 100.1, 100); // heavily overlapping
+    // Seed pushedT on one body so the parked-skip in collision-system doesn't
+    // short-circuit the test before any push lands. Either side's outer is
+    // sufficient — pushes are applied symmetrically inside the inner loop.
+    world.entities.pushedT[a] = 0.1;
     for (let i = 0; i < 30; i++) step(world, 1 / 30);
     const dx = world.entities.posX[b]! - world.entities.posX[a]!;
     const r = getUnitKind('line-infantry').baseStats.bodyRadius;
@@ -43,6 +47,7 @@ describe('collisionSystem', () => {
     // cuirassier (600kg) vs line-infantry (80kg) overlapping
     const heavy = spawnAt(world, 'cuirassier', 100, 100);
     const light = spawnAt(world, 'line-infantry', 100.2, 100);
+    world.entities.pushedT[heavy] = 0.1;
     const heavyStart = world.entities.posX[heavy]!;
     const lightStart = world.entities.posX[light]!;
     for (let i = 0; i < 30; i++) step(world, 1 / 30);
@@ -67,6 +72,7 @@ describe('collisionSystem', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const a = spawnAt(world, 'line-infantry', 100, 100);
     const b = spawnAt(world, 'line-infantry', 100, 100);
+    world.entities.pushedT[a] = 0.1;
     for (let i = 0; i < 60; i++) step(world, 1 / 30);
     const dx = world.entities.posX[b]! - world.entities.posX[a]!;
     const dy = world.entities.posY[b]! - world.entities.posY[a]!;
@@ -80,6 +86,10 @@ describe('collisionSystem', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     const a = spawnAt(world, 'line-infantry', 100, 100);
     const b = spawnAt(world, 'line-infantry', 100.1, 100); // overlapping
+    // Seed velocity (not pushedT) so the test can still assert the
+    // pre-condition `pushedT === 0` for both bodies. A non-zero velX makes a
+    // "active" by the parked-skip rule without touching pushedT.
+    world.entities.velX[a] = 0.001;
     expect(world.entities.pushedT[a]).toBe(0);
     expect(world.entities.pushedT[b]).toBe(0);
     step(world, 1 / 30);
@@ -105,6 +115,7 @@ describe('collisionSystem', () => {
     const b = spawnAt(world, 'line-infantry', 100.1, 100);
     world.entities.state[a] = EntityState.Reloading;
     world.entities.state[b] = EntityState.Reloading;
+    world.entities.pushedT[a] = 0.1;
     for (let i = 0; i < 30; i++) step(world, 1 / 30);
     const dx = world.entities.posX[b]! - world.entities.posX[a]!;
     const r = getUnitKind('line-infantry').baseStats.bodyRadius;

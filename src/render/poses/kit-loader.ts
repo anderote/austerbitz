@@ -97,11 +97,14 @@ export async function loadComponentPaths(): Promise<ComponentPathLookup> {
 }
 
 /**
- * The 3 source facings that the weapon-attachment system requires authored
- * sprites for. Derived facings (NE, SE, S, SW, E) are produced at runtime by
- * UV-flipping the source sprite.
+ * Weapon facings packed into the pose atlas. Any of these may be referenced
+ * as a `src` by `kit.weapon.facings[F]`; the resolver UV-flips at draw time
+ * for derived facings. Listing all 8 lets kits author whichever subset of
+ * source sprites they want and pick freely per character facing.
  */
-export const WEAPON_SOURCE_FACINGS: readonly Facing[] = ['N', 'NW', 'W'] as const;
+export const WEAPON_SOURCE_FACINGS: readonly Facing[] = [
+  'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW',
+] as const;
 
 /**
  * Map a runtime `Pose` enum value to the editor's pose-name namespace.

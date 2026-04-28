@@ -73,6 +73,21 @@ if (!ctx) {
   throw new Error('Unable to acquire 2D context for preview canvas.');
 }
 
+const GRID_FACINGS = ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'] as const;
+type GridCell = { facing: string; cell: HTMLButtonElement; ctx: CanvasRenderingContext2D };
+const gridCells: GridCell[] = [];
+for (const facing of GRID_FACINGS) {
+  const cell = document.querySelector<HTMLButtonElement>(
+    `.facing-cell[data-facing="${facing}"]`,
+  );
+  if (!cell) continue;
+  const cellCanvas = cell.querySelector<HTMLCanvasElement>('canvas');
+  const cellCtx = cellCanvas?.getContext('2d', { alpha: true });
+  if (!cellCanvas || !cellCtx) continue;
+  cellCtx.imageSmoothingEnabled = false;
+  gridCells.push({ facing, cell, ctx: cellCtx });
+}
+
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
 const recolorCache = new Map<string, HTMLCanvasElement>();
 
@@ -228,25 +243,72 @@ function rebuildComponentGroups() {
   }
 }
 
-async function renderPreview() {
-  const token = ++renderToken;
-  if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function layersForFacing(facing: string): ComponentEntry[] {
+  if (!currentKitId) {
+    return Array.from(componentSelections)
+      .map((id) => componentsById.get(id))
+      .filter((entry): entry is ComponentEntry => Boolean(entry && entry.facings.includes(facing)))
+      .sort((a, b) => {
+        const priority = layerPriority(a) - layerPriority(b);
+        if (priority !== 0) return priority;
+        return a.id.localeCompare(b.id);
+      });
+  }
+  const kit = kitsById.get(currentKitId);
+  const ids = kit?.facings[facing]?.layers ?? [];
+  return ids
+    .map((id) => componentsById.get(id))
+    .filter((entry): entry is ComponentEntry => Boolean(entry && entry.facings.includes(facing)))
+    .sort((a, b) => {
+      const priority = layerPriority(a) - layerPriority(b);
+      if (priority !== 0) return priority;
+      return a.id.localeCompare(b.id);
+    });
+}
 
-  const skeletonUrl = SKELETON_URL[currentSkeleton];
-  if (skeletonUrl) {
+async function paintLayersInto(
+  target: CanvasRenderingContext2D,
+  layers: readonly ComponentEntry[],
+  withSkeleton: boolean,
+  token: number,
+): Promise<void> {
+  target.clearRect(0, 0, target.canvas.width, target.canvas.height);
+  if (withSkeleton) {
+    const skeletonUrl = SKELETON_URL[currentSkeleton];
+    if (skeletonUrl) {
+      try {
+        const skeletonImage = await loadImage(skeletonUrl);
+        if (token !== renderToken) return;
+        target.save();
+        target.globalAlpha = 0.4;
+        target.drawImage(skeletonImage, 0, 0);
+        target.restore();
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+  }
+  for (const entry of layers) {
+    const url = `${COMPONENT_BASE_URL}${entry.path}`;
     try {
-      const skeletonImage = await loadImage(skeletonUrl);
-      if (token !== renderToken) return;
-      if (!ctx) return;
-      ctx.save();
-      ctx.globalAlpha = 0.4;
-      ctx.drawImage(skeletonImage, 0, 0);
-      ctx.restore();
+      if (currentRegiment) {
+        const recolored = await getRecoloredCanvas(url, currentRegiment);
+        if (token !== renderToken) return;
+        target.drawImage(recolored, 0, 0);
+      } else {
+        const image = await loadImage(url);
+        if (token !== renderToken) return;
+        target.drawImage(image, 0, 0);
+      }
     } catch (err) {
       console.warn(err);
     }
   }
+}
+
+async function renderPreview() {
+  const token = ++renderToken;
+  if (!ctx) return;
 
   const layers = Array.from(componentSelections)
     .map((id) => componentsById.get(id))
@@ -257,23 +319,19 @@ async function renderPreview() {
       return a.id.localeCompare(b.id);
     });
 
-  for (const entry of layers) {
-    const url = `${COMPONENT_BASE_URL}${entry.path}`;
-    try {
-      if (currentRegiment) {
-        const recolored = await getRecoloredCanvas(url, currentRegiment);
-        if (token !== renderToken) return;
-        if (!ctx) return;
-        ctx.drawImage(recolored, 0, 0);
-      } else {
-        const image = await loadImage(url);
-        if (token !== renderToken) return;
-        if (!ctx) return;
-        ctx.drawImage(image, 0, 0);
-      }
-    } catch (err) {
-      console.warn(err);
-    }
+  await paintLayersInto(ctx, layers, true, token);
+
+  // Update each grid cell using kit-defined layers for that facing so all 8
+  // views stay in sync with the active kit + regiment.
+  await Promise.all(
+    gridCells.map(async ({ facing, ctx: cellCtx }) => {
+      const cellLayers = layersForFacing(facing);
+      await paintLayersInto(cellCtx, cellLayers, false, token);
+    }),
+  );
+
+  for (const { facing, cell } of gridCells) {
+    cell.classList.toggle('active', facing === currentFacing);
   }
 
   const lines: string[] = [];
@@ -390,6 +448,20 @@ function initEvents() {
     rebuildComponentGroups();
     void renderPreview();
   });
+
+  for (const { facing, cell } of gridCells) {
+    cell.addEventListener('click', () => {
+      if (facing === currentFacing) return;
+      const matchOption = Array.from(facingSelect.options).some((opt) => opt.value === facing);
+      if (!matchOption) return;
+      setFacing(facing);
+      if (currentKitId) {
+        applyKitDefaults(currentKitId, currentFacing);
+      }
+      rebuildComponentGroups();
+      void renderPreview();
+    });
+  }
 }
 
 async function main() {

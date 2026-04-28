@@ -4,11 +4,26 @@ import type { World } from '../sim/world';
 import { clamp } from '../util/math';
 
 const SIZE = 180;
-const TEAM_COLORS = ['#6ec1ff', '#ff6b6b', '#9bd76b', '#e8c46a'];
-const NEUTRAL_COLOR = '#aaa';
+// Half-side of the per-unit stamp; r=1 paints a 3×3 square (matches the
+// previous fillRect(x-1.5, y-1.5, 3, 3) behaviour).
+const DOT_HALF = 1;
 // Minimap target window is the viewport scaled by this; clamped to map bounds.
 // Larger value = more context around the camera; viewport rect occupies ~1/SCALE of the minimap.
 const WINDOW_SCALE = 4;
+
+// Packed RGBA values, little-endian for Uint32 view (browsers are LE).
+function packRgba(r: number, g: number, b: number, a: number): number {
+  return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
+}
+const TEAM_PACKED: readonly number[] = [
+  packRgba(0x6e, 0xc1, 0xff, 0xff),
+  packRgba(0xff, 0x6b, 0x6b, 0xff),
+  packRgba(0x9b, 0xd7, 0x6b, 0xff),
+  packRgba(0xe8, 0xc4, 0x6a, 0xff),
+];
+const NEUTRAL_PACKED = packRgba(0xaa, 0xaa, 0xaa, 0xff);
+// Background tint — same translucent dark green as before (alpha 0.45).
+const BG_PACKED = packRgba(40, 50, 40, 115);
 
 interface MinimapWindow {
   minX: number;
@@ -46,6 +61,11 @@ export function createMinimap(
   root.appendChild(el);
 
   const ctx = canvas.getContext('2d')!;
+  // Reused per frame: ImageData is the only fast path for 40k+ tiny rects.
+  // 40k Canvas2D fillRect+fillStyle calls per frame stalls the main thread.
+  const imageData = ctx.createImageData(SIZE, SIZE);
+  const pixels32 = new Uint32Array(imageData.data.buffer);
+
   let panning = false;
 
   function panTo(clientX: number, clientY: number) {
@@ -59,7 +79,6 @@ export function createMinimap(
 
   const onDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
-    // Don't let world-selection see this click.
     e.stopPropagation();
     e.preventDefault();
     panning = true;
@@ -82,22 +101,31 @@ export function createMinimap(
       const sx = SIZE / win.w;
       const sy = SIZE / win.h;
 
-      ctx.clearRect(0, 0, SIZE, SIZE);
-      ctx.fillStyle = 'rgba(40, 50, 40, 0.45)';
-      ctx.fillRect(0, 0, SIZE, SIZE);
+      pixels32.fill(BG_PACKED);
 
       const e = world.entities;
-      const r = 1.5;
-      for (let i = 0; i < e.capacity; i++) {
-        if (e.alive[i] !== 1) continue;
-        if (isDead(e, i)) continue;
-        const x = (e.posX[i]! - win.minX) * sx;
-        const y = (e.posY[i]! - win.minY) * sy;
-        if (x < -r || x > SIZE + r || y < -r || y > SIZE + r) continue;
-        const team = e.team[i]!;
-        ctx.fillStyle = TEAM_COLORS[team] ?? NEUTRAL_COLOR;
-        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      for (let n = 0; n < e.count; n++) {
+        const id = e.aliveIds[n]!;
+        if (isDead(e, id)) continue;
+        const cx = ((e.posX[id]! - win.minX) * sx) | 0;
+        const cy = ((e.posY[id]! - win.minY) * sy) | 0;
+        if (cx + DOT_HALF < 0 || cx - DOT_HALF >= SIZE) continue;
+        if (cy + DOT_HALF < 0 || cy - DOT_HALF >= SIZE) continue;
+        const team = e.team[id]!;
+        const packed = TEAM_PACKED[team] ?? NEUTRAL_PACKED;
+        const x0 = cx - DOT_HALF < 0 ? 0 : cx - DOT_HALF;
+        const x1 = cx + DOT_HALF > SIZE - 1 ? SIZE - 1 : cx + DOT_HALF;
+        const y0 = cy - DOT_HALF < 0 ? 0 : cy - DOT_HALF;
+        const y1 = cy + DOT_HALF > SIZE - 1 ? SIZE - 1 : cy + DOT_HALF;
+        for (let y = y0; y <= y1; y++) {
+          let p = y * SIZE + x0;
+          for (let x = x0; x <= x1; x++) {
+            pixels32[p++] = packed;
+          }
+        }
       }
+
+      ctx.putImageData(imageData, 0, 0);
 
       // Camera viewport rectangle (clipped to the minimap).
       const halfW = (cam.viewport.w / cam.zoom) * 0.5;

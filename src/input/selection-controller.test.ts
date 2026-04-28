@@ -124,14 +124,74 @@ describe('selection-controller — same-kind selection', () => {
     expect(selection.ids.has(own)).toBe(false);
   });
 
-  it('Two LMB clicks within 300ms on the same unit behave like Ctrl+click', () => {
+  it('Two LMB clicks on a unit with no remembered group does not expand', () => {
     const { ctrl, world, selection } = makeDeps();
     const a = spawn(world, 'line-infantry', 0, 0, 0);
     const b = spawn(world, 'line-infantry', 0, 5, 0);
+    void b;
+    click(ctrl, 400, 300);
+    click(ctrl, 400, 300);
+    expect(Array.from(selection.ids)).toEqual([a]);
+  });
+});
+
+describe('selection-controller — formation recall', () => {
+  // Camera at center (0,0), zoom 1, viewport 800x600 → screen (400, 300) is world (0, 0).
+  // line-infantry placeholderSize.w = 1.0, so click coords must land within ±0.5 of a unit.
+  it('box-select stamps a shared group id on every selected unit', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    const b = spawn(world, 'line-infantry', 0, 5, 0);
+    drag(ctrl, 380, 280, 420, 320); // world rect (-20,-20)..(20,20)
+    expect(selection.ids.has(a)).toBe(true);
+    expect(selection.ids.has(b)).toBe(true);
+    expect(world.entities.lastSelectionGroup[a]).toBeGreaterThanOrEqual(1);
+    expect(world.entities.lastSelectionGroup[b]).toBe(world.entities.lastSelectionGroup[a]);
+  });
+
+  it('double-click on a box-selected member re-selects the whole group', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);   // screen (400, 300)
+    const b = spawn(world, 'line-infantry', 0, 5, 0);   // screen (405, 300)
+    drag(ctrl, 380, 280, 420, 320);
+    selection.ids.clear();
+    click(ctrl, 400, 300); // single-click a
+    click(ctrl, 400, 300); // double-click — recall group
+    expect(selection.ids.has(a)).toBe(true);
+    expect(selection.ids.has(b)).toBe(true);
+  });
+
+  it('formation recall excludes dead members', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    const b = spawn(world, 'line-infantry', 0, 5, 0);
+    drag(ctrl, 380, 280, 420, 320);
+    world.entities.state[b] = EntityState.Dead;
+    selection.ids.clear();
+    click(ctrl, 400, 300);
+    click(ctrl, 400, 300);
+    expect(selection.ids.has(a)).toBe(true);
+    expect(selection.ids.has(b)).toBe(false);
+  });
+
+  it('a later box-select creates a fresh group, leaving the previous group intact', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const a = spawn(world, 'line-infantry', 0, 0, 0);
+    const b = spawn(world, 'line-infantry', 0, 5, 0);
+    const c = spawn(world, 'line-infantry', 0, 200, 0); // far away — out of view-rect drag
+    drag(ctrl, 380, 280, 420, 320); // selects a + b → group 1
+    const group1 = world.entities.lastSelectionGroup[a]!;
+    // Box-select around c only (world rect around (200, 0))
+    drag(ctrl, 580, 280, 620, 320); // world rect (180,-20)..(220,20)
+    expect(world.entities.lastSelectionGroup[c]).not.toBe(group1);
+    expect(world.entities.lastSelectionGroup[a]).toBe(group1);
+    // Double-click a should still recall {a, b}, not include c.
+    selection.ids.clear();
     click(ctrl, 400, 300);
     click(ctrl, 400, 300);
     expect(selection.ids.has(a)).toBe(true);
     expect(selection.ids.has(b)).toBe(true);
+    expect(selection.ids.has(c)).toBe(false);
   });
 });
 

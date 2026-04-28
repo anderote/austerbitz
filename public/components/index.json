@@ -1888,14 +1888,2472 @@
       "path": "fx/blood/southwest/dying.png",
       "notes": "Blood pool (SW dying)."
     },
-    { "id": "horse-bay-north",     "type": "anatomy", "category": "horse", "facings": ["N"],  "path": "anatomy/horse/north/idle.png" },
-    { "id": "horse-bay-northeast", "type": "anatomy", "category": "horse", "facings": ["NE"], "path": "anatomy/horse/northeast/idle.png" },
-    { "id": "horse-bay-east",      "type": "anatomy", "category": "horse", "facings": ["E"],  "path": "anatomy/horse/east/idle.png" },
-    { "id": "horse-bay-southeast", "type": "anatomy", "category": "horse", "facings": ["SE"], "path": "anatomy/horse/southeast/idle.png" },
-    { "id": "horse-bay-south",     "type": "anatomy", "category": "horse", "facings": ["S"],  "path": "anatomy/horse/south/idle.png" },
-    { "id": "horse-bay-southwest", "type": "anatomy", "category": "horse", "facings": ["SW"], "path": "anatomy/horse/southwest/idle.png" },
-    { "id": "horse-bay-west",      "type": "anatomy", "category": "horse", "facings": ["W"],  "path": "anatomy/horse/west/idle.png" },
-    { "id": "horse-bay-northwest", "type": "anatomy", "category": "horse", "facings": ["NW"], "path": "anatomy/horse/northwest/idle.png" },
+    {
+      "id": "horse-bay-north",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/idle.png"
+    },
+    {
+      "id": "horse-bay-northeast",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/idle.png"
+    },
+    {
+      "id": "horse-bay-east",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/idle.png"
+    },
+    {
+      "id": "horse-bay-southeast",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/idle.png"
+    },
+    {
+      "id": "horse-bay-south",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/idle.png"
+    },
+    {
+      "id": "horse-bay-southwest",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/idle.png"
+    },
+    {
+      "id": "horse-bay-west",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/idle.png"
+    },
+    {
+      "id": "horse-bay-northwest",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/idle.png"
+    },
+    {
+      "id": "cannon12-trail-north",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "N"
+      ],
+      "path": "carriage/cannon12-trail-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-north",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "N"
+      ],
+      "path": "carriage/cannon12-wheels-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-north",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "N"
+      ],
+      "path": "barrel/cannon12-barrel-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-north-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "N"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-north-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-north-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "N"
+      ],
+      "path": "fx/cannon12-smoke-north-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-north-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "N"
+      ],
+      "path": "tools/cannon12-handspike-north-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-northeast",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "NE"
+      ],
+      "path": "carriage/cannon12-trail-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-northeast",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "NE"
+      ],
+      "path": "carriage/cannon12-wheels-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-northeast",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "NE"
+      ],
+      "path": "barrel/cannon12-barrel-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-northeast-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "NE"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-northeast-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-northeast-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "NE"
+      ],
+      "path": "fx/cannon12-smoke-northeast-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-northeast-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "NE"
+      ],
+      "path": "tools/cannon12-handspike-northeast-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-east",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "E"
+      ],
+      "path": "carriage/cannon12-trail-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-east",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "E"
+      ],
+      "path": "carriage/cannon12-wheels-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-east",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "E"
+      ],
+      "path": "barrel/cannon12-barrel-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-east-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "E"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-east-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-east-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "E"
+      ],
+      "path": "fx/cannon12-smoke-east-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-east-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "E"
+      ],
+      "path": "tools/cannon12-handspike-east-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-southeast",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "SE"
+      ],
+      "path": "carriage/cannon12-trail-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-southeast",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "SE"
+      ],
+      "path": "carriage/cannon12-wheels-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-southeast",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "SE"
+      ],
+      "path": "barrel/cannon12-barrel-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-southeast-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "SE"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-southeast-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-southeast-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "SE"
+      ],
+      "path": "fx/cannon12-smoke-southeast-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-southeast-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "SE"
+      ],
+      "path": "tools/cannon12-handspike-southeast-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-south",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "S"
+      ],
+      "path": "carriage/cannon12-trail-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-south",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "S"
+      ],
+      "path": "carriage/cannon12-wheels-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-south",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "S"
+      ],
+      "path": "barrel/cannon12-barrel-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-south-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "S"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-south-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-south-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "S"
+      ],
+      "path": "fx/cannon12-smoke-south-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-south-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "S"
+      ],
+      "path": "tools/cannon12-handspike-south-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-southwest",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "SW"
+      ],
+      "path": "carriage/cannon12-trail-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-southwest",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "SW"
+      ],
+      "path": "carriage/cannon12-wheels-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-southwest",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "SW"
+      ],
+      "path": "barrel/cannon12-barrel-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-southwest-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "SW"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-southwest-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-southwest-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "SW"
+      ],
+      "path": "fx/cannon12-smoke-southwest-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-southwest-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "SW"
+      ],
+      "path": "tools/cannon12-handspike-southwest-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-west",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "W"
+      ],
+      "path": "carriage/cannon12-trail-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-west",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "W"
+      ],
+      "path": "carriage/cannon12-wheels-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-west",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "W"
+      ],
+      "path": "barrel/cannon12-barrel-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-west-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "W"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-west-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-west-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "W"
+      ],
+      "path": "fx/cannon12-smoke-west-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-west-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "W"
+      ],
+      "path": "tools/cannon12-handspike-west-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "cannon12-trail-northwest",
+      "type": "carriage",
+      "category": "trail",
+      "facings": [
+        "NW"
+      ],
+      "path": "carriage/cannon12-trail-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon trail / cheeks (procedural)."
+    },
+    {
+      "id": "cannon12-wheels-northwest",
+      "type": "carriage",
+      "category": "wheels",
+      "facings": [
+        "NW"
+      ],
+      "path": "carriage/cannon12-wheels-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon wheel pair (procedural)."
+    },
+    {
+      "id": "cannon12-barrel-northwest",
+      "type": "barrel",
+      "category": "barrel",
+      "facings": [
+        "NW"
+      ],
+      "path": "barrel/cannon12-barrel-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon bronze barrel (procedural)."
+    },
+    {
+      "id": "cannon12-muzzle-flash-northwest-fire",
+      "type": "fx",
+      "category": "muzzle-flash",
+      "facings": [
+        "NW"
+      ],
+      "path": "barrel/cannon12-muzzle-flash-northwest-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon muzzle flash, fire pose only."
+    },
+    {
+      "id": "cannon12-smoke-northwest-fire",
+      "type": "fx",
+      "category": "smoke",
+      "facings": [
+        "NW"
+      ],
+      "path": "fx/cannon12-smoke-northwest-fire.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon smoke puff, fire pose only."
+    },
+    {
+      "id": "cannon12-handspike-northwest-reload",
+      "type": "tool",
+      "category": "handspike",
+      "facings": [
+        "NW"
+      ],
+      "path": "tools/cannon12-handspike-northwest-reload.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "12-pdr cannon handspike, make-ready pose only."
+    },
+    {
+      "id": "horse-bay-north-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-north-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/horse/north/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-north",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/rider-torso/north/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-north",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/rider-legs/north/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-north-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "N"
+      ],
+      "path": "anatomy/rider-arms/north/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-north",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "N"
+      ],
+      "path": "armor/cuirass/north/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-north",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "N"
+      ],
+      "path": "headgear/helmet-cuirassier/north/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-northeast-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/horse/northeast/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-northeast",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/rider-torso/northeast/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-northeast",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/rider-legs/northeast/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-northeast-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "NE"
+      ],
+      "path": "anatomy/rider-arms/northeast/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-northeast",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "NE"
+      ],
+      "path": "armor/cuirass/northeast/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-northeast",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "NE"
+      ],
+      "path": "headgear/helmet-cuirassier/northeast/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-east-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-east-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/horse/east/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-east",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/rider-torso/east/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-east",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/rider-legs/east/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-east-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "E"
+      ],
+      "path": "anatomy/rider-arms/east/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-east",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "E"
+      ],
+      "path": "armor/cuirass/east/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-east",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "E"
+      ],
+      "path": "headgear/helmet-cuirassier/east/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-southeast-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/horse/southeast/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-southeast",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/rider-torso/southeast/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-southeast",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/rider-legs/southeast/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-southeast-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "SE"
+      ],
+      "path": "anatomy/rider-arms/southeast/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-southeast",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "SE"
+      ],
+      "path": "armor/cuirass/southeast/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-southeast",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "SE"
+      ],
+      "path": "headgear/helmet-cuirassier/southeast/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-south-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-south-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/horse/south/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-south",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/rider-torso/south/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-south",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/rider-legs/south/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-south-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "S"
+      ],
+      "path": "anatomy/rider-arms/south/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-south",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "S"
+      ],
+      "path": "armor/cuirass/south/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-south",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "S"
+      ],
+      "path": "headgear/helmet-cuirassier/south/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-southwest-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/horse/southwest/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-southwest",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/rider-torso/southwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-southwest",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/rider-legs/southwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-southwest-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "SW"
+      ],
+      "path": "anatomy/rider-arms/southwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-southwest",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "SW"
+      ],
+      "path": "armor/cuirass/southwest/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-southwest",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "SW"
+      ],
+      "path": "headgear/helmet-cuirassier/southwest/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-west-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-west-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/horse/west/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-west",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/rider-torso/west/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-west",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/rider-legs/west/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-west-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "W"
+      ],
+      "path": "anatomy/rider-arms/west/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-west",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "W"
+      ],
+      "path": "armor/cuirass/west/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-west",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "W"
+      ],
+      "path": "headgear/helmet-cuirassier/west/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-walk-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/walk-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-walk-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/walk-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-walk-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/walk-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-walk-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/walk-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse walk frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-run-0",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/run-0.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 0 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-run-1",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/run-1.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 1 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-run-2",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/run-2.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 2 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-run-3",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/run-3.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 3 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-run-4",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/run-4.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 4 (procedural)."
+    },
+    {
+      "id": "horse-bay-northwest-run-5",
+      "type": "anatomy",
+      "category": "horse",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/horse/northwest/run-5.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Bay horse run frame 5 (procedural)."
+    },
+    {
+      "id": "rider-torso-northwest",
+      "type": "anatomy",
+      "category": "rider-torso",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/rider-torso/northwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider torso (procedural)."
+    },
+    {
+      "id": "rider-legs-northwest",
+      "type": "anatomy",
+      "category": "rider-legs",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/rider-legs/northwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider legs / boots (procedural)."
+    },
+    {
+      "id": "rider-arms-northwest-idle",
+      "type": "anatomy",
+      "category": "rider-arms",
+      "facings": [
+        "NW"
+      ],
+      "path": "anatomy/rider-arms/northwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier rider arms, idle / hands on reins (procedural)."
+    },
+    {
+      "id": "cuirass-northwest",
+      "type": "armor",
+      "category": "cuirass",
+      "facings": [
+        "NW"
+      ],
+      "path": "armor/cuirass/northwest/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier steel cuirass with regiment trim (procedural)."
+    },
+    {
+      "id": "helmet-cuirassier-northwest",
+      "type": "uniform",
+      "category": "headgear",
+      "facings": [
+        "NW"
+      ],
+      "path": "headgear/helmet-cuirassier/northwest/base.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier plumed helmet (procedural)."
+    },
+    {
+      "id": "saber-north",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "N"
+      ],
+      "path": "weapon/saber/north/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier saber, idle / sheathed (procedural). Other facings derived at runtime."
+    },
+    {
+      "id": "saber-northwest",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "NW"
+      ],
+      "path": "weapon/saber/northwest/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier saber, idle / sheathed (procedural). Other facings derived at runtime."
+    },
+    {
+      "id": "saber-west",
+      "type": "weapon",
+      "category": "primary",
+      "facings": [
+        "W"
+      ],
+      "path": "weapon/saber/west/idle.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Cuirassier saber, idle / sheathed (procedural). Other facings derived at runtime."
+    },
     {
       "id": "trousers-north-walk-0",
       "type": "uniform",

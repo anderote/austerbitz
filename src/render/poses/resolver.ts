@@ -87,12 +87,29 @@ export interface WeaponPoseTransform {
    * (pose, facing) without re-authoring the source PNG.
    */
   flipX?: boolean;
+  /**
+   * Optional per-pose override of the global `kit.weapon.facings[F]` source.
+   * When set, the renderer pulls the weapon sprite from this source +
+   * `transform` for THIS (pose, facing) only; other poses still use the
+   * global default. Lets a kit mirror its musket differently in `present`
+   * vs `idle` without authoring 8 dedicated source PNGs.
+   */
+  src?: 'self' | Facing;
+  /** Required when `src` is set and !== 'self'. Allowed values include 'none'. */
+  transform?: 'none' | WeaponFacingTransform;
 }
 
 /** Normalized shape for `kit.poses[pose][facing]`. */
 export interface PoseFacingEntry {
   layers: string[];
   weapon?: WeaponPoseTransform;
+  /**
+   * Saved alternative weapon authorings for this (pose, facing). At runtime
+   * the renderer pools `[weapon, ...weaponVariants]` and picks an index by
+   * `entity.id % pool.length`, so soldiers in formation get visual variety
+   * without flickering frame-to-frame.
+   */
+  weaponVariants?: WeaponPoseTransform[];
 }
 
 /**
@@ -127,6 +144,39 @@ export function resolveWeaponFacing(
     spriteKey: `${weapon.layerPrefix}-${entry.src}`,
     transform: entry.transform,
   };
+}
+
+/**
+ * Resolve the weapon sprite + transform for a (pose, facing), honoring an
+ * optional per-pose override on `kit.poses[pose][facing].weapon.{src,transform}`.
+ * Falls back to the global `resolveWeaponFacing` when no override is present.
+ */
+export function resolveWeaponFacingForPose(
+  weapon: WeaponBlock,
+  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
+  pose: string,
+  facing: Facing,
+): { spriteKey: string; transform: 'none' | WeaponFacingTransform } {
+  if (poses) {
+    const poseEntry = poses[pose];
+    if (poseEntry) {
+      const facingEntry = poseEntry[facing];
+      if (facingEntry) {
+        const norm = normalizePoseFacingEntry(facingEntry);
+        const w = norm.weapon;
+        if (w && w.src) {
+          if (w.src === 'self') {
+            return { spriteKey: `${weapon.layerPrefix}-${facing}`, transform: 'none' };
+          }
+          return {
+            spriteKey: `${weapon.layerPrefix}-${w.src}`,
+            transform: w.transform ?? 'none',
+          };
+        }
+      }
+    }
+  }
+  return resolveWeaponFacing(weapon, facing);
 }
 
 /**
@@ -187,6 +237,31 @@ function readPoseWeapon(
   // JSON output stay clean.
   const w = normalized.weapon;
   return w.flipX === true ? { ...w, flipX: true } : { x: w.x, y: w.y, rot: w.rot };
+}
+
+/**
+ * Pool the variants authored for a (pose, facing): `[weapon, ...weaponVariants]`.
+ * Empty when the entry has no weapon authoring at all.
+ */
+export function readWeaponVariantPool(
+  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
+  pose: string,
+  facing: Facing,
+): WeaponPoseTransform[] {
+  if (!poses) return [];
+  const poseEntry = poses[pose];
+  if (!poseEntry) return [];
+  const facingEntry = poseEntry[facing];
+  if (!facingEntry) return [];
+  const norm = normalizePoseFacingEntry(facingEntry);
+  const out: WeaponPoseTransform[] = [];
+  if (norm.weapon) out.push(norm.weapon);
+  if (Array.isArray(norm.weaponVariants)) {
+    for (const v of norm.weaponVariants) {
+      if (v && typeof v === 'object') out.push(v);
+    }
+  }
+  return out;
 }
 
 /**

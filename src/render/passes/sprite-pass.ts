@@ -20,6 +20,7 @@ import { composeCombinedAtlas } from '../poses/combined-atlas';
 import {
   resolveWeaponFacing,
   resolveWeaponPoseTransform,
+  readWeaponVariantPool,
   type Facing,
 } from '../poses/resolver';
 import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader';
@@ -27,7 +28,7 @@ import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader
 const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
 
 // Module-scoped sort state so the comparator closure isn't re-allocated each
-// frame. `sortPosY` is set just before each `sortIdx.sort(sortByY)` call.
+// frame. `sortPosY` is set just before each per-frame sort call.
 let sortPosY: Float32Array | null = null;
 const sortByY = (a: number, b: number) => sortPosY![a]! - sortPosY![b]!;
 
@@ -65,7 +66,7 @@ interface FactionPalette {
  */
 let regiments: FactionPalette[] = [
   { id: 'british-line',  label: 'British Line',  primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
-  { id: 'french-line',   label: 'French Line',   primary: [50, 60, 140],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+  { id: 'french-line',   label: 'French Line',   primary: [40, 80, 190],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
   { id: 'prussian-line', label: 'Prussian Line', primary: [35, 45, 75],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
   { id: 'russian-line',  label: 'Russian Line',  primary: [40, 75, 50],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
   { id: 'austrian-line', label: 'Austrian Line', primary: [225, 215, 195], secondary: [120, 105, 85],  tertiary: [15, 15, 20] },
@@ -250,7 +251,9 @@ export function createSpritePass(
   const scratchRot = new Float32Array(capacity);
   // Per-frame weapon instance buffers (parallel to body scratch arrays).
   // Sized to body capacity since at most one weapon instance is emitted per
-  // soldier per frame.
+  // soldier per frame. Two parallel sets: "behind" weapons render BEFORE
+  // bodies (so the body occludes the weapon, e.g. for N/NE/NW facings);
+  // "front" weapons render AFTER bodies (overlay on top, e.g. S/SE/SW/E/W).
   const scratchWeaponPos = new Float32Array(capacity * 2);
   const scratchWeaponSize = new Float32Array(capacity * 2);
   const scratchWeaponColor = new Float32Array(capacity * 4);
@@ -260,8 +263,19 @@ export function createSpritePass(
   const scratchWeaponTertiary = new Float32Array(capacity * 3);
   const scratchWeaponPattern = new Float32Array(capacity);
   const scratchWeaponRot = new Float32Array(capacity);
+  const scratchWeaponBehindPos = new Float32Array(capacity * 2);
+  const scratchWeaponBehindSize = new Float32Array(capacity * 2);
+  const scratchWeaponBehindColor = new Float32Array(capacity * 4);
+  const scratchWeaponBehindUv = new Float32Array(capacity * 4);
+  const scratchWeaponBehindPrimary = new Float32Array(capacity * 3);
+  const scratchWeaponBehindSecondary = new Float32Array(capacity * 3);
+  const scratchWeaponBehindTertiary = new Float32Array(capacity * 3);
+  const scratchWeaponBehindPattern = new Float32Array(capacity);
+  const scratchWeaponBehindRot = new Float32Array(capacity);
   // Reused per-frame sort buffer: alive entity ids sorted back-to-front by world Y.
-  const sortIdx: number[] = [];
+  // Int32Array so V8 can use the typed-array sort path; on 40k+ entries the
+  // boxed-number Array.sort closure path was ~3× slower.
+  let sortIdx = new Int32Array(capacity);
 
   /**
    * Pre-resolved weapon UV cache keyed by `kit.weapon.layerPrefix`. Each entry
@@ -301,6 +315,19 @@ export function createSpritePass(
   }
   // Map from runtime facing 0..7 -> Facing string, for per-pose offset lookup.
   const RUNTIME_FACING_TO_LETTER: Facing[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+  // Facings where the weapon renders BEHIND the body (rear-facing soldiers
+  // whose own torso would naturally occlude the held musket from the camera).
+  // Mirrors WEAPON_BEHIND_FACINGS in public/components-editor.html — keep in sync.
+  const RUNTIME_FACING_IS_BEHIND: ReadonlyArray<boolean> = [
+    /* E  */ false,
+    /* SE */ false,
+    /* S  */ false,
+    /* SW */ false,
+    /* W  */ false,
+    /* NW */ true,
+    /* N  */ true,
+    /* NE */ true,
+  ];
   // Pixel-to-world conversion for per-pose offsets: kit JSON stores `(x, y)`
   // in source-sprite pixel units. Body cells are 32x36 px in the component
   // atlas; weapon sprites are also 32x36 (full-cell, with the musket pixels
@@ -322,18 +349,19 @@ export function createSpritePass(
       const PATTERN_FEATURE_PIXELS = 4;
       const e = world.entities;
       const useDots = cam.zoom < UNIT_DOT_ZOOM;
-      sortIdx.length = 0;
+      // Grow the typed sort buffer if capacity expanded since startup.
+      if (sortIdx.length < e.count) sortIdx = new Int32Array(e.count);
+      let n = 0;
       for (let m = 0; m < e.count; m++) {
         const id = e.aliveIds[m]!;
         if (useDots && isDead(e, id)) continue;
-        sortIdx.push(id);
+        sortIdx[n++] = id;
       }
-      const n = sortIdx.length;
       if (n === 0) return;
       // World Y grows downward, so larger Y = in front. Draw ascending by Y
       // so front sprites overwrite back ones (painter's algorithm).
       sortPosY = e.posY;
-      sortIdx.sort(sortByY);
+      sortIdx.subarray(0, n).sort(sortByY);
 
       const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
       const cavalryDot = CAVALRY_DOT_PIXELS / cam.zoom;
@@ -342,6 +370,7 @@ export function createSpritePass(
       // Per-frame weapon instance count. Bumped each time we emit a weapon
       // attached to a soldier — bound by `n` (one weapon per soldier max).
       let wn = 0;
+      let wbn = 0;
 
       for (let k = 0; k < n; k++) {
         const i = sortIdx[k]!;
@@ -442,64 +471,125 @@ export function createSpritePass(
           scratchUv[k * 4 + 3] = uv[3];
 
           // Weapon overlay (if this kit has a weapon block + the atlas packed
-          // its source sprites). Renders as a separate instance after all
-          // bodies; per-pose `(x, y, rot)` lifted from the kit JSON.
+          // its source sprites). Per-pose `(x, y, rot)` lifted from the kit
+          // JSON. Behind-facings (N/NE/NW) emit into a separate set drawn
+          // BEFORE bodies so the body occludes the weapon; front-facings emit
+          // into the regular set drawn AFTER bodies (overlay on top).
           const kit = kits.get(kind.id);
           if (kit && kit.weapon) {
             const uvList = weaponUvByPrefix.get(kit.weapon.layerPrefix);
-            const wuv = uvList ? uvList[facing] : null;
+            const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
+            const editorPose = runtimePoseToEditorPoseName(pose);
+            // Per-pose variants: when the kit authors `weaponVariants` for
+            // (pose, facing), pool them with the primary `weapon` and pick
+            // a stable index per-entity so soldiers in formation get visual
+            // variety. When no variants exist the pool is empty and we fall
+            // back to the existing inheritance + cached UV path.
+            const variantPool = editorPose
+              ? readWeaponVariantPool(kit.poses, editorPose, facingLetter)
+              : [];
+            const chosenVariant = variantPool.length > 0
+              ? variantPool[((i % variantPool.length) + variantPool.length) % variantPool.length]!
+              : null;
+            // Per-pose source override — kit.poses[pose][facing].weapon.src/transform,
+            // or the chosen variant's src/transform. Falls through to the
+            // cached global UV when no override is set.
+            let wuv: readonly [number, number, number, number] | null = null;
+            const overrideSrc = chosenVariant?.src;
+            if (overrideSrc) {
+              const sourceFacing = overrideSrc === 'self' ? facingLetter : overrideSrc;
+              const transform = overrideSrc === 'self' ? 'none' : (chosenVariant!.transform ?? 'none');
+              wuv = pickWeaponUv(
+                poseAtlas!,
+                kit.weapon.layerPrefix,
+                sourceFacing,
+                transform,
+                poseAtlasY,
+                sheetW,
+                sheetH,
+              );
+            }
+            if (!wuv) wuv = uvList ? uvList[facing] : null;
             if (wuv) {
-              const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
-              const editorPose = runtimePoseToEditorPoseName(pose);
-              const offset = editorPose
-                ? resolveWeaponPoseTransform(kit.poses, editorPose, facingLetter, kit.weapon)
-                : { x: 0, y: 0, rot: 0 };
-              // Convert pixel offsets to world units. Body sprite is
-              // SPRITE_CELL_PX (16) wide in `placeholderSize.w` world units.
-              const pxToWorld = kind.placeholderSize.w / SPRITE_CELL_PX;
+              const offset = chosenVariant
+                ?? (editorPose
+                  ? resolveWeaponPoseTransform(kit.poses, editorPose, facingLetter, kit.weapon)
+                  : { x: 0, y: 0, rot: 0 });
+              // Body sprite is rendered at `sprW` world units wide for a
+              // SPRITE_CELL_PX-wide cell, so the weapon must use the SAME
+              // pixel-to-world ratio for both its size AND its per-pose pixel
+              // offsets — otherwise the weapon ends up at half-scale and
+              // mis-anchored relative to the body anatomy that the editor
+              // composites against 1:1.
+              const pxToWorld = sprW / SPRITE_CELL_PX;
               const dxWorld = offset.x * pxToWorld;
               const dyWorld = offset.y * pxToWorld;
-              // Weapon world size = 32x36 px scaled by the same px-per-world.
               const wWorldW = WEAPON_PX_W * pxToWorld;
               const wWorldH = WEAPON_PX_H * pxToWorld;
-              scratchWeaponPos[wn * 2 + 0] = scratchPos[k * 2 + 0]! + dxWorld;
-              scratchWeaponPos[wn * 2 + 1] = scratchPos[k * 2 + 1]! + dyWorld;
-              scratchWeaponSize[wn * 2 + 0] = wWorldW;
-              scratchWeaponSize[wn * 2 + 1] = wWorldH;
+              const isBehind = RUNTIME_FACING_IS_BEHIND[facing]!;
+              const dst = isBehind
+                ? {
+                    pos: scratchWeaponBehindPos,
+                    size: scratchWeaponBehindSize,
+                    color: scratchWeaponBehindColor,
+                    uv: scratchWeaponBehindUv,
+                    primary: scratchWeaponBehindPrimary,
+                    secondary: scratchWeaponBehindSecondary,
+                    tertiary: scratchWeaponBehindTertiary,
+                    pattern: scratchWeaponBehindPattern,
+                    rot: scratchWeaponBehindRot,
+                  }
+                : {
+                    pos: scratchWeaponPos,
+                    size: scratchWeaponSize,
+                    color: scratchWeaponColor,
+                    uv: scratchWeaponUv,
+                    primary: scratchWeaponPrimary,
+                    secondary: scratchWeaponSecondary,
+                    tertiary: scratchWeaponTertiary,
+                    pattern: scratchWeaponPattern,
+                    rot: scratchWeaponRot,
+                  };
+              const wi = isBehind ? wbn : wn;
+              dst.pos[wi * 2 + 0] = scratchPos[k * 2 + 0]! + dxWorld;
+              dst.pos[wi * 2 + 1] = scratchPos[k * 2 + 1]! + dyWorld;
+              dst.size[wi * 2 + 0] = wWorldW;
+              dst.size[wi * 2 + 1] = wWorldH;
               // Weapon: white tint passthrough. Marker substitution still runs
               // in the FS, so any team-coloured pixels in the weapon sprite
               // get tinted from the same per-instance team palette.
-              scratchWeaponColor[wn * 4 + 0] = 1;
-              scratchWeaponColor[wn * 4 + 1] = 1;
-              scratchWeaponColor[wn * 4 + 2] = 1;
-              scratchWeaponColor[wn * 4 + 3] = 1;
-              scratchWeaponPattern[wn] = 0;
+              dst.color[wi * 4 + 0] = 1;
+              dst.color[wi * 4 + 1] = 1;
+              dst.color[wi * 4 + 2] = 1;
+              dst.color[wi * 4 + 3] = 1;
+              dst.pattern[wi] = 0;
               // Apply per-pose flipX by inverting the U axis on the prepacked
               // UV rect: shift origin to the right edge then negate uSize.
               // Composes correctly even with the facing-share's pre-baked U
               // sign — flipping a negative U just flips it back to positive.
               if (offset.flipX === true) {
-                scratchWeaponUv[wn * 4 + 0] = wuv[0] + wuv[2];
-                scratchWeaponUv[wn * 4 + 1] = wuv[1];
-                scratchWeaponUv[wn * 4 + 2] = -wuv[2];
-                scratchWeaponUv[wn * 4 + 3] = wuv[3];
+                dst.uv[wi * 4 + 0] = wuv[0] + wuv[2];
+                dst.uv[wi * 4 + 1] = wuv[1];
+                dst.uv[wi * 4 + 2] = -wuv[2];
+                dst.uv[wi * 4 + 3] = wuv[3];
               } else {
-                scratchWeaponUv[wn * 4 + 0] = wuv[0];
-                scratchWeaponUv[wn * 4 + 1] = wuv[1];
-                scratchWeaponUv[wn * 4 + 2] = wuv[2];
-                scratchWeaponUv[wn * 4 + 3] = wuv[3];
+                dst.uv[wi * 4 + 0] = wuv[0];
+                dst.uv[wi * 4 + 1] = wuv[1];
+                dst.uv[wi * 4 + 2] = wuv[2];
+                dst.uv[wi * 4 + 3] = wuv[3];
               }
-              scratchWeaponPrimary[wn * 3 + 0] = scratchPrimary[k * 3 + 0]!;
-              scratchWeaponPrimary[wn * 3 + 1] = scratchPrimary[k * 3 + 1]!;
-              scratchWeaponPrimary[wn * 3 + 2] = scratchPrimary[k * 3 + 2]!;
-              scratchWeaponSecondary[wn * 3 + 0] = scratchSecondary[k * 3 + 0]!;
-              scratchWeaponSecondary[wn * 3 + 1] = scratchSecondary[k * 3 + 1]!;
-              scratchWeaponSecondary[wn * 3 + 2] = scratchSecondary[k * 3 + 2]!;
-              scratchWeaponTertiary[wn * 3 + 0] = scratchTertiary[k * 3 + 0]!;
-              scratchWeaponTertiary[wn * 3 + 1] = scratchTertiary[k * 3 + 1]!;
-              scratchWeaponTertiary[wn * 3 + 2] = scratchTertiary[k * 3 + 2]!;
-              scratchWeaponRot[wn] = (offset.rot * Math.PI) / 180;
-              wn++;
+              dst.primary[wi * 3 + 0] = scratchPrimary[k * 3 + 0]!;
+              dst.primary[wi * 3 + 1] = scratchPrimary[k * 3 + 1]!;
+              dst.primary[wi * 3 + 2] = scratchPrimary[k * 3 + 2]!;
+              dst.secondary[wi * 3 + 0] = scratchSecondary[k * 3 + 0]!;
+              dst.secondary[wi * 3 + 1] = scratchSecondary[k * 3 + 1]!;
+              dst.secondary[wi * 3 + 2] = scratchSecondary[k * 3 + 2]!;
+              dst.tertiary[wi * 3 + 0] = scratchTertiary[k * 3 + 0]!;
+              dst.tertiary[wi * 3 + 1] = scratchTertiary[k * 3 + 1]!;
+              dst.tertiary[wi * 3 + 2] = scratchTertiary[k * 3 + 2]!;
+              dst.rot[wi] = (offset.rot * Math.PI) / 180;
+              if (isBehind) wbn++;
+              else wn++;
             }
           }
         }
@@ -510,6 +600,40 @@ export function createSpritePass(
       gl.useProgram(prog);
       gl.bindVertexArray(vao);
 
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, atlas);
+      gl.uniform1i(u.u_atlas, 0);
+      gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
+      gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
+
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      // Weapons-behind pass: rear-facings (N/NE/NW) drawn FIRST so the body
+      // composited next will occlude the weapon.
+      if (wbn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindPos.subarray(0, wbn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindSize.subarray(0, wbn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindColor.subarray(0, wbn * 4));
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvRectBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindUv.subarray(0, wbn * 4));
+        gl.bindBuffer(gl.ARRAY_BUFFER, primaryBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindPrimary.subarray(0, wbn * 3));
+        gl.bindBuffer(gl.ARRAY_BUFFER, secondaryBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindSecondary.subarray(0, wbn * 3));
+        gl.bindBuffer(gl.ARRAY_BUFFER, tertiaryBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindTertiary.subarray(0, wbn * 3));
+        gl.bindBuffer(gl.ARRAY_BUFFER, patternBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindPattern.subarray(0, wbn));
+        gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindRot.subarray(0, wbn));
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, wbn);
+      }
+
+      // Bodies pass.
       gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPos.subarray(0, n * 2));
       gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
@@ -528,21 +652,10 @@ export function createSpritePass(
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPattern.subarray(0, n));
       gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRot.subarray(0, n));
-
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, atlas);
-      gl.uniform1i(u.u_atlas, 0);
-      gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
-      gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
-
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
 
-      // Weapon overlay pass: re-upload all per-instance buffers with the
-      // weapon scratch arrays then draw on top of the bodies. Same VAO,
-      // shader, atlas. Skipped at zoom levels where bodies render as dots
-      // (since we don't emit weapons in that branch).
+      // Weapons-front pass: front-facings (S/SE/SW/E/W) drawn AFTER bodies so
+      // the weapon overlays the body. Same VAO, shader, atlas.
       if (wn > 0) {
         gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponPos.subarray(0, wn * 2));

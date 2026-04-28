@@ -70,14 +70,62 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 24px;
+        padding: 24px;
         position: relative;
       }
-      canvas {
-        width: 176px;
+      canvas#preview-canvas {
+        width: 256px;
         height: 288px;
         image-rendering: pixelated;
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(12, 15, 20, 1);
+      }
+      .facing-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 96px);
+        grid-template-rows: repeat(3, 108px);
+        gap: 6px;
+      }
+      .facing-cell {
+        position: relative;
+        width: 96px;
+        height: 108px;
+        padding: 0;
+        background: rgba(12, 15, 20, 1);
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        cursor: pointer;
+        overflow: hidden;
+      }
+      .facing-cell:hover { border-color: rgba(147, 197, 253, 0.55); }
+      .facing-cell.active {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 1px #3b82f6;
+      }
+      .facing-cell canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
+      .facing-cell .label {
+        position: absolute;
+        top: 3px;
+        left: 5px;
+        font-size: 10px;
+        font-family: ui-monospace, Menlo, monospace;
+        color: rgba(243, 244, 246, 0.85);
+        background: rgba(12, 15, 20, 0.65);
+        padding: 1px 4px;
+        border-radius: 2px;
+        pointer-events: none;
+      }
+      .facing-cell-empty {
+        width: 96px;
+        height: 108px;
       }
       .info-card {
         position: absolute;
@@ -122,7 +170,18 @@
         <div id="component-groups"></div>
       </aside>
       <section class="preview">
-        <canvas id="preview-canvas" width="11" height="18"></canvas>
+        <canvas id="preview-canvas" width="32" height="36"></canvas>
+        <div class="facing-grid" id="facing-grid">
+          <button class="facing-cell" type="button" data-facing="NW"><canvas width="32" height="36"></canvas><span class="label">NW</span></button>
+          <button class="facing-cell" type="button" data-facing="N"><canvas width="32" height="36"></canvas><span class="label">N</span></button>
+          <button class="facing-cell" type="button" data-facing="NE"><canvas width="32" height="36"></canvas><span class="label">NE</span></button>
+          <button class="facing-cell" type="button" data-facing="W"><canvas width="32" height="36"></canvas><span class="label">W</span></button>
+          <div class="facing-cell-empty"></div>
+          <button class="facing-cell" type="button" data-facing="E"><canvas width="32" height="36"></canvas><span class="label">E</span></button>
+          <button class="facing-cell" type="button" data-facing="SW"><canvas width="32" height="36"></canvas><span class="label">SW</span></button>
+          <button class="facing-cell" type="button" data-facing="S"><canvas width="32" height="36"></canvas><span class="label">S</span></button>
+          <button class="facing-cell" type="button" data-facing="SE"><canvas width="32" height="36"></canvas><span class="label">SE</span></button>
+        </div>
         <div class="info-card" id="info-card"></div>
       </section>
     </main>

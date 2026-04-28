@@ -664,6 +664,199 @@
             "x": 20,
             "y": 25,
             "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 21,
+            "y": 25,
+            "color": "clear"
+          }
+        ]
+      },
+      "N": {
+        "musket-brown-bess-north": [
+          {
+            "x": 19,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 17,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 17,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 12,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 12,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 11,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 14,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 10,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 9,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 8,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 7,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 9,
+            "color": "#000000"
+          },
+          {
+            "x": 19,
+            "y": 10,
+            "color": "#B0B8C4"
+          },
+          {
+            "x": 19,
+            "y": 9,
+            "color": "#B0B8C4"
+          },
+          {
+            "x": 19,
+            "y": 7,
+            "color": "#B0B8C4"
+          },
+          {
+            "x": 19,
+            "y": 8,
+            "color": "#B0B8C4"
+          },
+          {
+            "x": 19,
+            "y": 6,
+            "color": "#B0B8C4"
+          },
+          {
+            "x": 19,
+            "y": 6,
+            "color": "#E8ECF2"
+          },
+          {
+            "x": 19,
+            "y": 5,
+            "color": "#E8ECF2"
+          }
+        ]
+      },
+      "S": {
+        "weapon": [
+          {
+            "x": 18,
+            "y": 24,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 23,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 24,
+            "color": "clear"
+          },
+          {
+            "x": 12,
+            "y": 24,
+            "color": "clear"
+          },
+          {
+            "x": 12,
+            "y": 23,
+            "color": "clear"
+          },
+          {
+            "x": 12,
+            "y": 23,
+            "color": "clear"
           }
         ]
       }
@@ -688,6 +881,262 @@
           {
             "x": 22,
             "y": 4,
+            "color": "clear"
+          },
+          {
+            "x": 14,
+            "y": 21,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 12,
+            "y": 22,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 12,
+            "y": 21,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 12,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 12,
+            "y": 19,
+            "color": "#FF00FF"
+          }
+        ]
+      },
+      "SW": {
+        "shako-standard-southwest": [
+          {
+            "x": 18,
+            "y": 14,
+            "color": "clear"
+          },
+          {
+            "x": 12,
+            "y": 14,
+            "color": "#505000"
+          }
+        ]
+      },
+      "E": {
+        "coat-line-east": [
+          {
+            "x": 20,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 21,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 22,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 23,
+            "y": 19,
+            "color": "#F0CDA0"
+          }
+        ],
+        "body-east-base": [
+          {
+            "x": 18,
+            "y": 19,
+            "color": "#F0CDA0"
+          }
+        ]
+      },
+      "W": {
+        "body-west-base": [
+          {
+            "x": 11,
+            "y": 20,
+            "color": "#C6373B"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "#C6373B"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "#C6373B"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "#C6373B"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 12,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "#F0CDA0"
+          }
+        ],
+        "weapon": [
+          {
+            "x": 11,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 12,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 13,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 14,
+            "y": 16,
+            "color": "clear"
+          }
+        ],
+        "coat-line-west": [
+          {
+            "x": 9,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "clear"
+          }
+        ]
+      },
+      "N": {
+        "body-north-base": [
+          {
+            "x": 19,
+            "y": 16,
+            "color": "#F0CDA0"
+          }
+        ]
+      },
+      "SE": {
+        "body-southeast-base": [
+          {
+            "x": 18,
+            "y": 24,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 18,
+            "y": 23,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 19,
+            "y": 24,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 18,
+            "y": 24,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 24,
             "color": "clear"
           }
         ]
@@ -1480,6 +1929,51 @@
             "x": 19,
             "y": 20,
             "color": "#6A4530"
+          },
+          {
+            "x": 14,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 14,
+            "y": 17,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 17,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 19,
+            "y": 19,
+            "color": "#6A4530"
+          },
+          {
+            "x": 20,
+            "y": 19,
+            "color": "#6A4530"
           }
         ]
       },
@@ -1919,6 +2413,56 @@
             "x": 18,
             "y": 21,
             "color": "#F0CDA0"
+          },
+          {
+            "x": 20,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 21,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 22,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 21,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 22,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 23,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 20,
+            "color": "#3F2A1B"
+          },
+          {
+            "x": 19,
+            "y": 20,
+            "color": "#3F2A1B"
           }
         ]
       },
@@ -2558,6 +3102,599 @@
             "x": 17,
             "y": 15,
             "color": "#F5B044"
+          },
+          {
+            "x": 13,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 14,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 17,
+            "y": 16,
+            "color": "clear"
+          },
+          {
+            "x": 17,
+            "y": 17,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 17,
+            "color": "clear"
+          }
+        ]
+      }
+    },
+    "dying": {
+      "N": {
+        "body-north-dying": [
+          {
+            "x": 19,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 20,
+            "y": 21,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 21,
+            "y": 22,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 22,
+            "y": 22,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 23,
+            "y": 13,
+            "color": "#C6373B"
+          },
+          {
+            "x": 23,
+            "y": 14,
+            "color": "#C6373B"
+          },
+          {
+            "x": 23,
+            "y": 12,
+            "color": "#C6373B"
+          },
+          {
+            "x": 23,
+            "y": 12,
+            "color": "#D13B33"
+          },
+          {
+            "x": 23,
+            "y": 12,
+            "color": "#E36A6A"
+          },
+          {
+            "x": 23,
+            "y": 12,
+            "color": "#C6373B"
+          },
+          {
+            "x": 23,
+            "y": 14,
+            "color": "#E36A6A"
+          },
+          {
+            "x": 23,
+            "y": 14,
+            "color": "#D13B33"
+          },
+          {
+            "x": 23,
+            "y": 14,
+            "color": "#E36A6A"
+          }
+        ]
+      },
+      "NW": {
+        "body-northwest-dying": [
+          {
+            "x": 19,
+            "y": 20,
+            "color": "#FF00FF"
+          }
+        ],
+        "shadow-northwest": [
+          {
+            "x": 26,
+            "y": 14,
+            "color": "#C6373B"
+          },
+          {
+            "x": 27,
+            "y": 13,
+            "color": "#C6373B"
+          }
+        ]
+      },
+      "NE": {
+        "shadow-northeast": [
+          {
+            "x": 11,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 11,
+            "y": 19,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 12,
+            "y": 18,
+            "color": "#FF80FF"
+          }
+        ]
+      },
+      "S": {
+        "coat-line-south-dying": [
+          {
+            "x": 20,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 21,
+            "y": 21,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 19,
+            "y": 18,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 19,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 19,
+            "y": 18,
+            "color": "#A000A0"
+          },
+          {
+            "x": 12,
+            "y": 18,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 11,
+            "y": 19,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 12,
+            "y": 20,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 12,
+            "y": 21,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 14,
+            "y": 21,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 15,
+            "y": 21,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 15,
+            "y": 21,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 14,
+            "y": 20,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 13,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 11,
+            "y": 19,
+            "color": "#FF00FF"
+          }
+        ]
+      },
+      "SE": {
+        "coat-line-southeast-dying": [
+          {
+            "x": 20,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 21,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 19,
+            "y": 18,
+            "color": "#FF00FF"
+          }
+        ],
+        "shadow-southeast": [
+          {
+            "x": 25,
+            "y": 21,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 29,
+            "y": 13,
+            "color": "#C6373B"
+          },
+          {
+            "x": 28,
+            "y": 14,
+            "color": "#C6373B"
+          }
+        ],
+        "weapon": [
+          {
+            "x": 14,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 13,
+            "y": 13,
+            "color": "clear"
+          },
+          {
+            "x": 14,
+            "y": 13,
+            "color": "clear"
+          }
+        ]
+      },
+      "W": {
+        "coat-line-west-dying": [
+          {
+            "x": 11,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 12,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 12,
+            "y": 19,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 12,
+            "y": 18,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 13,
+            "y": 18,
+            "color": "#A000A0"
+          },
+          {
+            "x": 12,
+            "y": 18,
+            "color": "#A000A0"
+          },
+          {
+            "x": 11,
+            "y": 21,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 11,
+            "y": 21,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 11,
+            "y": 21,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 11,
+            "y": 18,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 11,
+            "y": 19,
+            "color": "#FF80FF"
+          },
+          {
+            "x": 11,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 9,
+            "color": "#C6373B"
+          }
+        ]
+      },
+      "E": {
+        "shadow-east": [
+          {
+            "x": 22,
+            "y": 10,
+            "color": "#C6373B"
+          },
+          {
+            "x": 22,
+            "y": 9,
+            "color": "#C6373B"
+          }
+        ]
+      }
+    },
+    "walking": {
+      "E": {
+        "trousers-east-walk-3": [
+          {
+            "x": 19,
+            "y": 28,
+            "color": "#000000"
+          },
+          {
+            "x": 19,
+            "y": 27,
+            "color": "#000000"
+          },
+          {
+            "x": 20,
+            "y": 28,
+            "color": "#000000"
+          },
+          {
+            "x": 20,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 27,
+            "color": "#000000"
+          },
+          {
+            "x": 19,
+            "y": 27,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 28,
+            "color": "#000000"
+          },
+          {
+            "x": 21,
+            "y": 27,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 27,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "#EDE8DA"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 18,
+            "y": 24,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 24,
+            "color": "clear"
+          },
+          {
+            "x": 18,
+            "y": 25,
+            "color": "#80FFFF"
+          }
+        ],
+        "body-east-base": [
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 28,
+            "color": "#A0A000"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 27,
+            "color": "#A0A000"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 14,
+            "y": 28,
+            "color": "#A0A000"
+          },
+          {
+            "x": 14,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 15,
+            "y": 27,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          }
+        ]
+      },
+      "W": {
+        "body-west-base": [
+          {
+            "x": 17,
+            "y": 28,
+            "color": "#A0A000"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "#A0A000"
+          },
+          {
+            "x": 17,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 13,
+            "y": 28,
+            "color": "#A0A000"
+          },
+          {
+            "x": 16,
+            "y": 28,
+            "color": "clear"
+          },
+          {
+            "x": 17,
+            "y": 28,
+            "color": "#A0A000"
+          },
+          {
+            "x": 16,
+            "y": 27,
+            "color": "clear"
+          },
+          {
+            "x": 17,
+            "y": 27,
+            "color": "#A0A000"
+          },
+          {
+            "x": 16,
+            "y": 27,
+            "color": "clear"
+          },
+          {
+            "x": 16,
+            "y": 27,
+            "color": "clear"
           }
         ]
       }

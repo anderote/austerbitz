@@ -24,7 +24,7 @@ describe('slice-component-atlas buildWorkList', () => {
     expect(reload.cells.map((c) => c.dir)).toEqual(['S']);
   });
 
-  it('skips poses in SKIP_KIT_POSES (musket, hit)', () => {
+  it('skips musket-only weapon-block poses but maps hit -> flinch', () => {
     const kit = {
       id: 'line-infantry',
       poses: {
@@ -35,7 +35,9 @@ describe('slice-component-atlas buildWorkList', () => {
     };
     const work = buildWorkList(kit, 'line-infantry');
     expect(work.find((w) => w.kitPose === 'musket')).toBeUndefined();
-    expect(work.find((w) => w.kitPose === 'hit')).toBeUndefined();
+    const hitEntry = work.find((w) => w.kitPose === 'hit');
+    expect(hitEntry).toBeDefined();
+    expect(hitEntry.runtimePose).toBe('flinch');
     expect(work.find((w) => w.kitPose === 'fire')).toBeDefined();
   });
 

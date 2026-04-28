@@ -68,7 +68,7 @@ Seed entries:
 | Index | Id            | Label         | Primary (coat)        | Secondary (belts/pants) | Tertiary (boots/shako) |
 |-------|---------------|---------------|-----------------------|-------------------------|------------------------|
 | 0     | british-line  | British Line  | `[180, 40, 50]` red   | `[240, 230, 210]` cream | `[25, 20, 35]` navy    |
-| 1     | french-line   | French Line   | `[50, 60, 140]` blue  | `[240, 230, 210]` cream | `[25, 20, 35]` navy    |
+| 1     | french-line   | French Line   | `[40, 80, 190]` blue  | `[240, 230, 210]` cream | `[25, 20, 35]` navy    |
 | 2     | prussian-line | Prussian Line | `[35, 45, 75]` Pr.blue| `[240, 230, 210]` cream | `[15, 15, 20]` black   |
 | 3     | russian-line  | Russian Line  | `[40, 75, 50]` green  | `[240, 230, 210]` cream | `[15, 15, 20]` black   |
 | 4     | austrian-line | Austrian Line | `[225, 215, 195]` white| `[120, 105, 85]` tan   | `[15, 15, 20]` black   |

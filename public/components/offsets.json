@@ -70,12 +70,46 @@
           -1,
           0
         ]
+      },
+      "NW": {
+        "musket-brown-bess-northwest": [
+          -6,
+          -2
+        ]
+      },
+      "SW": {
+        "body-southwest-base": [
+          1,
+          0
+        ]
       }
     },
     "weapon": {
       "N": {
         "musket-brown-bess-north": [
           -3,
+          0
+        ]
+      }
+    },
+    "hit": {
+      "SW": {
+        "shako-standard-southwest": [
+          -1,
+          0
+        ]
+      },
+      "SE": {
+        "body-southeast-base": [
+          -1,
+          0
+        ]
+      }
+    },
+    "dying": {
+      "SE": {
+        "body-southeast-dying": [
+          -1,
           0
         ]
       }

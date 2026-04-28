@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:soldier-components": "node scripts/build-soldier-components.mjs --kit line-infantry && node scripts/slice-component-atlas.mjs",
-    "seed:line-infantry-locomotion": "node scripts/seed-line-infantry-locomotion.mjs",
+    "build:components": "node scripts/build-cannon-12-components.mjs && node scripts/draw-cuirassier-components.mjs",
+    "build:soldier-components": "npm run build:components && node scripts/build-soldier-components.mjs --kit line-infantry && node scripts/slice-component-atlas.mjs --kit line-infantry && node scripts/build-soldier-components.mjs --kit cannon-12 && node scripts/slice-component-atlas.mjs --kit cannon-12 && node scripts/build-soldier-components.mjs --kit cuirassier && node scripts/slice-component-atlas.mjs --kit cuirassier",
+    "seed:line-infantry-locomotion": "node scripts/seed-line-infantry-locomotion.mjs && node scripts/draw-line-infantry-walking.mjs",
+    "draw:line-infantry-walking": "node scripts/draw-line-infantry-walking.mjs",
     "build:poses": "npm run build:soldier-components && node scripts/build-pose-manifest.mjs",
     "draw:cuirassier-poses": "node scripts/draw-cuirassier-poses.mjs",
     "dev": "npm run build:poses && vite",

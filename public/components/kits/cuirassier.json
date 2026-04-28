@@ -1,17 +1,178 @@
 {
   "id": "cuirassier",
-  "label": "Cuirassier (WIP)",
-  "baseAtlas": "public/sprites/cuirassier.png",
+  "label": "Cuirassier",
+  "baseAtlas": "public/sprites/cuirassier-components.png",
   "outputAtlas": "public/sprites/cuirassier-components.png",
   "outputPreview": "public/sprites/cuirassier-components-preview.png",
   "facings": {
-    "N":  { "cell": [1, 2], "layers": ["horse-bay-north"] },
-    "NE": { "cell": [2, 0], "layers": ["horse-bay-northeast"] },
-    "E":  { "cell": [2, 1], "layers": ["horse-bay-east"] },
-    "SE": { "cell": [2, 2], "layers": ["horse-bay-southeast"] },
-    "S":  { "cell": [1, 1], "layers": ["horse-bay-south"] },
-    "SW": { "cell": [0, 2], "layers": ["horse-bay-southwest"] },
-    "W":  { "cell": [0, 1], "layers": ["horse-bay-west"] },
-    "NW": { "cell": [0, 0], "layers": ["horse-bay-northwest"] }
+    "N":  { "cell": [1, 2], "layers": ["horse-bay-north", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"] },
+    "NE": { "cell": [2, 0], "layers": ["horse-bay-northeast", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"] },
+    "E":  { "cell": [2, 1], "layers": ["horse-bay-east", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"] },
+    "SE": { "cell": [2, 2], "layers": ["horse-bay-southeast", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"] },
+    "S":  { "cell": [1, 1], "layers": ["horse-bay-south", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"] },
+    "SW": { "cell": [0, 2], "layers": ["horse-bay-southwest", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"] },
+    "W":  { "cell": [0, 1], "layers": ["horse-bay-west", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"] },
+    "NW": { "cell": [0, 0], "layers": ["horse-bay-northwest", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"] }
+  },
+  "poses": {
+    "idle": {
+      "N":  { "layers": [], "weapon": { "x": 3, "y": 1, "rot": 0 } },
+      "NE": { "layers": [], "weapon": { "x": 3, "y": 1, "rot": 0 } },
+      "E":  { "layers": [], "weapon": { "x": 4, "y": 3, "rot": 0 } },
+      "SE": { "layers": [], "weapon": { "x": 3, "y": 3, "rot": 0 } },
+      "S":  { "layers": [], "weapon": { "x": -3, "y": 3, "rot": 0 } },
+      "SW": { "layers": [], "weapon": { "x": -3, "y": 3, "rot": 0 } },
+      "W":  { "layers": [], "weapon": { "x": -4, "y": 3, "rot": 0 } },
+      "NW": { "layers": [], "weapon": { "x": -3, "y": 1, "rot": 0 } }
+    },
+    "walking": {
+      "N": [
+        ["horse-bay-north-walk-0", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-walk-1", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-walk-2", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-walk-3", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"]
+      ],
+      "NE": [
+        ["horse-bay-northeast-walk-0", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-walk-1", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-walk-2", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-walk-3", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"]
+      ],
+      "E": [
+        ["horse-bay-east-walk-0", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-walk-1", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-walk-2", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-walk-3", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"]
+      ],
+      "SE": [
+        ["horse-bay-southeast-walk-0", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-walk-1", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-walk-2", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-walk-3", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"]
+      ],
+      "S": [
+        ["horse-bay-south-walk-0", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-walk-1", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-walk-2", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-walk-3", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"]
+      ],
+      "SW": [
+        ["horse-bay-southwest-walk-0", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-walk-1", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-walk-2", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-walk-3", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"]
+      ],
+      "W": [
+        ["horse-bay-west-walk-0", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-walk-1", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-walk-2", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-walk-3", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"]
+      ],
+      "NW": [
+        ["horse-bay-northwest-walk-0", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-walk-1", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-walk-2", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-walk-3", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"]
+      ]
+    },
+    "running": {
+      "N": [
+        ["horse-bay-north-run-0", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-run-1", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-run-2", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-run-3", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-run-4", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"],
+        ["horse-bay-north-run-5", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"]
+      ],
+      "NE": [
+        ["horse-bay-northeast-run-0", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-run-1", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-run-2", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-run-3", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-run-4", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"],
+        ["horse-bay-northeast-run-5", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"]
+      ],
+      "E": [
+        ["horse-bay-east-run-0", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-run-1", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-run-2", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-run-3", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-run-4", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"],
+        ["horse-bay-east-run-5", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"]
+      ],
+      "SE": [
+        ["horse-bay-southeast-run-0", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-run-1", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-run-2", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-run-3", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-run-4", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"],
+        ["horse-bay-southeast-run-5", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"]
+      ],
+      "S": [
+        ["horse-bay-south-run-0", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-run-1", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-run-2", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-run-3", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-run-4", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"],
+        ["horse-bay-south-run-5", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"]
+      ],
+      "SW": [
+        ["horse-bay-southwest-run-0", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-run-1", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-run-2", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-run-3", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-run-4", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"],
+        ["horse-bay-southwest-run-5", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"]
+      ],
+      "W": [
+        ["horse-bay-west-run-0", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-run-1", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-run-2", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-run-3", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-run-4", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"],
+        ["horse-bay-west-run-5", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"]
+      ],
+      "NW": [
+        ["horse-bay-northwest-run-0", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-run-1", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-run-2", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-run-3", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-run-4", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"],
+        ["horse-bay-northwest-run-5", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"]
+      ]
+    },
+    "hit": {
+      "N":  { "layers": ["horse-bay-north", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"], "weapon": { "x": 3, "y": 2, "rot": -10 } },
+      "NE": { "layers": ["horse-bay-northeast", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"], "weapon": { "x": 3, "y": 2, "rot": -10 } },
+      "E":  { "layers": ["horse-bay-east", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"], "weapon": { "x": 4, "y": 4, "rot": -10 } },
+      "SE": { "layers": ["horse-bay-southeast", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"], "weapon": { "x": 3, "y": 4, "rot": -10 } },
+      "S":  { "layers": ["horse-bay-south", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"], "weapon": { "x": -3, "y": 4, "rot": -10 } },
+      "SW": { "layers": ["horse-bay-southwest", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"], "weapon": { "x": -3, "y": 4, "rot": -10 } },
+      "W":  { "layers": ["horse-bay-west", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"], "weapon": { "x": -4, "y": 4, "rot": -10 } },
+      "NW": { "layers": ["horse-bay-northwest", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"], "weapon": { "x": -3, "y": 2, "rot": -10 } }
+    },
+    "dying": {
+      "N":  { "layers": ["horse-bay-north", "rider-legs-north", "rider-torso-north", "cuirass-north", "rider-arms-north-idle", "helmet-cuirassier-north"], "weapon": { "x": 3, "y": 4, "rot": 0 } },
+      "NE": { "layers": ["horse-bay-northeast", "rider-legs-northeast", "rider-torso-northeast", "cuirass-northeast", "rider-arms-northeast-idle", "helmet-cuirassier-northeast"], "weapon": { "x": 3, "y": 4, "rot": 0 } },
+      "E":  { "layers": ["horse-bay-east", "rider-legs-east", "rider-torso-east", "cuirass-east", "rider-arms-east-idle", "helmet-cuirassier-east"], "weapon": { "x": 4, "y": 5, "rot": 0 } },
+      "SE": { "layers": ["horse-bay-southeast", "rider-legs-southeast", "rider-torso-southeast", "cuirass-southeast", "rider-arms-southeast-idle", "helmet-cuirassier-southeast"], "weapon": { "x": 3, "y": 5, "rot": 0 } },
+      "S":  { "layers": ["horse-bay-south", "rider-legs-south", "rider-torso-south", "cuirass-south", "rider-arms-south-idle", "helmet-cuirassier-south"], "weapon": { "x": -3, "y": 5, "rot": 0 } },
+      "SW": { "layers": ["horse-bay-southwest", "rider-legs-southwest", "rider-torso-southwest", "cuirass-southwest", "rider-arms-southwest-idle", "helmet-cuirassier-southwest"], "weapon": { "x": -3, "y": 5, "rot": 0 } },
+      "W":  { "layers": ["horse-bay-west", "rider-legs-west", "rider-torso-west", "cuirass-west", "rider-arms-west-idle", "helmet-cuirassier-west"], "weapon": { "x": -4, "y": 5, "rot": 0 } },
+      "NW": { "layers": ["horse-bay-northwest", "rider-legs-northwest", "rider-torso-northwest", "cuirass-northwest", "rider-arms-northwest-idle", "helmet-cuirassier-northwest"], "weapon": { "x": -3, "y": 4, "rot": 0 } }
+    }
+  },
+  "weapon": {
+    "layerPrefix": "saber",
+    "facings": {
+      "N":  { "src": "self" },
+      "NW": { "src": "self" },
+      "W":  { "src": "self" },
+      "NE": { "src": "NW", "transform": "flipX" },
+      "E":  { "src": "W",  "transform": "flipX" },
+      "S":  { "src": "N",  "transform": "flipY" },
+      "SE": { "src": "NW", "transform": "rot180" },
+      "SW": { "src": "NW", "transform": "flipY" }
+    }
   }
 }

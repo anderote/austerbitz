@@ -94,6 +94,10 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
+  // Monotonic counter for box-select groups. Each completed box-select
+  // mints a fresh id and stamps every selected unit's lastSelectionGroup
+  // so a later double-click on any of them recalls the group.
+  let nextSelectionGroupId = 1;
   // Hold-F = "hurry to your slot." Each frame F is held, every selected unit
   // is re-issued a full-speed move toward the position/facing it's already
   // trying to reach (current move/march-formation target, or rest anchor).
@@ -124,6 +128,19 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     const ids = findSameKindInView(world, kind, viewRect(), { team });
     selection.ids.clear();
     for (const x of ids) selection.ids.add(x);
+  }
+
+  function selectGroupOf(id: number): void {
+    const e = world.entities;
+    const groupId = e.lastSelectionGroup[id]!;
+    if (groupId === -1) return;
+    selection.ids.clear();
+    for (let i = 0; i < e.count; i++) {
+      const otherId = e.aliveIds[i]!;
+      if (e.lastSelectionGroup[otherId] === groupId && !isDead(e, otherId)) {
+        selection.ids.add(otherId);
+      }
+    }
   }
 
   function isOnHud(target: EventTarget | null): boolean {
@@ -241,6 +258,15 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         }
         if (!additive) selection.ids.clear();
         for (const id of picked) selection.ids.add(id);
+        // Mint a fresh group id for the resulting selection so that a future
+        // double-click on any member re-selects the whole group. Skip when
+        // nothing new was picked (e.g. a no-op shift+drag) to avoid churning
+        // the existing group ids.
+        if (picked.length > 0 && selection.ids.size > 0) {
+          const groupId = nextSelectionGroupId++;
+          const ent = world.entities;
+          for (const id of selection.ids) ent.lastSelectionGroup[id] = groupId;
+        }
       } else {
         const wPoint = screenToWorld(camera, { x: e.clientX, y: e.clientY });
         const idAtPoint = hitTestPoint(world, wPoint);
@@ -256,14 +282,17 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
           return;
         }
 
-        // Double-click: same as Ctrl-click on the same id within the timing window.
+        // Double-click: recall the unit's last box-selected group.
         // Only applies to plain clicks (no Shift), so Shift+click+Shift+click is not intercepted.
-        if (!additive && idAtPoint !== -1 && lastClick && lastClick.id === idAtPoint) {
+        // Falls through to plain single-click when the unit has no remembered
+        // group — Ctrl+click is the explicit gesture for select-same-kind.
+        if (!additive && idAtPoint !== -1 && lastClick && lastClick.id === idAtPoint
+            && world.entities.lastSelectionGroup[idAtPoint]! !== -1) {
           const dt = performance.now() - lastClick.t;
           const dx = e.clientX - lastClick.x;
           const dy = e.clientY - lastClick.y;
           if (dt <= DOUBLE_CLICK_MS && Math.hypot(dx, dy) <= DOUBLE_CLICK_PX) {
-            selectSameKindAs(idAtPoint);
+            selectGroupOf(idAtPoint);
             lastClick = { id: idAtPoint, t: performance.now(), x: e.clientX, y: e.clientY };
             drag.active = false;
             pendingClickStart = null;

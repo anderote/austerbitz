@@ -295,7 +295,22 @@ async function main() {
     : null;
   const scale = args.has('scale') ? Number(args.get('scale')) : 6;
 
-  const baseAtlas = PNG.sync.read(readFileSync(baseAtlasPath));
+  // If the kit declares no usable base atlas (e.g. a fully-procedural kit
+  // like cannon-12), fall back to a transparent 3x3-cell canvas. clearCell()
+  // wipes each cell anyway before compositing, so the base is purely a
+  // backdrop for cells that aren't explicitly drawn.
+  let baseAtlas;
+  try {
+    baseAtlas = PNG.sync.read(readFileSync(baseAtlasPath));
+  } catch (_err) {
+    const emptyW = CELL_W * 3;
+    const emptyH = CELL_H * 3;
+    baseAtlas = new PNG({ width: emptyW, height: emptyH });
+    baseAtlas.data.fill(0);
+    mkdirSync(dirname(baseAtlasPath), { recursive: true });
+    writeFileSync(baseAtlasPath, PNG.sync.write(baseAtlas));
+    console.log(`Created empty base atlas: ${baseAtlasPath}`);
+  }
   recolorMarkers(baseAtlas, bakedRegiment);
 
   console.log(`Using base atlas: ${baseAtlasPath}`);
@@ -307,7 +322,13 @@ async function main() {
     // Build the markers atlas first using the raw (un-recolored) base atlas
     // and raw component PNGs. This preserves the marker pixel scheme so the
     // gallery can recolor client-side at runtime.
-    const rawBase = PNG.sync.read(readFileSync(baseAtlasPath));
+    let rawBase;
+    try {
+      rawBase = PNG.sync.read(readFileSync(baseAtlasPath));
+    } catch (_err) {
+      rawBase = new PNG({ width: CELL_W * 3, height: CELL_H * 3 });
+      rawBase.data.fill(0);
+    }
     const markersTarget = new PNG({ width: rawBase.width, height: rawBase.height });
     markersTarget.data.set(rawBase.data);
 

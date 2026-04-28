@@ -68,7 +68,9 @@ export interface Entities {
   // Identity
   kindId: Uint16Array;
   team: Uint8Array;
-  formationId: Int32Array;  // -1 if none
+  // Id of the last box-select group this unit was part of (-1 = none).
+  // Double-clicking a unit re-selects every alive unit sharing this id.
+  lastSelectionGroup: Int32Array;
 
   // Identity (per-instance bio)
   firstNameIdx: Uint16Array; // index into theme's first-name pool
@@ -131,7 +133,7 @@ export function createEntities(capacity: number): Entities {
     pushedT: new Float32Array(capacity),
     kindId: new Uint16Array(capacity),
     team: new Uint8Array(capacity),
-    formationId: new Int32Array(capacity).fill(-1),
+    lastSelectionGroup: new Int32Array(capacity).fill(-1),
     firstNameIdx: new Uint16Array(capacity),
     lastNameIdx: new Uint16Array(capacity),
     hometownIdx: new Uint16Array(capacity),
@@ -183,7 +185,7 @@ export function allocEntity(e: Entities): number {
   e.pushedT[id] = 0;
   e.kindId[id] = 0;
   e.team[id] = 0;
-  e.formationId[id] = -1;
+  e.lastSelectionGroup[id] = -1;
   e.firstNameIdx[id] = 0;
   e.lastNameIdx[id] = 0;
   e.hometownIdx[id] = 0;

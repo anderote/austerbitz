@@ -141,9 +141,10 @@ function offsetsApiPlugin(): Plugin {
           return;
         }
 
-        // POST /api/kits/:unit — deep-merge weapon block + pose weapon transforms
-        // into the kit JSON. Replaces leaf values; never deletes existing keys.
-        // 404 if the kit file is missing, 400 on malformed JSON.
+        // POST /api/kits/:unit — deep-merge weapon block, idle facing layers,
+        // and per-pose weapon transforms into the kit JSON. Replaces leaf
+        // values; never deletes existing keys. 404 if the kit file is missing,
+        // 400 on malformed JSON.
         if (method === 'POST' && url.startsWith('/api/kits/')) {
           try {
             const unit = decodeURIComponent(url.slice('/api/kits/'.length));
@@ -177,40 +178,87 @@ function offsetsApiPlugin(): Plugin {
             if (body.weapon && typeof body.weapon === 'object') {
               parsed.weapon = body.weapon;
             }
+            // Deep merge of facings[F].layers (idle facings only). Replaces the
+            // layers array per facing without touching cell coords or other keys.
+            if (body.facings && typeof body.facings === 'object') {
+              if (!parsed.facings || typeof parsed.facings !== 'object') {
+                parsed.facings = {};
+              }
+              for (const [facing, facingEntry] of Object.entries(
+                body.facings as Record<string, unknown>
+              )) {
+                if (!facingEntry || typeof facingEntry !== 'object') continue;
+                const fe = facingEntry as { layers?: unknown };
+                if (!Array.isArray(fe.layers)) continue;
+                const layers = fe.layers.filter((s) => typeof s === 'string') as string[];
+                let existing = parsed.facings[facing];
+                if (!existing || typeof existing !== 'object') existing = {};
+                existing.layers = layers;
+                parsed.facings[facing] = existing;
+              }
+            }
             // Deep merge of poses[pose][facing].weapon = { x, y, rot }, never
             // touching any non-weapon keys (layers, etc.) of pose entries.
-            if (body.poses && typeof body.poses === 'object') {
-              if (!parsed.poses || typeof parsed.poses !== 'object') {
-                parsed.poses = {};
-              }
+            // Skips poses or facings that don't already exist on disk — the
+            // editor occasionally retains stale in-memory state for deleted
+            // poses, and we don't want autosave resurrecting them.
+            if (body.poses && typeof body.poses === 'object' && parsed.poses && typeof parsed.poses === 'object') {
               for (const [poseId, poseFacings] of Object.entries(body.poses)) {
                 if (!poseFacings || typeof poseFacings !== 'object') continue;
-                if (!parsed.poses[poseId] || typeof parsed.poses[poseId] !== 'object') {
-                  parsed.poses[poseId] = {};
-                }
+                if (!parsed.poses[poseId] || typeof parsed.poses[poseId] !== 'object') continue;
                 for (const [facing, facingEntry] of Object.entries(
                   poseFacings as Record<string, unknown>
                 )) {
                   if (!facingEntry || typeof facingEntry !== 'object') continue;
-                  const fe = facingEntry as { weapon?: unknown };
-                  if (!fe.weapon || typeof fe.weapon !== 'object') continue;
+                  const fe = facingEntry as { weapon?: unknown; weaponVariants?: unknown };
+                  const hasWeapon = fe.weapon && typeof fe.weapon === 'object';
+                  const hasVariants = Array.isArray(fe.weaponVariants);
+                  if (!hasWeapon && !hasVariants) continue;
+                  // Skip facings the kit hasn't authored — autosave shouldn't
+                  // create new (pose, facing) entries on its own.
                   let existing = parsed.poses[poseId][facing];
+                  if (!existing) continue;
                   if (Array.isArray(existing)) {
                     existing = { layers: existing };
-                  } else if (!existing || typeof existing !== 'object') {
-                    existing = { layers: [] };
+                  } else if (typeof existing !== 'object') {
+                    continue;
                   }
-                  // Sanitize the weapon block: only persist known fields
-                  // (x, y, rot, flipX). Drop flipX when it isn't true so JSON
-                  // stays minimal.
-                  const w = fe.weapon as Record<string, unknown>;
-                  const cleaned: { x: number; y: number; rot: number; flipX?: true } = {
-                    x: typeof w.x === 'number' ? (w.x | 0) : 0,
-                    y: typeof w.y === 'number' ? (w.y | 0) : 0,
-                    rot: typeof w.rot === 'number' ? +w.rot : 0,
+                  const validSrc = new Set(['self', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']);
+                  const validXf = new Set(['none', 'flipX', 'flipY', 'rot180']);
+                  const sanitizeWeapon = (w: Record<string, unknown>) => {
+                    const cleaned: {
+                      x: number;
+                      y: number;
+                      rot: number;
+                      flipX?: true;
+                      src?: 'self' | 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+                      transform?: 'none' | 'flipX' | 'flipY' | 'rot180';
+                    } = {
+                      x: typeof w.x === 'number' ? (w.x | 0) : 0,
+                      y: typeof w.y === 'number' ? (w.y | 0) : 0,
+                      rot: typeof w.rot === 'number' ? +w.rot : 0,
+                    };
+                    if (w.flipX === true) cleaned.flipX = true;
+                    if (typeof w.src === 'string' && validSrc.has(w.src)) {
+                      cleaned.src = w.src as typeof cleaned.src;
+                      if (w.src !== 'self') {
+                        cleaned.transform = (typeof w.transform === 'string' && validXf.has(w.transform))
+                          ? (w.transform as typeof cleaned.transform)
+                          : 'none';
+                      }
+                    }
+                    return cleaned;
                   };
-                  if (w.flipX === true) cleaned.flipX = true;
-                  existing.weapon = cleaned;
+                  if (hasWeapon) {
+                    existing.weapon = sanitizeWeapon(fe.weapon as Record<string, unknown>);
+                  }
+                  if (hasVariants) {
+                    const variants = (fe.weaponVariants as unknown[])
+                      .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
+                      .map(sanitizeWeapon);
+                    if (variants.length > 0) existing.weaponVariants = variants;
+                    else delete existing.weaponVariants;
+                  }
                   parsed.poses[poseId][facing] = existing;
                 }
               }
@@ -228,23 +276,6 @@ function offsetsApiPlugin(): Plugin {
           try {
             const body = await readJsonBody(req);
             const target = resolve(PROJECT_ROOT, 'public/sprites/poses/edits.json');
-            await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
-            sendJson(res, 200, { ok: true });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            sendJson(res, 400, { ok: false, error: message });
-          }
-          return;
-        }
-
-        if (method === 'POST' && url.startsWith('/api/kit/')) {
-          try {
-            const kitId = decodeURIComponent(url.slice('/api/kit/'.length));
-            if (!/^[a-zA-Z0-9_-]+$/.test(kitId)) {
-              throw new Error('Invalid kitId');
-            }
-            const body = await readJsonBody(req);
-            const target = resolve(PROJECT_ROOT, 'public/components/kits/' + kitId + '.json');
             await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
             sendJson(res, 200, { ok: true });
           } catch (err) {
