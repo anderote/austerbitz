@@ -9,7 +9,7 @@ export const CANNONBALL_TRAIL: PuffProfile = {
   drag: 0.97, buoyancy: -0.6,
   inertiaExp: 2, inertiaWeight: 0.10,
   color: [0.7, 0.7, 0.72], colorJitter: 0.02,
-  alpha: 0.85, softness: 0.85,
+  alpha: 0.55, softness: 0.85,
   coalesce: null,
 };
 

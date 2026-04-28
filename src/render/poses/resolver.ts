@@ -46,15 +46,14 @@ export function buildDirLookup(available: readonly Direction[]): Direction[] {
 }
 
 // ----------------------------------------------------------------------------
-// Weapon palette schema (see
-// docs/superpowers/specs/2026-04-27-weapon-palette-design.md).
+// Inline weapon orientation schema (see
+// docs/superpowers/specs/2026-04-28-weapon-pose-palette-design.md).
 //
-// A kit declares a flat `weaponPalette: WeaponPaletteEntry[]` of named entries
-// — each carries its own (src, transform, x, y, rot, flipX) tuple. Per-pose
-// authoring (`kit.poses[pose][dir].weapon` / `weaponVariants`) references
-// palette entries by id (string), so the same entry can be reused across many
-// (pose, dir) slots without duplication. `kit.weapon.layerPrefix` survives;
-// the old `kit.weapon.facings` block is gone.
+// Each `(pose, facing)` carries its own `weapons?: WeaponOrientation[]` array.
+// The first entry is the primary; remaining entries are variants. The runtime
+// picks `entity.id % weapons.length` so soldiers in formation get visual
+// variety without flickering frame-to-frame. The kit-level palette
+// indirection is gone.
 // ----------------------------------------------------------------------------
 
 /** 8-way compass facing. The weapon system ignores `omni`. */
@@ -65,10 +64,12 @@ export const FACINGS: readonly Facing[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W',
 /** Texture-space transform applied when re-using a source facing's sprite. */
 export type WeaponFacingTransform = 'flipX' | 'flipY' | 'rot180';
 
-/** A single named weapon entry in a kit's palette. */
-export interface WeaponPaletteEntry {
-  /** Unique within the kit; stable across edits. */
-  id: string;
+/**
+ * A single weapon orientation authored on a `(pose, facing)` cell. Carries the
+ * full `(src, transform, x, y, rot, flipX)` tuple inline — no kit-level
+ * indirection.
+ */
+export interface WeaponOrientation {
   /** Which authored source PNG to sample. */
   src: Facing;
   /** Texture-space transform on the source UV (default 'none'). */
@@ -82,9 +83,7 @@ export interface WeaponPaletteEntry {
   flipX?: true;
 }
 
-export type WeaponPalette = readonly WeaponPaletteEntry[];
-
-/** Top-level kit weapon block. The palette carries the per-entry sprite choice. */
+/** Top-level kit weapon block. */
 export interface WeaponBlock {
   layerPrefix: string;
 }
@@ -93,15 +92,12 @@ export interface WeaponBlock {
 export interface PoseFacingEntry {
   /** Single-frame layer list, or per-frame list of layer lists. */
   layers: string[] | string[][];
-  /** Palette id of the primary weapon for this (pose, facing). */
-  weapon?: string;
   /**
-   * Palette ids of alternative weapon authorings for this (pose, facing).
-   * Runtime pools `[weapon, ...weaponVariants]` and picks an index by
-   * `entity.id % pool.length` so soldiers in formation get visual variety
-   * without flickering frame-to-frame.
+   * Inline weapon orientations: `[primary, ...variants]`. Runtime picks
+   * `entity.id % weapons.length` so soldiers in formation get visual variety
+   * without flickering frame-to-frame. Empty/missing → no weapon overlay.
    */
-  weaponVariants?: string[];
+  weapons?: WeaponOrientation[];
 }
 
 /**
@@ -116,110 +112,39 @@ export function normalizePoseFacingEntry(
 }
 
 /**
- * Look up a palette entry by id. Returns null on miss; logs a warning for
- * unknown ids so authoring drift surfaces in the console.
- */
-export function resolvePaletteEntry(
-  palette: WeaponPalette | undefined,
-  id: string,
-): WeaponPaletteEntry | null {
-  if (!palette) return null;
-  for (const entry of palette) {
-    if (entry.id === id) return entry;
-  }
-  return null;
-}
-
-/**
- * Resolve which atlas key + transform to draw for a palette entry.
+ * Resolve which atlas key + transform to draw for a weapon orientation.
  *
- * `spriteKey` is `<layerPrefix>-<entry.src>`; transform defaults to `'none'`.
+ * `spriteKey` is `<layerPrefix>-<orientation.src>`; transform defaults to
+ * `'none'`.
  */
 export function resolveWeaponSpriteKey(
   layerPrefix: string,
-  entry: WeaponPaletteEntry,
+  orientation: WeaponOrientation,
 ): { spriteKey: string; transform: 'none' | WeaponFacingTransform } {
   return {
-    spriteKey: `${layerPrefix}-${entry.src}`,
-    transform: entry.transform ?? 'none',
+    spriteKey: `${layerPrefix}-${orientation.src}`,
+    transform: orientation.transform ?? 'none',
   };
 }
 
 /**
- * Resolve the palette entry referenced by `(pose, facing).weapon`. Returns
- * null when the pose entry, the facing entry, or the weapon id is missing —
- * or when the id doesn't exist in the palette. Unknown ids emit a warning.
- */
-export function resolvePoseWeaponEntry(
-  poses:
-    | Record<string, Record<string, string[] | string[][] | PoseFacingEntry>>
-    | undefined,
-  pose: string,
-  facing: Facing,
-  palette: WeaponPalette | undefined,
-): WeaponPaletteEntry | null {
-  if (!poses) return null;
-  const poseEntry = poses[pose];
-  if (!poseEntry) return null;
-  const facingEntry = poseEntry[facing];
-  if (!facingEntry) return null;
-  const normalized = normalizePoseFacingEntry(facingEntry);
-  const id = normalized.weapon;
-  if (typeof id !== 'string') return null;
-  const resolved = resolvePaletteEntry(palette, id);
-  if (!resolved) {
-    console.warn(
-      `[weapon-palette] unknown palette id '${id}' on (pose=${pose}, facing=${facing})`,
-    );
-    return null;
-  }
-  return resolved;
-}
-
-/**
- * Pool the variants authored for a (pose, facing): `[primary, ...variants]`,
- * each resolved through the palette. Unknown ids are skipped with a warning.
- * Returns an empty array when there's no primary weapon id.
+ * Read the inline weapon-orientation pool for a `(pose, facing)`. Returns
+ * `(pose, facing).weapons ?? []`. Order is preserved (primary first). Returns
+ * an empty array for missing pose / facing / `weapons` field, and for legacy
+ * bare-array facing entries.
  */
 export function readWeaponVariantPool(
   poses:
     | Record<string, Record<string, string[] | string[][] | PoseFacingEntry>>
     | undefined,
-  palette: WeaponPalette | undefined,
   pose: string,
   facing: Facing,
-): WeaponPaletteEntry[] {
+): WeaponOrientation[] {
   if (!poses) return [];
   const poseEntry = poses[pose];
   if (!poseEntry) return [];
   const facingEntry = poseEntry[facing];
   if (!facingEntry) return [];
   const norm = normalizePoseFacingEntry(facingEntry);
-  const out: WeaponPaletteEntry[] = [];
-  if (typeof norm.weapon === 'string') {
-    const primary = resolvePaletteEntry(palette, norm.weapon);
-    if (primary) {
-      out.push(primary);
-    } else {
-      console.warn(
-        `[weapon-palette] unknown primary palette id '${norm.weapon}' on ` +
-          `(pose=${pose}, facing=${facing})`,
-      );
-    }
-  }
-  if (Array.isArray(norm.weaponVariants)) {
-    for (const id of norm.weaponVariants) {
-      if (typeof id !== 'string') continue;
-      const entry = resolvePaletteEntry(palette, id);
-      if (entry) {
-        out.push(entry);
-      } else {
-        console.warn(
-          `[weapon-palette] unknown variant palette id '${id}' on ` +
-            `(pose=${pose}, facing=${facing})`,
-        );
-      }
-    }
-  }
-  return out;
+  return Array.isArray(norm.weapons) ? norm.weapons : [];
 }

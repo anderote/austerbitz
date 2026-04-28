@@ -5,7 +5,7 @@ import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
 import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
-import { isDead, EntityState } from '../sim/entities';
+import { isDead, EntityState, FireStance } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
   bumpSpacing, bumpRanks, spacingMultiplier, minSpacingIndexForMult,
@@ -40,6 +40,8 @@ export interface SelectionController {
   readonly tightHeld: boolean;
   /** Hidden rank snapshot used to preserve the rectangle across [/] presses. */
   readonly lockedRanks: number | null;
+  /** When true, single right-click runs; when false (default), single right-click walks. Toggled by KeyT. */
+  readonly runMode: boolean;
   /** Called once per frame. Currently a no-op; reserved for per-frame work. */
   update(dt: number): void;
   destroy(): void;
@@ -90,6 +92,15 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
+  // Most recent empty-ground RMB that issued a move. Used to detect a double
+  // right-click within DOUBLE_CLICK_MS/PX, which overrides the current run/walk
+  // mode and forces a run. Only seeded on plain RMB moves (not attack, march,
+  // or modifier-driven branches).
+  let lastRightClick: { t: number; x: number; y: number } | null = null;
+  // Default movement mode. false = walk (slower, walking animation),
+  // true = run (full base speed, running animation). Toggled with KeyT.
+  // Double right-click overrides this and always runs.
+  let runMode = false;
   // Monotonic counter for box-select groups. Each completed box-select
   // mints a fresh id and stamps every selected unit's lastSelectionGroup
   // so a later double-click on any of them recalls the group.
@@ -348,6 +359,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         }
         pendingFormationStart = null;
         formationDrag.active = false;
+        lastRightClick = null;
         return;
       }
 
@@ -360,6 +372,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if ((e.ctrlKey || e.metaKey) && selection.ids.size > 0) {
         issueMarchFormation(world, selection, w, formationParams);
         puff(w.x, w.y);
+        lastRightClick = null;
         return;
       }
 
@@ -368,20 +381,36 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         issueAttack(world, selection, hit, opts);
         puff(w.x, w.y);
         tightHeld = false;
+        // Attack on enemy isn't part of a movement double-click sequence.
+        lastRightClick = null;
       } else {
+        // Walk vs run: single click follows runMode, but a double right-click
+        // (within the same window used for left-click double-clicks) overrides
+        // and forces a run regardless of mode.
+        let walk = !runMode;
+        if (lastRightClick) {
+          const dt = performance.now() - lastRightClick.t;
+          const dx = e.clientX - lastRightClick.x;
+          const dy = e.clientY - lastRightClick.y;
+          if (dt <= DOUBLE_CLICK_MS && Math.hypot(dx, dy) <= DOUBLE_CLICK_PX) {
+            walk = false;
+          }
+        }
+        const moveOpts = { ...opts, walk };
         let assignments;
         if (isTightStance(formationParams)) {
           const fwd = averageFacing();
           const ranks = effectiveReformRanks(fwd);
-          assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, ranks, opts);
+          assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, ranks, moveOpts);
         } else {
-          assignments = issueMove(world, selection, w, opts);
+          assignments = issueMove(world, selection, w, moveOpts);
         }
         puff(w.x, w.y);
         if (deps.movePreview && assignments.length > 0) {
           deps.movePreview.add(assignments.map(a => a.target));
         }
         tightHeld = false;
+        lastRightClick = { t: performance.now(), x: e.clientX, y: e.clientY };
       }
       return;
     }
@@ -424,6 +453,19 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         }
         return;
       }
+      // Digits 1–4 with a non-empty selection: set fire stance.
+      if (digit >= 1 && digit <= 4 && selection.ids.size > 0) {
+        const stance = digit === 1 ? FireStance.AtWill
+                     : digit === 2 ? FireStance.Volley
+                     : digit === 3 ? FireStance.ByRanks
+                     :               FireStance.Hold;
+        const ents = world.entities;
+        for (const id of selection.ids) {
+          if (ents.alive[id] !== 1) continue;
+          ents.stance[id] = stance;
+        }
+        return;
+      }
       // Recall: replace selection with group (alive only).
       selection.ids.clear();
       for (const id of groups[digit]!) {
@@ -432,6 +474,13 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
 
+    if (e.code === 'KeyT') {
+      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
+      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      runMode = !runMode;
+      return;
+    }
     if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
       const ae = (typeof document !== 'undefined') ? document.activeElement : null;
       const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
@@ -504,6 +553,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     clearGridHold();
     ctrlHeld = false;
     lastCursorScreen = null;
+    lastRightClick = null;
   }
 
   // DOM bindings — narrow event types pass through to the pure handlers above.
@@ -556,6 +606,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     get formationParams() { return formationParams; },
     get tightHeld() { return tightHeld; },
     get lockedRanks() { return lockedRanks; },
+    get runMode() { return runMode; },
     formationPreview,
     update(_dt) {
       const e = world.entities;

@@ -2,11 +2,12 @@ import { linkProgram, getUniforms } from '../../gl/program';
 import { createBuffer, createVertexArray } from '../../gl/buffer';
 import { createTextureRGBA } from '../../gl/texture';
 import { SPRITE_VS, SPRITE_FS } from '../shaders/sprite.glsl';
+import { SHADOW_PROJECTION_VS, SHADOW_PROJECTION_FS } from '../shaders/shadow-projection.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
 import { EntityState, PartLost, isDead } from '../../sim/entities';
-import { getUnitKindByIndex } from '../../data/units';
+import { getUnitKindByIndex, unitKinds } from '../../data/units';
 import { RECOIL_T, RECOIL_PUSH_END, RECOIL_HOLD_END } from '../../sim/fire-resolver';
 import {
   KIND_ATLAS,
@@ -18,10 +19,22 @@ import {
 import { type PoseAtlas, pickPoseUv, pickPoseVariantUv, pickWeaponUv, pickHeadUv } from '../poses/atlas';
 import { composeCombinedAtlas } from '../poses/combined-atlas';
 import {
-  readWeaponVariantPool,
   type Facing,
+  type WeaponOrientation,
 } from '../poses/resolver';
 import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader';
+import { Pose, POSE_CONFIG } from '../poses/pose-config';
+
+// Held-weapon vertical bob during locomotion. The body sprite's bob is baked
+// into its source frames, but the weapon overlay is anchored at one fixed
+// per-(pose, facing) position — without a synthesized match, it floats
+// steadily while the body bounces under it. Frequency = pose fps / 4 (one
+// full bob cycle per stride on a standard 4-frame gait); amplitude is in
+// source-sprite pixels and snapped to integers for pixel-art crispness.
+const WEAPON_BOB_WALK_PX = 1;
+const WEAPON_BOB_RUN_PX = 1;
+const WEAPON_BOB_WALK_HZ = POSE_CONFIG[Pose.walking].fps / 4;
+const WEAPON_BOB_RUN_HZ = POSE_CONFIG[Pose.running].fps / 4;
 
 const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
 
@@ -77,8 +90,8 @@ interface FactionPalette {
  * the async fetch fails or the first frame ticks before the fetch resolves.
  */
 let regiments: FactionPalette[] = [
-  { id: 'british-line',  label: 'British Line',  primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
   { id: 'french-line',   label: 'French Line',   primary: [40, 80, 190],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+  { id: 'british-line',  label: 'British Line',  primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
   { id: 'prussian-line', label: 'Prussian Line', primary: [35, 45, 75],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
   { id: 'russian-line',  label: 'Russian Line',  primary: [40, 75, 50],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
   { id: 'austrian-line', label: 'Austrian Line', primary: [225, 215, 195], secondary: [120, 105, 85],  tertiary: [15, 15, 20] },
@@ -131,13 +144,21 @@ export function createSpritePass(
   capacity: number,
   poseAtlas: PoseAtlas | null,
   kits: ReadonlyMap<string, KitConfig> = new Map(),
+  worldH = 2000,
 ): SpritePass {
   // Fire-and-forget regiment load; falls back to the hardcoded defaults until
   // the fetch resolves. Validation + warning live inside loadRegimentsAsync.
   void loadRegimentsAsync();
 
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
-  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld'] as const);
+  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld', 'u_worldH'] as const);
+
+  // Ground-shadow program. Reuses the same VAO and atlas as the sprite pass;
+  // its VS reads attributes 0,1,2,4,9,10,11 and projects each vertex onto the
+  // ground via foot-anchored shear+squash. FS discards dead instances and any
+  // transparent atlas pixels, otherwise emits flat black at fixed alpha.
+  const shadowProg = linkProgram(gl, SHADOW_PROJECTION_VS, SHADOW_PROJECTION_FS);
+  const shadowU = getUniforms(gl, shadowProg, ['u_viewProj', 'u_atlas'] as const);
 
   const vao = createVertexArray(gl);
   gl.bindVertexArray(vao);
@@ -204,6 +225,21 @@ export function createSpritePass(
   gl.enableVertexAttribArray(9);
   gl.vertexAttribPointer(9, 1, gl.FLOAT, false, 0, 0);
   gl.vertexAttribDivisor(9, 1);
+
+  // Per-instance shadow inputs. Read only by the shadow projection program;
+  // the sprite shader doesn't reference them but the locations stay enabled
+  // on this VAO without cost (single float each, divisor 1).
+  const footYBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 1 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(10);
+  gl.vertexAttribPointer(10, 1, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(10, 1);
+
+  const shadowAlphaBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, capacity * 1 * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(11);
+  gl.vertexAttribPointer(11, 1, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(11, 1);
 
   gl.bindVertexArray(null);
 
@@ -284,40 +320,100 @@ export function createSpritePass(
   const scratchWeaponBehindTertiary = new Float32Array(capacity * 3);
   const scratchWeaponBehindPattern = new Float32Array(capacity);
   const scratchWeaponBehindRot = new Float32Array(capacity);
+  // Per-instance shadow inputs, parallel to each instance group above.
+  // `footY` is a world-units offset from sprite center to the foot line; the
+  // shadow shader uses it to anchor the projection. Weapon shadows use the
+  // same foot value as their carrier body so the held musket projects against
+  // the same ground line as the soldier. `shadowAlpha` is 1.0 for living
+  // entities and 0.0 for dying/dead — the FS discards 0.0 instances.
+  const scratchFootY = new Float32Array(capacity);
+  const scratchShadowAlpha = new Float32Array(capacity);
+  const scratchWeaponFootY = new Float32Array(capacity);
+  const scratchWeaponShadowAlpha = new Float32Array(capacity);
+  const scratchWeaponBehindFootY = new Float32Array(capacity);
+  const scratchWeaponBehindShadowAlpha = new Float32Array(capacity);
+
+  // Pre-resolve per-kind foot offset once at pass creation; the per-frame
+  // loop is then a single index lookup per body.
+  const kindFootY = new Float32Array(unitKinds.length);
+  for (let i = 0; i < unitKinds.length; i++) {
+    const k = getUnitKindByIndex(i);
+    kindFootY[i] = k.footYFromCenter ?? k.placeholderSize.h * 0.5;
+  }
   // Reused per-frame sort buffer: alive entity ids sorted back-to-front by world Y.
   // Int32Array so V8 can use the typed-array sort path; on 40k+ entries the
   // boxed-number Array.sort closure path was ~3× slower.
   let sortIdx = new Int32Array(capacity);
 
   /**
-   * Pre-resolved weapon UV cache keyed by `kit.weapon.layerPrefix` then by
-   * palette id. Built once at startup by walking each kit's weaponPalette and
-   * computing one UV per entry via `(src, transform)`. Per-frame the renderer
-   * resolves `(pose, facing).weapon` (palette id) → UV through this map.
+   * Per-source UV cache keyed by `${layerPrefix}|${src}|${transform}`. The
+   * underlying atlas cell is shared per source facing; the transform is
+   * encoded as signed UV spans by `pickWeaponUv`. Dedup ensures we pay the
+   * UV math at most once per `(layerPrefix, src, transform)` combo across
+   * all the kits' inline orientations.
    */
-  const weaponUvByPaletteId = new Map<string, Map<string, [number, number, number, number]>>();
+  const weaponUvBySource = new Map<string, [number, number, number, number]>();
+  function getOrComputeSourceUv(
+    layerPrefix: string,
+    orientation: WeaponOrientation,
+  ): [number, number, number, number] | null {
+    if (!poseAtlas) return null;
+    const transform = orientation.transform ?? 'none';
+    const key = `${layerPrefix}|${orientation.src}|${transform}`;
+    const cached = weaponUvBySource.get(key);
+    if (cached) return cached;
+    const uv = pickWeaponUv(
+      poseAtlas,
+      layerPrefix,
+      orientation.src,
+      transform,
+      poseAtlasY,
+      sheetW,
+      sheetH,
+    );
+    if (uv) weaponUvBySource.set(key, uv);
+    return uv;
+  }
+
+  /**
+   * Pre-resolved per-kit weapon-orientation pool keyed by `(kit.id, pose,
+   * facing)`, indexed by variant index. Each slot carries the resolved UV +
+   * a reference to the source orientation (for `(x, y, rot, flipX)` at draw
+   * time). Variants whose source PNG isn't packed are stored as null, which
+   * the per-frame loop treats as "skip overlay."
+   *
+   * The per-frame draw loop reads:
+   *   pool = weaponPoolByKey.get(`${kindId}|${editorPose}|${facingLetter}`)
+   *   slot = pool[entity.id % pool.length]
+   * — the same `entity.id % length` rule as the old palette path.
+   */
+  interface WeaponSlot {
+    uv: [number, number, number, number];
+    orientation: WeaponOrientation;
+  }
+  const weaponPoolByKey = new Map<string, Array<WeaponSlot | null>>();
   if (poseAtlas) {
     for (const kit of kits.values()) {
       if (!kit.weapon) continue;
-      const palette = kit.weaponPalette;
-      if (!palette || palette.length === 0) continue;
-      let perKit = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
-      if (!perKit) {
-        perKit = new Map();
-        weaponUvByPaletteId.set(kit.weapon.layerPrefix, perKit);
-      }
-      for (const entry of palette) {
-        if (perKit.has(entry.id)) continue;
-        const uv = pickWeaponUv(
-          poseAtlas,
-          kit.weapon.layerPrefix,
-          entry.src,
-          entry.transform ?? 'none',
-          poseAtlasY,
-          sheetW,
-          sheetH,
-        );
-        if (uv) perKit.set(entry.id, uv);
+      const layerPrefix = kit.weapon.layerPrefix;
+      const poses = kit.poses;
+      if (!poses) continue;
+      for (const [poseName, poseEntry] of Object.entries(poses)) {
+        if (!poseEntry || typeof poseEntry !== 'object' || Array.isArray(poseEntry)) continue;
+        for (const [facing, facingEntryRaw] of Object.entries(poseEntry)) {
+          if (!facingEntryRaw || typeof facingEntryRaw !== 'object' || Array.isArray(facingEntryRaw)) {
+            continue;
+          }
+          const weapons = (facingEntryRaw as { weapons?: WeaponOrientation[] }).weapons;
+          if (!Array.isArray(weapons) || weapons.length === 0) continue;
+          const slots: Array<WeaponSlot | null> = new Array(weapons.length).fill(null);
+          for (let i = 0; i < weapons.length; i++) {
+            const orientation = weapons[i]!;
+            const uv = getOrComputeSourceUv(layerPrefix, orientation);
+            if (uv) slots[i] = { uv, orientation };
+          }
+          weaponPoolByKey.set(`${kit.id}|${poseName}|${facing}`, slots);
+        }
       }
     }
   }
@@ -326,8 +422,8 @@ export function createSpritePass(
    * Per-runtime-facing weapon UV cache, keyed by `kit.weapon.layerPrefix`.
    * Used by dropped-items-pass: a dropped weapon picks its sprite based on
    * the facing the entity died on. We resolve each runtime facing to the
-   * palette entry referenced by `kit.poses.dying[<facing>].weapon`, then
-   * to its UV. If the kit doesn't author a dying-pose weapon for some
+   * primary inline orientation on `kit.poses.dying[<facing>].weapons[0]`,
+   * then to its UV. If the kit doesn't author a dying-pose weapon for some
    * facing, that slot stays null and the dropped-items pass skips it.
    */
   const weaponUvByPrefix = new Map<string, Array<[number, number, number, number] | null>>();
@@ -336,19 +432,19 @@ export function createSpritePass(
     for (const kit of kits.values()) {
       if (!kit.weapon) continue;
       if (weaponUvByPrefix.has(kit.weapon.layerPrefix)) continue;
-      const perKit = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
-      if (!perKit) continue;
+      const layerPrefix = kit.weapon.layerPrefix;
       const dying = kit.poses?.dying;
       const uvs: Array<[number, number, number, number] | null> = new Array(8).fill(null);
       for (let i = 0; i < 8; i++) {
         const facing = RUNTIME_FACING_ORDER_FOR_DROPS[i]!;
         const facingEntry = dying?.[facing];
         if (!facingEntry || Array.isArray(facingEntry)) continue;
-        const id = (facingEntry as { weapon?: string }).weapon;
-        if (typeof id !== 'string') continue;
-        uvs[i] = perKit.get(id) ?? null;
+        const weapons = (facingEntry as { weapons?: WeaponOrientation[] }).weapons;
+        if (!Array.isArray(weapons) || weapons.length === 0) continue;
+        const orientation = weapons[0]!;
+        uvs[i] = getOrComputeSourceUv(layerPrefix, orientation);
       }
-      weaponUvByPrefix.set(kit.weapon.layerPrefix, uvs);
+      weaponUvByPrefix.set(layerPrefix, uvs);
     }
   }
 
@@ -442,7 +538,16 @@ export function createSpritePass(
 
       for (let k = 0; k < n; k++) {
         const i = sortIdx[k]!;
-        const kind = getUnitKindByIndex(e.kindId[i]!);
+        const kindIdx = e.kindId[i]!;
+        const kind = getUnitKindByIndex(kindIdx);
+        // World foot Y and shadow-alive flag are written once per body and
+        // re-used for any weapon emitted by this entity (so the held weapon
+        // projects against the same foot line as its carrier body — the
+        // weapon's own a_pos is at hand height, not at the feet).
+        const bodyFootYWorld = e.posY[i]! + kindFootY[kindIdx]!;
+        const bodyShadowAlpha = isDead(e, i) ? 0.0 : 1.0;
+        scratchFootY[k] = bodyFootYWorld;
+        scratchShadowAlpha[k] = bodyShadowAlpha;
         // Render-only recoil: decelerating push out → hold at peak → slow
         // ease back to the anchor. Sim posX/posY never moves.
         const rt = e.recoilT[i]!;
@@ -555,7 +660,13 @@ export function createSpritePass(
           scratchPattern[k] = 0;
           const facing = e.facing[i]!;
           const pose = e.pose[i]!;
-          const poseT = e.poseT[i]!;
+          // Running soldiers desync per-entity so a column doesn't animate in
+          // lockstep; walking pose (= marching/formation) stays synchronized.
+          // Stable hash → [0, 1) seconds, large enough to span any pose's loop.
+          const desync = pose === Pose.running
+            ? ((i * 2654435761) >>> 0) / 0x100000000
+            : 0;
+          const poseT = e.poseT[i]! + desync;
           const clipIdx = e.clipIndex[i]!;
           let uv: readonly [number, number, number, number] | null = null;
           // Detachable-part variant lookup: when a part bit is set, prefer the
@@ -584,34 +695,30 @@ export function createSpritePass(
           scratchUv[k * 4 + 3] = uv[3];
 
           // Weapon overlay (if this kit has a weapon block + the atlas packed
-          // its source sprites). Per-(pose, facing) palette ids resolve through
-          // the kit's weaponPalette to a complete (UV, x, y, rot, flipX)
-          // snapshot. Behind-facings (N/NE/NW) emit into a separate set drawn
-          // BEFORE bodies so the body occludes the weapon; front-facings emit
-          // into the regular set drawn AFTER bodies (overlay on top).
+          // its source sprites). Inline `(pose, facing).weapons[]` carries
+          // the full (src, transform, x, y, rot, flipX) tuples; the pre-built
+          // `weaponPoolByKey` carries one UV slot per orientation. Behind-
+          // facings (N/NE/NW) emit into a separate set drawn BEFORE bodies so
+          // the body occludes the weapon; front-facings emit into the regular
+          // set drawn AFTER bodies (overlay on top).
           const stateNow = e.state[i]!;
           const isDyingOrDead = stateNow === EntityState.Dying || stateNow === EntityState.Dead;
           const kit = kits.get(kind.id);
           if (kit && kit.weapon && !isDyingOrDead) {
             const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
             const editorPose = runtimePoseToEditorPoseName(pose);
-            const palette = kit.weaponPalette;
-            // Pool `[primary, ...variants]` resolved through the palette;
-            // pick by `entity.id % pool.length` so soldiers in a formation
-            // get visual variety without flickering frame-to-frame.
-            const variantPool = editorPose && palette
-              ? readWeaponVariantPool(kit.poses, palette, editorPose, facingLetter)
-              : [];
-            // Avoid double-resolution: readWeaponVariantPool returns
-            // [primary, ...variants] resolved; just index into it.
-            const chosenEntry = variantPool.length > 0
-              ? variantPool[((i % variantPool.length) + variantPool.length) % variantPool.length]!
+            // Per-frame variant pick: `entity.id % weapons.length`. Pulls
+            // from the prebuilt slot pool keyed on `(kindId, pose, facing)`;
+            // each slot is a `(uv, orientation)` pair or `null` if the source
+            // PNG wasn't packed.
+            const poolKey = editorPose ? `${kind.id}|${editorPose}|${facingLetter}` : null;
+            const pool = poolKey ? weaponPoolByKey.get(poolKey) : undefined;
+            const slot = pool && pool.length > 0
+              ? pool[((i % pool.length) + pool.length) % pool.length] ?? null
               : null;
-            const perKitUvs = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
-            const wuv: readonly [number, number, number, number] | null =
-              chosenEntry && perKitUvs ? perKitUvs.get(chosenEntry.id) ?? null : null;
-            if (wuv && chosenEntry) {
-              const offset = chosenEntry;
+            if (slot) {
+              const wuv = slot.uv;
+              const offset = slot.orientation;
               // Body sprite is rendered at `sprW` world units wide for a
               // SPRITE_CELL_PX-wide cell, so the weapon must use the SAME
               // pixel-to-world ratio for both its size AND its per-pose pixel
@@ -620,7 +727,13 @@ export function createSpritePass(
               // composites against 1:1.
               const pxToWorld = sprW / SPRITE_CELL_PX;
               const dxWorld = offset.x * pxToWorld;
-              const dyWorld = offset.y * pxToWorld;
+              let bobPx = 0;
+              if (pose === Pose.walking) {
+                bobPx = Math.round(Math.sin(poseT * 2 * Math.PI * WEAPON_BOB_WALK_HZ) * WEAPON_BOB_WALK_PX);
+              } else if (pose === Pose.running) {
+                bobPx = Math.round(Math.sin(poseT * 2 * Math.PI * WEAPON_BOB_RUN_HZ) * WEAPON_BOB_RUN_PX);
+              }
+              const dyWorld = (offset.y + bobPx) * pxToWorld;
               const wWorldW = WEAPON_PX_W * pxToWorld;
               const wWorldH = WEAPON_PX_H * pxToWorld;
               const isBehind = RUNTIME_FACING_IS_BEHIND[facing]!;
@@ -685,6 +798,17 @@ export function createSpritePass(
               dst.tertiary[wi * 3 + 1] = scratchTertiary[k * 3 + 1]!;
               dst.tertiary[wi * 3 + 2] = scratchTertiary[k * 3 + 2]!;
               dst.rot[wi] = (offset.rot * Math.PI) / 180;
+              // Weapon shadow inputs: same foot/alpha as the carrier body so
+              // the held musket projects against the same ground line. The
+              // dying/dead branch above suppresses weapon emission entirely,
+              // but we still write shadowAlpha=1 here for clarity.
+              if (isBehind) {
+                scratchWeaponBehindFootY[wi] = bodyFootYWorld;
+                scratchWeaponBehindShadowAlpha[wi] = bodyShadowAlpha;
+              } else {
+                scratchWeaponFootY[wi] = bodyFootYWorld;
+                scratchWeaponShadowAlpha[wi] = bodyShadowAlpha;
+              }
               if (isBehind) wbn++;
               else wn++;
             }
@@ -694,17 +818,81 @@ export function createSpritePass(
         }
       }
 
-      gl.useProgram(prog);
       gl.bindVertexArray(vao);
-
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, atlas);
-      gl.uniform1i(u.u_atlas, 0);
-      gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
-      gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      // ---- Ground shadows (drawn before all sprite draws so any sprite in
+      // front correctly occludes shadows behind it). Each group needs only
+      // pos / size / uvRect / rot / footY / shadowAlpha — color / palette /
+      // pattern buffers don't need re-upload here since the shadow shader
+      // doesn't read them. Sprite-pass uploads will overwrite the shared
+      // pos/size/uv/rot buffers immediately afterward.
+      gl.useProgram(shadowProg);
+      gl.uniformMatrix3fv(shadowU.u_viewProj, false, viewProjection(cam));
+      gl.uniform1i(shadowU.u_atlas, 0);
+
+      // Body shadows.
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPos.subarray(0, n * 2));
+      gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSize.subarray(0, n * 2));
+      gl.bindBuffer(gl.ARRAY_BUFFER, uvRectBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchUv.subarray(0, n * 4));
+      gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRot.subarray(0, n));
+      gl.bindBuffer(gl.ARRAY_BUFFER, footYBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchFootY.subarray(0, n));
+      gl.bindBuffer(gl.ARRAY_BUFFER, shadowAlphaBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchShadowAlpha.subarray(0, n));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+
+      // Weapon-behind shadows.
+      if (wbn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindPos.subarray(0, wbn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindSize.subarray(0, wbn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvRectBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindUv.subarray(0, wbn * 4));
+        gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindRot.subarray(0, wbn));
+        gl.bindBuffer(gl.ARRAY_BUFFER, footYBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindFootY.subarray(0, wbn));
+        gl.bindBuffer(gl.ARRAY_BUFFER, shadowAlphaBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponBehindShadowAlpha.subarray(0, wbn));
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, wbn);
+      }
+
+      // Weapon-front shadows.
+      if (wn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponPos.subarray(0, wn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponSize.subarray(0, wn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvRectBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponUv.subarray(0, wn * 4));
+        gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponRot.subarray(0, wn));
+        gl.bindBuffer(gl.ARRAY_BUFFER, footYBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponFootY.subarray(0, wn));
+        gl.bindBuffer(gl.ARRAY_BUFFER, shadowAlphaBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchWeaponShadowAlpha.subarray(0, wn));
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, wn);
+      }
+
+      // ---- Sprite draws. Depth-write the body z derived from foot-Y so that
+      // grass / trees in front (larger foot-Y) cover the body and vice versa.
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+      gl.useProgram(prog);
+      gl.uniform1i(u.u_atlas, 0);
+      gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
+      gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
+      gl.uniform1f(u.u_worldH, worldH);
 
       // Weapons-behind pass: rear-facings (N/NE/NW) drawn FIRST so the body
       // composited next will occlude the weapon.
@@ -776,6 +964,8 @@ export function createSpritePass(
       }
 
       gl.disable(gl.BLEND);
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
 
       gl.bindVertexArray(null);
     },

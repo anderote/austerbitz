@@ -79,7 +79,7 @@ export function spawnBlood(
       vx: Math.cos(a) * s,
       vy: Math.sin(a) * s,
       life: big ? rng.range(1.0, 1.4) : rng.range(0.5, 1.1),
-      size: big ? rng.range(0.40, 0.60) : rng.range(0.20, 0.35),
+      size: big ? rng.range(0.28, 0.42) : rng.range(0.14, 0.24),
       r: 0.45, g: 0.05, b: 0.05,
       drag: 0.92,
       accelY: 0,

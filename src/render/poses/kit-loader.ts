@@ -1,24 +1,18 @@
-import type { Facing, PoseFacingEntry, WeaponBlock, WeaponPaletteEntry } from './resolver';
+import type { Facing, PoseFacingEntry, WeaponBlock } from './resolver';
 
 /**
  * Subset of the kit JSON that the runtime renderer cares about.
  *
  * The editor tracks more (cell coords, facing layer arrays, etc.); the runtime
- * only reads the per-pose weapon block + per-(pose,facing) palette ids and
- * the kit-level `weaponPalette` they reference.
+ * only reads the per-pose weapon block + per-(pose,facing) inline
+ * `weapons[]` orientations.
  */
 export interface KitConfig {
   id: string;
-  /** Per-(pose, facing) layer + optional palette-id reference. Editor namespace. */
+  /** Per-(pose, facing) layer list + optional inline `weapons[]`. Editor namespace. */
   poses?: Record<string, Record<string, string[] | string[][] | PoseFacingEntry>>;
   /** Weapon attachment block (just `layerPrefix`). Absent for unarmed units. */
   weapon?: WeaponBlock;
-  /**
-   * Flat palette of named weapon entries this kit's poses reference by id.
-   * Each entry is a complete (src, transform, x, y, rot, flipX) snapshot;
-   * `(pose, dir).weapon` and `weaponVariants[]` hold ids into this list.
-   */
-  weaponPalette?: WeaponPaletteEntry[];
   /**
    * Optional headgear block. Headgear still uses the legacy per-facing shape
    * (one source PNG per facing, no palette) — distinct from the weapon path.

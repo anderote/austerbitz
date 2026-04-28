@@ -12,6 +12,9 @@ import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-
 import { createCraterStainPass, type CraterStainPass } from './passes/crater-stain-pass';
 import { createPuffPass } from './passes/puff-pass';
 import { createDebrisPass } from './passes/debris-pass';
+import { createGrassTuftsPass, type GrassTuftsPass } from './passes/grass-tufts-pass';
+import { createTreesPass, type TreesPass } from './passes/trees-pass';
+import type { WorldMap } from '../map/world-map';
 import type { World } from '../sim/world';
 import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
@@ -82,14 +85,15 @@ export function createRenderer(
   poseAtlas: PoseAtlas | null,
   kits: ReadonlyMap<string, KitConfig> = new Map(),
   debrisAtlas: DebrisAtlas | null = null,
-  debrisCapacity = 256,
+  debrisCapacity = 8192,
+  map: WorldMap | null = null,
 ): Renderer {
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
   terrain.setBlood(bloodStain.texture, worldW, worldH);
   const craterStain = createCraterStainPass(gl, worldW, worldH);
   terrain.setCrater(craterStain.texture, worldW, worldH);
-  const sprites = createSpritePass(gl, capacity, poseAtlas, kits);
+  const sprites = createSpritePass(gl, capacity, poseAtlas, kits, worldH);
   const droppedItems = createDroppedItemsPass(
     gl,
     capacity,
@@ -105,6 +109,8 @@ export function createRenderer(
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
   const debrisPass = debrisAtlas ? createDebrisPass(gl, debrisCapacity) : null;
+  const grassTuftsPass: GrassTuftsPass | null = map ? createGrassTuftsPass(gl, map) : null;
+  const treesPass: TreesPass | null = map ? createTreesPass(gl, map) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
 
   // Camera shake state — owned by the renderer, invisible to the sim.
@@ -113,6 +119,13 @@ export function createRenderer(
   // no gameplay consequence. Kept separate from world.rng to avoid coupling
   // render timing to sim determinism.
   const shakeRng = createRng(0xdead_beef);
+
+  // Set the depth comparison once. Individual passes flip DEPTH_TEST and the
+  // depth mask on/off; default state is OFF so existing passes keep behaving
+  // exactly as before.
+  gl.depthFunc(gl.LEQUAL);
+  gl.disable(gl.DEPTH_TEST);
+  gl.depthMask(false);
 
   return {
     bloodStain,
@@ -157,14 +170,18 @@ export function createRenderer(
       craterStain.flush();
 
       gl.clearColor(0, 0, 0, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.depthMask(true);                                       // allow depth clear
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.depthMask(false);
       terrain.draw(cam);
+      if (grassTuftsPass) grassTuftsPass.draw(cam);
       if (opts.showMovePreview) {
         selectionPass.drawTeamRange(world, cam, sel, PLAYER_TEAM);
       }
       selectionPass.drawDiscs(world, cam, sel, drag);
       droppedItems.draw(world, cam);
       sprites.draw(world, cam);
+      if (treesPass) treesPass.draw(cam);
       // Gib chunks: drawn after bodies (so they overlay the soldier they came
       // from) but before projectiles/puffs/particles (which are above-soldier
       // FX). Health bars are still on top.

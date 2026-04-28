@@ -68,7 +68,7 @@ void main() {
     stain = texture(u_blood, stainUv).r;
   }
   vec3 bloodCol = vec3(0.18, 0.02, 0.02);
-  color = mix(color, bloodCol, clamp(stain * 0.85, 0.0, 0.85));
+  color = mix(color, bloodCol, clamp(stain * 0.5, 0.0, 0.5));
 
   outColor = vec4(color, 1.0);
 }

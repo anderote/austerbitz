@@ -122,35 +122,96 @@
     "idle": {
       "N": {
         "layers": [],
-        "weapon": "n-0"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 3,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "NE": {
         "layers": [],
-        "weapon": "nw-0"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 3,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "E": {
         "layers": [],
-        "weapon": "w-0"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 4,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "SE": {
         "layers": [],
-        "weapon": "nw-1"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 3,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "S": {
         "layers": [],
-        "weapon": "n-1"
+        "weapons": [
+          {
+            "src": "N",
+            "transform": "flipY",
+            "x": -3,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "SW": {
         "layers": [],
-        "weapon": "nw-2"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -3,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "W": {
         "layers": [],
-        "weapon": "w-1"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -4,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "NW": {
         "layers": [],
-        "weapon": "nw-3"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -3,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       }
     },
     "walking": {
@@ -839,7 +900,14 @@
           "rider-arms-north-idle",
           "helmet-cuirassier-north"
         ],
-        "weapon": "n-2"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 3,
+            "y": 2,
+            "rot": -10
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -850,7 +918,15 @@
           "rider-arms-northeast-idle",
           "helmet-cuirassier-northeast"
         ],
-        "weapon": "nw-4"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 3,
+            "y": 2,
+            "rot": -10
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -861,7 +937,15 @@
           "rider-arms-east-idle",
           "helmet-cuirassier-east"
         ],
-        "weapon": "w-2"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 4,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -872,7 +956,15 @@
           "rider-arms-southeast-idle",
           "helmet-cuirassier-southeast"
         ],
-        "weapon": "nw-5"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 3,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "S": {
         "layers": [
@@ -883,7 +975,15 @@
           "rider-arms-south-idle",
           "helmet-cuirassier-south"
         ],
-        "weapon": "n-3"
+        "weapons": [
+          {
+            "src": "N",
+            "transform": "flipY",
+            "x": -3,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -894,7 +994,15 @@
           "rider-arms-southwest-idle",
           "helmet-cuirassier-southwest"
         ],
-        "weapon": "nw-6"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -3,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -905,7 +1013,14 @@
           "rider-arms-west-idle",
           "helmet-cuirassier-west"
         ],
-        "weapon": "w-3"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -4,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -916,7 +1031,14 @@
           "rider-arms-northwest-idle",
           "helmet-cuirassier-northwest"
         ],
-        "weapon": "nw-7"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -3,
+            "y": 2,
+            "rot": -10
+          }
+        ]
       }
     },
     "dying": {
@@ -929,7 +1051,14 @@
           "rider-arms-north-idle",
           "helmet-cuirassier-north"
         ],
-        "weapon": "n-4"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 3,
+            "y": 4,
+            "rot": 0
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -940,7 +1069,15 @@
           "rider-arms-northeast-idle",
           "helmet-cuirassier-northeast"
         ],
-        "weapon": "nw-8"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 3,
+            "y": 4,
+            "rot": 0
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -951,7 +1088,15 @@
           "rider-arms-east-idle",
           "helmet-cuirassier-east"
         ],
-        "weapon": "w-4"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 4,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -962,7 +1107,15 @@
           "rider-arms-southeast-idle",
           "helmet-cuirassier-southeast"
         ],
-        "weapon": "nw-9"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 3,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "S": {
         "layers": [
@@ -973,7 +1126,15 @@
           "rider-arms-south-idle",
           "helmet-cuirassier-south"
         ],
-        "weapon": "n-5"
+        "weapons": [
+          {
+            "src": "N",
+            "transform": "flipY",
+            "x": -3,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -984,7 +1145,15 @@
           "rider-arms-southwest-idle",
           "helmet-cuirassier-southwest"
         ],
-        "weapon": "nw-10"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -3,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -995,7 +1164,14 @@
           "rider-arms-west-idle",
           "helmet-cuirassier-west"
         ],
-        "weapon": "w-5"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -4,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -1006,196 +1182,18 @@
           "rider-arms-northwest-idle",
           "helmet-cuirassier-northwest"
         ],
-        "weapon": "nw-11"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -3,
+            "y": 4,
+            "rot": 0
+          }
+        ]
       }
     }
   },
   "weapon": {
     "layerPrefix": "saber"
-  },
-  "weaponPalette": [
-    {
-      "id": "n-0",
-      "src": "N",
-      "x": 3,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "n-1",
-      "src": "N",
-      "transform": "flipY",
-      "x": -3,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "n-2",
-      "src": "N",
-      "x": 3,
-      "y": 2,
-      "rot": -10
-    },
-    {
-      "id": "n-3",
-      "src": "N",
-      "transform": "flipY",
-      "x": -3,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "n-4",
-      "src": "N",
-      "x": 3,
-      "y": 4,
-      "rot": 0
-    },
-    {
-      "id": "n-5",
-      "src": "N",
-      "transform": "flipY",
-      "x": -3,
-      "y": 5,
-      "rot": 0
-    },
-    {
-      "id": "nw-0",
-      "src": "NW",
-      "transform": "flipX",
-      "x": 3,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "nw-1",
-      "src": "NW",
-      "transform": "rot180",
-      "x": 3,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "nw-10",
-      "src": "NW",
-      "transform": "flipY",
-      "x": -3,
-      "y": 5,
-      "rot": 0
-    },
-    {
-      "id": "nw-11",
-      "src": "NW",
-      "x": -3,
-      "y": 4,
-      "rot": 0
-    },
-    {
-      "id": "nw-2",
-      "src": "NW",
-      "transform": "flipY",
-      "x": -3,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "nw-3",
-      "src": "NW",
-      "x": -3,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "nw-4",
-      "src": "NW",
-      "transform": "flipX",
-      "x": 3,
-      "y": 2,
-      "rot": -10
-    },
-    {
-      "id": "nw-5",
-      "src": "NW",
-      "transform": "rot180",
-      "x": 3,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "nw-6",
-      "src": "NW",
-      "transform": "flipY",
-      "x": -3,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "nw-7",
-      "src": "NW",
-      "x": -3,
-      "y": 2,
-      "rot": -10
-    },
-    {
-      "id": "nw-8",
-      "src": "NW",
-      "transform": "flipX",
-      "x": 3,
-      "y": 4,
-      "rot": 0
-    },
-    {
-      "id": "nw-9",
-      "src": "NW",
-      "transform": "rot180",
-      "x": 3,
-      "y": 5,
-      "rot": 0
-    },
-    {
-      "id": "w-0",
-      "src": "W",
-      "transform": "flipX",
-      "x": 4,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "w-1",
-      "src": "W",
-      "x": -4,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "w-2",
-      "src": "W",
-      "transform": "flipX",
-      "x": 4,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "w-3",
-      "src": "W",
-      "x": -4,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "w-4",
-      "src": "W",
-      "transform": "flipX",
-      "x": 4,
-      "y": 5,
-      "rot": 0
-    },
-    {
-      "id": "w-5",
-      "src": "W",
-      "x": -4,
-      "y": 5,
-      "rot": 0
-    }
-  ]
+  }
 }

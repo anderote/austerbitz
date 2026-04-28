@@ -11,6 +11,7 @@ layout(location = 6) in vec3 a_secondary;  // per-instance secondary uniform col
 layout(location = 7) in float a_pattern;   // 0 = none, 1 = check, 2 = h-stripes
 layout(location = 8) in vec3 a_tertiary;   // per-instance tertiary uniform color
 layout(location = 9) in float a_rot;       // per-instance rotation in radians (0 = no rot, applied around centre)
+layout(location = 10) in float a_footYWorld; // per-instance world-Y of the body's foot line (used for depth sort vs terrain features)
 
 out vec2 v_uv;
 out vec2 v_world;
@@ -20,7 +21,8 @@ out vec3 v_secondary;
 out vec3 v_tertiary;
 out float v_pattern;
 
-uniform mat3 u_viewProj;
+uniform mat3  u_viewProj;
+uniform float u_worldH;                     // for foot-Y → depth sort against grass/trees
 
 void main() {
   // Quad spans world size; -y in clip-space points up but our world Y grows
@@ -33,7 +35,9 @@ void main() {
   vec2 rotated = vec2(c * corner.x - s * corner.y, s * corner.x + c * corner.y);
   vec2 wp = a_pos + rotated;
   vec3 clip = u_viewProj * vec3(wp, 1.0);
-  gl_Position = vec4(clip.xy, 0.0, 1.0);
+  // Larger foot-Y → closer to viewer → smaller z (drawn on top under LESS).
+  float depth = clamp(0.95 - 0.90 * (a_footYWorld / u_worldH), 0.05, 0.95);
+  gl_Position = vec4(clip.xy, depth, 1.0);
   vec2 quadUv = a_corner + 0.5;            // 0..1 across quad
   // a_uvRect.zw may be negative (flipX/flipY/rot180 weapon transforms encode
   // the mirror via signed UV span). Negative span walks the atlas cell
@@ -79,6 +83,15 @@ void main() {
   bool mag = abs(src.r - src.b) < eps && src.g < src.r - eps && src.r > 0.1;
   bool cyn = abs(src.g - src.b) < eps && src.r < src.g - eps && src.g > 0.1;
   bool yel = abs(src.r - src.g) < eps && src.b < src.r - eps && src.r > 0.1;
+  // Literal red-coat detection — pose-atlas PNGs bake the British red coat
+  // directly (not as magenta markers), so we treat any strongly red-dominant
+  // pixel as a primary slot too. Range chosen to catch the coat (r-g > 80,
+  // r-b > 80) without grabbing skin (~r-g 50) or brass (~b too low but g high).
+  // Brightness normalizes against the mid-coat r=180/255≈0.706.
+  bool redCoat = !mag && !cyn && !yel
+              && src.r > 0.4
+              && (src.r - src.g) > 0.30
+              && (src.r - src.b) > 0.30;
   if (mag) {
     float f = src.r;
     col = clamp(v_primary * f, 0.0, 1.0);
@@ -91,6 +104,9 @@ void main() {
     float f = src.r;
     col = clamp(v_tertiary * f, 0.0, 1.0);
     col = mix(col, vec3(1.0), src.b * 0.5);
+  } else if (redCoat) {
+    float f = clamp(src.r / 0.706, 0.0, 1.4);
+    col = clamp(v_primary * f, 0.0, 1.0);
   }
   // Dot patterns. Sampled atlas cell is solid white, so col=(1,1,1) here —
   // we override based on the fragment's WORLD position so adjacent overlapping

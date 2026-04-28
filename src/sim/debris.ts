@@ -6,7 +6,11 @@ export const GIB_BOUNCE_DAMP = 0.4;     // velZ retained after ground hit
 export const GIB_GROUND_FRICTION = 0.5; // velX/Y retained after ground hit
 export const GIB_SPIN_DRAG = 0.5;       // 1/s
 
-export const MUSKET_GIB_CHANCE = 0.10;
+/** Bounce count at which a gib is considered settled / persistent. */
+export const GIB_SETTLE_BOUNCES = 3;
+
+export const MUSKET_GIB_CHANCE = 0.14;
+export const MUSKET_NONLETHAL_GIB_CHANCE = 0.04;
 export const MELEE_GIB_CHANCE = 0.30;
 
 export interface Debris {
@@ -55,9 +59,25 @@ export function createDebris(capacity: number): Debris {
   };
 }
 
-/** Returns a free slot id, or -1 if at capacity. */
+/**
+ * Returns a free slot id. When the pool is full, evicts an existing gib —
+ * preferring settled (long-landed) gibs over in-flight ones, falling back to
+ * the oldest packed entry if every slot is still in flight. Never returns -1.
+ */
 export function allocDebris(d: Debris): number {
-  if (d.count >= d.capacity) return -1;
+  if (d.count >= d.capacity) {
+    // Prefer evicting a settled gib so a fresh kill replaces an old corpse,
+    // not another gib that's still arcing through the air.
+    let evictPacked = -1;
+    for (let i = 0; i < d.count; i++) {
+      const id = d.aliveIds[i]!;
+      if (d.bounces[id]! >= GIB_SETTLE_BOUNCES) { evictPacked = i; break; }
+    }
+    // Fallback: oldest packed slot (FIFO-ish — packed list is alloc-order
+    // modulo swap-with-last on free).
+    if (evictPacked < 0) evictPacked = 0;
+    freeDebris(d, d.aliveIds[evictPacked]!);
+  }
   // Rolling cursor — find first free slot starting at cursor.
   for (let i = 0; i < d.capacity; i++) {
     const id = (d.cursor + i) % d.capacity;

@@ -1,9 +1,53 @@
 import { defineConfig, type Plugin } from 'vite';
 import { resolve, join } from 'node:path';
 import { writeFile, readFile, readdir, stat } from 'node:fs/promises';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFile } from 'node:child_process';
 
 const PROJECT_ROOT = __dirname;
+
+const AUDIO_EXT = /\.(mp3|ogg|wav|m4a|flac|aac)$/i;
+
+function scanThemes(musicDir: string): Record<string, string[]> {
+  const themes: Record<string, string[]> = {};
+  if (!existsSync(musicDir)) return themes;
+  for (const entry of readdirSync(musicDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const themeDir = join(musicDir, entry.name);
+    themes[entry.name] = readdirSync(themeDir)
+      .filter((f) => AUDIO_EXT.test(f))
+      .sort();
+  }
+  return themes;
+}
+
+function musicManifestPlugin(): Plugin {
+  const musicDir = resolve(PROJECT_ROOT, 'public/music');
+  return {
+    name: 'austerblitz-music-manifest',
+    configureServer(server) {
+      // Serve a live theme manifest during dev
+      server.middlewares.use('/music/tracks.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(scanThemes(musicDir)));
+      });
+    },
+    writeBundle() {
+      // Generate static manifest at build time
+      const outDir = resolve(PROJECT_ROOT, 'dist/music');
+      mkdirSync(outDir, { recursive: true });
+      writeFileSync(
+        join(outDir, 'tracks.json'),
+        JSON.stringify(scanThemes(musicDir))
+      );
+    },
+  };
+}
 
 function readJsonBody(req: import('node:http').IncomingMessage): Promise<unknown> {
   return new Promise((resolvePromise, rejectPromise) => {
@@ -58,7 +102,7 @@ async function maxMtimeUnder(dir: string): Promise<number> {
 
 function offsetsApiPlugin(): Plugin {
   return {
-    name: 'austerbitz-poses-offsets-api',
+    name: 'austerblitz-poses-offsets-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
@@ -367,7 +411,7 @@ function offsetsApiPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [offsetsApiPlugin()],
+  plugins: [offsetsApiPlugin(), musicManifestPlugin()],
   build: {
     target: 'es2022',
     rollupOptions: {

@@ -128,4 +128,7 @@ export function applyHit(
     enterFlinch(e, id);
   }
   spawnBlood(particles, px, py, impMag * 0.4, rng, impX, impY);
+  // Non-lethal musket hits get a small chance of a severed limb — internally
+  // gated by MUSKET_NONLETHAL_GIB_CHANCE; other hit kinds short-circuit.
+  spawnGibs(debris, rng, kind, px, py, impX, impY, e.team[id]!, false);
 }

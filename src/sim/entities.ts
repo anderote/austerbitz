@@ -12,6 +12,26 @@ export const EntityState = {
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
 /**
+ * Firing stance per-unit. Set by UI selection-wide. Determines volley
+ * contagion behaviour and aiming/hold tunables in combat-system.
+ */
+export const FireStance = {
+  AtWill:  0,
+  Volley:  1,
+  ByRanks: 2,
+  Hold:    3,
+} as const;
+export type FireStance = (typeof FireStance)[keyof typeof FireStance];
+
+/** Sentinel for `formationRank` before its first stripe inference. */
+export const FORMATION_RANK_UNKNOWN = 255;
+
+/** Ranks 0..MAX_TRACKED_RANKS-1 each get their own slot in the fire signal.
+ *  Anyone past this rank is blocked from firing anyway, so they share the
+ *  last bucket. Three is enough for the historically-typical 3-deep line. */
+export const MAX_TRACKED_RANKS = 3;
+
+/**
  * Bitmask flags identifying which detachable parts an entity has lost.
  * Each bit lines up with a kit-declared `detachables[].name` so the renderer
  * can swap to the matching `--no-<name>` body variant. Bits are independent;
@@ -56,6 +76,19 @@ export interface Entities {
   state: Uint8Array;        // EntityState (0..8)
   reloadT: Float32Array;
   targetId: Int32Array;     // -1 if none
+  // 1 = clear forward arc (front-rank), 0 = blocked by ≥3 same-team soldiers
+  // along facingIntent. Refreshed on combat-system's SCAN_PERIOD stripe; back
+  // rankers early-exit before target acquisition.
+  canFire: Uint8Array;
+
+  // Firing stance + rank within formation. See `FireStance` and
+  // `formation-rank.ts`. `formationRank` is refreshed lazily on the
+  // combat-system stripe tick from `restPos` + `restFacing`.
+  stance: Uint8Array;
+  formationRank: Uint8Array;
+  // 1 if currently in Hold and the unit has a loaded shot ready. Lets a
+  // stance flip away from Hold release the shot without re-reloading.
+  holdLoaded: Uint8Array;
 
   // Veterancy
   rank: Uint8Array;     // 0..4 (Recruit, Veteran, Sergeant, SgtMajor, Captain)
@@ -98,6 +131,10 @@ export interface Entities {
   pose: Uint8Array;         // Pose enum (0..9)
   poseT: Float32Array;      // seconds since pose entry
   clipIndex: Uint8Array;    // selected variant (0..255)
+  // 1 while the unit is moving as part of an active march-formation order
+  // (march phase, not yet arrived). State-system reads this to pick walking
+  // vs running animation: marching → walking, anything else → running.
+  isMarching: Uint8Array;
   // Body sprite rotation in radians (signed). Used by sprite-pass to tilt the
   // body during the Dying state and hold the final tilt during Dead. Set by
   // death-drops-system at the moment of death; zero for everything else.
@@ -142,6 +179,10 @@ export function createEntities(capacity: number): Entities {
     state: new Uint8Array(capacity),
     reloadT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
+    canFire: new Uint8Array(capacity),
+    stance: new Uint8Array(capacity),
+    formationRank: new Uint8Array(capacity),
+    holdLoaded: new Uint8Array(capacity),
     rank: new Uint8Array(capacity),
     xp: new Uint16Array(capacity),
     kills: new Uint16Array(capacity),
@@ -168,6 +209,7 @@ export function createEntities(capacity: number): Entities {
     pose: new Uint8Array(capacity),
     poseT: new Float32Array(capacity),
     clipIndex: new Uint8Array(capacity),
+    isMarching: new Uint8Array(capacity),
     bodyRot: new Float32Array(capacity),
     weaponDropped: new Uint8Array(capacity),
     partLost: new Uint8Array(capacity),
@@ -198,6 +240,10 @@ export function allocEntity(e: Entities): number {
   e.state[id] = EntityState.Idle;
   e.reloadT[id] = 0;
   e.targetId[id] = -1;
+  e.canFire[id] = 1;
+  e.stance[id] = FireStance.ByRanks;
+  e.formationRank[id] = FORMATION_RANK_UNKNOWN;
+  e.holdLoaded[id] = 0;
   e.rank[id] = 0;
   e.xp[id] = 0;
   e.kills[id] = 0;
@@ -224,6 +270,7 @@ export function allocEntity(e: Entities): number {
   e.pose[id] = 0;
   e.poseT[id] = 0;
   e.clipIndex[id] = 0;
+  e.isMarching[id] = 0;
   e.bodyRot[id] = 0;
   e.weaponDropped[id] = 0;
   e.partLost[id] = 0;

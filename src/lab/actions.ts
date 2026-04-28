@@ -15,16 +15,10 @@ import { solveCannonLaunch } from '../fx/ballistics';
 import { emitMuzzleFx } from '../particles/emitters';
 import { getUnitKindByIndex } from '../data/units';
 import { cannon12Shell } from '../data/weapons/cannon-12-shell';
-import { writeFacingIntent } from '../sim/systems/facing-system';
+import { writeFacingIntent, facingToVec } from '../sim/systems/facing-system';
 
 const DUMMY_ROW_X = 30;
 const DUMMY_ROW_Y = 0;
-
-/** facing 0..7 → unit vector (CCW from east). */
-function facingDir(facing: number): { x: number; y: number } {
-  const theta = (facing * Math.PI) / 4;
-  return { x: Math.cos(theta), y: Math.sin(theta) };
-}
 
 function subject(world: World, stage: Stage): number | null {
   const id = stage.subjectId;
@@ -37,7 +31,7 @@ export function actMarch(world: World, stage: Stage): void {
   const id = subject(world, stage);
   if (id === null) return;
   const kind = getUnitKindByIndex(world.entities.kindId[id]!);
-  const dir = facingDir(world.entities.facing[id]!);
+  const dir = facingToVec(world.entities.facing[id]!);
   world.entities.velX[id] = dir.x * kind.baseStats.moveSpeed;
   world.entities.velY[id] = dir.y * kind.baseStats.moveSpeed;
   writeFacingIntent(world.entities, id, dir.x, dir.y);
@@ -186,7 +180,7 @@ export function actCharge(world: World, stage: Stage): void {
   if (id === null) return;
   const kind = getUnitKindByIndex(world.entities.kindId[id]!);
   if (kind.id !== 'cuirassier') return;
-  const dir = facingDir(world.entities.facing[id]!);
+  const dir = facingToVec(world.entities.facing[id]!);
   const speed = kind.baseStats.moveSpeed * 2; // gallop
   world.entities.velX[id] = dir.x * speed;
   world.entities.velY[id] = dir.y * speed;

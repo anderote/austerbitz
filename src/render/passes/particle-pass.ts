@@ -3,7 +3,20 @@ import { createBuffer, createVertexArray } from '../../gl/buffer';
 import { PARTICLE_VS, PARTICLE_FS } from '../shaders/particle.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
-import type { Particles } from '../../particles/particles';
+import { ParticleClass, type Particles } from '../../particles/particles';
+
+// Per-class alpha multiplier baked into the lifeRatio fade. Blood spurts
+// looked too saturated against the new desaturated terrain — knock them
+// back so they read as droplets rather than a wash of red.
+const CLASS_ALPHA: Record<ParticleClass, number> = {
+  [ParticleClass.Dust]: 1,
+  [ParticleClass.Smoke]: 1,
+  [ParticleClass.Flash]: 1,
+  [ParticleClass.Blood]: 0.6,
+  [ParticleClass.Debris]: 1,
+  [ParticleClass.Ring]: 1,
+  [ParticleClass.Ember]: 1,
+};
 
 export interface ParticlePass {
   /**
@@ -62,10 +75,11 @@ export function createParticlePass(gl: WebGL2RenderingContext, capacity: number)
         scratchPos[n * 2 + 1] = p.posY[i]!;
         scratchSize[n] = p.size[i]!;
         const t = p.lifeMax[i]! > 0 ? p.life[i]! / p.lifeMax[i]! : 0;
+        const a = t * CLASS_ALPHA[p.klass[i]! as ParticleClass];
         scratchColor[n * 4 + 0] = p.r[i]!;
         scratchColor[n * 4 + 1] = p.g[i]!;
         scratchColor[n * 4 + 2] = p.b[i]!;
-        scratchColor[n * 4 + 3] = t;
+        scratchColor[n * 4 + 3] = a;
         n++;
       }
       if (n === 0) return;

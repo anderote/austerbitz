@@ -21,9 +21,9 @@ export interface WorldConfig {
 }
 
 export type Order =
-  | { kind: 'move'; targetX: number; targetY: number; arrived?: boolean; faceX?: number; faceY?: number }
+  | { kind: 'move'; targetX: number; targetY: number; arrived?: boolean; faceX?: number; faceY?: number; walk?: boolean }
   | { kind: 'attack'; targetId: number }
-  | { kind: 'attack-move'; targetX: number; targetY: number; arrived?: boolean }
+  | { kind: 'attack-move'; targetX: number; targetY: number; arrived?: boolean; walk?: boolean }
   | { kind: 'stop' }
   | { kind: 'march-formation'; targetX: number; targetY: number; groupId: number; arrived?: boolean };
 
@@ -78,7 +78,10 @@ export function createWorld(cfg: WorldConfig): World {
     orderQueue: new Map(),
     bloodSplats: createBloodSplats(4096),
     craterSplats: createCraterSplats(256),
-    debris: createDebris(256),
+    // Sized for "keep as much gibs as we can" — corpses persist past TTL
+    // (debris-system.ts), so the cap is the soft limit on how many can pile
+    // up before the allocator evicts the oldest settled one.
+    debris: createDebris(8192),
     droppedItems: createDroppedItems(cfg.capacity),
     shockwaves: createShockwaves(32, cfg.capacity),
     marchGroups: new Map(),

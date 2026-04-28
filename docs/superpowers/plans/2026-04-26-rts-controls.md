@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **Never commit at the end of a task — the user controls commit boundaries.**
 
-**Goal:** Replace Austerbitz's minimal selection/command wiring with an SC2/Red-Alert-style scheme: own-team marquee, modifier-aware clicks, double-click select-by-type, attack-move, stop, queued orders, and 10 control groups.
+**Goal:** Replace Austerblitz's minimal selection/command wiring with an SC2/Red-Alert-style scheme: own-team marquee, modifier-aware clicks, double-click select-by-type, attack-move, stop, queued orders, and 10 control groups.
 
 **Architecture:** A new `SelectionController` module owns all click/drag/double-click/key state and modifier interpretation, and writes to a shared `Selection` and the existing `world.orderQueue`. The order data model becomes a queue per entity (front = active) so shift+RMB can append. Selection hit-tests gain priority-pick and team filtering. Render adds per-team ring color, queued waypoint markers, a cursor-mode CSS swap, and a click-feedback puff.
 

@@ -8,6 +8,8 @@ import type { FormationParams } from './formation-params';
 export interface OrderOpts {
   /** Append to the end of each unit's queue instead of replacing it. */
   queue?: boolean;
+  /** Move at march pace and play the walking animation. */
+  walk?: boolean;
 }
 
 function dispatch(world: World, sel: Selection, mk: (id: number, i: number) => Order, opts: OrderOpts): void {
@@ -55,7 +57,9 @@ export function issueMove(world: World, sel: Selection, target: Vec2, opts: Orde
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i]!;
     const t: Vec2 = { x: target.x + (e.posX[id]! - cx), y: target.y + (e.posY[id]! - cy) };
-    const order: Order = { kind: 'move', targetX: t.x, targetY: t.y };
+    const order: Order = opts.walk
+      ? { kind: 'move', targetX: t.x, targetY: t.y, walk: true }
+      : { kind: 'move', targetX: t.x, targetY: t.y };
     if (opts.queue) {
       const q = world.orderQueue.get(id);
       if (q) q.push(order);
@@ -72,7 +76,9 @@ export function issueAttackMove(world: World, sel: Selection, target: Vec2, opts
   const liveCount = Array.from(sel.ids).filter(id => world.entities.alive[id] === 1).length;
   dispatch(world, sel, (_id, i) => {
     const t = spreadTarget(target, liveCount, i);
-    return { kind: 'attack-move', targetX: t.x, targetY: t.y };
+    return opts.walk
+      ? { kind: 'attack-move', targetX: t.x, targetY: t.y, walk: true }
+      : { kind: 'attack-move', targetX: t.x, targetY: t.y };
   }, opts);
 }
 
@@ -82,8 +88,17 @@ export function issueAttack(world: World, sel: Selection, targetId: number, opts
 
 export function issueStop(world: World, sel: Selection): void {
   if (sel.ids.size === 0) return;
+  const e = world.entities;
   for (const id of sel.ids) {
-    if (world.entities.alive[id] === 1) world.orderQueue.delete(id);
+    if (e.alive[id] !== 1) continue;
+    world.orderQueue.delete(id);
+    // Halt in place: re-anchor rest to current position so the idle drift-back
+    // loop in orders-system doesn't pull the unit back toward an old slot.
+    e.velX[id] = 0;
+    e.velY[id] = 0;
+    e.pushedT[id] = 0;
+    e.restPosX[id] = e.posX[id]!;
+    e.restPosY[id] = e.posY[id]!;
   }
 }
 
@@ -120,9 +135,9 @@ export function issueFormationMove(
 ): void {
   for (const a of assignments) {
     if (world.entities.alive[a.id] !== 1) continue;
-    const order: Order = a.face
-      ? { kind: 'move', targetX: a.target.x, targetY: a.target.y, faceX: a.face.x, faceY: a.face.y }
-      : { kind: 'move', targetX: a.target.x, targetY: a.target.y };
+    const order: Order = { kind: 'move', targetX: a.target.x, targetY: a.target.y };
+    if (a.face) { order.faceX = a.face.x; order.faceY = a.face.y; }
+    if (opts.walk) order.walk = true;
     if (opts.queue) {
       const q = world.orderQueue.get(a.id);
       if (q) q.push(order);

@@ -116,8 +116,8 @@ describe('spawnExplosion', () => {
   it('damage falls off with distance', () => {
     const s = setup();
     const shockwaves = createShockwaves(4, 8);
-    const near = placeEntity(s, 1, 0, { hp: 200 });
-    const far = placeEntity(s, 5, 0, { hp: 200 });
+    const near = placeEntity(s, 0.5, 0, { hp: 200 });
+    const far = placeEntity(s, 3, 0, { hp: 200 });
     const nearBefore = s.e.hp[near]!;
     const farBefore = s.e.hp[far]!;
     spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);

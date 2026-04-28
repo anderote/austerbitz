@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from '../world';
 import { allocEntity } from '../entities';
-import { facingSystem, writeFacingIntent, quantizeDirectionToFacing } from './facing-system';
+import { facingSystem, writeFacingIntent, quantizeDirectionToFacing, facingToVec } from './facing-system';
 
 function makeWorld() {
   return createWorld({ seed: 1, capacity: 16, mapSize: 128 });
@@ -75,5 +75,24 @@ describe('quantizeDirectionToFacing', () => {
     expect(quantizeDirectionToFacing(-1, -1)).toBe(5); // southwest
     expect(quantizeDirectionToFacing(0, -1)).toBe(6);  // south
     expect(quantizeDirectionToFacing(1, -1)).toBe(7);  // southeast
+  });
+});
+
+describe('facingToVec', () => {
+  it('octant 0 = east, 2 = north, 4 = west, 6 = south', () => {
+    expect(facingToVec(0).x).toBeCloseTo(1, 6);
+    expect(facingToVec(0).y).toBeCloseTo(0, 6);
+    expect(facingToVec(2).x).toBeCloseTo(0, 6);
+    expect(facingToVec(2).y).toBeCloseTo(1, 6);
+    expect(facingToVec(4).x).toBeCloseTo(-1, 6);
+    expect(facingToVec(4).y).toBeCloseTo(0, 6);
+    expect(facingToVec(6).x).toBeCloseTo(0, 6);
+    expect(facingToVec(6).y).toBeCloseTo(-1, 6);
+  });
+  it('octant 1 = NE diagonal (unit length)', () => {
+    const v = facingToVec(1);
+    expect(v.x).toBeCloseTo(Math.SQRT1_2, 6);
+    expect(v.y).toBeCloseTo(Math.SQRT1_2, 6);
+    expect(Math.hypot(v.x, v.y)).toBeCloseTo(1, 6);
   });
 });

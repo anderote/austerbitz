@@ -86,13 +86,25 @@ describe('commands', () => {
     expect(q[0]).toMatchObject({ kind: 'attack-move', targetX: 50, targetY: 50 });
   });
 
-  it('issueStop clears each selected unit\'s queue', () => {
+  it('issueStop clears each selected unit\'s queue and re-anchors rest to current position', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
-    const id = spawn(world, 0, 0);
+    const id = spawn(world, 7, 3);
     const sel = createSelection(); sel.ids.add(id);
+    // Pretend the unit was previously parked elsewhere (e.g. formation slot)
+    // and is currently mid-march away from it with some shove residue.
+    world.entities.restPosX[id] = 0;
+    world.entities.restPosY[id] = 0;
+    world.entities.velX[id] = 5;
+    world.entities.velY[id] = -2;
+    world.entities.pushedT[id] = 1.2;
     world.orderQueue.set(id, [{ kind: 'move', targetX: 1, targetY: 1 }]);
     issueStop(world, sel);
     expect(world.orderQueue.has(id)).toBe(false);
+    expect(world.entities.restPosX[id]).toBe(7);
+    expect(world.entities.restPosY[id]).toBe(3);
+    expect(world.entities.velX[id]).toBe(0);
+    expect(world.entities.velY[id]).toBe(0);
+    expect(world.entities.pushedT[id]).toBe(0);
   });
 
   it('all commands skip dead entities in the selection', () => {

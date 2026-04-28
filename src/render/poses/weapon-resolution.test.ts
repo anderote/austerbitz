@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  resolvePaletteEntry,
-  resolvePoseWeaponEntry,
+  readWeaponVariantPool,
   resolveWeaponSpriteKey,
   type Facing,
   type PoseFacingEntry,
-  type WeaponPaletteEntry,
+  type WeaponOrientation,
 } from './resolver';
 import { pickWeaponUv, type PoseAtlas } from './atlas';
 import { runtimePoseToEditorPoseName } from './kit-loader';
@@ -14,17 +13,21 @@ import { Pose } from './pose-config';
 // End-to-end weapon-resolution tests: exercise the *runtime path* the
 // sprite-pass takes per soldier per frame, without touching GL. The pass
 // itself is GL-coupled and not unit-testable in isolation, but the pure
-// logic — pose-name mapping, palette lookup, atlas UV with transforms — is
-// fully testable here.
+// logic — pose-name mapping, inline-orientation lookup, atlas UV with
+// transforms — is fully testable here.
 
-const PALETTE: WeaponPaletteEntry[] = [
-  { id: 'n-0', src: 'N', x: 0, y: -2, rot: 0 },
-  { id: 'n-flipy', src: 'N', transform: 'flipY', x: 0, y: 2, rot: 0 },
-  { id: 'nw-0', src: 'NW', x: 1, y: -1, rot: 5 },
-  { id: 'nw-flip', src: 'NW', transform: 'flipX', x: -1, y: -1, rot: -5, flipX: true },
-  { id: 'w-0', src: 'W', x: 2, y: 0, rot: 10 },
-  { id: 'w-flipx', src: 'W', transform: 'flipX', x: -2, y: 0, rot: -10, flipX: true },
-];
+const N_0: WeaponOrientation = { src: 'N', x: 0, y: -2, rot: 0 };
+const N_FLIPY: WeaponOrientation = { src: 'N', transform: 'flipY', x: 0, y: 2, rot: 0 };
+const NW_0: WeaponOrientation = { src: 'NW', x: 1, y: -1, rot: 5 };
+const NW_FLIP: WeaponOrientation = {
+  src: 'NW',
+  transform: 'flipX',
+  x: -1,
+  y: -1,
+  rot: -5,
+  flipX: true,
+};
+const W_0: WeaponOrientation = { src: 'W', x: 2, y: 0, rot: 10 };
 
 function makeAtlasWithWeapon(): PoseAtlas {
   // A 200x200 combined sheet with a 32x36 weapon cell at (50, 100) for each
@@ -125,62 +128,65 @@ describe('pickWeaponUv (atlas UV with facing transforms)', () => {
   });
 });
 
-describe('end-to-end weapon resolution (palette + atlas)', () => {
+describe('end-to-end weapon resolution (inline weapons[] + atlas)', () => {
   // The sprite-pass per-soldier-per-frame chain:
-  //   1. resolvePoseWeaponEntry(kit.poses, editorPose, facing, palette)
-  //        → WeaponPaletteEntry
-  //   2. resolveWeaponSpriteKey(layerPrefix, entry) → (spriteKey, transform)
-  //   3. pickWeaponUv(atlas, layerPrefix, entry.src, transform) → UV rect
-  //   4. quad placement uses entry.x / .y / .rot / .flipX
-  // These tests exercise the chain on a synthetic palette + atlas.
+  //   1. readWeaponVariantPool(kit.poses, editorPose, facing) → orientations[]
+  //   2. orientation = pool[entity.id % pool.length]
+  //   3. resolveWeaponSpriteKey(layerPrefix, orientation) → (spriteKey, transform)
+  //   4. pickWeaponUv(atlas, layerPrefix, orientation.src, transform) → UV rect
+  //   5. quad placement uses orientation.x / .y / .rot / .flipX
+  // These tests exercise the chain on a synthetic kit + atlas.
 
   const kitPoses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
     fire: {
-      N: { layers: [], weapon: 'n-0' },
-      NW: { layers: [], weapon: 'nw-0' },
-      W: { layers: [], weapon: 'w-0' },
-      // S/NE/SE/SW/E omit weapon → no overlay (palette is explicit).
+      N: { layers: [], weapons: [N_0] },
+      NW: { layers: [], weapons: [NW_0] },
+      W: { layers: [], weapons: [W_0] },
+      // S/NE/SE/SW/E omit weapons → no overlay.
     },
     present: {
-      N: { layers: [], weapon: 'n-0', weaponVariants: ['n-flipy'] },
+      N: { layers: [], weapons: [N_0, N_FLIPY] },
     },
   };
 
-  it('source facing N during fire pose resolves through the palette to a positive-span UV', () => {
+  it('source facing N during fire pose resolves through inline weapons[] to a positive-span UV', () => {
     const atlas = makeAtlasWithWeapon();
-    const entry = resolvePoseWeaponEntry(kitPoses, 'fire', 'N' as Facing, PALETTE);
-    expect(entry).toBe(PALETTE[0]);
-    const { spriteKey, transform } = resolveWeaponSpriteKey('musket-brown-bess', entry!);
+    const pool = readWeaponVariantPool(kitPoses, 'fire', 'N' as Facing);
+    expect(pool).toEqual([N_0]);
+    const orientation = pool[0]!;
+    const { spriteKey, transform } = resolveWeaponSpriteKey('musket-brown-bess', orientation);
     expect(spriteKey).toBe('musket-brown-bess-N');
     expect(transform).toBe('none');
-    const uv = pickWeaponUv(atlas, 'musket-brown-bess', entry!.src, transform, 0, 200, 200);
+    const uv = pickWeaponUv(atlas, 'musket-brown-bess', orientation.src, transform, 0, 200, 200);
     expect(uv).not.toBeNull();
     expect(uv![2]).toBeGreaterThan(0);
   });
 
-  it('a flipY palette entry produces a negative v-span on the same N source', () => {
+  it('a flipY orientation produces a negative v-span on the same N source', () => {
     const atlas = makeAtlasWithWeapon();
-    const entry = resolvePaletteEntry(PALETTE, 'n-flipy')!;
-    const { transform } = resolveWeaponSpriteKey('musket-brown-bess', entry);
+    const pool = readWeaponVariantPool(kitPoses, 'present', 'N' as Facing);
+    expect(pool).toEqual([N_0, N_FLIPY]);
+    const orientation = pool[1]!;
+    const { transform } = resolveWeaponSpriteKey('musket-brown-bess', orientation);
     expect(transform).toBe('flipY');
-    const uv = pickWeaponUv(atlas, 'musket-brown-bess', entry.src, transform, 0, 200, 200);
+    const uv = pickWeaponUv(atlas, 'musket-brown-bess', orientation.src, transform, 0, 200, 200);
     expect(uv).not.toBeNull();
     expect(uv![3]).toBeLessThan(0);
   });
 
-  it('a flipX palette entry on NW produces a negative u-span', () => {
+  it('a flipX orientation on NW produces a negative u-span', () => {
     const atlas = makeAtlasWithWeapon();
-    const entry = resolvePaletteEntry(PALETTE, 'nw-flip')!;
-    const { transform } = resolveWeaponSpriteKey('musket-brown-bess', entry);
+    const orientation = NW_FLIP;
+    const { transform } = resolveWeaponSpriteKey('musket-brown-bess', orientation);
     expect(transform).toBe('flipX');
-    expect(entry.flipX).toBe(true);
-    const uv = pickWeaponUv(atlas, 'musket-brown-bess', entry.src, transform, 0, 200, 200);
+    expect(orientation.flipX).toBe(true);
+    const uv = pickWeaponUv(atlas, 'musket-brown-bess', orientation.src, transform, 0, 200, 200);
     expect(uv).not.toBeNull();
     expect(uv![2]).toBeLessThan(0);
   });
 
-  it('returns null for a (pose, facing) without an authored palette id', () => {
-    expect(resolvePoseWeaponEntry(kitPoses, 'fire', 'NE' as Facing, PALETTE)).toBeNull();
-    expect(resolvePoseWeaponEntry(kitPoses, 'fire', 'S' as Facing, PALETTE)).toBeNull();
+  it('returns an empty pool for a (pose, facing) without authored weapons[]', () => {
+    expect(readWeaponVariantPool(kitPoses, 'fire', 'NE' as Facing)).toEqual([]);
+    expect(readWeaponVariantPool(kitPoses, 'fire', 'S' as Facing)).toEqual([]);
   });
 });

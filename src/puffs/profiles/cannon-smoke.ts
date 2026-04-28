@@ -9,7 +9,7 @@ export const CANNON_SMOKE: PuffProfile = {
   drag: 0.99, buoyancy: -1.0,
   inertiaExp: 2, inertiaWeight: 0.35,
   color: [0.78, 0.80, 0.84], colorJitter: 0.03,
-  alpha: 0.75, softness: 0.85,
+  alpha: 0.5, softness: 0.85,
   decayMulAtMaxSize: 0.50,
   coalesce: {
     radius: 1.8, sizePerMerge: 0.16, lifePerMerge: 0.40,
