@@ -55,17 +55,30 @@ function walkFrame(rgba, frameIdx) {
   throw new Error(`walkFrame: bad index ${frameIdx}`);
 }
 
-const RUN_FRAMES = 6;
-function runFrame(rgba, frameIdx) {
-  switch (frameIdx) {
-    case 0: return new Uint8ClampedArray(rgba);
-    case 1: return shiftHalfLegs(rgba, 'left', 1);
-    case 2: return shiftLegs(rgba, 1);
-    case 3: return shiftHalfLegs(rgba, 'right', 1);
-    case 4: return new Uint8ClampedArray(rgba);
-    case 5: return shiftHalfLegs(rgba, 'left', 2);
+// Smooth alternating run cycle: each leg traces a 0→1→2→1→0 lift arc, with
+// the right leg offset two frames behind the left. Cyclically every leg rises,
+// peaks, and falls once per cycle — no jumps, no asymmetric in-air frames.
+const RUN_LEFT_LIFT  = [1, 2, 1, 0, 0];
+const RUN_RIGHT_LIFT = [0, 0, 1, 2, 1];
+const RUN_FRAMES = RUN_LEFT_LIFT.length;
+
+// Side-on facings (E/W) draw both legs at nearly the same x, so splitting the
+// trouser sprite at col 16 doesn't separate "left leg" from "right leg" — the
+// alternating half-shift collapses to a degenerate cycle. For those, fall back
+// to a smooth whole-leg vertical bob over the same cycle length.
+const RUN_SIDE_BOB = [0, 1, 2, 1, 0];
+const SIDE_FACINGS = new Set(['E', 'W']);
+
+function runFrame(rgba, frameIdx, facingAbbr) {
+  if (frameIdx < 0 || frameIdx >= RUN_FRAMES) {
+    throw new Error(`runFrame: bad index ${frameIdx}`);
   }
-  throw new Error(`runFrame: bad index ${frameIdx}`);
+  if (SIDE_FACINGS.has(facingAbbr)) {
+    return shiftLegs(rgba, RUN_SIDE_BOB[frameIdx]);
+  }
+  let out = shiftHalfLegs(rgba, 'left', RUN_LEFT_LIFT[frameIdx]);
+  out = shiftHalfLegs(out, 'right', RUN_RIGHT_LIFT[frameIdx]);
+  return out;
 }
 
 async function emitFrame(facingFull, prefix, frameIdx, rgba) {
@@ -103,7 +116,7 @@ async function main() {
       newEntries.push(indexEntry(trousersFrameId(f.full, 'walk', i), f.abbr, path));
     }
     for (let i = 0; i < RUN_FRAMES; i++) {
-      const frame = runFrame(baseRgba, i);
+      const frame = runFrame(baseRgba, i, f.abbr);
       const path = await emitFrame(f.full, 'run', i, frame);
       newEntries.push(indexEntry(trousersFrameId(f.full, 'run', i), f.abbr, path));
     }
@@ -125,8 +138,13 @@ async function main() {
   const kit = JSON.parse(await readFile(KIT_JSON, 'utf8'));
   if (!kit.poses || typeof kit.poses !== 'object') kit.poses = {};
 
-  function buildPoseFrames(prefix, frameCount) {
+  // Build the per-direction frame entries for a locomotion pose. Preserves any
+  // existing `{ layers, weapon }` wrapper for a facing — only the `layers`
+  // field is replaced — so per-pose weapon attachment overrides authored on
+  // top of the seed (e.g. via the components editor) survive a re-seed.
+  function buildPoseFrames(poseId, prefix, frameCount) {
     const out = {};
+    const existing = (kit.poses && kit.poses[poseId]) || {};
     for (const f of FACINGS) {
       const facingCfg = kit.facings && kit.facings[f.abbr];
       if (!facingCfg || !Array.isArray(facingCfg.layers)) {
@@ -143,13 +161,29 @@ async function main() {
         layers[trousersIdx] = trousersFrameId(f.full, prefix, i);
         frames.push(layers);
       }
-      out[f.abbr] = frames;
+      const prev = existing[f.abbr];
+      if (prev && !Array.isArray(prev) && typeof prev === 'object' && prev.weapon) {
+        out[f.abbr] = { layers: frames, weapon: prev.weapon };
+      } else {
+        out[f.abbr] = frames;
+      }
     }
     return out;
   }
 
-  kit.poses.walking = buildPoseFrames('walk', WALK_FRAMES);
-  kit.poses.running = buildPoseFrames('run', RUN_FRAMES);
+  // Capture any hand-authored bob blocks before we rebuild the pose entries,
+  // so re-seeding doesn't clobber tweaks made via the editor or by hand.
+  const prevWalkingBob = kit.poses.walking && kit.poses.walking.bob;
+  const prevRunningBob = kit.poses.running && kit.poses.running.bob;
+
+  kit.poses.walking = buildPoseFrames('walking', 'walk', WALK_FRAMES);
+  kit.poses.running = buildPoseFrames('running', 'run', RUN_FRAMES);
+
+  // Default body bobs: walking lifts 1px on each leg-pass frame (twice per
+  // cycle); running traces a smooth 0→1→2→1→0 arc once per cycle, peaking
+  // at the passing frame where both legs are mid-stride.
+  kit.poses.walking.bob = prevWalkingBob ?? { body: [0, 1, 0, 1] };
+  kit.poses.running.bob = prevRunningBob ?? { body: [0, 1, 2, 1, 0] };
 
   await writeFile(KIT_JSON, JSON.stringify(kit, null, 2) + '\n');
   console.log(`Patched ${KIT_JSON} (walking + running).`);

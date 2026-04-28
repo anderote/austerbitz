@@ -483,17 +483,17 @@ export function createSpritePass(
             // Per-pose variants: when the kit authors `weaponVariants` for
             // (pose, facing), pool them with the primary `weapon` and pick
             // a stable index per-entity so soldiers in formation get visual
-            // variety. When no variants exist the pool is empty and we fall
-            // back to the existing inheritance + cached UV path.
+            // variety. Each pool entry may also carry a per-pose source override
+            // (`src`/`transform`) authored via the editor's click-to-assign
+            // weapon-pose picker — when present, the entry's UV must come from
+            // that source facing instead of the canonical `kit.weapon.facings[F]`
+            // mapping (e.g. present.S authored as src="NE").
             const variantPool = editorPose
               ? readWeaponVariantPool(kit.poses, editorPose, facingLetter)
               : [];
             const chosenVariant = variantPool.length > 0
               ? variantPool[((i % variantPool.length) + variantPool.length) % variantPool.length]!
               : null;
-            // Per-pose source override — kit.poses[pose][facing].weapon.src/transform,
-            // or the chosen variant's src/transform. Falls through to the
-            // cached global UV when no override is set.
             let wuv: readonly [number, number, number, number] | null = null;
             const overrideSrc = chosenVariant?.src;
             if (overrideSrc) {

@@ -4436,15 +4436,6 @@
       "path": "uniform/lower/trousers/north-run-4.png"
     },
     {
-      "id": "trousers-north-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "N"
-      ],
-      "path": "uniform/lower/trousers/north-run-5.png"
-    },
-    {
       "id": "trousers-northeast-walk-0",
       "type": "uniform",
       "category": "lower",
@@ -4524,15 +4515,6 @@
         "NE"
       ],
       "path": "uniform/lower/trousers/northeast-run-4.png"
-    },
-    {
-      "id": "trousers-northeast-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "NE"
-      ],
-      "path": "uniform/lower/trousers/northeast-run-5.png"
     },
     {
       "id": "trousers-east-walk-0",
@@ -4616,15 +4598,6 @@
       "path": "uniform/lower/trousers/east-run-4.png"
     },
     {
-      "id": "trousers-east-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "E"
-      ],
-      "path": "uniform/lower/trousers/east-run-5.png"
-    },
-    {
       "id": "trousers-southeast-walk-0",
       "type": "uniform",
       "category": "lower",
@@ -4704,15 +4677,6 @@
         "SE"
       ],
       "path": "uniform/lower/trousers/southeast-run-4.png"
-    },
-    {
-      "id": "trousers-southeast-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "SE"
-      ],
-      "path": "uniform/lower/trousers/southeast-run-5.png"
     },
     {
       "id": "trousers-south-walk-0",
@@ -4796,15 +4760,6 @@
       "path": "uniform/lower/trousers/south-run-4.png"
     },
     {
-      "id": "trousers-south-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "S"
-      ],
-      "path": "uniform/lower/trousers/south-run-5.png"
-    },
-    {
       "id": "trousers-southwest-walk-0",
       "type": "uniform",
       "category": "lower",
@@ -4884,15 +4839,6 @@
         "SW"
       ],
       "path": "uniform/lower/trousers/southwest-run-4.png"
-    },
-    {
-      "id": "trousers-southwest-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "SW"
-      ],
-      "path": "uniform/lower/trousers/southwest-run-5.png"
     },
     {
       "id": "trousers-west-walk-0",
@@ -4976,15 +4922,6 @@
       "path": "uniform/lower/trousers/west-run-4.png"
     },
     {
-      "id": "trousers-west-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "W"
-      ],
-      "path": "uniform/lower/trousers/west-run-5.png"
-    },
-    {
       "id": "trousers-northwest-walk-0",
       "type": "uniform",
       "category": "lower",
@@ -5064,15 +5001,6 @@
         "NW"
       ],
       "path": "uniform/lower/trousers/northwest-run-4.png"
-    },
-    {
-      "id": "trousers-northwest-run-5",
-      "type": "uniform",
-      "category": "lower",
-      "facings": [
-        "NW"
-      ],
-      "path": "uniform/lower/trousers/northwest-run-5.png"
     }
   ]
 }

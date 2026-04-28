@@ -869,6 +869,13 @@
             "y": 16,
             "color": "clear"
           }
+        ],
+        "body-northeast-base": [
+          {
+            "x": 18,
+            "y": 20,
+            "color": "#C6373B"
+          }
         ]
       },
       "S": {
@@ -945,6 +952,31 @@
             "x": 23,
             "y": 19,
             "color": "#F0CDA0"
+          },
+          {
+            "x": 20,
+            "y": 18,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 21,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 22,
+            "y": 19,
+            "color": "clear"
+          },
+          {
+            "x": 23,
+            "y": 19,
+            "color": "clear"
           }
         ],
         "body-east-base": [
@@ -952,6 +984,33 @@
             "x": 18,
             "y": 19,
             "color": "#F0CDA0"
+          },
+          {
+            "x": 20,
+            "y": 21,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 19,
+            "y": 22,
+            "color": "#FF00FF"
+          },
+          {
+            "x": 20,
+            "y": 21,
+            "color": "#F0CDA0"
+          }
+        ],
+        "weapon": [
+          {
+            "x": 9,
+            "y": 15,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 15,
+            "color": "clear"
           }
         ]
       },
@@ -1006,6 +1065,26 @@
             "x": 8,
             "y": 20,
             "color": "#F0CDA0"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 8,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "clear"
           }
         ],
         "weapon": [
@@ -1131,6 +1210,28 @@
             "y": 20,
             "color": "clear"
           }
+        ],
+        "trousers-west": [
+          {
+            "x": 8,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 9,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 10,
+            "y": 20,
+            "color": "clear"
+          },
+          {
+            "x": 11,
+            "y": 20,
+            "color": "clear"
+          }
         ]
       },
       "N": {
@@ -1139,6 +1240,16 @@
             "x": 19,
             "y": 16,
             "color": "#F0CDA0"
+          },
+          {
+            "x": 31,
+            "y": 11,
+            "color": "#C6373B"
+          },
+          {
+            "x": 31,
+            "y": 11,
+            "color": "clear"
           }
         ]
       },
@@ -3739,6 +3850,77 @@
             "x": 30,
             "y": 4,
             "color": "clear"
+          }
+        ]
+      }
+    },
+    "running": {
+      "S": {
+        "body-south-base": [
+          {
+            "x": 15,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 24,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 14,
+            "y": 24,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 14,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 26,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 14,
+            "y": 26,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 14,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 16,
+            "y": 25,
+            "color": "#80FFFF"
+          },
+          {
+            "x": 15,
+            "y": 24,
+            "color": "#80FFFF"
           }
         ]
       }

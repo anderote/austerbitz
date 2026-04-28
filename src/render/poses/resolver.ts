@@ -75,28 +75,23 @@ export interface WeaponBlock {
   facings: Record<Facing, WeaponFacingEntry>;
 }
 
-/** Per-pose weapon attachment offset + rotation (degrees) + optional mirror. */
+/**
+ * Per-pose weapon attachment authoring.
+ *
+ * `(x, y, rot)` positions the weapon for this (pose, facing). The optional
+ * `flipX`/`src`/`transform` fields override which weapon-source PNG is drawn:
+ * the editor's click-to-assign weapon-pose picker writes them so a body pose
+ * can use a different facing's musket sprite (e.g. present.S using the NE
+ * musket). `src === 'self'` is the implicit default; when omitted the sprite
+ * comes from the kit's canonical `weapon.facings[F]` mapping.
+ */
 export interface WeaponPoseTransform {
   x: number;
   y: number;
   rot: number;
-  /**
-   * Per-pose horizontal mirror of the *authored* sprite, applied BEFORE the
-   * facing-share transform. Defaults to `false` and is omitted from JSON in
-   * that case to keep diffs small. Lets the editor flip the weapon for one
-   * (pose, facing) without re-authoring the source PNG.
-   */
-  flipX?: boolean;
-  /**
-   * Optional per-pose override of the global `kit.weapon.facings[F]` source.
-   * When set, the renderer pulls the weapon sprite from this source +
-   * `transform` for THIS (pose, facing) only; other poses still use the
-   * global default. Lets a kit mirror its musket differently in `present`
-   * vs `idle` without authoring 8 dedicated source PNGs.
-   */
+  flipX?: true;
   src?: 'self' | Facing;
-  /** Required when `src` is set and !== 'self'. Allowed values include 'none'. */
-  transform?: 'none' | WeaponFacingTransform;
+  transform?: WeaponFacingTransform | 'none';
 }
 
 /** Normalized shape for `kit.poses[pose][facing]`. */
@@ -147,77 +142,26 @@ export function resolveWeaponFacing(
 }
 
 /**
- * Resolve the weapon sprite + transform for a (pose, facing), honoring an
- * optional per-pose override on `kit.poses[pose][facing].weapon.{src,transform}`.
- * Falls back to the global `resolveWeaponFacing` when no override is present.
- */
-export function resolveWeaponFacingForPose(
-  weapon: WeaponBlock,
-  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
-  pose: string,
-  facing: Facing,
-): { spriteKey: string; transform: 'none' | WeaponFacingTransform } {
-  if (poses) {
-    const poseEntry = poses[pose];
-    if (poseEntry) {
-      const facingEntry = poseEntry[facing];
-      if (facingEntry) {
-        const norm = normalizePoseFacingEntry(facingEntry);
-        const w = norm.weapon;
-        if (w && w.src) {
-          if (w.src === 'self') {
-            return { spriteKey: `${weapon.layerPrefix}-${facing}`, transform: 'none' };
-          }
-          return {
-            spriteKey: `${weapon.layerPrefix}-${w.src}`,
-            transform: w.transform ?? 'none',
-          };
-        }
-      }
-    }
-  }
-  return resolveWeaponFacing(weapon, facing);
-}
-
-/**
- * Apply a facing transform to a `(x, y, rot)` triplet.
- *
- * The transform encodes how the runtime mirrors the *base sprite*; we mirror
- * the per-pose offset the same way so a hand-authored offset on a source
- * facing flows through unchanged to its derived facings.
+ * Apply a facing transform to a `(x, y, rot)` triplet so an offset authored
+ * on the source facing flows through unchanged to its derived facings.
  *
  * - `flipX`: mirror about the vertical axis → negate `x` and `rot`.
  * - `flipY`: mirror about the horizontal axis → negate `y` and `rot`.
  * - `rot180`: rotate 180° → negate both `x` and `y`; `rot` is unchanged
  *   (since rotating a rotation by 180° wraps to the same effective heading).
- *
- * `flipX` inheritance: when the facing-share transform is itself `flipX`,
- * the source's `flipX` flag XORs against `true` (so a flipped source becomes
- * un-flipped when the derived facing already mirrors it; an un-flipped source
- * becomes flipped). For `flipY` and `rot180`, `flipX` propagates unchanged
- * (those transforms don't mirror the X axis on their own).
  */
 function applyFacingTransform(
   base: WeaponPoseTransform,
   transform: WeaponFacingTransform,
 ): WeaponPoseTransform {
-  const baseFlip = base.flipX === true;
   switch (transform) {
     case 'flipX':
-      return withFlipX({ x: -base.x, y: base.y, rot: -base.rot }, !baseFlip);
+      return { x: -base.x, y: base.y, rot: -base.rot };
     case 'flipY':
-      return withFlipX({ x: base.x, y: -base.y, rot: -base.rot }, baseFlip);
+      return { x: base.x, y: -base.y, rot: -base.rot };
     case 'rot180':
-      return withFlipX({ x: -base.x, y: -base.y, rot: base.rot }, baseFlip);
+      return { x: -base.x, y: -base.y, rot: base.rot };
   }
-}
-
-/**
- * Helper: attach `flipX: true` to a `WeaponPoseTransform`, omit when false.
- * Keeps the JSON shape minimal (no `flipX: false` keys cluttering kit files).
- */
-function withFlipX(t: WeaponPoseTransform, flipX: boolean): WeaponPoseTransform {
-  return flipX ? { ...t, flipX: true } : t;
 }
 
 /** Read `poses[pose][facing].weapon` if present, else null. */
@@ -233,15 +177,15 @@ function readPoseWeapon(
   if (!facingEntry) return null;
   const normalized = normalizePoseFacingEntry(facingEntry);
   if (!normalized.weapon) return null;
-  // Normalize: only include flipX when explicitly true so equality checks /
-  // JSON output stay clean.
   const w = normalized.weapon;
-  return w.flipX === true ? { ...w, flipX: true } : { x: w.x, y: w.y, rot: w.rot };
+  return { x: w.x, y: w.y, rot: w.rot };
 }
 
 /**
  * Pool the variants authored for a (pose, facing): `[weapon, ...weaponVariants]`.
- * Empty when the entry has no weapon authoring at all.
+ * Each entry is normalized to `{x, y, rot}` only — variants tune position for
+ * formation variety; they cannot pick a different sprite than the canonical
+ * `kit.weapon.facings[F]`.
  */
 export function readWeaponVariantPool(
   poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
@@ -255,10 +199,10 @@ export function readWeaponVariantPool(
   if (!facingEntry) return [];
   const norm = normalizePoseFacingEntry(facingEntry);
   const out: WeaponPoseTransform[] = [];
-  if (norm.weapon) out.push(norm.weapon);
+  if (norm.weapon) out.push({ x: norm.weapon.x, y: norm.weapon.y, rot: norm.weapon.rot });
   if (Array.isArray(norm.weaponVariants)) {
     for (const v of norm.weaponVariants) {
-      if (v && typeof v === 'object') out.push(v);
+      if (v && typeof v === 'object') out.push({ x: v.x, y: v.y, rot: v.rot });
     }
   }
   return out;

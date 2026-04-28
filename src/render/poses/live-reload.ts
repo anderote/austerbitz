@@ -220,17 +220,10 @@ function weaponEquals(
 ): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
-  return (
-    a.x === b.x &&
-    a.y === b.y &&
-    a.rot === b.rot &&
-    (a.flipX === true) === (b.flipX === true)
-  );
+  return a.x === b.x && a.y === b.y && a.rot === b.rot;
 }
 
 function cloneWeapon(w: WeaponPoseTransform | undefined): WeaponPoseTransform | undefined {
   if (!w) return undefined;
-  const out: WeaponPoseTransform = { x: w.x, y: w.y, rot: w.rot };
-  if (w.flipX === true) out.flipX = true;
-  return out;
+  return { x: w.x, y: w.y, rot: w.rot };
 }

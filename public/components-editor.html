@@ -480,12 +480,14 @@
               <button id='wpose-xf-flipY'  type='button' class='wpose-xf-btn' data-xf='flipY'  style='font:inherit;padding:4px 10px;'>flipY</button>
               <button id='wpose-xf-rot180' type='button' class='wpose-xf-btn' data-xf='rot180' style='font:inherit;padding:4px 10px;'>rot180</button>
             </div>
-            <div style='display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;flex-wrap:wrap;'>
-              <button id='wpose-save-variant' type='button' class='primary' style='font:inherit;padding:8px 16px;background:#2563eb;color:#fff;border:1px solid #1d4ed8;border-radius:6px;cursor:pointer;font-weight:600;'>+ Save as variant</button>
-              <span id='wpose-variants-summary' style='color:#4b5563;'>0 variants</span>
-              <div id='wpose-variants-list' style='display:flex;gap:4px;flex-wrap:wrap;'></div>
-            </div>
           </div>
+        </div>
+        <div id='wpose-variants-section' style='display:none;margin-top:16px;padding-top:14px;border-top:1px solid rgba(55,65,81,0.15);'>
+          <div style='display:flex;gap:12px;align-items:center;margin-bottom:10px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;'>
+            <button id='wpose-save-variant' type='button' class='primary' style='font:inherit;padding:8px 16px;background:#2563eb;color:#fff;border:1px solid #1d4ed8;border-radius:6px;cursor:pointer;font-weight:600;'>+ Save as variant</button>
+            <span id='wpose-variants-summary' style='color:#4b5563;'>0 variants</span>
+          </div>
+          <div id='wpose-variants-list' style='display:flex;gap:10px;flex-wrap:wrap;align-content:flex-start;width:100%;height:260px;overflow-y:auto;padding:10px;background:#f9fafb;border:1px solid rgba(55,65,81,0.15);border-radius:4px;'></div>
         </div>
       </div>
     </div>
@@ -784,6 +786,10 @@
         weaponActive: false,
         // Drag state for weapon attachment.
         weaponDrag: null,
+        // Index into kit.poses[poseId][facing].weaponVariants for the variant the
+        // user is editing (null = primary slot). Per-(pose, facing); cleared when
+        // those change. Variants are mutated in place when this is set.
+        selectedVariantIdx: null,
         kitDirty: false,
         // Walk-cycle autoplay state for multi-frame poses.
         framePlaying: false,
@@ -948,6 +954,9 @@
       }
 
       // Authored (raw) per-pose weapon transform for (pose, facing); null if none.
+      // Carries the per-pose source override (`src`/`transform`) so callers like
+      // saveCurrentAsVariant preserve which weapon-pose PNG the user assigned
+      // via the click-to-assign picker.
       function readWeaponXformAuthored(poseId, facing) {
         const kit = state.weaponXform[state.kitId];
         if (!kit) return null;
@@ -957,6 +966,12 @@
         if (!v) return null;
         const out = { x: +v.x || 0, y: +v.y || 0, rot: +v.rot || 0 };
         if (v.flipX === true) out.flipX = true;
+        if (typeof v.src === 'string') {
+          out.src = v.src;
+          if (v.src !== 'self' && typeof v.transform === 'string') {
+            out.transform = v.transform;
+          }
+        }
         return out;
       }
 
@@ -977,6 +992,9 @@
 
       // Set per-(pose, facing) weapon transform. `flipX` is optional — pass
       // undefined to preserve any existing value, or true/false to set it.
+      // Preserves any per-pose weapon source override (`src`/`transform`)
+      // authored via the click-to-assign weapon-pose picker, so nudging /
+      // rotating / dragging the weapon doesn't reset its pose source.
       function setWeaponXform(poseId, facing, x, y, rot, flipX) {
         const kit = getKitWeaponXform();
         if (!kit[poseId]) kit[poseId] = {};
@@ -984,7 +1002,112 @@
         const next = { x: x | 0, y: y | 0, rot: +rot || 0 };
         const effFlip = flipX === undefined ? (cur.flipX === true) : (flipX === true);
         if (effFlip) next.flipX = true;
+        if (typeof cur.src === 'string') {
+          next.src = cur.src;
+          if (cur.src !== 'self' && typeof cur.transform === 'string') {
+            next.transform = cur.transform;
+          }
+        }
         kit[poseId][facing] = next;
+      }
+
+      // --- Active edit target (primary slot or selected variant) ---
+      // When state.selectedVariantIdx is null, edits target the primary
+      // per-(pose, facing) weapon entry. When it points at a valid index in
+      // kit.poses[pose][facing].weaponVariants, edits mutate that variant in
+      // place. Helpers below let the keyboard / drag / button handlers stay
+      // agnostic about which target is active.
+      function isVariantSelected() {
+        if (state.selectedVariantIdx == null) return false;
+        const variants = readWeaponVariants(state.poseId, state.facing);
+        return state.selectedVariantIdx >= 0 && state.selectedVariantIdx < variants.length;
+      }
+
+      function getActiveVariantRef() {
+        if (!isVariantSelected()) return null;
+        return readWeaponVariants(state.poseId, state.facing)[state.selectedVariantIdx];
+      }
+
+      function variantToXform(v) {
+        const out = { x: +v.x || 0, y: +v.y || 0, rot: +v.rot || 0 };
+        if (v.flipX === true) out.flipX = true;
+        if (typeof v.src === 'string') {
+          out.src = v.src;
+          if (v.src !== 'self' && typeof v.transform === 'string') out.transform = v.transform;
+        }
+        return out;
+      }
+
+      // Authored xform of the active edit target — variant if selected (always
+      // returns a value, since selection guarantees the entry exists), else the
+      // per-pose primary value (may be null if not yet authored on this facing).
+      function readActiveWeaponAuthored() {
+        const v = getActiveVariantRef();
+        if (v) return variantToXform(v);
+        return readWeaponXformAuthored(state.poseId, state.facing);
+      }
+
+      // Live xform with derive-from-source fallback. For a selected variant the
+      // authored values ARE the live values (variants don't inherit from other
+      // facings); for primary we walk through resolveWeaponXformLive.
+      function resolveActiveWeaponLive() {
+        const v = getActiveVariantRef();
+        if (v) return variantToXform(v);
+        return resolveWeaponXformLive(state.poseId, state.facing);
+      }
+
+      // Write x/y/rot/flipX to the active target. Preserves any per-pose source
+      // override (`src`/`transform`) — same convention as setWeaponXform.
+      function setActiveWeaponXform(x, y, rot, flipX) {
+        const v = getActiveVariantRef();
+        if (v) {
+          v.x = x | 0;
+          v.y = y | 0;
+          v.rot = +rot || 0;
+          if (flipX === true) v.flipX = true;
+          else if (flipX === false) delete v.flipX;
+          state.kitDirty = true;
+          return;
+        }
+        setWeaponXform(state.poseId, state.facing, x, y, rot, flipX);
+      }
+
+      // Set src/transform on the active target. Pass src=null to clear.
+      function setActiveWeaponSrcOverride(src, transform) {
+        const v = getActiveVariantRef();
+        if (v) {
+          if (!src) {
+            delete v.src;
+            delete v.transform;
+          } else {
+            v.src = src;
+            if (src !== 'self') v.transform = transform || 'none';
+            else delete v.transform;
+          }
+          state.kitDirty = true;
+          state.layerCanvasCache.clear();
+          recoloredAtlasCache.clear();
+          renderWeaponPoseGrid();
+          redraw().catch(function (err) {
+            showToast('Redraw failed: ' + (err.message || err), { error: true });
+          });
+          redrawFacingGrid();
+          scheduleKitAutoSave();
+          return;
+        }
+        setWeaponPoseSourceOverride(state.poseId, state.facing, src, transform);
+      }
+
+      // Common post-edit chain shared by every weapon-edit handler. `save=false`
+      // suppresses autosave (used during drag intermediates; the mouseup fires
+      // a final save).
+      function afterActiveWeaponEdit(save) {
+        renderLayersList();
+        renderOffsetReadout();
+        renderWeaponPoseGrid();
+        redraw();
+        redrawFacingGrid();
+        if (save !== false) scheduleKitAutoSave();
       }
 
       // Build the autosave body: only the (pose × facing) tuples we have
@@ -1287,6 +1410,7 @@
 
       function switchFacing(facing) {
         state.facing = facing;
+        state.selectedVariantIdx = null;
         const layers = getCurrentLayers();
         // Keep weaponActive when present on body poses; clear on weapon view.
         if (state.poseId === WEAPON_POSE_ID) state.weaponActive = false;
@@ -1327,7 +1451,7 @@
         // Toggle Mirror's depressed state to reflect current (pose, facing) flipX.
         if (flipxBtnEl) {
           const cur = (state.poseId !== WEAPON_POSE_ID && kitHasWeapon())
-            ? resolveWeaponXformLive(state.poseId, state.facing)
+            ? resolveActiveWeaponLive()
             : null;
           const on = !!(cur && cur.flipX === true);
           flipxBtnEl.classList.toggle('toggle-on', on);
@@ -1478,17 +1602,22 @@
 
       function renderOffsetReadout() {
         if (state.weaponActive && kitHasWeapon()) {
-          const x = resolveWeaponXformLive(state.poseId, state.facing);
+          const x = resolveActiveWeaponLive();
+          const targetLabel = isVariantSelected() ? ('variant #' + state.selectedVariantIdx) : 'primary';
           const parts = [
-            'Layer: weapon',
+            'Layer: weapon (' + targetLabel + ')',
             'pose: ' + state.poseId,
             'facing: ' + state.facing,
             'xform: (' + x.x + ',' + x.y + ',' + x.rot + 'deg)',
           ];
-          const w = state.kit && state.kit.weapon;
-          if (w && w.facings && w.facings[state.facing] && w.facings[state.facing].src !== 'self') {
-            const e = w.facings[state.facing];
-            parts.push('← ' + e.src + ' ' + e.transform);
+          if (typeof x.src === 'string' && x.src !== 'self') {
+            parts.push('← ' + x.src + ' ' + (x.transform || 'none'));
+          } else {
+            const w = state.kit && state.kit.weapon;
+            if (w && w.facings && w.facings[state.facing] && w.facings[state.facing].src !== 'self') {
+              const e = w.facings[state.facing];
+              parts.push('← ' + e.src + ' ' + e.transform);
+            }
           }
           selectedInfoEl.textContent = parts.join('  ·  ');
           dxValueEl.textContent = String(x.x);
@@ -1854,6 +1983,57 @@
         return { resolved, xform };
       }
 
+      // Variant of compositeWeaponOverlay that paints a passed-in `variant`
+      // (`{x, y, rot, flipX?, src?, transform?}`) instead of reading the live
+      // per-(pose, facing) authoring. Used by the variant-thumbnail UI so each
+      // saved variant previews its own weapon source/transform/offset, even
+      // when the primary slot is currently authored differently.
+      async function compositeVariantWeaponOverlay(destCtx, poseId, facing, variant) {
+        if (!kitHasWeapon()) return null;
+        let resolved;
+        let srcFacing;
+        if (typeof variant.src === 'string') {
+          if (variant.src === 'self') {
+            resolved = { spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(facing), transform: 'none' };
+            srcFacing = facing;
+          } else {
+            resolved = {
+              spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(variant.src),
+              transform: variant.transform || 'none',
+            };
+            srcFacing = variant.src;
+          }
+        } else {
+          resolved = resolveWeaponFacingForPose(state.kit.weapon, poseId, facing);
+          if (!resolved) return null;
+          const override = readWeaponPoseSourceOverride(poseId, facing);
+          srcFacing = override
+            ? (override.src === 'self' ? facing : override.src)
+            : sourceFacingFor(facing);
+        }
+        const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
+        if (!baseCanvas) return null;
+        const xform = {
+          x: variant.x | 0,
+          y: variant.y | 0,
+          rot: +variant.rot || 0,
+          flipX: variant.flipX === true,
+        };
+        drawWithFacingTransform(destCtx, baseCanvas, resolved.transform, xform.x, xform.y, xform.rot, xform.flipX);
+        return { resolved, xform };
+      }
+
+      // Stamp a thumbnail-sized preview into targetCanvas. `variant` null →
+      // primary slot (live state); else the given variant. Used by both the
+      // "Primary" card and per-variant cards in the variants list.
+      async function composeVariantThumbnail(targetCanvas, poseId, facing, variant) {
+        const { canvas: off } = await composeBase(poseId, facing, variant || null);
+        const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+        ctx.drawImage(off, 0, 0, targetCanvas.width, targetCanvas.height);
+      }
+
       // Cache of last-rendered weapon bounds in atlas-pixel coords, used for
       // hit-testing mouse clicks for weapon drag.
       let _lastWeaponBoundsAtlas = null;
@@ -1887,7 +2067,10 @@
       // Compose the body + (optional) weapon overlay for a given (poseId,
       // facing) into a fresh CELL_W×CELL_H canvas. Returns { canvas, weaponXform }
       // where weaponXform is the resolved (x,y,rot,flipX) used (or null).
-      async function composeBase(poseId, facing) {
+      // `weaponOverride`, when provided, paints that variant instead of the
+      // live primary slot — used by the main preview when a variant is selected
+      // for editing, and by variant thumbnails.
+      async function composeBase(poseId, facing, weaponOverride) {
         const off = document.createElement('canvas');
         off.width = CELL_W;
         off.height = CELL_H;
@@ -1898,6 +2081,11 @@
         const drawWeapon = poseId !== WEAPON_POSE_ID && kitHasWeapon();
         const weaponBehind = drawWeapon && WEAPON_BEHIND_FACINGS.has(facing);
         let weaponResult = null;
+        const paintWeapon = function () {
+          return weaponOverride
+            ? compositeVariantWeaponOverlay(offCtx, poseId, facing, weaponOverride)
+            : compositeWeaponOverlay(offCtx, poseId, facing);
+        };
 
         if (poseId === WEAPON_POSE_ID && kitHasWeapon()) {
           const resolved = resolveWeaponFacing(state.kit.weapon, facing);
@@ -1909,7 +2097,7 @@
           }
         } else {
           if (weaponBehind) {
-            weaponResult = await compositeWeaponOverlay(offCtx, poseId, facing);
+            weaponResult = await paintWeapon();
           }
           const layers = getLayersFor(poseId, facing);
           for (const id of layers) {
@@ -1927,15 +2115,20 @@
         }
 
         if (drawWeapon && !weaponBehind) {
-          weaponResult = await compositeWeaponOverlay(offCtx, poseId, facing);
+          weaponResult = await paintWeapon();
         }
         return { canvas: off, weaponResult };
       }
 
       // Fill an output canvas (any size) with the (poseId, facing) composite
       // scaled to fit. Used by both the main preview and each grid cell.
+      // For the cell that matches state's active (pose, facing), honor any
+      // selected variant so the facing-grid mirrors the main preview.
       async function composeFacingPreview(targetCanvas, poseId, facing) {
-        const { canvas: off } = await composeBase(poseId, facing);
+        const variant = (poseId === state.poseId && facing === state.facing)
+          ? getActiveVariantRef()
+          : null;
+        const { canvas: off } = await composeBase(poseId, facing, variant);
         const ctx = targetCanvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
         ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
@@ -1943,7 +2136,8 @@
       }
 
       async function redraw() {
-        const { canvas: off, weaponResult } = await composeBase(state.poseId, state.facing);
+        const variant = getActiveVariantRef();
+        const { canvas: off, weaponResult } = await composeBase(state.poseId, state.facing, variant);
 
         // Body-pose: cache weapon bounds for hit-testing.
         _lastWeaponBoundsAtlas = null;
@@ -2005,11 +2199,12 @@
 
       // Snapshot the current per-pose-per-facing weapon authoring (x, y, rot,
       // flipX, src, transform) and append it to weaponVariants on this entry.
+      // Reads from the active target — when a variant is selected, this clones
+      // it; otherwise it duplicates the primary slot.
       function saveCurrentAsVariant() {
         if (!kitHasWeapon() || state.poseId === WEAPON_POSE_ID) return;
         const target = state.facing;
-        const cur = readWeaponXformAuthored(state.poseId, target)
-          || resolveWeaponXformLive(state.poseId, target);
+        const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
         const v = { x: cur.x | 0, y: cur.y | 0, rot: +cur.rot || 0 };
         if (cur.flipX === true) v.flipX = true;
         if (typeof cur.src === 'string') {
@@ -2034,55 +2229,16 @@
         fe.weaponVariants.splice(idx, 1);
         if (fe.weaponVariants.length === 0) delete fe.weaponVariants;
         state.kitDirty = true;
-        renderWeaponPoseGrid();
-        scheduleAutoSave();
-      }
-
-      // Load a saved variant back into the primary editing slot. The previously
-      // primary authoring is appended to the variant list to avoid losing work.
-      function loadVariantToPrimary(poseId, facing, idx) {
-        const entry = state.kit && state.kit.poses && state.kit.poses[poseId];
-        const fe = entry && entry[facing];
-        if (!fe || Array.isArray(fe) || !Array.isArray(fe.weaponVariants)) return;
-        if (idx < 0 || idx >= fe.weaponVariants.length) return;
-        const target = fe.weaponVariants[idx];
-        const cur = readWeaponXformAuthored(poseId, facing);
-        const next = {
-          x: target.x | 0,
-          y: target.y | 0,
-          rot: +target.rot || 0,
-        };
-        if (target.flipX === true) next.flipX = true;
-        if (typeof target.src === 'string') {
-          next.src = target.src;
-          if (target.src !== 'self') next.transform = target.transform || 'none';
+        // Adjust selection so it still points at the same variant the user was
+        // editing (or falls back to primary when the selected one was deleted).
+        if (poseId === state.poseId && facing === state.facing && state.selectedVariantIdx != null) {
+          if (state.selectedVariantIdx === idx) state.selectedVariantIdx = null;
+          else if (state.selectedVariantIdx > idx) state.selectedVariantIdx -= 1;
         }
-        // Swap: variant slot now holds the previous primary; primary becomes target.
-        if (cur) {
-          const swap = { x: cur.x | 0, y: cur.y | 0, rot: +cur.rot || 0 };
-          if (cur.flipX === true) swap.flipX = true;
-          if (typeof cur.src === 'string') {
-            swap.src = cur.src;
-            if (cur.src !== 'self') swap.transform = cur.transform || 'none';
-          }
-          fe.weaponVariants[idx] = swap;
-        } else {
-          fe.weaponVariants.splice(idx, 1);
-          if (fe.weaponVariants.length === 0) delete fe.weaponVariants;
-        }
-        const kitMap = getKitWeaponXform();
-        if (!kitMap[poseId]) kitMap[poseId] = {};
-        kitMap[poseId][facing] = next;
-        state.kitDirty = true;
-        state.layerCanvasCache.clear();
-        recoloredAtlasCache.clear();
         renderWeaponPoseGrid();
-        renderOffsetReadout();
-        redraw().catch(function (err) {
-          showToast('Redraw failed: ' + (err.message || err), { error: true });
-        });
+        redraw();
         redrawFacingGrid();
-        scheduleAutoSave();
+        scheduleKitAutoSave();
       }
 
       // Render the weapon-only 3x3 grid below the main facing grid. Each cell
@@ -2095,13 +2251,20 @@
         if (!wrap) return;
         const visible = state.poseId !== WEAPON_POSE_ID && kitHasWeapon();
         wrap.style.display = visible ? '' : 'none';
+        const variantsSection = document.getElementById('wpose-variants-section');
+        if (variantsSection) variantsSection.style.display = visible ? '' : 'none';
         if (!visible) return;
         // Highlight the cell matching the weapon-pose-grid's own selection
         // (decoupled from state.facing — the body view stays put).
         // Highlight the cell matching the current weapon source for state.facing
         // (the body's facing). When there's a per-pose src override, that wins;
         // otherwise the active cell is just state.facing itself (default = self).
-        const override = readWeaponPoseSourceOverride(state.poseId, state.facing);
+        // When a variant is selected, mirror its src/transform instead of
+        // primary's so the picker reflects what the user is editing.
+        const variantForOverride = getActiveVariantRef();
+        const override = (variantForOverride && typeof variantForOverride.src === 'string')
+          ? { src: variantForOverride.src, transform: variantForOverride.transform || 'none' }
+          : readWeaponPoseSourceOverride(state.poseId, state.facing);
         const activeCell = override
           ? (override.src === 'self' ? state.facing : override.src)
           : state.facing;
@@ -2131,46 +2294,114 @@
         const variants = readWeaponVariants(state.poseId, state.facing);
         summary.textContent = variants.length + (variants.length === 1 ? ' variant' : ' variants');
         list.innerHTML = '';
-        variants.forEach(function (v, i) {
-          const pill = document.createElement('span');
-          pill.style.display = 'inline-flex';
-          pill.style.alignItems = 'center';
-          pill.style.gap = '4px';
-          pill.style.padding = '2px 6px';
-          pill.style.background = '#dbeafe';
-          pill.style.border = '1px solid #93c5fd';
-          pill.style.borderRadius = '12px';
-          const txt = document.createElement('button');
-          txt.type = 'button';
-          txt.textContent = '#' + i + ' (' + (v.x|0) + ',' + (v.y|0) + ',' + (+v.rot|0) + '°' + (v.src ? ' ' + v.src : '') + ')';
-          txt.title = 'Click to swap into primary slot';
-          txt.style.background = 'transparent';
-          txt.style.border = 'none';
-          txt.style.padding = '0';
-          txt.style.font = 'inherit';
-          txt.style.cursor = 'pointer';
-          txt.style.color = '#1e3a8a';
-          txt.addEventListener('click', function () {
-            loadVariantToPrimary(state.poseId, state.facing, i);
+        const poseId = state.poseId;
+        const facing = state.facing;
+        const selectedIdx = isVariantSelected() ? state.selectedVariantIdx : null;
+
+        function buildCard(opts) {
+          const isActive = opts.isActive;
+          const cell = document.createElement('div');
+          cell.style.position = 'relative';
+          cell.style.display = 'inline-block';
+
+          const thumb = document.createElement('button');
+          thumb.type = 'button';
+          thumb.title = opts.title;
+          thumb.style.padding = '0';
+          thumb.style.background = '#0f1115';
+          thumb.style.border = isActive ? '2px solid #2563eb' : '1px solid #93c5fd';
+          thumb.style.boxShadow = isActive ? '0 0 0 1px #2563eb' : 'none';
+          thumb.style.borderRadius = '4px';
+          thumb.style.cursor = 'pointer';
+          thumb.style.lineHeight = '0';
+          thumb.style.display = 'block';
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 96;
+          canvas.height = 108;
+          canvas.style.imageRendering = 'pixelated';
+          canvas.style.display = 'block';
+          thumb.appendChild(canvas);
+
+          const label = document.createElement('div');
+          label.textContent = opts.label;
+          label.style.font = '10px/1 JetBrains Mono, ui-monospace, Menlo, monospace';
+          label.style.color = isActive ? '#1d4ed8' : '#4b5563';
+          label.style.background = '#fff';
+          label.style.padding = '2px 4px';
+          label.style.textAlign = 'center';
+          label.style.borderTop = '1px solid rgba(55,65,81,0.1)';
+          thumb.appendChild(label);
+
+          thumb.addEventListener('click', opts.onClick);
+          cell.appendChild(thumb);
+          if (opts.onDelete) {
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.textContent = '×';
+            x.title = 'Delete variant';
+            x.style.position = 'absolute';
+            x.style.top = '-6px';
+            x.style.right = '-6px';
+            x.style.width = '16px';
+            x.style.height = '16px';
+            x.style.padding = '0';
+            x.style.background = '#fff';
+            x.style.color = '#1e3a8a';
+            x.style.border = '1px solid #93c5fd';
+            x.style.borderRadius = '50%';
+            x.style.cursor = 'pointer';
+            x.style.font = '12px/1 system-ui';
+            x.style.display = 'flex';
+            x.style.alignItems = 'center';
+            x.style.justifyContent = 'center';
+            x.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              opts.onDelete();
+            });
+            cell.appendChild(x);
+          }
+          list.appendChild(cell);
+          composeVariantThumbnail(canvas, poseId, facing, opts.variant).catch(function (err) {
+            console.warn('variant thumbnail render failed', err);
           });
-          const x = document.createElement('button');
-          x.type = 'button';
-          x.textContent = '×';
-          x.title = 'Delete variant';
-          x.style.background = 'transparent';
-          x.style.border = 'none';
-          x.style.padding = '0 2px';
-          x.style.font = 'inherit';
-          x.style.cursor = 'pointer';
-          x.style.color = '#1e3a8a';
-          x.addEventListener('click', function (ev) {
-            ev.stopPropagation();
-            deleteVariant(state.poseId, state.facing, i);
-          });
-          pill.appendChild(txt);
-          pill.appendChild(x);
-          list.appendChild(pill);
+        }
+
+        // Primary card always shown first; selecting it returns edits to the
+        // primary slot.
+        buildCard({
+          variant: null,
+          isActive: selectedIdx === null,
+          label: 'Primary',
+          title: 'Primary slot — click to edit the per-pose weapon authoring',
+          onClick: function () { selectVariant(null); },
         });
+
+        variants.forEach(function (v, i) {
+          buildCard({
+            variant: v,
+            isActive: selectedIdx === i,
+            label: '#' + i + (v.flipX ? '·flipX' : '') + (v.src ? '·' + v.src : ''),
+            title: '#' + i + ' (' + (v.x|0) + ',' + (v.y|0) + ',' + (+v.rot|0) + '°'
+              + (v.flipX ? ' flipX' : '')
+              + (v.src ? ' ← ' + v.src + (v.src !== 'self' ? ' ' + (v.transform || 'none') : '') : '')
+              + ') — click to edit',
+            onClick: function () { selectVariant(i); },
+            onDelete: function () { deleteVariant(poseId, facing, i); },
+          });
+        });
+      }
+
+      // Switch the active edit target. null = primary slot, integer = variant
+      // index. Refreshes preview + grid + variants list so the new selection
+      // is reflected everywhere (active border, main canvas, facing-grid cell).
+      function selectVariant(idx) {
+        state.selectedVariantIdx = idx;
+        renderLayersList();
+        renderOffsetReadout();
+        renderWeaponPoseGrid();
+        redraw();
+        redrawFacingGrid();
       }
 
       let _wposeGridRedrawPending = false;
@@ -2245,13 +2476,9 @@
         if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
           // Use authored value if any (else current resolved live value) so
           // arrow nudges are stable even on unauthored derived facings.
-          const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
-          setWeaponXform(state.poseId, state.facing, cur.x + ddx, cur.y + ddy, cur.rot, cur.flipX === true);
-          renderLayersList();
-          renderOffsetReadout();
-          redraw();
-          redrawFacingGrid();
-          scheduleKitAutoSave();
+          const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
+          setActiveWeaponXform(cur.x + ddx, cur.y + ddy, cur.rot, cur.flipX === true);
+          afterActiveWeaponEdit();
           return;
         }
         if (!state.selectedLayerId) return;
@@ -2266,14 +2493,10 @@
 
       function rotateWeapon(deltaDeg) {
         if (!(state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID)) return;
-        const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+        const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
         const nextRot = wrapAngleDeg(cur.rot + deltaDeg);
-        setWeaponXform(state.poseId, state.facing, cur.x, cur.y, nextRot, cur.flipX === true);
-        renderLayersList();
-        renderOffsetReadout();
-        redraw();
-        redrawFacingGrid();
-        scheduleKitAutoSave();
+        setActiveWeaponXform(cur.x, cur.y, nextRot, cur.flipX === true);
+        afterActiveWeaponEdit();
       }
 
       function onKey(e) {
@@ -2296,11 +2519,8 @@
       function resetSelected() {
         if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
           // Reset clears the rotation, offset AND the flipX mirror.
-          setWeaponXform(state.poseId, state.facing, 0, 0, 0, false);
-          renderLayersList();
-          renderOffsetReadout();
-          redraw();
-          scheduleKitAutoSave();
+          setActiveWeaponXform(0, 0, 0, false);
+          afterActiveWeaponEdit();
           return;
         }
         if (!state.selectedLayerId) return;
@@ -2464,12 +2684,26 @@
       // through the same transform pipeline used for rendering.
       async function pointHitsWeapon(cx, cy) {
         if (!kitHasWeapon() || state.poseId === WEAPON_POSE_ID) return false;
-        const resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
-        if (!resolved) return false;
-        const xform = resolveWeaponXformLive(state.poseId, state.facing);
+        const variant = getActiveVariantRef();
+        let resolved;
+        let srcFacing;
+        if (variant && typeof variant.src === 'string') {
+          if (variant.src === 'self') {
+            resolved = { spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(state.facing), transform: 'none' };
+            srcFacing = state.facing;
+          } else {
+            resolved = { spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(variant.src), transform: variant.transform || 'none' };
+            srcFacing = variant.src;
+          }
+        } else {
+          resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
+          if (!resolved) return false;
+          srcFacing = sourceFacingFor(state.facing);
+        }
+        const xform = variant ? variantToXform(variant) : resolveWeaponXformLive(state.poseId, state.facing);
         const local = atlasToBaseSprite(cx, cy, xform, resolved.transform);
         if (!local) return false;
-        const base = await getCachedLayerCanvas(WEAPON_POSE_ID, sourceFacingFor(state.facing), resolved.spriteKey);
+        const base = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
         if (!base) return false;
         const ctx = base.getContext('2d', { willReadFrequently: true });
         try {
@@ -2515,9 +2749,9 @@
             // Activate weapon mode and start drag.
             state.weaponActive = true;
             state.selectedLayerId = 'weapon';
-            const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+            const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
             // Seed authored value if it was previously inherited so dragging is stable.
-            setWeaponXform(state.poseId, state.facing, cur.x, cur.y, cur.rot, cur.flipX === true);
+            setActiveWeaponXform(cur.x, cur.y, cur.rot, cur.flipX === true);
             state.weaponDrag = {
               startCx: cx, startCy: cy,
               startX: cur.x, startY: cur.y,
@@ -2582,11 +2816,8 @@
         const drag = state.weaponDrag;
         const nx = drag.startX + (cx - drag.startCx);
         const ny = drag.startY + (cy - drag.startCy);
-        setWeaponXform(state.poseId, state.facing, nx, ny, drag.rot, drag.flipX === true);
-        renderLayersList();
-        renderOffsetReadout();
-        redraw();
-        redrawFacingGrid();
+        setActiveWeaponXform(nx, ny, drag.rot, drag.flipX === true);
+        afterActiveWeaponEdit(false);
       }
 
       function onCanvasMouseUp() {
@@ -2981,6 +3212,7 @@
 
       async function switchUnit(kitId) {
         if (state.kitId === kitId) return;
+        state.selectedVariantIdx = null;
         await loadKit(kitId);
         const kitMeta = state.kits.find(function (k) { return k.id === kitId; });
         const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
@@ -3015,6 +3247,7 @@
         stopFramePlayback();
         state.poseId = poseId;
         state.frameIdx = 0;
+        state.selectedVariantIdx = null;
         invalidateAllLayerCache();
         // Weapon-pose-view always operates on the resolved sprite id; clear weaponActive.
         if (poseId === WEAPON_POSE_ID) {
@@ -3114,12 +3347,8 @@
           if (resetWeaponBtn) {
             resetWeaponBtn.addEventListener('click', function () {
               if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
-              setWeaponXform(state.poseId, state.facing, 0, 0, 0, false);
-              renderLayersList();
-              renderOffsetReadout();
-              redraw();
-              redrawFacingGrid();
-              scheduleKitAutoSave();
+              setActiveWeaponXform(0, 0, 0, false);
+              afterActiveWeaponEdit();
             });
           }
           // Rotate 90° button: snaps current weapon rot += 90° and persists.
@@ -3128,13 +3357,9 @@
           if (rot90Btn) {
             rot90Btn.addEventListener('click', function () {
               if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
-              const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
-              setWeaponXform(state.poseId, state.facing, cur.x, cur.y, wrapAngleDeg(cur.rot + 90), cur.flipX === true);
-              renderLayersList();
-              renderOffsetReadout();
-              redraw();
-              redrawFacingGrid();
-              scheduleKitAutoSave();
+              const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
+              setActiveWeaponXform(cur.x, cur.y, wrapAngleDeg(cur.rot + 90), cur.flipX === true);
+              afterActiveWeaponEdit();
             });
           }
           // Mirror button: toggles per-(pose, facing) flipX. Visual state on
@@ -3143,15 +3368,11 @@
           if (flipxBtn) {
             flipxBtn.addEventListener('click', function () {
               if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
-              const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+              const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
               const nextFlip = !(cur.flipX === true);
-              setWeaponXform(state.poseId, state.facing, cur.x, cur.y, cur.rot, nextFlip);
-              renderLayersList();
-              renderOffsetReadout();
-              redraw();
-              redrawFacingGrid();
+              setActiveWeaponXform(cur.x, cur.y, cur.rot, nextFlip);
+              afterActiveWeaponEdit();
               renderWeaponUi();
-              scheduleKitAutoSave();
             });
           }
           renderWeaponUi();
@@ -3196,9 +3417,9 @@
               cell.addEventListener('click', function () {
                 const cellFacing = cell.dataset.facing;
                 if (cellFacing === state.facing) {
-                  setWeaponPoseSourceOverride(state.poseId, state.facing, null, null);
+                  setActiveWeaponSrcOverride(null, null);
                 } else {
-                  setWeaponPoseSourceOverride(state.poseId, state.facing, cellFacing, 'none');
+                  setActiveWeaponSrcOverride(cellFacing, 'none');
                 }
               });
             });
@@ -3207,10 +3428,9 @@
           // per-pose src override; clicking sets that override's transform.
           document.querySelectorAll('.wpose-xf-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
-              const target = state.facing;
-              const cur = readWeaponPoseSourceOverride(state.poseId, target);
-              if (!cur || cur.src === 'self') return;
-              setWeaponPoseSourceOverride(state.poseId, target, cur.src, btn.dataset.xf);
+              const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
+              if (!cur || typeof cur.src !== 'string' || cur.src === 'self') return;
+              setActiveWeaponSrcOverride(cur.src, btn.dataset.xf);
             });
           });
           const wposeSaveBtn = document.getElementById('wpose-save-variant');
