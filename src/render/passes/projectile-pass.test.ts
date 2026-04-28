@@ -69,7 +69,7 @@ describe('computeProjectileInstances', () => {
     expect(buckets.musket.count).toBe(0);
   });
 
-  it('a musket ball renders as a small light-grey 4px square at its current position', () => {
+  it('a musket ball renders as a small light-grey 1px square at its current position', () => {
     const projectiles = createProjectiles(8);
     const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0, -1);
     expect(id).toBeGreaterThanOrEqual(0);
@@ -87,8 +87,8 @@ describe('computeProjectileInstances', () => {
 
     expect(buckets.musket.centerWorld[0]).toBeCloseTo(10);
     expect(buckets.musket.centerWorld[1]).toBeCloseTo(0);
-    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(4 / 12);
-    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(4 / 12);
+    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(1 / 12);
+    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(1 / 12);
     expect(buckets.musket.rotation[0]).toBeCloseTo(0);
     expect(buckets.musket.kind[0]).toBe(0);
     // Light-grey color.
@@ -138,8 +138,8 @@ describe('computeProjectileInstances', () => {
     expect(buckets.musket.count).toBe(1);
     expect(buckets.musket.centerWorld[0]).toBeCloseTo(3);
     expect(buckets.musket.centerWorld[1]).toBeCloseTo(4);
-    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(4 / 12);
-    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(4 / 12);
+    expect(buckets.musket.sizeOrLen[0]).toBeCloseTo(1 / 12);
+    expect(buckets.musket.sizeOrLen[1]).toBeCloseTo(1 / 12);
   });
 
   it('three projectiles of different kinds populate all three buckets', () => {

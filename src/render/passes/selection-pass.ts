@@ -24,7 +24,7 @@ export interface SelectionPass {
   drawTeamRange(world: World, cam: Camera, sel: Selection, team: number): void;
   // Waypoint chains, drag rectangle, and formation preview — call AFTER sprites so they overlay.
   draw(world: World, cam: Camera, sel: Selection, drag: DragRect, formation: FormationPreview | null): void;
-  // Yellow per-soldier destination squares (Total War-style placement preview). Call AFTER sprites.
+  // Yellow per-soldier destination discs (same marker as selection base). Call AFTER sprites.
   drawMovePreview(world: World, cam: Camera, sel: Selection): void;
 }
 
@@ -903,51 +903,51 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         return null;
       };
 
-      const drawBatch = (n: number, r: number, g: number, b: number): void => {
-        if (n === 0) return;
-        gl.useProgram(pipProg);
-        gl.bindVertexArray(pipVao);
-        gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, n * 2));
-        gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
-        gl.uniform1f(pipU.u_size, 1.2);
-        gl.uniform3f(pipU.u_color, r, g, b);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
-        gl.disable(gl.BLEND);
-        gl.bindVertexArray(null);
+      let n = 0;
+      const emit = (id: number, r: number, g: number, b: number): void => {
+        if (e.alive[id] !== 1) return;
+        if (isDead(e, id)) return;
+        const dst = finalDest(id);
+        if (!dst) return;
+        if (n >= capacity) return;
+        const kind = getUnitKindByIndex(e.kindId[id]!);
+        const w = kind.placeholderSize.w;
+        const h = kind.placeholderSize.h;
+        const footY = kind.footYFromCenter ?? h * 0.5;
+        scratchPos[n * 2 + 0] = dst.x;
+        scratchPos[n * 2 + 1] = dst.y + footY;
+        scratchSize[n * 2 + 0] = w * 1.25;
+        scratchSize[n * 2 + 1] = w * 0.55;
+        scratchCol[n * 3 + 0] = r;
+        scratchCol[n * 3 + 1] = g;
+        scratchCol[n * 3 + 2] = b;
+        n++;
       };
 
-      // Selected units: yellow pip at final destination.
-      let n = 0;
-      for (const id of sel.ids) {
-        if (e.alive[id] !== 1) continue;
-        if (isDead(e, id)) continue;
-        const dst = finalDest(id);
-        if (!dst) continue;
-        if (n >= capacity) break;
-        pipScratch[n * 2 + 0] = dst.x;
-        pipScratch[n * 2 + 1] = dst.y;
-        n++;
-      }
-      drawBatch(n, 1.0, 0.9, 0.2);
-
-      // Unselected player units: white pip at final destination.
-      n = 0;
+      // Selected units: yellow disc at final destination.
+      for (const id of sel.ids) emit(id, 1.0, 0.9, 0.2);
+      // Unselected player units: white disc at final destination.
       for (const id of world.orderQueue.keys()) {
-        if (e.alive[id] !== 1) continue;
-        if (isDead(e, id)) continue;
-        if (e.team[id] !== PLAYER_TEAM) continue;
         if (sel.ids.has(id)) continue;
-        const dst = finalDest(id);
-        if (!dst) continue;
-        if (n >= capacity) break;
-        pipScratch[n * 2 + 0] = dst.x;
-        pipScratch[n * 2 + 1] = dst.y;
-        n++;
+        if (e.team[id] !== PLAYER_TEAM) continue;
+        emit(id, 1.0, 1.0, 1.0);
       }
-      drawBatch(n, 1.0, 1.0, 1.0);
+
+      if (n === 0) return;
+      gl.useProgram(prog);
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPos.subarray(0, n * 2));
+      gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSize.subarray(0, n * 2));
+      gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchCol.subarray(0, n * 3));
+      gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+      gl.disable(gl.BLEND);
+      gl.bindVertexArray(null);
     },
   };
 }

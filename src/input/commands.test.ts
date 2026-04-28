@@ -3,7 +3,7 @@ import { createWorld } from '../sim/world';
 import { allocEntity } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
 import { createSelection } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueMarchFormation } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueMarchFormation, issueHurryToSlots } from './commands';
 import { createFormationParams } from './formation-params';
 
 function spawn(world: ReturnType<typeof createWorld>, x: number, y: number): number {
@@ -254,5 +254,105 @@ describe('issueMarchFormation', () => {
 
     const [, g] = [...world.marchGroups.entries()][0]!;
     expect([...g.members]).toEqual([a]);
+  });
+});
+
+describe('issueHurryToSlots', () => {
+  it('clears arrived on a parked move so the unit re-engages at full speed', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const sel = createSelection(); sel.ids.add(a);
+    world.orderQueue.set(a, [{ kind: 'move', targetX: 50, targetY: 0, arrived: true }]);
+
+    issueHurryToSlots(world, sel);
+
+    const q = world.orderQueue.get(a)!;
+    expect(q.length).toBe(1);
+    expect(q[0]).toMatchObject({ kind: 'move', targetX: 50, targetY: 0, arrived: false });
+  });
+
+  it('preserves the queue tail behind a move head', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const sel = createSelection(); sel.ids.add(a);
+    world.orderQueue.set(a, [
+      { kind: 'move', targetX: 50, targetY: 0, arrived: true },
+      { kind: 'move', targetX: 100, targetY: 0 },
+    ]);
+
+    issueHurryToSlots(world, sel);
+
+    const q = world.orderQueue.get(a)!;
+    expect(q.length).toBe(2);
+    expect(q[1]).toMatchObject({ kind: 'move', targetX: 100, targetY: 0 });
+  });
+
+  it('rewrites a march-formation head to a move at the same slot, facing group.forward', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const sel = createSelection(); sel.ids.add(a);
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+    const [gid, group] = [...world.marchGroups.entries()][0]!;
+    const headBefore = world.orderQueue.get(a)![0] as { kind: string; targetX: number; targetY: number; groupId: number };
+    expect(headBefore.kind).toBe('march-formation');
+    expect(headBefore.groupId).toBe(gid);
+
+    issueHurryToSlots(world, sel);
+
+    const q = world.orderQueue.get(a)!;
+    expect(q.length).toBe(1);
+    const head = q[0]! as { kind: string; targetX: number; targetY: number; faceX: number; faceY: number };
+    expect(head.kind).toBe('move');
+    expect(head.targetX).toBeCloseTo(headBefore.targetX);
+    expect(head.targetY).toBeCloseTo(headBefore.targetY);
+    expect(head.faceX).toBeCloseTo(group.forward.x);
+    expect(head.faceY).toBeCloseTo(group.forward.y);
+  });
+
+  it('falls back to rest anchor + restFacing for idle / non-move heads', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 5, 7);
+    world.entities.restPosX[a] = 10;
+    world.entities.restPosY[a] = 20;
+    world.entities.restFacing[a] = 2; // PI/2 → (0, 1)
+    const sel = createSelection(); sel.ids.add(a);
+
+    issueHurryToSlots(world, sel);
+
+    const q = world.orderQueue.get(a)!;
+    expect(q.length).toBe(1);
+    const head = q[0]! as { kind: string; targetX: number; targetY: number; faceX: number; faceY: number };
+    expect(head.kind).toBe('move');
+    expect(head.targetX).toBe(10);
+    expect(head.targetY).toBe(20);
+    expect(head.faceX).toBeCloseTo(0);
+    expect(head.faceY).toBeCloseTo(1);
+  });
+
+  it('replaces an attack-move head with a rest-anchor move', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    world.entities.restPosX[a] = 3;
+    world.entities.restPosY[a] = 4;
+    world.entities.restFacing[a] = 0;
+    world.orderQueue.set(a, [{ kind: 'attack-move', targetX: 999, targetY: 999 }]);
+    const sel = createSelection(); sel.ids.add(a);
+
+    issueHurryToSlots(world, sel);
+
+    const q = world.orderQueue.get(a)!;
+    expect(q.length).toBe(1);
+    expect(q[0]).toMatchObject({ kind: 'move', targetX: 3, targetY: 4 });
+  });
+
+  it('skips dead selected units', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    world.entities.alive[a] = 0;
+    const sel = createSelection(); sel.ids.add(a);
+
+    issueHurryToSlots(world, sel);
+
+    expect(world.orderQueue.get(a)).toBeUndefined();
   });
 });

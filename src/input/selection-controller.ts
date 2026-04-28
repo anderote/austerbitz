@@ -3,7 +3,7 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
 import { isDead, EntityState } from '../sim/entities';
 import {
@@ -90,11 +90,12 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
-  // Hold-F locks the selection into a fixed grid: centroid/forward/ranks are
-  // captured on first press and re-applied each frame so jostled units get
-  // pushed back to their slots.
+  // Hold-F = "hurry to your slot." Each frame F is held, every selected unit
+  // is re-issued a full-speed move toward the position/facing it's already
+  // trying to reach (current move/march-formation target, or rest anchor).
+  // Does not change formation; just pre-empts the slow settle drift and
+  // dissolves any march pacing.
   let fHeld = false;
-  let lockedGrid: { centroid: Vec2; forward: Vec2; ranks: number } | null = null;
   // Hidden rank snapshot used to preserve the visual rectangle across spacing
   // changes when the user has not set an explicit rank override. Separate from
   // formationParams.ranks (which is user-facing and shown as "auto" when null)
@@ -139,27 +140,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     return { x: sx / len, y: sy / len };
   }
 
-  function selectionCentroid(): Vec2 | null {
-    const e = world.entities;
-    let cx = 0, cy = 0, n = 0;
-    for (const id of selection.ids) {
-      if (e.alive[id] !== 1) continue;
-      cx += e.posX[id]!; cy += e.posY[id]!; n++;
-    }
-    if (n === 0) return null;
-    return { x: cx / n, y: cy / n };
-  }
-
-  function selectionAliveCount(): number {
-    const e = world.entities;
-    let n = 0;
-    for (const id of selection.ids) if (e.alive[id] === 1) n++;
-    return n;
-  }
-
   function clearGridHold(): void {
     fHeld = false;
-    lockedGrid = null;
   }
 
   // Resolve the rank count to reform with. User override (formationParams.ranks)
@@ -460,20 +442,12 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
     if (e.code === 'KeyF') {
-      // F = push selection into a square-ish grid formation. The actual
-      // order issuance happens in update() each frame F is held — a tap
-      // applies one frame's worth of force, holding applies it continuously.
+      // F = "hurry to your slot." Each frame F is held, every selected unit
+      // gets pushed toward the position/facing it's already trying to reach
+      // (active move/march target, or rest anchor) at full base speed.
+      // Does NOT reform — formation, ranks, and centroid are untouched.
       if (fHeld) return; // OS key-repeat: state already captured
       if (selection.ids.size === 0) return;
-      const N = selectionAliveCount();
-      if (N === 0) return;
-      const centroid = selectionCentroid();
-      if (!centroid) return;
-      lockedGrid = {
-        centroid,
-        forward: averageFacing(),
-        ranks: Math.max(1, Math.floor(Math.sqrt(N))),
-      };
       fHeld = true;
       tightHeld = false;
       return;
@@ -575,18 +549,12 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         lastSelectionSig = sig;
       }
 
-      // F = push selection into grid formation. Each frame F is held, re-issue
-      // the reform at the locked centroid; that replaces any post-arrival
-      // settle/recovery orders with a fresh move at full speed, so jostled
-      // units snap back to their slots instead of drifting in slowly.
-      if (fHeld && lockedGrid && selection.ids.size > 0) {
-        issueReformAtTarget(
-          world, selection,
-          lockedGrid.centroid,
-          lockedGrid.forward,
-          Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
-          lockedGrid.ranks,
-        );
+      // F = hurry. Each frame F is held, push every selected unit toward the
+      // position/facing it's already trying to reach at full base speed.
+      // Re-issuing every frame pre-empts the slow settle drift and keeps
+      // jostled units sprinting back to their slot.
+      if (fHeld && selection.ids.size > 0) {
+        issueHurryToSlots(world, selection);
       }
 
       // Auto-pack on idle when in tight stance.

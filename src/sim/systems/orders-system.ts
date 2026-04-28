@@ -5,9 +5,12 @@ import { isDead } from '../entities';
 import { MARCH_SPEED_FACTOR } from './march-system';
 
 const ARRIVE_RADIUS = 0.1; // m
-// Once a unit has reached its parked target it re-engages at this fraction of
-// its move speed — so post-push recovery is a slow drift, not a re-march.
-const SETTLE_SPEED_FACTOR = 0.3;
+// Once parked, units push back to their slot at full move speed regardless
+// of how far they've been knocked out — formation discipline over polite
+// reconvergence. The arrive-radius snap keeps them from overshooting.
+function settleFactor(_dist: number): number {
+  return 1.0;
+}
 
 export const ordersSystem: System = (world, dt) => {
   const e = world.entities;
@@ -73,7 +76,7 @@ export const ordersSystem: System = (world, dt) => {
           e.velY[id] = 0;
           continue;
         }
-        const settle = baseSpeed * SETTLE_SPEED_FACTOR;
+        const settle = baseSpeed * settleFactor(dist);
         e.velX[id] = (dx / dist) * settle;
         e.velY[id] = (dy / dist) * settle;
         writeFacingIntent(e, id, dx, dy);
@@ -128,7 +131,7 @@ export const ordersSystem: System = (world, dt) => {
           e.velY[id] = 0;
           continue;
         }
-        const speed = baseSpeed * SETTLE_SPEED_FACTOR;
+        const speed = baseSpeed * settleFactor(dist);
         e.velX[id] = (dx / dist) * speed;
         e.velY[id] = (dy / dist) * speed;
         writeFacingIntent(e, id, dx, dy);
@@ -174,7 +177,7 @@ export const ordersSystem: System = (world, dt) => {
       continue;
     }
     const dist = Math.sqrt(distSq);
-    const speed = getUnitKindByIndex(e.kindId[id]!).baseStats.moveSpeed * SETTLE_SPEED_FACTOR;
+    const speed = getUnitKindByIndex(e.kindId[id]!).baseStats.moveSpeed * settleFactor(dist);
     e.velX[id] = (dx / dist) * speed;
     e.velY[id] = (dy / dist) * speed;
     writeFacingIntent(e, id, dx, dy);

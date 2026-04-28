@@ -188,6 +188,58 @@ export function issueReformAtTarget(
 }
 
 /**
+ * "Hurry to your slot" — for each selected unit, send it toward the position
+ * and facing it's already trying to reach, at full base speed. Designed to be
+ * re-issued every frame F is held so jostled units get continuously pushed
+ * back. Does NOT change formation: no centroid, no ranks, no group layout.
+ *
+ * Per-unit resolution:
+ *  - Head order is `move`: clear `arrived`. Re-engages at full base speed
+ *    instead of the slow distance-scaled settle drift. Queue otherwise
+ *    untouched.
+ *  - Head order is `march-formation`: replace head with a `move` to the same
+ *    `(targetX, targetY)`, face = `group.forward`. Drops out of the march
+ *    group on march-system's next tick. Queue tail preserved.
+ *  - Otherwise (idle / attack / attack-move / stop / no order): replace the
+ *    queue with a single `move` to `(restPosX, restPosY)` with `restFacing`
+ *    as the face hint.
+ */
+export function issueHurryToSlots(world: World, sel: Selection): void {
+  const e = world.entities;
+  for (const id of sel.ids) {
+    if (e.alive[id] !== 1) continue;
+    const queue = world.orderQueue.get(id);
+    const head = queue && queue[0];
+    if (head?.kind === 'move') {
+      head.arrived = false;
+      continue;
+    }
+    if (head?.kind === 'march-formation') {
+      const group = world.marchGroups.get(head.groupId);
+      const fx = group?.forward.x ?? 1;
+      const fy = group?.forward.y ?? 0;
+      queue![0] = {
+        kind: 'move',
+        targetX: head.targetX,
+        targetY: head.targetY,
+        faceX: fx,
+        faceY: fy,
+      };
+      continue;
+    }
+    const restAng = (e.restFacing[id]! * Math.PI) / 4;
+    const order: Order = {
+      kind: 'move',
+      targetX: e.restPosX[id]!,
+      targetY: e.restPosY[id]!,
+      faceX: Math.cos(restAng),
+      faceY: Math.sin(restAng),
+    };
+    world.orderQueue.set(id, [order]);
+  }
+}
+
+/**
  * March the current selection toward `target` in formation. Pivots the group's
  * facing to point at `target`, lays out pivoted slots anchored at `target`,
  * and dispatches `march-formation` orders. Allocates a fresh march group on

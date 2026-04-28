@@ -340,6 +340,25 @@ describe('syntheticFormationDrag', () => {
     expect((startW.y + endW.y) / 2).toBeCloseTo(200);
   });
 
+  it('keeps formation centroid stable for partially-filled last rank', () => {
+    // N=10, ranks=3 (floor(sqrt(10))) → frontCount=4, last rank has 2 units.
+    // F-key uses this exact ranks formula, so the previous halfDepth-based
+    // shift drifted the formation along forward by ~0.2 * spacingY.
+    const units: FormationUnit[] = Array.from({ length: 10 }, (_, i) => ({
+      id: i, x: i, y: 0, spacingX: 1, spacingY: 1,
+    }));
+    const cx = 4.5, cy = 0;
+    const forward = { x: 1, y: 0 };
+    const { startW, endW } = syntheticFormationDrag(units, forward, 3, 1);
+    const { slots } = computeFormationSlots({
+      units, startW, endW, spacingMult: 1, ranksOverride: 3,
+    });
+    const sx = slots.reduce((a, s) => a + s.x, 0) / slots.length;
+    const sy = slots.reduce((a, s) => a + s.y, 0) / slots.length;
+    expect(sx).toBeCloseTo(cx, 5);
+    expect(sy).toBeCloseTo(cy, 5);
+  });
+
   it('keeps formation centroid stable when spacing changes', () => {
     // A 3-rank, 3-file grid in formation. Reform with two different spacings;
     // the centroid of the resulting slots should match the input centroid in
@@ -408,6 +427,32 @@ describe('computeMarchSlots', () => {
     expect(r.targets.length).toBe(1);
     expect(r.targets[0]!.x).toBeCloseTo(50, 3);
     expect(r.targets[0]!.y).toBeCloseTo(0, 3);
+  });
+
+  it('preserves the formation shape when the click direction differs from current facing', () => {
+    // 12 units in a 3-rank x 4-file block facing east (restFacing = 0).
+    // Clicking NORTH should still produce 3 ranks — not collapse to 1 rank
+    // because the inference projection axis flipped to (0, 1).
+    const world = createWorld({ seed: 1, capacity: 32, mapSize: 1000 });
+    const ids: number[] = [];
+    const spX = 1.4, spY = 1.4;
+    for (let r = 0; r < 3; r++) {
+      for (let f = 0; f < 4; f++) {
+        const id = spawnLI(world, -r * spY, (f - 1.5) * spX); // depth grows -x; lateral spans y
+        world.entities.restFacing[id] = 0; // east
+        ids.push(id);
+      }
+    }
+    const result = computeMarchSlots(world, ids, { x: 0, y: 100 }, createFormationParams())!;
+    // 3 ranks of 4 = 12 slots. Distinct depth bins along the new forward (north)
+    // should equal 3, matching the original rank count.
+    const fx = result.forward.x, fy = result.forward.y;
+    const depths = result.slots.map(s => s.x * fx + s.y * fy).sort((a, b) => a - b);
+    let bins = 1;
+    for (let i = 1; i < depths.length; i++) {
+      if (depths[i]! - depths[i - 1]! > spY * 0.5) bins++;
+    }
+    expect(bins).toBe(3);
   });
 
   it('two-unit selection: forward points along centroid→target; slot centroid lands at target', () => {
