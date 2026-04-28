@@ -21,8 +21,8 @@ interface FactionPalette {
 // Inline regiment palette fallback — mirrors sprite-pass's hardcoded list.
 // Kept in-pass to avoid plumbing a second async fetch through the renderer.
 const regiments: FactionPalette[] = [
-  { primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
   { primary: [40, 80, 190],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
+  { primary: [180, 40, 50],   secondary: [240, 230, 210], tertiary: [25, 20, 35] },
   { primary: [35, 45, 75],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
   { primary: [40, 75, 50],    secondary: [240, 230, 210], tertiary: [15, 15, 20] },
   { primary: [225, 215, 195], secondary: [120, 105, 85],  tertiary: [15, 15, 20] },

@@ -104,12 +104,14 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
       const baseY = e.posY[id]! + offY * pxToWorld;
       const px = baseX + world.rng.range(-0.6, 0.6);
       const py = baseY + world.rng.range(-0.6, 0.6);
-      // Dropped weapons want body-like variety, biased to lie E-W: pick a
-      // base of ±90° (sign 50/50) and add wide jitter. Ignores the dying
-      // pose's authored rot since that just locks every musket to one angle.
-      const wMag = world.rng.range(70, 110);
-      const wSign = world.rng.range(0, 1) < 0.5 ? -1 : 1;
-      const rot = (wSign * wMag * Math.PI) / 180;
+      // Dropped weapons lie preferentially E-W. The dying-pose musket sprite
+      // is authored already lying horizontal, so rot=0 is E-W — we just add
+      // a small tilt off horizontal plus a 50/50 180° flip so muzzles point
+      // either direction. Ignores the dying pose's authored rot since that
+      // just locks every musket to one angle.
+      const wTilt = world.rng.range(-15, 15);
+      const wFlip = world.rng.range(0, 1) < 0.5 ? 0 : Math.PI;
+      const rot = (wTilt * Math.PI) / 180 + wFlip;
       const flipX = dyingEntry?.flipX === true ? 1 : 0;
       // Weapon tumble: starts at the body's torso (sprite center) with rot 0,
       // low arc, short duration — the musket drops more than it flies.

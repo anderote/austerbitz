@@ -79,6 +79,15 @@ void main() {
   bool mag = abs(src.r - src.b) < eps && src.g < src.r - eps && src.r > 0.1;
   bool cyn = abs(src.g - src.b) < eps && src.r < src.g - eps && src.g > 0.1;
   bool yel = abs(src.r - src.g) < eps && src.b < src.r - eps && src.r > 0.1;
+  // Literal red-coat detection — pose-atlas PNGs bake the British red coat
+  // directly (not as magenta markers), so we treat any strongly red-dominant
+  // pixel as a primary slot too. Range chosen to catch the coat (r-g > 80,
+  // r-b > 80) without grabbing skin (~r-g 50) or brass (~b too low but g high).
+  // Brightness normalizes against the mid-coat r=180/255≈0.706.
+  bool redCoat = !mag && !cyn && !yel
+              && src.r > 0.4
+              && (src.r - src.g) > 0.30
+              && (src.r - src.b) > 0.30;
   if (mag) {
     float f = src.r;
     col = clamp(v_primary * f, 0.0, 1.0);
@@ -91,6 +100,9 @@ void main() {
     float f = src.r;
     col = clamp(v_tertiary * f, 0.0, 1.0);
     col = mix(col, vec3(1.0), src.b * 0.5);
+  } else if (redCoat) {
+    float f = clamp(src.r / 0.706, 0.0, 1.4);
+    col = clamp(v_primary * f, 0.0, 1.0);
   }
   // Dot patterns. Sampled atlas cell is solid white, so col=(1,1,1) here —
   // we override based on the fragment's WORLD position so adjacent overlapping

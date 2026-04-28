@@ -10,8 +10,8 @@ import { themeIdOf, poolSizes } from '../data/name-bank';
 
 /** Maps team number -> name-bank theme name. Single config point. */
 export const FACTION_THEMES: Record<number, string> = {
-  0: 'english',
-  1: 'french',
+  0: 'french',
+  1: 'english',
 };
 
 /** Roll a Box-Muller Gaussian age, μ=24 σ=6, clamped to [16, 55]. */
@@ -30,11 +30,11 @@ function rollAge(rng: Rng): number {
  * it through here — this function does not read `e.team`, it takes `team`
  * as a parameter so it works regardless of write order).
  *
- * Defensive: unknown team falls back to the english theme; an empty pool
+ * Defensive: unknown team falls back to the french theme; an empty pool
  * yields index 0 (the loader returns '?' for unknown indices).
  */
 export function assignIdentity(e: Entities, id: number, team: number, rng: Rng): void {
-  const themeName = FACTION_THEMES[team] ?? 'english';
+  const themeName = FACTION_THEMES[team] ?? 'french';
   const tid = Math.max(0, themeIdOf(themeName));
   const sizes = poolSizes(tid);
   e.themeId[id] = tid;

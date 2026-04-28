@@ -9,7 +9,7 @@ export const SHELL_BILLOW: PuffProfile = {
   drag: 0.985, buoyancy: -1.5,
   inertiaExp: 2, inertiaWeight: 0.30,
   color: [0.60, 0.60, 0.62], colorJitter: 0.04,
-  alpha: 0.9, softness: 0.85,
+  alpha: 0.6, softness: 0.85,
   coalesce: { radius: 1.5, sizePerMerge: 0.20, lifePerMerge: 0.6, posBlend: 0.2, mergeChance: 0.5 },
 };
 

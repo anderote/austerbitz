@@ -5,13 +5,13 @@ import { createRng } from '../util/rng';
 import { themeIdOf, poolSizes } from '../data/name-bank';
 
 describe('assignIdentity', () => {
-  it('writes english theme + in-range indices for team 0', () => {
+  it('writes french theme + in-range indices for team 0', () => {
     const e = createEntities(8);
     const rng = createRng(12345);
     const id = allocEntity(e);
     assignIdentity(e, id, 0, rng);
 
-    const expectedTid = themeIdOf('english');
+    const expectedTid = themeIdOf('french');
     expect(expectedTid).toBeGreaterThanOrEqual(0);
     expect(e.themeId[id]).toBe(expectedTid);
 
@@ -27,13 +27,13 @@ describe('assignIdentity', () => {
     expect(e.ageYears[id]!).toBeLessThanOrEqual(55);
   });
 
-  it('writes french theme for team 1', () => {
+  it('writes english theme for team 1', () => {
     const e = createEntities(8);
     const rng = createRng(99);
     const id = allocEntity(e);
     assignIdentity(e, id, 1, rng);
 
-    const expectedTid = themeIdOf('french');
+    const expectedTid = themeIdOf('english');
     expect(expectedTid).toBeGreaterThanOrEqual(0);
     expect(e.themeId[id]).toBe(expectedTid);
 
@@ -45,13 +45,13 @@ describe('assignIdentity', () => {
     expect(e.ageYears[id]!).toBeLessThanOrEqual(55);
   });
 
-  it('falls back to english for an unknown team', () => {
+  it('falls back to french for an unknown team', () => {
     const e = createEntities(8);
     const rng = createRng(7);
     const id = allocEntity(e);
     assignIdentity(e, id, 99, rng);
 
-    expect(e.themeId[id]).toBe(themeIdOf('english'));
+    expect(e.themeId[id]).toBe(themeIdOf('french'));
     expect(e.ageYears[id]!).toBeGreaterThanOrEqual(16);
     expect(e.ageYears[id]!).toBeLessThanOrEqual(55);
   });

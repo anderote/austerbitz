@@ -20,6 +20,10 @@ export const ordersSystem: System = (world, dt) => {
       continue;
     }
     if (isDead(e, id)) continue;
+    // Default: not marching. Only the march-formation, march-phase,
+    // not-yet-arrived branch below flips this back to 1 so state-system
+    // animates the walking pose instead of running.
+    e.isMarching[id] = 0;
     // 'stop' should be resolved eagerly: clear queue, idle. Re-anchor here so
     // the unit drifts back to *this* spot if jostled later.
     if (queue[0]!.kind === 'stop') {
@@ -92,6 +96,7 @@ export const ordersSystem: System = (world, dt) => {
         e.velX[id] = (dx / dist) * speed;
         e.velY[id] = (dy / dist) * speed;
         writeFacingIntent(e, id, group.forward.x, group.forward.y);
+        e.isMarching[id] = 1;
       }
       continue;
     }
@@ -127,6 +132,8 @@ export const ordersSystem: System = (world, dt) => {
         continue;
       }
       const baseSpeed = getUnitKindByIndex(e.kindId[id]!).baseStats.moveSpeed;
+      const walking = order.walk === true;
+      const cruiseSpeed = walking ? baseSpeed * MARCH_SPEED_FACTOR : baseSpeed;
       if (order.arrived) {
         // Parked unit got shoved. Wait out the recovery delay, then drift back
         // slowly so neighbours have time to clear before we re-converge.
@@ -136,14 +143,16 @@ export const ordersSystem: System = (world, dt) => {
           e.velY[id] = 0;
           continue;
         }
-        const speed = baseSpeed * settleFactor(dist);
+        const speed = cruiseSpeed * settleFactor(dist);
         e.velX[id] = (dx / dist) * speed;
         e.velY[id] = (dy / dist) * speed;
         writeFacingIntent(e, id, dx, dy);
+        if (walking) e.isMarching[id] = 1;
       } else {
-        e.velX[id] = (dx / dist) * baseSpeed;
-        e.velY[id] = (dy / dist) * baseSpeed;
+        e.velX[id] = (dx / dist) * cruiseSpeed;
+        e.velY[id] = (dy / dist) * cruiseSpeed;
         writeFacingIntent(e, id, dx, dy);
+        if (walking) e.isMarching[id] = 1;
       }
     } else if (order.kind === 'attack') {
       // Stub until combat lands. If the target is dead or out of bounds, drop the order.
@@ -167,6 +176,7 @@ export const ordersSystem: System = (world, dt) => {
     const id = e.aliveIds[n]!;
     if (world.orderQueue.has(id)) continue;
     if (e.state[id]! >= 4) continue; // ragdoll/dying/dead
+    e.isMarching[id] = 0;
     if (e.pushedT[id]! > 0) {
       e.pushedT[id] = Math.max(0, e.pushedT[id]! - dt);
       e.velX[id] = 0;

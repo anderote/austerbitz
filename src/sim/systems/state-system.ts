@@ -7,16 +7,20 @@ import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
 import { effectiveReload } from '../veterancy';
 import { writeFacingIntent } from './facing-system';
-import { Pose, RUN_THRESHOLD_PX_S } from '../../render/poses/pose-config';
+import { Pose } from '../../render/poses/pose-config';
 import { writeFireSignal, type FireSignal } from '../fire-signal';
 import type { Grid } from '../spatial/grid';
 
-const RUN_THRESHOLD_SQ = RUN_THRESHOLD_PX_S * RUN_THRESHOLD_PX_S;
+// m/s — matches facing-system's SPEED_EPS. Below this we treat the unit as
+// stationary and pick the idle pose instead of walking/running.
+const SPEED_EPS_SQ = 0.05 * 0.05;
 
-function poseFor(state: EntityState, speedSq: number): Pose {
+function poseFor(state: EntityState, speedSq: number, marching: boolean): Pose {
   switch (state) {
-    case EntityState.Idle:      return Pose.idle;
-    case EntityState.Moving:    return speedSq > RUN_THRESHOLD_SQ ? Pose.running : Pose.walking;
+    case EntityState.Idle:
+    case EntityState.Moving:
+      if (speedSq <= SPEED_EPS_SQ) return Pose.idle;
+      return marching ? Pose.walking : Pose.running;
     case EntityState.Aiming:    return Pose.aiming;
     case EntityState.Firing:    return Pose.firing;
     case EntityState.Reloading: return Pose.reloading;
@@ -163,7 +167,7 @@ export function tickStates(
       const vx = e.velX[i]!;
       const vy = e.velY[i]!;
       const speedSq = vx * vx + vy * vy;
-      const desired = poseFor(stateNow, speedSq);
+      const desired = poseFor(stateNow, speedSq, e.isMarching[i] === 1);
       if (e.pose[i] !== desired) {
         e.pose[i] = desired;
         e.poseT[i] = 0;

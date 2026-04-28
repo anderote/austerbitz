@@ -97,6 +97,10 @@ export interface Entities {
   pose: Uint8Array;         // Pose enum (0..9)
   poseT: Float32Array;      // seconds since pose entry
   clipIndex: Uint8Array;    // selected variant (0..255)
+  // 1 while the unit is moving as part of an active march-formation order
+  // (march phase, not yet arrived). State-system reads this to pick walking
+  // vs running animation: marching → walking, anything else → running.
+  isMarching: Uint8Array;
   // Body sprite rotation in radians (signed). Used by sprite-pass to tilt the
   // body during the Dying state and hold the final tilt during Dead. Set by
   // death-drops-system at the moment of death; zero for everything else.
@@ -166,6 +170,7 @@ export function createEntities(capacity: number): Entities {
     pose: new Uint8Array(capacity),
     poseT: new Float32Array(capacity),
     clipIndex: new Uint8Array(capacity),
+    isMarching: new Uint8Array(capacity),
     bodyRot: new Float32Array(capacity),
     weaponDropped: new Uint8Array(capacity),
     partLost: new Uint8Array(capacity),
@@ -221,6 +226,7 @@ export function allocEntity(e: Entities): number {
   e.pose[id] = 0;
   e.poseT[id] = 0;
   e.clipIndex[id] = 0;
+  e.isMarching[id] = 0;
   e.bodyRot[id] = 0;
   e.weaponDropped[id] = 0;
   e.partLost[id] = 0;

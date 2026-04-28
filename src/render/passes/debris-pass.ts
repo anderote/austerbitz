@@ -71,9 +71,9 @@ export function createDebrisPass(gl: WebGL2RenderingContext, capacity: number): 
   const scratchRot = new Float32Array(capacity);
   const scratchTeam = new Float32Array(capacity);
 
-  // Team palettes per spec — British red / French blue, RGB 0..1.
-  const TEAM0 = new Float32Array([0.7, 0.15, 0.15]);
-  const TEAM1 = new Float32Array([0.15, 0.25, 0.55]);
+  // Team palettes per spec — French blue / British red, RGB 0..1.
+  const TEAM0 = new Float32Array([0.15, 0.25, 0.55]);
+  const TEAM1 = new Float32Array([0.7, 0.15, 0.15]);
 
   return {
     draw(d, atlas, cam, worldUnitsPerPixel) {
