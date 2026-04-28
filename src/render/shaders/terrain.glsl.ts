@@ -20,6 +20,7 @@ precision highp float;
 in vec2 v_worldPos;
 uniform sampler2D u_tile;
 uniform sampler2D u_blood;
+uniform sampler2D u_crater;
 uniform float u_tileSize;   // world units per tile
 uniform vec2 u_worldSize;   // total world size in metres
 out vec4 outColor;
@@ -54,10 +55,17 @@ void main() {
   float bright = 0.90 + 0.14 * macro + 0.06 * (meso - 0.5) + 0.04 * (fine - 0.5);
   vec3 color = base * bright;
 
-  vec2 bloodUv = v_worldPos / u_worldSize;
+  vec2 stainUv = v_worldPos / u_worldSize;
+  float craterStain = 0.0;
+  if (stainUv.x >= 0.0 && stainUv.x <= 1.0 && stainUv.y >= 0.0 && stainUv.y <= 1.0) {
+    craterStain = texture(u_crater, stainUv).r;
+  }
+  vec3 craterCol = vec3(0.07, 0.06, 0.04);   // dark charred dirt
+  color = mix(color, craterCol, clamp(craterStain * 0.75, 0.0, 0.75));
+
   float stain = 0.0;
-  if (bloodUv.x >= 0.0 && bloodUv.x <= 1.0 && bloodUv.y >= 0.0 && bloodUv.y <= 1.0) {
-    stain = texture(u_blood, bloodUv).r;
+  if (stainUv.x >= 0.0 && stainUv.x <= 1.0 && stainUv.y >= 0.0 && stainUv.y <= 1.0) {
+    stain = texture(u_blood, stainUv).r;
   }
   vec3 bloodCol = vec3(0.18, 0.02, 0.02);
   color = mix(color, bloodCol, clamp(stain * 0.85, 0.0, 0.85));

@@ -445,7 +445,7 @@ describe('combat pipeline integration', () => {
     rebuildGrid(world);
     combat(world, dt);
     tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
-    tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
+    tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats);
 
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
     expect(projectiles.count).toBe(0);
@@ -458,7 +458,7 @@ describe('combat pipeline integration', () => {
       rebuildGrid(world);
       combat(world, dt);
       tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
-      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
+      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats);
       peakProjectiles = Math.max(peakProjectiles, projectiles.count);
     }
 

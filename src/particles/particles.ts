@@ -4,6 +4,8 @@ export const ParticleClass = {
   Flash: 2,
   Blood: 3,
   Debris: 4,
+  Ring: 5,
+  Ember: 6,
 } as const;
 export type ParticleClass = (typeof ParticleClass)[keyof typeof ParticleClass];
 

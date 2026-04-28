@@ -57,7 +57,9 @@ describe('resolveFire', () => {
     expect(projectiles.velX[0]!).toBeGreaterThan(0);
     // And a positive launch vz on the lower trajectory.
     expect(projectiles.velZ[0]!).toBeGreaterThan(0);
-    expect(e.recoilT[id]).toBeCloseTo(RECOIL_T, 6);
+    // cannon-12 has recoilDuration: 3.5 on its muzzle profile.
+    expect(e.recoilT[id]).toBeCloseTo(3.5, 6);
+    expect(e.recoilTotal[id]).toBeCloseTo(3.5, 6);
   });
 
   it('cuirassier (no weapon): returns false; nothing spawned', () => {

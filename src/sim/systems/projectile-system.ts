@@ -6,13 +6,18 @@ import type { Rng } from '../../util/rng';
 import { applyHit } from './combat-events';
 import type { BloodSplats } from '../blood-splats';
 import type { Debris } from '../debris';
+import type { Shockwaves } from '../../fx/shockwaves';
+import type { ShakeRequests } from '../shake-requests';
+import type { CraterSplats } from '../crater-splats';
+import { pushSfxRequest, type SfxRequests } from '../sfx-requests';
 import {
   emitImpactDust,
   emitRicochetBurst,
 } from '../../particles/emitters';
-import { emitPuff } from '../../puffs/emit';
+import { emitPuff, emitPuffBurst } from '../../puffs/emit';
 import type { Puffs } from '../../puffs/puffs';
 import { CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX } from '../../puffs/profiles/cannonball-trail';
+import { DIRT_SKIP, DIRT_SKIP_INDEX } from '../../puffs/profiles/dirt-skip';
 import { spawnExplosion } from '../../fx/explosion';
 import { getUnitKindByIndex } from '../../data/units';
 import { GAME_GRAVITY } from '../../fx/ballistics';
@@ -58,9 +63,13 @@ export function tickProjectiles(
   puffs: Puffs,
   particles: Particles,
   rng: Rng,
+  shockwaves: Shockwaves,
   debris: Debris,
   dt: number,
   splats?: BloodSplats,
+  shakeRequests?: ShakeRequests,
+  craterSplats?: CraterSplats,
+  sfxRequests?: SfxRequests,
 ): void {
   const p = projectiles;
   for (let i = 0; i < p.capacity; i++) {
@@ -90,13 +99,17 @@ export function tickProjectiles(
       p.fuseT[i] = p.fuseT[i]! - dt;
       if (p.fuseT[i]! <= 0) {
         spawnExplosion(
+          shockwaves,
           entities, grid, puffs, particles, rng,
           p.posX[i]!, p.posY[i]!,
           cannon12Shell.projectile.explosion!,
-          undefined,
+          undefined,                           // friendly-fire on: shells damage all teams in radius
           splats,
           debris,
           p.ownerId[i]!,
+          shakeRequests,
+          craterSplats,
+          sfxRequests,
         );
         freeProjectile(p, i);
         continue;
@@ -113,7 +126,21 @@ export function tickProjectiles(
           p.velX[i] = p.velX[i]! * RICOCHET_HORIZONTAL_DAMPING;
           p.velY[i] = p.velY[i]! * RICOCHET_HORIZONTAL_DAMPING;
           p.ricochets[i] = p.ricochets[i]! - 1;
+          const speedMag = Math.hypot(p.velX[i]!, p.velY[i]!);
+          const dirX = speedMag > 1e-3 ? p.velX[i]! / speedMag : 1;
+          const dirY = speedMag > 1e-3 ? p.velY[i]! / speedMag : 0;
+          emitPuffBurst(
+            puffs,
+            DIRT_SKIP, DIRT_SKIP_INDEX,
+            p.posX[i]!, p.posY[i]!,
+            dirX, dirY,
+            6,
+            Math.PI / 3,
+            { min: 3, max: 5 },
+            rng,
+          );
           emitRicochetBurst(particles, p.posX[i]!, p.posY[i]!, p.velX[i]!, p.velY[i]!, rng);
+          if (sfxRequests) pushSfxRequest(sfxRequests, 'solid-skip', p.posX[i]!, p.posY[i]!);
         } else {
           // Pin to the ground; rolling proceeds in step 6 on subsequent ticks.
           p.posZ[i] = 0;
@@ -122,13 +149,17 @@ export function tickProjectiles(
       } else if (kind === ProjectileKind.Shell) {
         // Detonate at the impact point before clamping.
         spawnExplosion(
+          shockwaves,
           entities, grid, puffs, particles, rng,
           p.prevX[i]!, p.prevY[i]!,
           cannon12Shell.projectile.explosion!,
-          undefined,
+          undefined,                           // friendly-fire on: shells damage all teams in radius
           splats,
           debris,
           p.ownerId[i]!,
+          shakeRequests,
+          craterSplats,
+          sfxRequests,
         );
         freeProjectile(p, i);
         continue;
@@ -207,13 +238,17 @@ export function tickProjectiles(
         if (kind === ProjectileKind.Shell) {
           // Detonate at the candidate's xy; the explosion handles damage.
           spawnExplosion(
+            shockwaves,
             entities, grid, puffs, particles, rng,
             ex, ey,
             cannon12Shell.projectile.explosion!,
-            undefined,
+            undefined,                           // friendly-fire on: shells damage all teams in radius
             splats,
             debris,
             p.ownerId[i]!,
+            shakeRequests,
+            craterSplats,
+            sfxRequests,
           );
           freeProjectile(p, i);
           freed = true;

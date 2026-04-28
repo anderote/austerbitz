@@ -3,7 +3,7 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots, issueNudge } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
 import { isDead, EntityState } from '../sim/entities';
 import {
@@ -60,10 +60,6 @@ interface ControllerInternals {
 }
 
 const DRAG_THRESHOLD_PX = 4;
-// World-space step per arrow-key nudge. OS key-repeat accumulates additional
-// presses, and issueNudge compounds against the previous move target so a held
-// key produces continuous motion rather than locking to (pos + step).
-const NUDGE_STEP_WORLD = 2;
 
 export function createSelectionController(deps: SelectionControllerDeps): SelectionController {
   const { canvas, overlayRoot, camera, world, selection, drag, formationDrag, controlGroups } = deps;
@@ -490,23 +486,6 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
 
-    if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
-      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
-      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (selection.ids.size === 0) return;
-      const fwd = averageFacing();
-      const leftX = -fwd.y, leftY = fwd.x;
-      const s = NUDGE_STEP_WORLD;
-      let dx = 0, dy = 0;
-      if (e.code === 'ArrowUp') { dx = fwd.x * s; dy = fwd.y * s; }
-      else if (e.code === 'ArrowDown') { dx = -fwd.x * s; dy = -fwd.y * s; }
-      else if (e.code === 'ArrowLeft') { dx = leftX * s; dy = leftY * s; }
-      else { dx = -leftX * s; dy = -leftY * s; }
-      issueNudge(world, selection, dx, dy, fwd, { queue: e.shiftKey });
-      tightHeld = false;
-      return;
-    }
   }
 
   function onKeyUp(e: { key: string; code: string }): void {

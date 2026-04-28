@@ -1,29 +1,35 @@
-import { isDead, type Entities } from '../sim/entities';
-import { type Grid, gridQueryRadius } from '../sim/spatial/grid';
+import type { Entities } from '../sim/entities';
+import type { Grid } from '../sim/spatial/grid';
 import { ParticleClass, spawnParticle, type Particles } from '../particles/particles';
 import type { Rng } from '../util/rng';
 import type { ExplosionProfile } from '../data/weapons/types';
-import { applyHit } from '../sim/systems/combat-events';
 import type { BloodSplats } from '../sim/blood-splats';
+import { pushCraterSplat, type CraterSplats } from '../sim/crater-splats';
 import type { Debris } from '../sim/debris';
 import type { Puffs } from '../puffs/puffs';
 import { emitPuffBurst } from '../puffs/emit';
+import { allocShockwave, type Shockwaves } from './shockwaves';
+import { pushShakeRequest, type ShakeRequests } from '../sim/shake-requests';
+import { pushSfxRequest, type SfxRequests } from '../sim/sfx-requests';
 
-const EXPLOSION_BUF = new Int32Array(2048);
+const RING_COUNT = 2;
+const RING_BIRTH_OFFSETS = [0, 0.08] as const;  // seconds; staggered for layered feel
+const EMBER_COUNT = 20;
+const WAVE_SPEED = 120;                          // m/s
 
 /**
- * Detonate an explosion at (x, y): one bright flash, a billowing smoke spray,
- * a debris fan, and area damage + impulse to entities inside `damageRadius`.
+ * Detonate an explosion at (x, y): instant visuals (flash, rings, smoke billow,
+ * debris fan, embers) plus a shockwave record advanced by shockwave-system.
+ * Damage is no longer applied here — see updateShockwaves().
  *
- * `gridQueryRadius` returns AABB candidates, so the per-id pass re-tests the
- * true circular distance and skips anything outside it.
- *
- * If `excludeTeam` is set, entities of that team are not damaged (used to gate
- * friendly-fire on by team rather than per-shot caller logic).
+ * `_entities`, `_grid`, `_splats`, `_debris` are kept in the signature for
+ * callers' convenience and possible future use (decals, etc.); the shockwave
+ * system reads them when it delivers damage on subsequent ticks.
  */
 export function spawnExplosion(
-  entities: Entities,
-  grid: Grid,
+  shockwaves: Shockwaves,
+  _entities: Entities,
+  _grid: Grid,
   puffs: Puffs,
   particles: Particles,
   rng: Rng,
@@ -31,86 +37,99 @@ export function spawnExplosion(
   y: number,
   profile: ExplosionProfile,
   excludeTeam: number | undefined,
-  splats: BloodSplats | undefined,
-  debris: Debris,
+  _splats: BloodSplats | undefined,
+  _debris: Debris,
   attackerId: number,
+  shakeRequests?: ShakeRequests,
+  craterSplats?: CraterSplats,
+  sfxRequests?: SfxRequests,
 ): void {
-  // 1. Flash — one bright additive particle at the centre, snaps out via high drag.
+  // 1. Center flash.
   spawnParticle(particles, {
-    x, y,
-    vx: 0, vy: 0,
+    x, y, vx: 0, vy: 0,
     life: profile.flash.life,
     size: profile.flash.size,
-    r: profile.flash.color[0], g: profile.flash.color[1], b: profile.flash.color[2],
-    drag: 0.6,
-    accelY: 0,
-    sizeGrowth: 0,
+    r: profile.flash.color[0]!, g: profile.flash.color[1]!, b: profile.flash.color[2]!,
+    drag: 0.6, accelY: 0, sizeGrowth: 0,
     klass: ParticleClass.Flash,
   });
 
-  // 2. Smoke billow — full-radius puff burst (handled by puff pass with soft falloff).
-  const sb = profile.smokeBillow;
-  emitPuffBurst(
-    puffs,
-    sb.profile,
-    sb.profileIdx,
-    x, y,
-    1, 0,                 // dirX/dirY arbitrary; coneAngle = 2π gives full radial fan
-    sb.count,
-    Math.PI * 2,
-    sb.speed,
-    rng,
-  );
-
-  // 3. Debris — fast, short-lived brown-grey fan.
-  const debrisParticleCfg = profile.debris;
-  for (let i = 0; i < debrisParticleCfg.count; i++) {
-    const angle = rng.next() * Math.PI * 2;
-    const speed = rng.range(debrisParticleCfg.speedMin, debrisParticleCfg.speedMax);
+  // 2. Concentric rings — expanding annulus shells rendered by the dedicated ring-pass.
+  for (let i = 0; i < RING_COUNT; i++) {
     spawnParticle(particles, {
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: debrisParticleCfg.life,
-      size: debrisParticleCfg.size,
-      r: 0.55, g: 0.45, b: 0.32,
-      drag: 0.92,
+      x, y, vx: 0, vy: 0,
+      life: profile.flash.life * 1.6 + RING_BIRTH_OFFSETS[i]!,
+      size: profile.flash.size * 0.5,
+      r: profile.flash.color[0]! * 0.85,
+      g: profile.flash.color[1]! * 0.85,
+      b: profile.flash.color[2]! * 0.85,
+      drag: 0,
       accelY: 0,
-      sizeGrowth: 0,
+      sizeGrowth: profile.damageRadius * 4,
+      klass: ParticleClass.Ring,
+    });
+  }
+
+  // 3. Smoke billow.
+  const sb = profile.smokeBillow;
+  emitPuffBurst(puffs, sb.profile, sb.profileIdx, x, y, 1, 0,
+                sb.count, Math.PI * 2, sb.speed, rng);
+
+  // 4. Debris fan.
+  const dp = profile.debris;
+  for (let i = 0; i < dp.count; i++) {
+    const angle = rng.next() * Math.PI * 2;
+    const speed = rng.range(dp.speedMin, dp.speedMax);
+    spawnParticle(particles, {
+      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: dp.life, size: dp.size,
+      r: 0.55, g: 0.45, b: 0.32,
+      drag: 0.92, accelY: 0, sizeGrowth: 0,
       klass: ParticleClass.Debris,
     });
   }
 
-  // 4. Area damage + impulse — AABB candidates, then circle test, then applyHit.
-  const radius = profile.damageRadius;
-  const nIds = gridQueryRadius(grid, x, y, radius, EXPLOSION_BUF);
-  for (let i = 0; i < nIds; i++) {
-    const id = EXPLOSION_BUF[i]!;
-    if (entities.alive[id] === 0) continue;
-    if (isDead(entities, id)) continue;
-    if (excludeTeam !== undefined && entities.team[id] === excludeTeam) continue;
-
-    const dx = entities.posX[id]! - x;
-    const dy = entities.posY[id]! - y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > radius) continue;
-
-    const falloff = 1 - dist / radius;
-    const dirX = dist > 0 ? dx / dist : 0;
-    const dirY = dist > 0 ? dy / dist : 0;
-
-    applyHit(
-      entities,
-      particles,
-      rng,
-      id,
-      profile.damage * falloff,
-      dirX * profile.impulse * falloff,
-      dirY * profile.impulse * falloff,
-      'explosion',
-      splats,
-      debris,
-      attackerId,
-    );
+  // 5. Embers — small warm additive sparks.
+  for (let i = 0; i < EMBER_COUNT; i++) {
+    const angle = rng.next() * Math.PI * 2;
+    const speed = rng.range(2, 5);
+    spawnParticle(particles, {
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - rng.range(1, 2),
+      life: rng.range(0.6, 1.2),
+      size: rng.range(0.15, 0.3),
+      r: 1.0, g: rng.range(0.5, 0.8), b: rng.range(0.05, 0.2),
+      drag: 0.85,
+      accelY: -2,
+      sizeGrowth: -0.5,
+      klass: ParticleClass.Ember,
+    });
   }
+
+  // 6. Camera shake — magnitude proportional to damage radius; 0.1 m per m of blast.
+  if (shakeRequests) {
+    const mag = 0.1 * profile.damageRadius;
+    pushShakeRequest(shakeRequests, x, y, mag, 0.4);
+  }
+
+  // 7. Crater stain — persistent charred ground mark baked into the stain texture.
+  if (craterSplats) {
+    pushCraterSplat(craterSplats, x, y, profile.damageRadius * 0.7, 0.85);
+  }
+
+  // 8. Sfx request — queued for the render loop to play after the frame.
+  if (sfxRequests) pushSfxRequest(sfxRequests, 'shell-detonate', x, y);
+
+  // 9. Shockwave record — damage delivered over the next ~50ms by shockwave-system.
+  const w = allocShockwave(shockwaves);
+  if (w === -1) return;
+  shockwaves.x[w] = x;
+  shockwaves.y[w] = y;
+  shockwaves.fullRadius[w] = profile.damageRadius;
+  shockwaves.waveSpeed[w] = WAVE_SPEED;
+  shockwaves.damage[w] = profile.damage;
+  shockwaves.impulse[w] = profile.impulse;
+  shockwaves.excludeTeam[w] = excludeTeam ?? -1;
+  shockwaves.attackerId[w] = attackerId;
 }

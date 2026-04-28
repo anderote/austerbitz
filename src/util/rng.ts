@@ -4,6 +4,17 @@ export interface Rng {
   intRange(lo: number, hi: number): number;
 }
 
+/**
+ * Standard normal sample via Box–Muller. Clamped to ±3σ.
+ */
+export function gaussian(rng: Rng): number {
+  let u1 = 0;
+  while (u1 === 0) u1 = rng.next();
+  const u2 = rng.next();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  return Math.max(-3, Math.min(3, z));
+}
+
 // Mulberry32 — small, fast, good enough for game determinism
 export function createRng(seed: number): Rng {
   let s = seed >>> 0;

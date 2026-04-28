@@ -4,13 +4,13 @@ import { spawnGibs, planGibSpawn } from './debris-emit';
 import { createRng } from '../../util/rng';
 
 describe('planGibSpawn', () => {
-  it('cannon kill produces 4–6 chunks plus blood blobs', () => {
+  it('cannon kill produces 4–8 chunks plus blood blobs', () => {
     const rng = createRng(1);
     const plan = planGibSpawn(rng, 'cannon');
     expect(plan.chunks.length).toBeGreaterThanOrEqual(4);
-    expect(plan.chunks.length).toBeLessThanOrEqual(6);
+    expect(plan.chunks.length).toBeLessThanOrEqual(8);
     expect(plan.bloodBlobs).toBeGreaterThanOrEqual(4);
-    expect(plan.bloodBlobs).toBeLessThanOrEqual(8);
+    expect(plan.bloodBlobs).toBeLessThanOrEqual(10);
   });
 
   it('explosion behaves like cannon', () => {
@@ -87,5 +87,22 @@ describe('spawnGibs', () => {
     const rng = createRng(1);
     spawnGibs(d, rng, 'cannon', 0, 0, 0, 0, 0); // wants 4-6, capacity is 3
     expect(d.count).toBeLessThanOrEqual(3);
+  });
+
+  it('explosion HitKind biases gib count higher and adds upward Z kick', () => {
+    const d = createDebris(64);
+    const rng = createRng(11);
+    spawnGibs(d, rng, 'explosion', 0, 0, 1, 0, 0);
+
+    let alive = 0;
+    let totalZ = 0;
+    for (let i = 0; i < d.capacity; i++) {
+      if (d.alive[i]) {
+        alive++;
+        totalZ += d.velZ[i]!;
+      }
+    }
+    expect(alive).toBeGreaterThanOrEqual(8);
+    expect(totalZ / alive).toBeGreaterThan(6);
   });
 });

@@ -98,7 +98,9 @@ export function resolveFire(
       );
     }
 
-    e.recoilT[id] = RECOIL_T;
+    const recoilDur = weapon.muzzle?.recoilDuration ?? RECOIL_T;
+    e.recoilT[id] = recoilDur;
+    e.recoilTotal[id] = recoilDur;
     if (weapon.muzzle?.recoilFirer) {
       e.recoilPeakX[id] = -dirX * weapon.muzzle.recoilFirer;
       e.recoilPeakY[id] = -dirY * weapon.muzzle.recoilFirer;
@@ -169,7 +171,9 @@ export function resolveFire(
       );
     }
 
-    e.recoilT[id] = RECOIL_T;
+    const recoilDur2 = weapon.muzzle?.recoilDuration ?? RECOIL_T;
+    e.recoilT[id] = recoilDur2;
+    e.recoilTotal[id] = recoilDur2;
     if (weapon.muzzle?.recoilFirer) {
       e.recoilPeakX[id] = -dirX * weapon.muzzle.recoilFirer;
       e.recoilPeakY[id] = -dirY * weapon.muzzle.recoilFirer;

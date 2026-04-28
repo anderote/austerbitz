@@ -375,6 +375,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         lab: resolve(__dirname, 'lab.html'),
         components: resolve(__dirname, 'components.html'),
+        cannonTest: resolve(__dirname, 'cannon-test.html'),
       },
     },
   },
