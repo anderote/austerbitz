@@ -1,8 +1,8 @@
 import type { System } from '../world';
-import { EntityState } from '../entities';
-import { spawnDroppedWeapon } from '../dropped-items';
+import { EntityState, PartLost } from '../entities';
+import { spawnDroppedHat, spawnDroppedWeapon } from '../dropped-items';
 import { getUnitKindByIndex } from '../../data/units';
-import { resolveWeaponPoseTransform, type Facing } from '../../render/poses/resolver';
+import { resolvePoseWeaponEntry, type Facing } from '../../render/poses/resolver';
 import type { KitConfig } from '../../render/poses/kit-loader';
 import { Pose } from '../../render/poses/pose-config';
 
@@ -86,11 +86,21 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
       }
       const facing = e.facing[id]!;
       const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
-      const offset = resolveWeaponPoseTransform(kit.poses, 'dying', facingLetter, kit.weapon);
+      // Palette lookup: corpses spawn from the dying pose's authored weapon
+      // entry. If the kit has no `dying` palette ref for this facing, we drop
+      // at the body's base position with no extra offset.
+      const dyingEntry = resolvePoseWeaponEntry(
+        kit.poses,
+        'dying',
+        facingLetter,
+        kit.weaponPalette,
+      );
       const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;
       const pxToWorld = sprW / SPRITE_CELL_PX;
-      const baseX = e.posX[id]! + offset.x * pxToWorld;
-      const baseY = e.posY[id]! + offset.y * pxToWorld;
+      const offX = dyingEntry?.x ?? 0;
+      const offY = dyingEntry?.y ?? 0;
+      const baseX = e.posX[id]! + offX * pxToWorld;
+      const baseY = e.posY[id]! + offY * pxToWorld;
       const px = baseX + world.rng.range(-0.6, 0.6);
       const py = baseY + world.rng.range(-0.6, 0.6);
       // Dropped weapons want body-like variety, biased to lie E-W: pick a
@@ -99,8 +109,25 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
       const wMag = world.rng.range(70, 110);
       const wSign = world.rng.range(0, 1) < 0.5 ? -1 : 1;
       const rot = (wSign * wMag * Math.PI) / 180;
-      const flipX = offset.flipX === true ? 1 : 0;
+      const flipX = dyingEntry?.flipX === true ? 1 : 0;
       spawnDroppedWeapon(d, px, py, rot, kindIdx, e.team[id]!, facing, flipX);
+
+      // ~25% chance for infantry to also drop their shako. Mark the corpse as
+      // "head lost" so sprite-pass swaps to the `--no-head` body variant —
+      // otherwise we'd render both the hat on the body and a duplicate one on
+      // the ground. Skip for cavalry/artillery: they don't carry shakos.
+      if (kind.category === 'infantry' && kit.head && world.rng.range(0, 1) < 0.25) {
+        e.partLost[id] |= PartLost.Head;
+        // Spawn position: small radial offset so the hat lands nearby the corpse.
+        const angle = world.rng.range(0, Math.PI * 2);
+        const radius = world.rng.range(0.6, 1.5);
+        const hpx = e.posX[id]! + Math.cos(angle) * radius;
+        const hpy = e.posY[id]! + Math.sin(angle) * radius;
+        // Hats land at any orientation — no E-W bias like muskets.
+        const hrot = world.rng.range(-Math.PI, Math.PI);
+        spawnDroppedHat(d, hpx, hpy, hrot, kindIdx, e.team[id]!, facing, 0);
+      }
+
       e.weaponDropped[id] = 1;
     }
   };

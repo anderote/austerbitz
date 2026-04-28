@@ -1,17 +1,43 @@
-import type { Facing, PoseFacingEntry, WeaponBlock } from './resolver';
+import type { Facing, PoseFacingEntry, WeaponBlock, WeaponPaletteEntry } from './resolver';
 
 /**
  * Subset of the kit JSON that the runtime renderer cares about.
  *
  * The editor tracks more (cell coords, facing layer arrays, etc.); the runtime
- * only reads the per-pose weapon block + per-(pose,facing) `(x, y, rot)`.
+ * only reads the per-pose weapon block + per-(pose,facing) palette ids and
+ * the kit-level `weaponPalette` they reference.
  */
 export interface KitConfig {
   id: string;
-  /** Per-(pose, facing) layer + optional weapon offset. Editor namespace. */
-  poses?: Record<string, Record<string, string[] | PoseFacingEntry>>;
-  /** Weapon attachment block. Absent for unarmed units. */
+  /** Per-(pose, facing) layer + optional palette-id reference. Editor namespace. */
+  poses?: Record<string, Record<string, string[] | string[][] | PoseFacingEntry>>;
+  /** Weapon attachment block (just `layerPrefix`). Absent for unarmed units. */
   weapon?: WeaponBlock;
+  /**
+   * Flat palette of named weapon entries this kit's poses reference by id.
+   * Each entry is a complete (src, transform, x, y, rot, flipX) snapshot;
+   * `(pose, dir).weapon` and `weaponVariants[]` hold ids into this list.
+   */
+  weaponPalette?: WeaponPaletteEntry[];
+  /**
+   * Optional headgear block. Headgear still uses the legacy per-facing shape
+   * (one source PNG per facing, no palette) — distinct from the weapon path.
+   */
+  head?: HeadBlock;
+}
+
+/** Texture-space transform applied when re-using a head facing's sprite. */
+type HeadFacingTransform = 'flipX' | 'flipY' | 'rot180';
+
+/** Either authored on this facing (`self`) or borrowed from another facing. */
+export type HeadFacingEntry =
+  | { src: 'self' }
+  | { src: Facing; transform: HeadFacingTransform };
+
+/** Top-level kit head block. Shape matches the pre-palette weapon block. */
+export interface HeadBlock {
+  layerPrefix: string;
+  facings: Record<Facing, HeadFacingEntry>;
 }
 
 /**

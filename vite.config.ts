@@ -197,11 +197,46 @@ function offsetsApiPlugin(): Plugin {
                 parsed.facings[facing] = existing;
               }
             }
-            // Deep merge of poses[pose][facing].weapon = { x, y, rot }, never
-            // touching any non-weapon keys (layers, etc.) of pose entries.
-            // Skips poses or facings that don't already exist on disk — the
-            // editor occasionally retains stale in-memory state for deleted
-            // poses, and we don't want autosave resurrecting them.
+            // Replace `weaponPalette` wholesale when present (the palette is
+            // a flat array of named entries; the editor authors edits to the
+            // entire array and POSTs it).
+            const validSrc = new Set(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']);
+            const validXf = new Set(['none', 'flipX', 'flipY', 'rot180']);
+            if (Array.isArray(body.weaponPalette)) {
+              const cleaned = (body.weaponPalette as unknown[])
+                .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object' && !Array.isArray(e))
+                .map((e) => {
+                  const out: {
+                    id: string;
+                    src: 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+                    transform?: 'flipX' | 'flipY' | 'rot180';
+                    x: number;
+                    y: number;
+                    rot: number;
+                    flipX?: true;
+                  } = {
+                    id: typeof e.id === 'string' ? e.id : '',
+                    src: (typeof e.src === 'string' && validSrc.has(e.src)
+                      ? e.src
+                      : 'N') as typeof out.src,
+                    x: typeof e.x === 'number' ? (e.x | 0) : 0,
+                    y: typeof e.y === 'number' ? (e.y | 0) : 0,
+                    rot: typeof e.rot === 'number' ? +e.rot : 0,
+                  };
+                  if (typeof e.transform === 'string' && validXf.has(e.transform) && e.transform !== 'none') {
+                    out.transform = e.transform as 'flipX' | 'flipY' | 'rot180';
+                  }
+                  if (e.flipX === true) out.flipX = true;
+                  return out;
+                })
+                .filter((e) => e.id.length > 0);
+              parsed.weaponPalette = cleaned;
+            }
+            // Deep merge of poses[pose][facing].weapon = "<paletteId>" and
+            // weaponVariants = string[]. Never touches non-weapon keys
+            // (layers, etc.). Skips poses or facings that don't already exist
+            // on disk — the editor occasionally retains stale in-memory state
+            // for deleted poses, and we don't want autosave resurrecting them.
             if (body.poses && typeof body.poses === 'object' && parsed.poses && typeof parsed.poses === 'object') {
               for (const [poseId, poseFacings] of Object.entries(body.poses)) {
                 if (!poseFacings || typeof poseFacings !== 'object') continue;
@@ -211,8 +246,8 @@ function offsetsApiPlugin(): Plugin {
                 )) {
                   if (!facingEntry || typeof facingEntry !== 'object') continue;
                   const fe = facingEntry as { weapon?: unknown; weaponVariants?: unknown };
-                  const hasWeapon = fe.weapon && typeof fe.weapon === 'object';
-                  const hasVariants = Array.isArray(fe.weaponVariants);
+                  const hasWeapon = 'weapon' in fe;
+                  const hasVariants = 'weaponVariants' in fe;
                   if (!hasWeapon && !hasVariants) continue;
                   // Skip facings the kit hasn't authored — autosave shouldn't
                   // create new (pose, facing) entries on its own.
@@ -223,41 +258,22 @@ function offsetsApiPlugin(): Plugin {
                   } else if (typeof existing !== 'object') {
                     continue;
                   }
-                  const validSrc = new Set(['self', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']);
-                  const validXf = new Set(['none', 'flipX', 'flipY', 'rot180']);
-                  const sanitizeWeapon = (w: Record<string, unknown>) => {
-                    const cleaned: {
-                      x: number;
-                      y: number;
-                      rot: number;
-                      flipX?: true;
-                      src?: 'self' | 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
-                      transform?: 'none' | 'flipX' | 'flipY' | 'rot180';
-                    } = {
-                      x: typeof w.x === 'number' ? (w.x | 0) : 0,
-                      y: typeof w.y === 'number' ? (w.y | 0) : 0,
-                      rot: typeof w.rot === 'number' ? +w.rot : 0,
-                    };
-                    if (w.flipX === true) cleaned.flipX = true;
-                    if (typeof w.src === 'string' && validSrc.has(w.src)) {
-                      cleaned.src = w.src as typeof cleaned.src;
-                      if (w.src !== 'self') {
-                        cleaned.transform = (typeof w.transform === 'string' && validXf.has(w.transform))
-                          ? (w.transform as typeof cleaned.transform)
-                          : 'none';
-                      }
-                    }
-                    return cleaned;
-                  };
                   if (hasWeapon) {
-                    existing.weapon = sanitizeWeapon(fe.weapon as Record<string, unknown>);
+                    if (typeof fe.weapon === 'string' && fe.weapon.length > 0) {
+                      existing.weapon = fe.weapon;
+                    } else if (fe.weapon === null || fe.weapon === undefined) {
+                      delete existing.weapon;
+                    }
                   }
                   if (hasVariants) {
-                    const variants = (fe.weaponVariants as unknown[])
-                      .filter((v): v is Record<string, unknown> => !!v && typeof v === 'object')
-                      .map(sanitizeWeapon);
-                    if (variants.length > 0) existing.weaponVariants = variants;
-                    else delete existing.weaponVariants;
+                    if (Array.isArray(fe.weaponVariants)) {
+                      const variants = (fe.weaponVariants as unknown[])
+                        .filter((v): v is string => typeof v === 'string' && v.length > 0);
+                      if (variants.length > 0) existing.weaponVariants = variants;
+                      else delete existing.weaponVariants;
+                    } else {
+                      delete existing.weaponVariants;
+                    }
                   }
                   parsed.poses[poseId][facing] = existing;
                 }

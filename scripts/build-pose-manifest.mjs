@@ -86,7 +86,13 @@ async function main() {
     const poses = {};
 
     for (const pose of poseDirs) {
-      if (!POSE_NAMES.has(pose)) {
+      // Detachable-part variants are emitted as `<base>--no-<part>` folders
+      // alongside `<base>`. Validate the base name only — the `<part>` suffix
+      // is opaque here (kits define it via `detachables[].name`) and the
+      // runtime atlas loader keys variant cells by the suffix verbatim.
+      const variantMatch = /^(.+)--no-(.+)$/.exec(pose);
+      const baseName = variantMatch ? variantMatch[1] : pose;
+      if (!POSE_NAMES.has(baseName)) {
         warn(`unknown pose folder ${kind}/${pose} — skipping`);
         continue;
       }

@@ -46,14 +46,15 @@ export function buildDirLookup(available: readonly Direction[]): Direction[] {
 }
 
 // ----------------------------------------------------------------------------
-// Per-pose weapon attachment schema (see
-// docs/superpowers/specs/2026-04-27-per-pose-weapon-attachment-design.md).
+// Weapon palette schema (see
+// docs/superpowers/specs/2026-04-27-weapon-palette-design.md).
 //
-// A kit may declare a top-level `weapon` block listing per-facing entries that
-// either author their own sprite (`src: 'self'`) or re-use another facing's
-// sprite with a flip/rotate transform. Each body pose × facing then carries an
-// optional `(x, y, rot)` to position that weapon for that pose. Missing pose
-// entries derive from the mirror source (negate rot, flip x/y per transform).
+// A kit declares a flat `weaponPalette: WeaponPaletteEntry[]` of named entries
+// — each carries its own (src, transform, x, y, rot, flipX) tuple. Per-pose
+// authoring (`kit.poses[pose][dir].weapon` / `weaponVariants`) references
+// palette entries by id (string), so the same entry can be reused across many
+// (pose, dir) slots without duplication. `kit.weapon.layerPrefix` survives;
+// the old `kit.weapon.facings` block is gone.
 // ----------------------------------------------------------------------------
 
 /** 8-way compass facing. The weapon system ignores `omni`. */
@@ -64,47 +65,43 @@ export const FACINGS: readonly Facing[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W',
 /** Texture-space transform applied when re-using a source facing's sprite. */
 export type WeaponFacingTransform = 'flipX' | 'flipY' | 'rot180';
 
-/** Either authored on this facing (`self`) or borrowed from another facing. */
-export type WeaponFacingEntry =
-  | { src: 'self' }
-  | { src: Facing; transform: WeaponFacingTransform };
-
-/** Top-level kit weapon block. */
-export interface WeaponBlock {
-  layerPrefix: string;
-  facings: Record<Facing, WeaponFacingEntry>;
-}
-
-/**
- * Per-pose weapon attachment authoring.
- *
- * `(x, y, rot)` positions the weapon for this (pose, facing). The optional
- * `flipX`/`src`/`transform` fields override which weapon-source PNG is drawn:
- * the editor's click-to-assign weapon-pose picker writes them so a body pose
- * can use a different facing's musket sprite (e.g. present.S using the NE
- * musket). `src === 'self'` is the implicit default; when omitted the sprite
- * comes from the kit's canonical `weapon.facings[F]` mapping.
- */
-export interface WeaponPoseTransform {
+/** A single named weapon entry in a kit's palette. */
+export interface WeaponPaletteEntry {
+  /** Unique within the kit; stable across edits. */
+  id: string;
+  /** Which authored source PNG to sample. */
+  src: Facing;
+  /** Texture-space transform on the source UV (default 'none'). */
+  transform?: WeaponFacingTransform;
+  /** Pixel offset relative to the body sprite center. */
   x: number;
   y: number;
+  /** Rotation in degrees (+ccw, matches today's authoring). */
   rot: number;
+  /** Optional additional UV horizontal flip on top of `transform`. */
   flipX?: true;
-  src?: 'self' | Facing;
-  transform?: WeaponFacingTransform | 'none';
+}
+
+export type WeaponPalette = readonly WeaponPaletteEntry[];
+
+/** Top-level kit weapon block. The palette carries the per-entry sprite choice. */
+export interface WeaponBlock {
+  layerPrefix: string;
 }
 
 /** Normalized shape for `kit.poses[pose][facing]`. */
 export interface PoseFacingEntry {
-  layers: string[];
-  weapon?: WeaponPoseTransform;
+  /** Single-frame layer list, or per-frame list of layer lists. */
+  layers: string[] | string[][];
+  /** Palette id of the primary weapon for this (pose, facing). */
+  weapon?: string;
   /**
-   * Saved alternative weapon authorings for this (pose, facing). At runtime
-   * the renderer pools `[weapon, ...weaponVariants]` and picks an index by
-   * `entity.id % pool.length`, so soldiers in formation get visual variety
+   * Palette ids of alternative weapon authorings for this (pose, facing).
+   * Runtime pools `[weapon, ...weaponVariants]` and picks an index by
+   * `entity.id % pool.length` so soldiers in formation get visual variety
    * without flickering frame-to-frame.
    */
-  weaponVariants?: WeaponPoseTransform[];
+  weaponVariants?: string[];
 }
 
 /**
@@ -112,147 +109,117 @@ export interface PoseFacingEntry {
  * inputs pass through unchanged.
  */
 export function normalizePoseFacingEntry(
-  raw: string[] | PoseFacingEntry,
+  raw: string[] | string[][] | PoseFacingEntry,
 ): PoseFacingEntry {
-  if (Array.isArray(raw)) return { layers: raw };
+  if (Array.isArray(raw)) return { layers: raw as string[] | string[][] };
   return raw;
 }
 
 /**
- * Resolve which atlas key + transform to draw for a given facing of a weapon.
- *
- * - `src: 'self'` → key is `<layerPrefix>-<facing>`, transform is `'none'`.
- * - Otherwise → key is `<layerPrefix>-<src>`, transform is the entry's transform.
+ * Look up a palette entry by id. Returns null on miss; logs a warning for
+ * unknown ids so authoring drift surfaces in the console.
  */
-export function resolveWeaponFacing(
-  weapon: WeaponBlock,
-  facing: Facing,
+export function resolvePaletteEntry(
+  palette: WeaponPalette | undefined,
+  id: string,
+): WeaponPaletteEntry | null {
+  if (!palette) return null;
+  for (const entry of palette) {
+    if (entry.id === id) return entry;
+  }
+  return null;
+}
+
+/**
+ * Resolve which atlas key + transform to draw for a palette entry.
+ *
+ * `spriteKey` is `<layerPrefix>-<entry.src>`; transform defaults to `'none'`.
+ */
+export function resolveWeaponSpriteKey(
+  layerPrefix: string,
+  entry: WeaponPaletteEntry,
 ): { spriteKey: string; transform: 'none' | WeaponFacingTransform } {
-  const entry = weapon.facings[facing];
-  if (!entry) {
-    throw new Error(`weapon block has no facing entry for '${facing}'`);
-  }
-  if (entry.src === 'self') {
-    return { spriteKey: `${weapon.layerPrefix}-${facing}`, transform: 'none' };
-  }
   return {
-    spriteKey: `${weapon.layerPrefix}-${entry.src}`,
-    transform: entry.transform,
+    spriteKey: `${layerPrefix}-${entry.src}`,
+    transform: entry.transform ?? 'none',
   };
 }
 
 /**
- * Apply a facing transform to a `(x, y, rot)` triplet so an offset authored
- * on the source facing flows through unchanged to its derived facings.
- *
- * - `flipX`: mirror about the vertical axis → negate `x` and `rot`.
- * - `flipY`: mirror about the horizontal axis → negate `y` and `rot`.
- * - `rot180`: rotate 180° → negate both `x` and `y`; `rot` is unchanged
- *   (since rotating a rotation by 180° wraps to the same effective heading).
+ * Resolve the palette entry referenced by `(pose, facing).weapon`. Returns
+ * null when the pose entry, the facing entry, or the weapon id is missing —
+ * or when the id doesn't exist in the palette. Unknown ids emit a warning.
  */
-function applyFacingTransform(
-  base: WeaponPoseTransform,
-  transform: WeaponFacingTransform,
-): WeaponPoseTransform {
-  // flipX inheritance mirrors the editor (`applyFacingTransformXform`):
-  // `flipX` toggles the per-pose flipX, `flipY`/`rot180` pass it through.
-  const baseFlip = base.flipX === true;
-  switch (transform) {
-    case 'flipX': {
-      const out: WeaponPoseTransform = { x: -base.x, y: base.y, rot: -base.rot };
-      if (!baseFlip) out.flipX = true;
-      return out;
-    }
-    case 'flipY': {
-      const out: WeaponPoseTransform = { x: base.x, y: -base.y, rot: -base.rot };
-      if (baseFlip) out.flipX = true;
-      return out;
-    }
-    case 'rot180': {
-      const out: WeaponPoseTransform = { x: -base.x, y: -base.y, rot: base.rot };
-      if (baseFlip) out.flipX = true;
-      return out;
-    }
-  }
-}
-
-/** Normalize a raw weapon entry to a WeaponPoseTransform, carrying optional
- * flipX/src/transform fields so the runtime can honor the per-pose source
- * override authored by the editor. */
-function normalizeWeaponPoseTransform(w: WeaponPoseTransform): WeaponPoseTransform {
-  const out: WeaponPoseTransform = { x: w.x, y: w.y, rot: w.rot };
-  if (w.flipX === true) out.flipX = true;
-  if (typeof w.src === 'string') {
-    out.src = w.src;
-    if (w.src !== 'self' && typeof w.transform === 'string') out.transform = w.transform;
-  }
-  return out;
-}
-
-/** Read `poses[pose][facing].weapon` if present, else null. */
-function readPoseWeapon(
-  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
+export function resolvePoseWeaponEntry(
+  poses:
+    | Record<string, Record<string, string[] | string[][] | PoseFacingEntry>>
+    | undefined,
   pose: string,
   facing: Facing,
-): WeaponPoseTransform | null {
+  palette: WeaponPalette | undefined,
+): WeaponPaletteEntry | null {
   if (!poses) return null;
   const poseEntry = poses[pose];
   if (!poseEntry) return null;
   const facingEntry = poseEntry[facing];
   if (!facingEntry) return null;
   const normalized = normalizePoseFacingEntry(facingEntry);
-  if (!normalized.weapon) return null;
-  return normalizeWeaponPoseTransform(normalized.weapon);
+  const id = normalized.weapon;
+  if (typeof id !== 'string') return null;
+  const resolved = resolvePaletteEntry(palette, id);
+  if (!resolved) {
+    console.warn(
+      `[weapon-palette] unknown palette id '${id}' on (pose=${pose}, facing=${facing})`,
+    );
+    return null;
+  }
+  return resolved;
 }
 
 /**
- * Pool the variants authored for a (pose, facing): `[weapon, ...weaponVariants]`.
- * Each entry preserves its optional flipX/src/transform fields so the runtime
- * can mirror the editor's per-pose source override (e.g. present.S authored as
- * src='NE') and per-pose flipX UV inversion.
+ * Pool the variants authored for a (pose, facing): `[primary, ...variants]`,
+ * each resolved through the palette. Unknown ids are skipped with a warning.
+ * Returns an empty array when there's no primary weapon id.
  */
 export function readWeaponVariantPool(
-  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
+  poses:
+    | Record<string, Record<string, string[] | string[][] | PoseFacingEntry>>
+    | undefined,
+  palette: WeaponPalette | undefined,
   pose: string,
   facing: Facing,
-): WeaponPoseTransform[] {
+): WeaponPaletteEntry[] {
   if (!poses) return [];
   const poseEntry = poses[pose];
   if (!poseEntry) return [];
   const facingEntry = poseEntry[facing];
   if (!facingEntry) return [];
   const norm = normalizePoseFacingEntry(facingEntry);
-  const out: WeaponPoseTransform[] = [];
-  if (norm.weapon) out.push(normalizeWeaponPoseTransform(norm.weapon));
+  const out: WeaponPaletteEntry[] = [];
+  if (typeof norm.weapon === 'string') {
+    const primary = resolvePaletteEntry(palette, norm.weapon);
+    if (primary) {
+      out.push(primary);
+    } else {
+      console.warn(
+        `[weapon-palette] unknown primary palette id '${norm.weapon}' on ` +
+          `(pose=${pose}, facing=${facing})`,
+      );
+    }
+  }
   if (Array.isArray(norm.weaponVariants)) {
-    for (const v of norm.weaponVariants) {
-      if (v && typeof v === 'object') out.push(normalizeWeaponPoseTransform(v));
+    for (const id of norm.weaponVariants) {
+      if (typeof id !== 'string') continue;
+      const entry = resolvePaletteEntry(palette, id);
+      if (entry) {
+        out.push(entry);
+      } else {
+        console.warn(
+          `[weapon-palette] unknown variant palette id '${id}' on ` +
+            `(pose=${pose}, facing=${facing})`,
+        );
+      }
     }
   }
   return out;
-}
-
-/**
- * Resolve the per-pose `(x, y, rot)` for a (pose, facing) on this kit.
- *
- * - If authored directly on `(pose, facing)`, return it.
- * - Else, if the facing is derived (`src !== 'self'`), pull the source
- *   facing's pose offset and apply the facing transform (`flipX`/`flipY`/
- *   `rot180`).
- * - Else fall back to `{ x: 0, y: 0, rot: 0 }`.
- */
-export function resolveWeaponPoseTransform(
-  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
-  pose: string,
-  facing: Facing,
-  weapon: WeaponBlock,
-): WeaponPoseTransform {
-  const direct = readPoseWeapon(poses, pose, facing);
-  if (direct) return direct;
-  const entry = weapon.facings[facing];
-  if (entry && entry.src !== 'self') {
-    const source = readPoseWeapon(poses, pose, entry.src);
-    if (source) return applyFacingTransform(source, entry.transform);
-  }
-  return { x: 0, y: 0, rot: 0 };
 }

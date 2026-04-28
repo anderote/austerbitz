@@ -73,6 +73,7 @@ export function createRenderer(
     kits,
     sprites.getAtlas(),
     sprites.getWeaponUvByPrefix(),
+    sprites.getHeadUvByPrefix(),
   );
   const selectionPass = createSelectionPass(gl, capacity);
   const particlesPass = createParticlePass(gl, particleCapacity);

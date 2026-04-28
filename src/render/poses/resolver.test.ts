@@ -1,13 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   buildDirLookup,
   normalizePoseFacingEntry,
   readWeaponVariantPool,
-  resolveWeaponFacing,
-  resolveWeaponPoseTransform,
+  resolvePaletteEntry,
+  resolvePoseWeaponEntry,
+  resolveWeaponSpriteKey,
   type Facing,
   type PoseFacingEntry,
-  type WeaponBlock,
+  type WeaponPaletteEntry,
 } from './resolver';
 import { DIRECTIONS, type Direction } from './pose-config';
 
@@ -53,32 +54,25 @@ describe('buildDirLookup', () => {
   });
 });
 
-const MUSKET_BLOCK: WeaponBlock = {
-  layerPrefix: 'musket-brown-bess',
-  facings: {
-    N: { src: 'self' },
-    NW: { src: 'self' },
-    W: { src: 'self' },
-    S: { src: 'N', transform: 'flipY' },
-    NE: { src: 'NW', transform: 'flipX' },
-    SE: { src: 'NW', transform: 'rot180' },
-    SW: { src: 'NW', transform: 'flipY' },
-    E: { src: 'W', transform: 'flipX' },
-  },
-};
+const PALETTE: WeaponPaletteEntry[] = [
+  { id: 'n-0', src: 'N', x: 0, y: 6, rot: 0 },
+  { id: 'n-1', src: 'N', transform: 'flipY', x: 0, y: -6, rot: 0 },
+  { id: 'nw-0', src: 'NW', x: -7, y: 2, rot: 0 },
+  { id: 'nw-flip', src: 'NW', x: 7, y: 2, rot: 0, flipX: true },
+  { id: 'w-0', src: 'W', x: -2, y: 4, rot: 0 },
+];
 
 describe('normalizePoseFacingEntry', () => {
   it('wraps a bare layer array as { layers }', () => {
     const out = normalizePoseFacingEntry(['body-south-base', 'trousers-south']);
     expect(out).toEqual({ layers: ['body-south-base', 'trousers-south'] });
-    // weapon is intentionally undefined for legacy entries.
     expect(out.weapon).toBeUndefined();
   });
 
   it('passes through an already-normalized entry', () => {
     const entry: PoseFacingEntry = {
       layers: ['body-south-base'],
-      weapon: { x: 1, y: -2, rot: 20 },
+      weapon: 'n-0',
     };
     expect(normalizePoseFacingEntry(entry)).toBe(entry);
   });
@@ -89,255 +83,164 @@ describe('normalizePoseFacingEntry', () => {
   });
 });
 
-describe('resolveWeaponFacing', () => {
-  it('returns the self sprite key with no transform on source facings', () => {
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'N')).toEqual({
-      spriteKey: 'musket-brown-bess-N',
-      transform: 'none',
-    });
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'NW')).toEqual({
-      spriteKey: 'musket-brown-bess-NW',
-      transform: 'none',
-    });
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'W')).toEqual({
-      spriteKey: 'musket-brown-bess-W',
-      transform: 'none',
-    });
+describe('resolvePaletteEntry', () => {
+  it('returns the entry by id', () => {
+    expect(resolvePaletteEntry(PALETTE, 'n-0')).toBe(PALETTE[0]);
+    expect(resolvePaletteEntry(PALETTE, 'nw-flip')).toBe(PALETTE[3]);
   });
 
-  it('S derives from N with flipY', () => {
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'S')).toEqual({
-      spriteKey: 'musket-brown-bess-N',
-      transform: 'flipY',
-    });
+  it('returns null on miss', () => {
+    expect(resolvePaletteEntry(PALETTE, 'does-not-exist')).toBeNull();
   });
 
-  it('NE derives from NW with flipX', () => {
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'NE')).toEqual({
-      spriteKey: 'musket-brown-bess-NW',
-      transform: 'flipX',
-    });
+  it('returns null when the palette is undefined', () => {
+    expect(resolvePaletteEntry(undefined, 'n-0')).toBeNull();
   });
 
-  it('SE derives from NW with rot180', () => {
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'SE')).toEqual({
-      spriteKey: 'musket-brown-bess-NW',
-      transform: 'rot180',
-    });
-  });
-
-  it('SW derives from NW with flipY', () => {
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'SW')).toEqual({
-      spriteKey: 'musket-brown-bess-NW',
-      transform: 'flipY',
-    });
-  });
-
-  it('E derives from W with flipX', () => {
-    expect(resolveWeaponFacing(MUSKET_BLOCK, 'E')).toEqual({
-      spriteKey: 'musket-brown-bess-W',
-      transform: 'flipX',
-    });
+  it('returns null when the palette is empty', () => {
+    expect(resolvePaletteEntry([], 'n-0')).toBeNull();
   });
 });
 
-describe('resolveWeaponPoseTransform', () => {
-  it('returns the authored offset when present on the queried facing', () => {
-    const poses: Record<string, Record<Facing, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 1, y: -2, rot: 20 } },
-        NW: { layers: [] },
-        W: { layers: [] },
-        S: { layers: [] },
-        NE: { layers: [] },
-        SE: { layers: [] },
-        SW: { layers: [] },
-        E: { layers: [] },
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'N', MUSKET_BLOCK)).toEqual({
-      x: 1,
-      y: -2,
-      rot: 20,
+describe('resolveWeaponSpriteKey', () => {
+  it('builds <layerPrefix>-<src>', () => {
+    expect(resolveWeaponSpriteKey('musket-brown-bess', PALETTE[0]!)).toEqual({
+      spriteKey: 'musket-brown-bess-N',
+      transform: 'none',
     });
   });
 
-  it('inherits via flipY mirror (S from N) when omitted on the derived facing', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry | string[]>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 3, y: 4, rot: 15 } },
-        // S omits weapon → should derive from N via flipY: y negates, rot negates.
-        S: { layers: [] },
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK)).toEqual({
-      x: 3,
-      y: -4,
-      rot: -15,
+  it('passes through an explicit transform', () => {
+    expect(resolveWeaponSpriteKey('musket-brown-bess', PALETTE[1]!)).toEqual({
+      spriteKey: 'musket-brown-bess-N',
+      transform: 'flipY',
     });
   });
 
-  it('inherits via flipX mirror (NE from NW) when omitted', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      present: {
-        NW: { layers: [], weapon: { x: 5, y: 6, rot: 30 } },
-      },
-    };
-    // x and rot negate through flipX; y is unchanged. The inherited entry
-    // also picks up `flipX: true` so the runtime mirrors the source UV (the
-    // NE sprite is rendered as the NW sprite with horizontal flip).
-    expect(resolveWeaponPoseTransform(poses, 'present', 'NE', MUSKET_BLOCK)).toEqual({
-      x: -5,
-      y: 6,
-      rot: -30,
-      flipX: true,
-    });
+  it("defaults transform to 'none' when omitted", () => {
+    const entry: WeaponPaletteEntry = { id: 'a', src: 'NW', x: 0, y: 0, rot: 0 };
+    const out = resolveWeaponSpriteKey('musket-brown-bess', entry);
+    expect(out.transform).toBe('none');
+    expect(out.spriteKey).toBe('musket-brown-bess-NW');
+  });
+});
+
+describe('resolvePoseWeaponEntry', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('inherits via rot180 mirror (SE from NW): both x and y negate, rot unchanged', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      present: {
-        NW: { layers: [], weapon: { x: 7, y: 8, rot: 45 } },
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'present', 'SE', MUSKET_BLOCK)).toEqual({
-      x: -7,
-      y: -8,
-      rot: 45,
-    });
-  });
-
-  it('inherits via flipX mirror (E from W) when omitted', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      hit: {
-        W: { layers: [], weapon: { x: 2, y: -1, rot: -10 } },
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'hit', 'E', MUSKET_BLOCK)).toEqual({
-      x: -2,
-      y: -1,
-      rot: 10,
-      flipX: true,
-    });
-  });
-
-  it('authored override beats mirror inheritance', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 3, y: 4, rot: 15 } },
-        S: { layers: [], weapon: { x: 99, y: 99, rot: 99 } },
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK)).toEqual({
-      x: 99,
-      y: 99,
-      rot: 99,
-    });
-  });
-
-  it('falls back to zero when both the queried facing and its source are missing', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        NW: { layers: [] }, // source has no weapon
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'NE', MUSKET_BLOCK)).toEqual({
-      x: 0,
-      y: 0,
-      rot: 0,
-    });
-  });
-
-  it('falls back to zero on a source facing when the source itself omits weapon', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [] }, // source N, no weapon offset
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'N', MUSKET_BLOCK)).toEqual({
-      x: 0,
-      y: 0,
-      rot: 0,
-    });
-  });
-
-  it('falls back to zero when the entire pose entry is absent', () => {
-    expect(resolveWeaponPoseTransform({}, 'unknown-pose', 'S', MUSKET_BLOCK)).toEqual({
-      x: 0,
-      y: 0,
-      rot: 0,
-    });
-  });
-
-  it('reads pose offsets through the legacy bare-array shape (treats as no weapon)', () => {
-    // Legacy entries normalize to { layers } with no weapon → falls back to 0.
+  it('returns the palette entry when (pose, facing).weapon is set', () => {
     const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
-      legacy: {
-        N: ['body-north-base'],
+      idle: {
+        N: { layers: [], weapon: 'n-0' },
       },
     };
-    expect(resolveWeaponPoseTransform(poses, 'legacy', 'N', MUSKET_BLOCK)).toEqual({
-      x: 0,
-      y: 0,
-      rot: 0,
-    });
+    expect(resolvePoseWeaponEntry(poses, 'idle', 'N' as Facing, PALETTE)).toBe(PALETTE[0]);
   });
 
-  it('returns zero offset for a legacy bare-array facing mixed with new-shape facings in the same pose', () => {
-    // After idle/walking/running map to editor poses, the runtime queries
-    // these for legacy bare-array facings — must not crash, must return zero.
+  it('returns null when the pose entry is absent', () => {
+    expect(resolvePoseWeaponEntry({}, 'unknown-pose', 'S' as Facing, PALETTE)).toBeNull();
+  });
+
+  it('returns null when the facing entry has no weapon id', () => {
     const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
-      walking: {
-        N: ['body-north-base'],
-        S: { layers: ['body-south-base'], weapon: { x: 4, y: 5, rot: 6 } },
-      },
+      idle: { N: { layers: [] } },
     };
-    expect(resolveWeaponPoseTransform(poses, 'walking', 'N', MUSKET_BLOCK)).toEqual({
-      x: 0,
-      y: 0,
-      rot: 0,
-    });
-    // Sanity: shaped facings in the same pose still resolve normally.
-    expect(resolveWeaponPoseTransform(poses, 'walking', 'S', MUSKET_BLOCK)).toEqual({
-      x: 4,
-      y: 5,
-      rot: 6,
-    });
+    expect(resolvePoseWeaponEntry(poses, 'idle', 'N' as Facing, PALETTE)).toBeNull();
   });
 
+  it('returns null and warns on unknown id', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      idle: { N: { layers: [], weapon: 'ghost' } },
+    };
+    expect(resolvePoseWeaponEntry(poses, 'idle', 'N' as Facing, PALETTE)).toBeNull();
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
+  it('treats a legacy bare-array facing as having no weapon', () => {
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      legacy: { N: ['body-north-base'] },
+    };
+    expect(resolvePoseWeaponEntry(poses, 'legacy', 'N' as Facing, PALETTE)).toBeNull();
+  });
 });
 
 describe('readWeaponVariantPool', () => {
-  it('returns an empty pool for a legacy bare-array facing', () => {
-    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
-      walking: {
-        N: ['body-north-base'],
-      },
-    };
-    expect(readWeaponVariantPool(poses, 'walking', 'N')).toEqual([]);
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('returns [weapon, ...weaponVariants] when authored', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+  it('returns [primary, ...variants] resolved via the palette', () => {
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
       idle: {
         N: {
           layers: [],
-          weapon: { x: 1, y: 2, rot: 3 },
-          weaponVariants: [
-            { x: 4, y: 5, rot: 6 },
-            { x: 7, y: 8, rot: 9 },
-          ],
+          weapon: 'n-0',
+          weaponVariants: ['n-1', 'nw-0'],
         },
       },
     };
-    expect(readWeaponVariantPool(poses, 'idle', 'N')).toEqual([
-      { x: 1, y: 2, rot: 3 },
-      { x: 4, y: 5, rot: 6 },
-      { x: 7, y: 8, rot: 9 },
-    ]);
+    const pool = readWeaponVariantPool(poses, PALETTE, 'idle', 'N' as Facing);
+    expect(pool).toEqual([PALETTE[0], PALETTE[1], PALETTE[2]]);
+  });
+
+  it('returns just [primary] when there are no variants', () => {
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      idle: { N: { layers: [], weapon: 'n-0' } },
+    };
+    const pool = readWeaponVariantPool(poses, PALETTE, 'idle', 'N' as Facing);
+    expect(pool).toEqual([PALETTE[0]]);
+  });
+
+  it('returns an empty pool when no weapon id is set', () => {
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      idle: { N: { layers: [] } },
+    };
+    expect(readWeaponVariantPool(poses, PALETTE, 'idle', 'N' as Facing)).toEqual([]);
   });
 
   it('returns an empty pool when the pose entry is absent', () => {
-    expect(readWeaponVariantPool({}, 'walking', 'N')).toEqual([]);
+    expect(readWeaponVariantPool({}, PALETTE, 'walking', 'N' as Facing)).toEqual([]);
+  });
+
+  it('returns an empty pool for a legacy bare-array facing', () => {
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      walking: { N: ['body-north-base'] },
+    };
+    expect(readWeaponVariantPool(poses, PALETTE, 'walking', 'N' as Facing)).toEqual([]);
+  });
+
+  it('skips unknown variant ids with a warning, keeping known ones', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      idle: {
+        N: {
+          layers: [],
+          weapon: 'n-0',
+          weaponVariants: ['ghost-1', 'nw-0', 'ghost-2'],
+        },
+      },
+    };
+    const pool = readWeaponVariantPool(poses, PALETTE, 'idle', 'N' as Facing);
+    expect(pool).toEqual([PALETTE[0], PALETTE[2]]);
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips an unknown primary id but still resolves variants', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      idle: {
+        N: {
+          layers: [],
+          weapon: 'ghost',
+          weaponVariants: ['n-0'],
+        },
+      },
+    };
+    const pool = readWeaponVariantPool(poses, PALETTE, 'idle', 'N' as Facing);
+    expect(pool).toEqual([PALETTE[0]]);
+    expect(warn).toHaveBeenCalledOnce();
   });
 });

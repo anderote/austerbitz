@@ -5,6 +5,7 @@ import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
 import { getUnitKindByIndex } from '../../data/units';
+import { DroppedKind } from '../../sim/dropped-items';
 import type { KitConfig } from '../poses/kit-loader';
 
 export interface DroppedItemsPass {
@@ -41,6 +42,7 @@ export function createDroppedItemsPass(
   kits: ReadonlyMap<string, KitConfig>,
   atlas: WebGLTexture,
   weaponUvByPrefix: ReadonlyMap<string, ReadonlyArray<readonly [number, number, number, number] | null>>,
+  headUvByPrefix: ReadonlyMap<string, ReadonlyArray<readonly [number, number, number, number] | null>>,
 ): DroppedItemsPass {
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
   const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld'] as const);
@@ -132,11 +134,23 @@ export function createDroppedItemsPass(
         const kindIdx = d.kindId[id]!;
         const kind = getUnitKindByIndex(kindIdx);
         const kit = kits.get(kind.id);
-        if (!kit || !kit.weapon) continue;
-        const uvList = weaponUvByPrefix.get(kit.weapon.layerPrefix);
-        if (!uvList) continue;
-        const facing = d.facing[id]!;
-        const wuv = uvList[facing];
+        if (!kit) continue;
+        // Route to the right UV cache based on item kind. Defensive skip if
+        // the kit lacks the corresponding block (shouldn't happen at runtime
+        // since spawn-side gates on the same fields).
+        const itemKind = d.kind[id]!;
+        let wuv: readonly [number, number, number, number] | null = null;
+        if (itemKind === DroppedKind.Hat) {
+          if (!kit.head) continue;
+          const uvList = headUvByPrefix.get(kit.head.layerPrefix);
+          if (!uvList) continue;
+          wuv = uvList[d.facing[id]!] ?? null;
+        } else {
+          if (!kit.weapon) continue;
+          const uvList = weaponUvByPrefix.get(kit.weapon.layerPrefix);
+          if (!uvList) continue;
+          wuv = uvList[d.facing[id]!] ?? null;
+        }
         if (!wuv) continue;
 
         const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;

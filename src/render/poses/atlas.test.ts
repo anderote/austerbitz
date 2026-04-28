@@ -108,6 +108,8 @@ describe('pickPoseUv', () => {
       cells,
       dirLookup,
       weaponCells: new Map(),
+      headCells: new Map(),
+      variantCells: new Map(),
     };
   }
 

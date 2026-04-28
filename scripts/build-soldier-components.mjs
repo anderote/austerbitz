@@ -335,7 +335,7 @@ async function main() {
 
   const previewScale = clampScale(scale);
 
-  function compositeAndWrite(poseId, layerOverrides, atlasPath, previewPath, headerLabel, bobBody = 0) {
+  function compositeAndWrite(poseId, layerOverrides, atlasPath, previewPath, headerLabel, bobBody = 0, layerFilter = null) {
     // Build the markers atlas first using the raw (un-recolored) base atlas
     // and raw component PNGs. This preserves the marker pixel scheme so the
     // gallery can recolor client-side at runtime.
@@ -362,7 +362,11 @@ async function main() {
       const overrideLayers = Array.isArray(rawOverride)
         ? rawOverride
         : (rawOverride && Array.isArray(rawOverride.layers) ? rawOverride.layers : null);
-      const layers = resolveEffectiveLayers(overrideLayers, config.layers);
+      const layersBase = resolveEffectiveLayers(overrideLayers, config.layers);
+      // Detachable variants drop layers whose ids match a filter (e.g. all
+      // shako-* layers for a `--no-head` variant). Applied per-facing so the
+      // un-baked sprite is just the body without the part.
+      const layers = layerFilter ? layersBase.filter((id) => layerFilter(id)) : layersBase;
       console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
       clearCell(markersTarget, col, row);
       for (const id of layers) {
@@ -412,36 +416,80 @@ async function main() {
     }
   }
 
-  // Base composite (idle pose).
-  compositeAndWrite('idle', null, outputAtlasPath, outputPreviewPath, 'Compositing base (idle)');
+  // Detachable parts produce parallel `--no-<name>` composites. Each detachable
+  // declares a `layerPrefix` (matched as a string prefix against component ids)
+  // — the variant build skips every matching layer so the runtime can swap to
+  // a hatless body when the part falls off. `null` means "no filter, base build".
+  const detachables = Array.isArray(kit.detachables) ? kit.detachables : [];
+  const variants = [
+    { suffix: '', filter: null },
+    ...detachables.map((d) => ({
+      suffix: `--no-${d.name}`,
+      filter: (layerId) => !layerId.startsWith(d.layerPrefix),
+    })),
+  ];
 
-  // Per-pose composites (S-only overrides for now; other facings fall back to base layers).
-  if (kit.poses && typeof kit.poses === 'object') {
-    for (const [poseId, override] of Object.entries(kit.poses)) {
-      if (isMultiFrameOverride(override)) {
-        const n = frameCount(override);
-        // `bob.body` is a non-directional sibling of the per-facing entries —
-        // an integer-px lift array, length = frame count. The helper functions
-        // (framesOfFacingEntry) already filter it out of multi-frame iteration.
-        const bob = (override && typeof override === 'object' && override.bob) || null;
-        const bodyBobArr = bob && Array.isArray(bob.body) ? bob.body : null;
-        if (bodyBobArr && bodyBobArr.length !== n) {
-          console.warn(
-            `[build-soldier-components] ${poseId}.bob.body length ${bodyBobArr.length} ` +
-            `does not match frame count ${n} — extra/missing values clamp to 0.`,
+  for (const variant of variants) {
+    const variantBaseAtlas = variant.suffix ? withSuffix(outputAtlasPath, variant.suffix) : outputAtlasPath;
+    const variantBasePreview = variant.suffix && outputPreviewPath
+      ? withSuffix(outputPreviewPath, variant.suffix)
+      : outputPreviewPath;
+
+    // Base composite (idle pose).
+    compositeAndWrite(
+      'idle',
+      null,
+      variantBaseAtlas,
+      variantBasePreview,
+      `Compositing base (idle)${variant.suffix ? ` ${variant.suffix}` : ''}`,
+      0,
+      variant.filter,
+    );
+
+    // Per-pose composites (S-only overrides for now; other facings fall back to base layers).
+    if (kit.poses && typeof kit.poses === 'object') {
+      for (const [poseId, override] of Object.entries(kit.poses)) {
+        if (isMultiFrameOverride(override)) {
+          const n = frameCount(override);
+          // `bob.body` is a non-directional sibling of the per-facing entries —
+          // an integer-px lift array, length = frame count. The helper functions
+          // (framesOfFacingEntry) already filter it out of multi-frame iteration.
+          const bob = (override && typeof override === 'object' && override.bob) || null;
+          const bodyBobArr = bob && Array.isArray(bob.body) ? bob.body : null;
+          if (bodyBobArr && bodyBobArr.length !== n) {
+            console.warn(
+              `[build-soldier-components] ${poseId}.bob.body length ${bodyBobArr.length} ` +
+              `does not match frame count ${n} — extra/missing values clamp to 0.`,
+            );
+          }
+          for (let i = 0; i < n; i++) {
+            const sliced = frameSliceOverride(override, i);
+            const bobBody = bodyBobArr && Number.isFinite(bodyBobArr[i]) ? (bodyBobArr[i] | 0) : 0;
+            const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}-${i}${variant.suffix}`);
+            const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}-${i}${variant.suffix}`) : null;
+            compositeAndWrite(
+              poseId,
+              sliced,
+              poseAtlasPath,
+              posePreviewPath,
+              `Compositing pose: ${poseId} frame ${i}${variant.suffix ? ` ${variant.suffix}` : ''}`,
+              bobBody,
+              variant.filter,
+            );
+          }
+        } else {
+          const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}${variant.suffix}`);
+          const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}${variant.suffix}`) : null;
+          compositeAndWrite(
+            poseId,
+            override,
+            poseAtlasPath,
+            posePreviewPath,
+            `Compositing pose: ${poseId}${variant.suffix ? ` ${variant.suffix}` : ''}`,
+            0,
+            variant.filter,
           );
         }
-        for (let i = 0; i < n; i++) {
-          const sliced = frameSliceOverride(override, i);
-          const bobBody = bodyBobArr && Number.isFinite(bodyBobArr[i]) ? (bodyBobArr[i] | 0) : 0;
-          const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}-${i}`);
-          const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}-${i}`) : null;
-          compositeAndWrite(poseId, sliced, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId} frame ${i}`, bobBody);
-        }
-      } else {
-        const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}`);
-        const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}`) : null;
-        compositeAndWrite(poseId, override, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId}`);
       }
     }
   }

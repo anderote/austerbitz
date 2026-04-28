@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  resolveWeaponFacing,
-  resolveWeaponPoseTransform,
+  resolvePaletteEntry,
+  resolvePoseWeaponEntry,
+  resolveWeaponSpriteKey,
   type Facing,
   type PoseFacingEntry,
-  type WeaponBlock,
+  type WeaponPaletteEntry,
 } from './resolver';
 import { pickWeaponUv, type PoseAtlas } from './atlas';
 import { runtimePoseToEditorPoseName } from './kit-loader';
@@ -13,22 +14,17 @@ import { Pose } from './pose-config';
 // End-to-end weapon-resolution tests: exercise the *runtime path* the
 // sprite-pass takes per soldier per frame, without touching GL. The pass
 // itself is GL-coupled and not unit-testable in isolation, but the pure
-// logic — pose-name mapping, weapon-facing resolution, per-pose offset
-// derivation, atlas UV lookup with transforms — is fully testable here.
+// logic — pose-name mapping, palette lookup, atlas UV with transforms — is
+// fully testable here.
 
-const MUSKET_BLOCK: WeaponBlock = {
-  layerPrefix: 'musket-brown-bess',
-  facings: {
-    N: { src: 'self' },
-    NW: { src: 'self' },
-    W: { src: 'self' },
-    S: { src: 'N', transform: 'flipY' },
-    NE: { src: 'NW', transform: 'flipX' },
-    SE: { src: 'NW', transform: 'rot180' },
-    SW: { src: 'NW', transform: 'flipY' },
-    E: { src: 'W', transform: 'flipX' },
-  },
-};
+const PALETTE: WeaponPaletteEntry[] = [
+  { id: 'n-0', src: 'N', x: 0, y: -2, rot: 0 },
+  { id: 'n-flipy', src: 'N', transform: 'flipY', x: 0, y: 2, rot: 0 },
+  { id: 'nw-0', src: 'NW', x: 1, y: -1, rot: 5 },
+  { id: 'nw-flip', src: 'NW', transform: 'flipX', x: -1, y: -1, rot: -5, flipX: true },
+  { id: 'w-0', src: 'W', x: 2, y: 0, rot: 10 },
+  { id: 'w-flipx', src: 'W', transform: 'flipX', x: -2, y: 0, rot: -10, flipX: true },
+];
 
 function makeAtlasWithWeapon(): PoseAtlas {
   // A 200x200 combined sheet with a 32x36 weapon cell at (50, 100) for each
@@ -46,6 +42,8 @@ function makeAtlasWithWeapon(): PoseAtlas {
     cells: new Map(),
     dirLookup: new Map(),
     weaponCells,
+    headCells: new Map(),
+    variantCells: new Map(),
   };
 }
 
@@ -79,10 +77,8 @@ describe('pickWeaponUv (atlas UV with facing transforms)', () => {
     const uv = pickWeaponUv(atlas, 'musket-brown-bess', 'N', 'none', 0, 200, 200);
     expect(uv).not.toBeNull();
     const [u0, v0, us, vs] = uv!;
-    // u0 is left edge (with half-texel inset) of the N cell at px=50.
     expect(u0).toBeCloseTo(50 / 200 + 0.5 / 200, 5);
     expect(v0).toBeCloseTo(100 / 200 + 0.5 / 200, 5);
-    // Span is positive for transform=none (no flip).
     expect(us).toBeGreaterThan(0);
     expect(vs).toBeGreaterThan(0);
   });
@@ -91,10 +87,8 @@ describe('pickWeaponUv (atlas UV with facing transforms)', () => {
     const atlas = makeAtlasWithWeapon();
     const noneUv = pickWeaponUv(atlas, 'musket-brown-bess', 'W', 'none', 0, 200, 200)!;
     const flipUv = pickWeaponUv(atlas, 'musket-brown-bess', 'W', 'flipX', 0, 200, 200)!;
-    // u origin shifts by +us (right edge of cell), then us flips sign.
     expect(flipUv[0]).toBeCloseTo(noneUv[0] + noneUv[2], 5);
     expect(flipUv[2]).toBeCloseTo(-noneUv[2], 5);
-    // v unchanged.
     expect(flipUv[1]).toBeCloseTo(noneUv[1], 5);
     expect(flipUv[3]).toBeCloseTo(noneUv[3], 5);
   });
@@ -105,7 +99,6 @@ describe('pickWeaponUv (atlas UV with facing transforms)', () => {
     const flipUv = pickWeaponUv(atlas, 'musket-brown-bess', 'N', 'flipY', 0, 200, 200)!;
     expect(flipUv[1]).toBeCloseTo(noneUv[1] + noneUv[3], 5);
     expect(flipUv[3]).toBeCloseTo(-noneUv[3], 5);
-    // u unchanged.
     expect(flipUv[0]).toBeCloseTo(noneUv[0], 5);
     expect(flipUv[2]).toBeCloseTo(noneUv[2], 5);
   });
@@ -132,118 +125,62 @@ describe('pickWeaponUv (atlas UV with facing transforms)', () => {
   });
 });
 
-describe('end-to-end weapon resolution (kit + atlas)', () => {
+describe('end-to-end weapon resolution (palette + atlas)', () => {
   // The sprite-pass per-soldier-per-frame chain:
-  //   1. resolveWeaponFacing(kit.weapon, facing) → (spriteKey, transform)
-  //   2. pickWeaponUv(atlas, layerPrefix, sourceFacing, transform) → UV rect
-  //   3. resolveWeaponPoseTransform(kit.poses, editorPose, facing, kit.weapon)
-  //        → (x, y, rot)
-  // These tests exercise that chain on a fake kit + fake atlas.
+  //   1. resolvePoseWeaponEntry(kit.poses, editorPose, facing, palette)
+  //        → WeaponPaletteEntry
+  //   2. resolveWeaponSpriteKey(layerPrefix, entry) → (spriteKey, transform)
+  //   3. pickWeaponUv(atlas, layerPrefix, entry.src, transform) → UV rect
+  //   4. quad placement uses entry.x / .y / .rot / .flipX
+  // These tests exercise the chain on a synthetic palette + atlas.
 
   const kitPoses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
     fire: {
-      N: { layers: [], weapon: { x: 0, y: -2, rot: 0 } },
-      NW: { layers: [], weapon: { x: 1, y: -1, rot: 5 } },
-      W: { layers: [], weapon: { x: 2, y: 0, rot: 10 } },
-      // Other facings omit weapon → derive from mirror source.
+      N: { layers: [], weapon: 'n-0' },
+      NW: { layers: [], weapon: 'nw-0' },
+      W: { layers: [], weapon: 'w-0' },
+      // S/NE/SE/SW/E omit weapon → no overlay (palette is explicit).
     },
     present: {
-      N: { layers: [], weapon: { x: 1, y: -1, rot: 20 } },
+      N: { layers: [], weapon: 'n-0', weaponVariants: ['n-flipy'] },
     },
   };
 
-  it('source facing N during fire pose resolves to the authored sprite + offset', () => {
+  it('source facing N during fire pose resolves through the palette to a positive-span UV', () => {
     const atlas = makeAtlasWithWeapon();
-    const resolved = resolveWeaponFacing(MUSKET_BLOCK, 'N');
-    expect(resolved.spriteKey).toBe('musket-brown-bess-N');
-    expect(resolved.transform).toBe('none');
-
-    const uv = pickWeaponUv(
-      atlas,
-      MUSKET_BLOCK.layerPrefix,
-      'N',
-      resolved.transform,
-      0,
-      200,
-      200,
-    );
+    const entry = resolvePoseWeaponEntry(kitPoses, 'fire', 'N' as Facing, PALETTE);
+    expect(entry).toBe(PALETTE[0]);
+    const { spriteKey, transform } = resolveWeaponSpriteKey('musket-brown-bess', entry!);
+    expect(spriteKey).toBe('musket-brown-bess-N');
+    expect(transform).toBe('none');
+    const uv = pickWeaponUv(atlas, 'musket-brown-bess', entry!.src, transform, 0, 200, 200);
     expect(uv).not.toBeNull();
-    expect(uv![2]).toBeGreaterThan(0); // positive span = no flip
-
-    const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'N', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: 0, y: -2, rot: 0 });
+    expect(uv![2]).toBeGreaterThan(0);
   });
 
-  it('derived S facing during fire inherits N’s offset via flipY (y negates, rot negates)', () => {
+  it('a flipY palette entry produces a negative v-span on the same N source', () => {
     const atlas = makeAtlasWithWeapon();
-    const resolved = resolveWeaponFacing(MUSKET_BLOCK, 'S');
-    expect(resolved.spriteKey).toBe('musket-brown-bess-N');
-    expect(resolved.transform).toBe('flipY');
-
-    // Sprite key uses N (the source); transform=flipY → vs negated.
-    const uv = pickWeaponUv(
-      atlas,
-      MUSKET_BLOCK.layerPrefix,
-      'N',
-      resolved.transform,
-      0,
-      200,
-      200,
-    );
+    const entry = resolvePaletteEntry(PALETTE, 'n-flipy')!;
+    const { transform } = resolveWeaponSpriteKey('musket-brown-bess', entry);
+    expect(transform).toBe('flipY');
+    const uv = pickWeaponUv(atlas, 'musket-brown-bess', entry.src, transform, 0, 200, 200);
     expect(uv).not.toBeNull();
-    expect(uv![3]).toBeLessThan(0); // negative v-span = vertical mirror
-
-    // Per-pose offset: N has y=-2, S = flipY(N) → (x, -y, -rot) = (0, 2, 0).
-    // Using toBeCloseTo to absorb the JS distinction between -0 and +0
-    // (negating zero produces -0, which is numerically equal to 0).
-    const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'S', MUSKET_BLOCK);
-    expect(offset.x).toBeCloseTo(0);
-    expect(offset.y).toBeCloseTo(2);
-    expect(offset.rot).toBeCloseTo(0);
+    expect(uv![3]).toBeLessThan(0);
   });
 
-  it('derived NE facing during present inherits NW via flipX even when NE is unauthored in poses', () => {
-    const resolved = resolveWeaponFacing(MUSKET_BLOCK, 'NE');
-    expect(resolved.spriteKey).toBe('musket-brown-bess-NW');
-    expect(resolved.transform).toBe('flipX');
-
-    // Present pose only has N authored; NE has no source-mirror data either
-    // (NW isn’t in present), so the offset falls back to (0, 0, 0).
-    const offset = resolveWeaponPoseTransform(kitPoses, 'present', 'NE', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: 0, y: 0, rot: 0 });
+  it('a flipX palette entry on NW produces a negative u-span', () => {
+    const atlas = makeAtlasWithWeapon();
+    const entry = resolvePaletteEntry(PALETTE, 'nw-flip')!;
+    const { transform } = resolveWeaponSpriteKey('musket-brown-bess', entry);
+    expect(transform).toBe('flipX');
+    expect(entry.flipX).toBe(true);
+    const uv = pickWeaponUv(atlas, 'musket-brown-bess', entry.src, transform, 0, 200, 200);
+    expect(uv).not.toBeNull();
+    expect(uv![2]).toBeLessThan(0);
   });
 
-  it('derived NE facing during fire inherits NW via flipX (NW is authored in fire)', () => {
-    const resolved = resolveWeaponFacing(MUSKET_BLOCK, 'NE');
-    expect(resolved.spriteKey).toBe('musket-brown-bess-NW');
-    expect(resolved.transform).toBe('flipX');
-
-    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot, flipX).
-    // The runtime flips the source UV horizontally so the NE sprite is the
-    // NW sprite mirrored — the editor authors per-pose `flipX: true` for the
-    // same reason and the resolver mirrors that convention here.
-    const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'NE', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: -1, y: -1, rot: -5, flipX: true });
-  });
-
-  it('derived SE facing during fire inherits NW via rot180 (both x and y negate, rot unchanged)', () => {
-    const resolved = resolveWeaponFacing(MUSKET_BLOCK, 'SE');
-    expect(resolved.spriteKey).toBe('musket-brown-bess-NW');
-    expect(resolved.transform).toBe('rot180');
-
-    // Fire/NW = (x=1, y=-1, rot=5); SE = rot180(NW) → (-x, -y, rot).
-    const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'SE', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: -1, y: 1, rot: 5 });
-  });
-
-  it('authored override on a derived facing wins over mirror inheritance', () => {
-    const overridePoses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 0, y: -2, rot: 0 } },
-        S: { layers: [], weapon: { x: 99, y: 99, rot: 99 } },
-      },
-    };
-    const offset = resolveWeaponPoseTransform(overridePoses, 'fire', 'S', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: 99, y: 99, rot: 99 });
+  it('returns null for a (pose, facing) without an authored palette id', () => {
+    expect(resolvePoseWeaponEntry(kitPoses, 'fire', 'NE' as Facing, PALETTE)).toBeNull();
+    expect(resolvePoseWeaponEntry(kitPoses, 'fire', 'S' as Facing, PALETTE)).toBeNull();
   });
 });

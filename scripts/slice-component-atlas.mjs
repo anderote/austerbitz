@@ -80,48 +80,58 @@ export function buildWorkList(kit, kitId) {
     : `${kitId}-components`;
   const work = [];
 
-  // Idle uses the un-suffixed atlas and all 8 facings.
-  work.push({
-    kind: kitId,
-    kitPose: 'idle',
-    runtimePose: 'idle',
-    atlasFile: `${kindAtlasBase}.png`,
-    frameIdx: 0,
-    cells: COMPASS_CELLS,
-  });
+  // Detachable variants share the same iteration shape — only the atlas-file
+  // suffix and the runtimePose folder name change. `null` is the base build.
+  const detachables = Array.isArray(kit.detachables) ? kit.detachables : [];
+  const variants = [
+    { suffix: '', runtimeSuffix: '' },
+    ...detachables.map((d) => ({ suffix: `--no-${d.name}`, runtimeSuffix: `--no-${d.name}` })),
+  ];
 
-  if (kit.poses && typeof kit.poses === 'object') {
-    for (const [kitPose, override] of Object.entries(kit.poses)) {
-      const runtimePose = KIT_TO_RUNTIME_POSE[kitPose];
-      if (!runtimePose) {
-        console.warn(`[slice-component-atlas] no runtime mapping for kit pose '${kitPose}', skipping`);
-        continue;
-      }
-      const dirsAuthored = Object.keys(override);
-      const cells = dirsAuthored
-        .map((d) => CELLS_BY_DIR.get(d))
-        .filter(Boolean);
-      if (isMultiFrameOverride(override)) {
-        const n = frameCountOf(override);
-        for (let i = 0; i < n; i++) {
+  for (const variant of variants) {
+    // Idle uses the un-suffixed atlas (plus per-variant suffix) and all 8 facings.
+    work.push({
+      kind: kitId,
+      kitPose: 'idle',
+      runtimePose: `idle${variant.runtimeSuffix}`,
+      atlasFile: `${kindAtlasBase}${variant.suffix}.png`,
+      frameIdx: 0,
+      cells: COMPASS_CELLS,
+    });
+
+    if (kit.poses && typeof kit.poses === 'object') {
+      for (const [kitPose, override] of Object.entries(kit.poses)) {
+        const runtimePose = KIT_TO_RUNTIME_POSE[kitPose];
+        if (!runtimePose) {
+          console.warn(`[slice-component-atlas] no runtime mapping for kit pose '${kitPose}', skipping`);
+          continue;
+        }
+        const dirsAuthored = Object.keys(override);
+        const cells = dirsAuthored
+          .map((d) => CELLS_BY_DIR.get(d))
+          .filter(Boolean);
+        if (isMultiFrameOverride(override)) {
+          const n = frameCountOf(override);
+          for (let i = 0; i < n; i++) {
+            work.push({
+              kind: kitId,
+              kitPose,
+              runtimePose: `${runtimePose}${variant.runtimeSuffix}`,
+              atlasFile: `${kindAtlasBase}-${kitPose}-${i}${variant.suffix}.png`,
+              frameIdx: i,
+              cells,
+            });
+          }
+        } else {
           work.push({
             kind: kitId,
             kitPose,
-            runtimePose,
-            atlasFile: `${kindAtlasBase}-${kitPose}-${i}.png`,
-            frameIdx: i,
+            runtimePose: `${runtimePose}${variant.runtimeSuffix}`,
+            atlasFile: `${kindAtlasBase}-${kitPose}${variant.suffix}.png`,
+            frameIdx: 0,
             cells,
           });
         }
-      } else {
-        work.push({
-          kind: kitId,
-          kitPose,
-          runtimePose,
-          atlasFile: `${kindAtlasBase}-${kitPose}.png`,
-          frameIdx: 0,
-          cells,
-        });
       }
     }
   }

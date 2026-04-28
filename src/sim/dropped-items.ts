@@ -1,3 +1,14 @@
+/**
+ * Dropped-item kind discriminator. Routes the render pass between the
+ * weapon-atlas UV cache and the head-atlas UV cache so a single pool can
+ * hold both muskets and shakos.
+ */
+export const DroppedKind = {
+  Weapon: 0,
+  Hat: 1,
+} as const;
+export type DroppedKind = (typeof DroppedKind)[keyof typeof DroppedKind];
+
 export interface DroppedItems {
   capacity: number;
   count: number;                 // live count
@@ -9,6 +20,7 @@ export interface DroppedItems {
   team: Uint8Array;              // for shader's per-team palette
   facing: Uint8Array;            // runtime facing 0..7 at death
   flipX: Uint8Array;             // 0/1, copied from the dying-pose offset's flipX flag
+  kind: Uint8Array;              // DroppedKind: 0=weapon, 1=hat
 
   // Free-list
   freeListHead: number;
@@ -31,6 +43,7 @@ export function createDroppedItems(capacity: number): DroppedItems {
     team: new Uint8Array(capacity),
     facing: new Uint8Array(capacity),
     flipX: new Uint8Array(capacity),
+    kind: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -49,6 +62,7 @@ export function allocDroppedItem(d: DroppedItems): number {
   d.team[id] = 0;
   d.facing[id] = 0;
   d.flipX[id] = 0;
+  d.kind[id] = 0;
   return id;
 }
 
@@ -79,5 +93,29 @@ export function spawnDroppedWeapon(
   d.team[id] = team;
   d.facing[id] = facing;
   d.flipX[id] = flipX;
+  d.kind[id] = DroppedKind.Weapon;
+  return id;
+}
+
+export function spawnDroppedHat(
+  d: DroppedItems,
+  posX: number,
+  posY: number,
+  rot: number,
+  kindId: number,
+  team: number,
+  facing: number,
+  flipX: number,
+): number {
+  const id = allocDroppedItem(d);
+  if (id === -1) return -1;
+  d.posX[id] = posX;
+  d.posY[id] = posY;
+  d.rot[id] = rot;
+  d.kindId[id] = kindId;
+  d.team[id] = team;
+  d.facing[id] = facing;
+  d.flipX[id] = flipX;
+  d.kind[id] = DroppedKind.Hat;
   return id;
 }

@@ -11,6 +11,16 @@ export const EntityState = {
 } as const;
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
+/**
+ * Bitmask flags identifying which detachable parts an entity has lost.
+ * Each bit lines up with a kit-declared `detachables[].name` so the renderer
+ * can swap to the matching `--no-<name>` body variant. Bits are independent;
+ * future parts (cannon wheels, plumes, swords) just claim the next bit.
+ */
+export const PartLost = {
+  Head: 1 << 0,
+} as const;
+
 export interface Entities {
   capacity: number;
   count: number;            // live count (also length of packed aliveIds)
@@ -96,6 +106,10 @@ export interface Entities {
   // (death-drops-system sets it; ensures we drop exactly once per death).
   weaponDropped: Uint8Array;
 
+  // Bitmask of detachable parts this entity has lost (see `PartLost`). Sprite
+  // pass routes through the matching `--no-<part>` body variant when set.
+  partLost: Uint8Array;
+
   // Free-list
   freeListHead: number;
   freeListNext: Int32Array;  // -1 = end of list
@@ -154,6 +168,7 @@ export function createEntities(capacity: number): Entities {
     clipIndex: new Uint8Array(capacity),
     bodyRot: new Float32Array(capacity),
     weaponDropped: new Uint8Array(capacity),
+    partLost: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -208,6 +223,7 @@ export function allocEntity(e: Entities): number {
   e.clipIndex[id] = 0;
   e.bodyRot[id] = 0;
   e.weaponDropped[id] = 0;
+  e.partLost[id] = 0;
   return id;
 }
 

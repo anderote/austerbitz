@@ -5,7 +5,7 @@ import { SPRITE_VS, SPRITE_FS } from '../shaders/sprite.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
-import { EntityState, isDead } from '../../sim/entities';
+import { EntityState, PartLost, isDead } from '../../sim/entities';
 import { getUnitKindByIndex } from '../../data/units';
 import { RECOIL_T, RECOIL_PUSH_END, RECOIL_HOLD_END } from '../../sim/fire-resolver';
 import {
@@ -15,11 +15,9 @@ import {
   generateCombinedAtlas,
   type KindAtlasMeta,
 } from '../sprite-atlas';
-import { type PoseAtlas, pickPoseUv, pickWeaponUv } from '../poses/atlas';
+import { type PoseAtlas, pickPoseUv, pickPoseVariantUv, pickWeaponUv, pickHeadUv } from '../poses/atlas';
 import { composeCombinedAtlas } from '../poses/combined-atlas';
 import {
-  resolveWeaponFacing,
-  resolveWeaponPoseTransform,
   readWeaponVariantPool,
   type Facing,
 } from '../poses/resolver';
@@ -48,8 +46,16 @@ export interface SpritePass {
   getAtlas(): WebGLTexture;
   /** Combined-atlas pixel dimensions + the Y offset where the pose atlas was packed. */
   getSheetDims(): { w: number; h: number; poseAtlasY: number };
-  /** Pre-resolved per-kit weapon UVs keyed by `kit.weapon.layerPrefix`. */
+  /**
+   * Pre-resolved per-kit weapon UVs keyed by `kit.weapon.layerPrefix` and
+   * indexed by runtime facing 0..7. Used by dropped-items for the
+   * frozen-corpse weapon visual; resolved from each kit's `dying` pose
+   * palette refs (so a dropped musket matches the orientation the corpse
+   * was holding).
+   */
   getWeaponUvByPrefix(): ReadonlyMap<string, ReadonlyArray<readonly [number, number, number, number] | null>>;
+  /** Pre-resolved per-kit head/hat UVs keyed by `kit.head.layerPrefix`. */
+  getHeadUvByPrefix(): ReadonlyMap<string, ReadonlyArray<readonly [number, number, number, number] | null>>;
 }
 
 interface FactionPalette {
@@ -284,41 +290,97 @@ export function createSpritePass(
   let sortIdx = new Int32Array(capacity);
 
   /**
-   * Pre-resolved weapon UV cache keyed by `kit.weapon.layerPrefix`. Each entry
-   * holds the 8-facing UV-rect array (index = facing 0..7 in compass order
-   * matching the runtime `e.facing[i]` 0..7 = E, NE, N, NW, W, SW, S, SE).
-   * Computed once at startup from the pose-atlas's weaponCells; the per-frame
-   * lookup is then a single Map.get + array index.
+   * Pre-resolved weapon UV cache keyed by `kit.weapon.layerPrefix` then by
+   * palette id. Built once at startup by walking each kit's weaponPalette and
+   * computing one UV per entry via `(src, transform)`. Per-frame the renderer
+   * resolves `(pose, facing).weapon` (palette id) → UV through this map.
+   */
+  const weaponUvByPaletteId = new Map<string, Map<string, [number, number, number, number]>>();
+  if (poseAtlas) {
+    for (const kit of kits.values()) {
+      if (!kit.weapon) continue;
+      const palette = kit.weaponPalette;
+      if (!palette || palette.length === 0) continue;
+      let perKit = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
+      if (!perKit) {
+        perKit = new Map();
+        weaponUvByPaletteId.set(kit.weapon.layerPrefix, perKit);
+      }
+      for (const entry of palette) {
+        if (perKit.has(entry.id)) continue;
+        const uv = pickWeaponUv(
+          poseAtlas,
+          kit.weapon.layerPrefix,
+          entry.src,
+          entry.transform ?? 'none',
+          poseAtlasY,
+          sheetW,
+          sheetH,
+        );
+        if (uv) perKit.set(entry.id, uv);
+      }
+    }
+  }
+
+  /**
+   * Per-runtime-facing weapon UV cache, keyed by `kit.weapon.layerPrefix`.
+   * Used by dropped-items-pass: a dropped weapon picks its sprite based on
+   * the facing the entity died on. We resolve each runtime facing to the
+   * palette entry referenced by `kit.poses.dying[<facing>].weapon`, then
+   * to its UV. If the kit doesn't author a dying-pose weapon for some
+   * facing, that slot stays null and the dropped-items pass skips it.
    */
   const weaponUvByPrefix = new Map<string, Array<[number, number, number, number] | null>>();
+  const RUNTIME_FACING_ORDER_FOR_DROPS: Facing[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   if (poseAtlas) {
     for (const kit of kits.values()) {
       if (!kit.weapon) continue;
       if (weaponUvByPrefix.has(kit.weapon.layerPrefix)) continue;
+      const perKit = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
+      if (!perKit) continue;
+      const dying = kit.poses?.dying;
       const uvs: Array<[number, number, number, number] | null> = new Array(8).fill(null);
-      // Runtime facing 0..7 = E, SE, S, SW, W, NW, N, NE
-      // (matches `(facing + 2) & 7` index into DIRECTIONS = [N, NE, E, SE, S, SW, W, NW]).
-      const RUNTIME_FACING_ORDER: Facing[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+      for (let i = 0; i < 8; i++) {
+        const facing = RUNTIME_FACING_ORDER_FOR_DROPS[i]!;
+        const facingEntry = dying?.[facing];
+        if (!facingEntry || Array.isArray(facingEntry)) continue;
+        const id = (facingEntry as { weapon?: string }).weapon;
+        if (typeof id !== 'string') continue;
+        uvs[i] = perKit.get(id) ?? null;
+      }
+      weaponUvByPrefix.set(kit.weapon.layerPrefix, uvs);
+    }
+  }
+
+  // Parallel head/hat UV cache. Same runtime-facing-order convention; each
+  // facing has its own authored sprite (no derived facings) so we always pick
+  // the matching source facing with `transform: 'none'`.
+  const headUvByPrefix = new Map<string, Array<[number, number, number, number] | null>>();
+  if (poseAtlas) {
+    const RUNTIME_FACING_ORDER: Facing[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+    for (const kit of kits.values()) {
+      if (!kit.head) continue;
+      if (headUvByPrefix.has(kit.head.layerPrefix)) continue;
+      const uvs: Array<[number, number, number, number] | null> = new Array(8).fill(null);
       for (let i = 0; i < 8; i++) {
         const facing = RUNTIME_FACING_ORDER[i]!;
-        const resolved = resolveWeaponFacing(kit.weapon, facing);
-        // resolved.spriteKey is `<layerPrefix>-<sourceFacing>` — extract sourceFacing.
-        // Cleaner: we already know it's `entry.src` if !== 'self', else `facing`.
-        const entry = kit.weapon.facings[facing]!;
+        const entry = kit.head.facings[facing]!;
         const sourceFacing: Facing = entry.src === 'self' ? facing : entry.src;
-        uvs[i] = pickWeaponUv(
+        const transform = entry.src === 'self' ? 'none' : entry.transform;
+        uvs[i] = pickHeadUv(
           poseAtlas,
-          kit.weapon.layerPrefix,
+          kit.head.layerPrefix,
           sourceFacing,
-          resolved.transform,
+          transform,
           poseAtlasY,
           sheetW,
           sheetH,
         );
       }
-      weaponUvByPrefix.set(kit.weapon.layerPrefix, uvs);
+      headUvByPrefix.set(kit.head.layerPrefix, uvs);
     }
   }
+
   // Map from runtime facing 0..7 -> Facing string, for per-pose offset lookup.
   const RUNTIME_FACING_TO_LETTER: Facing[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   // Facings where the weapon renders BEHIND the body (rear-facing soldiers
@@ -495,7 +557,19 @@ export function createSpritePass(
           const poseT = e.poseT[i]!;
           const clipIdx = e.clipIndex[i]!;
           let uv: readonly [number, number, number, number] | null = null;
-          if (poseAtlas) {
+          // Detachable-part variant lookup: when a part bit is set, prefer the
+          // matching `--no-<part>` body variant. Only one variant axis exists
+          // today (head); multi-bit combinations would need combinatorial
+          // variants which we'll author once a kit needs them.
+          const partLost = e.partLost[i]!;
+          if (poseAtlas && partLost !== 0) {
+            if ((partLost & PartLost.Head) !== 0) {
+              uv = pickPoseVariantUv(
+                poseAtlas, 'head', kind.id, pose, facing, clipIdx, poseT, poseAtlasY, sheetW, sheetH,
+              );
+            }
+          }
+          if (!uv && poseAtlas) {
             uv = pickPoseUv(poseAtlas, kind.id, pose, facing, clipIdx, poseT, poseAtlasY, sheetW, sheetH);
           }
           if (!uv) {
@@ -509,52 +583,34 @@ export function createSpritePass(
           scratchUv[k * 4 + 3] = uv[3];
 
           // Weapon overlay (if this kit has a weapon block + the atlas packed
-          // its source sprites). Per-pose `(x, y, rot)` lifted from the kit
-          // JSON. Behind-facings (N/NE/NW) emit into a separate set drawn
+          // its source sprites). Per-(pose, facing) palette ids resolve through
+          // the kit's weaponPalette to a complete (UV, x, y, rot, flipX)
+          // snapshot. Behind-facings (N/NE/NW) emit into a separate set drawn
           // BEFORE bodies so the body occludes the weapon; front-facings emit
           // into the regular set drawn AFTER bodies (overlay on top).
           const stateNow = e.state[i]!;
           const isDyingOrDead = stateNow === EntityState.Dying || stateNow === EntityState.Dead;
           const kit = kits.get(kind.id);
           if (kit && kit.weapon && !isDyingOrDead) {
-            const uvList = weaponUvByPrefix.get(kit.weapon.layerPrefix);
             const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
             const editorPose = runtimePoseToEditorPoseName(pose);
-            // Per-pose variants: when the kit authors `weaponVariants` for
-            // (pose, facing), pool them with the primary `weapon` and pick
-            // a stable index per-entity so soldiers in formation get visual
-            // variety. Each pool entry may also carry a per-pose source override
-            // (`src`/`transform`) authored via the editor's click-to-assign
-            // weapon-pose picker — when present, the entry's UV must come from
-            // that source facing instead of the canonical `kit.weapon.facings[F]`
-            // mapping (e.g. present.S authored as src="NE").
-            const variantPool = editorPose
-              ? readWeaponVariantPool(kit.poses, editorPose, facingLetter)
+            const palette = kit.weaponPalette;
+            // Pool `[primary, ...variants]` resolved through the palette;
+            // pick by `entity.id % pool.length` so soldiers in a formation
+            // get visual variety without flickering frame-to-frame.
+            const variantPool = editorPose && palette
+              ? readWeaponVariantPool(kit.poses, palette, editorPose, facingLetter)
               : [];
-            const chosenVariant = variantPool.length > 0
+            // Avoid double-resolution: readWeaponVariantPool returns
+            // [primary, ...variants] resolved; just index into it.
+            const chosenEntry = variantPool.length > 0
               ? variantPool[((i % variantPool.length) + variantPool.length) % variantPool.length]!
               : null;
-            let wuv: readonly [number, number, number, number] | null = null;
-            const overrideSrc = chosenVariant?.src;
-            if (overrideSrc) {
-              const sourceFacing = overrideSrc === 'self' ? facingLetter : overrideSrc;
-              const transform = overrideSrc === 'self' ? 'none' : (chosenVariant!.transform ?? 'none');
-              wuv = pickWeaponUv(
-                poseAtlas!,
-                kit.weapon.layerPrefix,
-                sourceFacing,
-                transform,
-                poseAtlasY,
-                sheetW,
-                sheetH,
-              );
-            }
-            if (!wuv) wuv = uvList ? uvList[facing] : null;
-            if (wuv) {
-              const offset = chosenVariant
-                ?? (editorPose
-                  ? resolveWeaponPoseTransform(kit.poses, editorPose, facingLetter, kit.weapon)
-                  : { x: 0, y: 0, rot: 0 });
+            const perKitUvs = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
+            const wuv: readonly [number, number, number, number] | null =
+              chosenEntry && perKitUvs ? perKitUvs.get(chosenEntry.id) ?? null : null;
+            if (wuv && chosenEntry) {
+              const offset = chosenEntry;
               // Body sprite is rendered at `sprW` world units wide for a
               // SPRITE_CELL_PX-wide cell, so the weapon must use the SAME
               // pixel-to-world ratio for both its size AND its per-pose pixel
@@ -730,6 +786,9 @@ export function createSpritePass(
     },
     getWeaponUvByPrefix() {
       return weaponUvByPrefix;
+    },
+    getHeadUvByPrefix() {
+      return headUvByPrefix;
     },
     replaceAtlasTexture(image) {
       // Width/height inference: ImageBitmap exposes width/height directly;
