@@ -33,6 +33,8 @@ const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
  * Each entry's `cells` is in COMPASS order. Source: POSE_CELLS in the
  * matching src/render/*-sprite.ts file.
  */
+// Cuirassier is no longer seeded from the legacy combined-atlas — see
+// scripts/draw-cuirassier-poses.mjs (32x24 multi-pose).
 const KINDS = [
   {
     kind: 'line-infantry',
@@ -40,23 +42,6 @@ const KINDS = [
     cellW: 11,
     cellH: 18,
     // POSE_CELLS from src/render/british-soldier-sprite.ts
-    cells: [
-      { col: 1, row: 2 }, // N
-      { col: 2, row: 0 }, // NE
-      { col: 2, row: 1 }, // E
-      { col: 2, row: 2 }, // SE
-      { col: 1, row: 1 }, // S
-      { col: 0, row: 2 }, // SW
-      { col: 0, row: 1 }, // W
-      { col: 0, row: 0 }, // NW
-    ],
-  },
-  {
-    kind: 'cuirassier',
-    sourcePng: 'cuirassier.png',
-    cellW: 15,
-    cellH: 20,
-    // CUIRASSIER_POSE_CELLS from src/render/cuirassier-sprite.ts
     cells: [
       { col: 1, row: 2 }, // N
       { col: 2, row: 0 }, // NE
