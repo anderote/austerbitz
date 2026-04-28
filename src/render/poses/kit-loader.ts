@@ -110,22 +110,21 @@ export const WEAPON_SOURCE_FACINGS: readonly Facing[] = [
  * Map a runtime `Pose` enum value to the editor's pose-name namespace.
  *
  * Kit JSONs key per-pose weapon offsets under editor pose names like
- * `make-ready`, `present`, `fire`, `hit`, `dying`. The runtime tracks state
- * via the `Pose` enum (`idle`, `aiming`, `firing`, `reloading`, ...). This
- * mapping bridges the two so the runtime can look up `(x, y, rot)` for the
- * current entity state.
+ * `idle`, `walking`, `running`, `make-ready`, `present`, `fire`, `hit`,
+ * `dying`. The runtime tracks state via the `Pose` enum (`idle`, `aiming`,
+ * `firing`, `reloading`, ...). This mapping bridges the two so the runtime
+ * can look up `(x, y, rot)` for the current entity state.
  *
- * Returns `null` for poses that the editor doesn't author per-pose offsets
- * for (e.g. walking / running / dead) — the caller should fall back to the
- * zero offset.
+ * Returns `null` only for unknown enum values — the caller should fall back
+ * to the zero offset in that case.
  */
 export function runtimePoseToEditorPoseName(pose: number): string | null {
   // Pose enum values (kept as numeric literals to avoid a circular import via
   // pose-config). See `src/render/poses/pose-config.ts`.
   switch (pose) {
-    case 0: return null;          // idle — facings block, no per-pose offset.
-    case 1: return null;          // walking
-    case 2: return null;          // running
+    case 0: return 'idle';
+    case 1: return 'walking';
+    case 2: return 'running';
     case 3: return 'present';     // aiming
     case 4: return 'fire';        // firing
     case 5: return 'make-ready';  // reloading

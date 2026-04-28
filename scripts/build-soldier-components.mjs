@@ -66,7 +66,7 @@ function parseHexColor(hex) {
   };
 }
 
-function applyPixelEdits(target, col, row, edits) {
+function applyPixelEdits(target, col, row, edits, bobDy = 0) {
   if (!Array.isArray(edits) || edits.length === 0) return 0;
   const { x: baseX, y: baseY, sheetWidth } = getCellOffset(col, row, target.width);
   let applied = 0;
@@ -76,7 +76,9 @@ function applyPixelEdits(target, col, row, edits) {
     const py = Number(edit.y);
     if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
     const ix = Math.trunc(px);
-    const iy = Math.trunc(py);
+    // Pixel edits are authored against the un-bobbed component; lift them by
+    // the same dy the component shifts so they land on the same logical pixel.
+    const iy = Math.trunc(py) - bobDy;
     if (ix < 0 || ix >= CELL_W) continue;
     if (iy < 0 || iy >= CELL_H) continue;
     const dstIdx = ((baseY + iy) * sheetWidth + (baseX + ix)) * 4;
@@ -227,6 +229,10 @@ export function frameCount(override) {
   return n;
 }
 
+export function resolveEffectiveLayers(overrideLayers, configLayers) {
+  return (overrideLayers && overrideLayers.length > 0) ? overrideLayers : configLayers;
+}
+
 export function frameSliceOverride(override, frameIdx) {
   const out = {};
   for (const [facing, value] of Object.entries(override)) {
@@ -329,7 +335,7 @@ async function main() {
 
   const previewScale = clampScale(scale);
 
-  function compositeAndWrite(poseId, layerOverrides, atlasPath, previewPath, headerLabel) {
+  function compositeAndWrite(poseId, layerOverrides, atlasPath, previewPath, headerLabel, bobBody = 0) {
     // Build the markers atlas first using the raw (un-recolored) base atlas
     // and raw component PNGs. This preserves the marker pixel scheme so the
     // gallery can recolor client-side at runtime.
@@ -356,7 +362,7 @@ async function main() {
       const overrideLayers = Array.isArray(rawOverride)
         ? rawOverride
         : (rawOverride && Array.isArray(rawOverride.layers) ? rawOverride.layers : null);
-      const layers = overrideLayers || config.layers;
+      const layers = resolveEffectiveLayers(overrideLayers, config.layers);
       console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
       clearCell(markersTarget, col, row);
       for (const id of layers) {
@@ -368,10 +374,15 @@ async function main() {
         const componentPng = PNG.sync.read(readFileSync(componentPath));
         // No recolor here — markers go through raw to the markers atlas.
         const offset = lookupOffset(poseId, facing, id);
-        blitComponent(markersTarget, col, row, componentPng, offset);
+        // Per-frame body bob lifts every layer uniformly (negative dy = up),
+        // so the figure rises and falls across the cycle while the leg cycle
+        // already drawn into the trouser PNG remains visible inside the lift.
+        const bobbedOffset = bobBody ? [offset[0], offset[1] - bobBody] : offset;
+        blitComponent(markersTarget, col, row, componentPng, bobbedOffset);
         const layerEdits = lookupPixelEdits(poseId, facing, id);
-        const editsApplied = layerEdits ? applyPixelEdits(markersTarget, col, row, layerEdits) : 0;
+        const editsApplied = layerEdits ? applyPixelEdits(markersTarget, col, row, layerEdits, bobBody) : 0;
         const tagParts = [`pose=${poseId}`];
+        if (bobBody) tagParts.push(`bob=${bobBody}`);
         if (offset[0] || offset[1]) tagParts.push(`offset ${offset[0]},${offset[1]}`);
         if (editsApplied > 0) tagParts.push(`+${editsApplied} pixel edits`);
         console.log(`  + ${id} (${tagParts.join(', ')})`);
@@ -409,11 +420,23 @@ async function main() {
     for (const [poseId, override] of Object.entries(kit.poses)) {
       if (isMultiFrameOverride(override)) {
         const n = frameCount(override);
+        // `bob.body` is a non-directional sibling of the per-facing entries —
+        // an integer-px lift array, length = frame count. The helper functions
+        // (framesOfFacingEntry) already filter it out of multi-frame iteration.
+        const bob = (override && typeof override === 'object' && override.bob) || null;
+        const bodyBobArr = bob && Array.isArray(bob.body) ? bob.body : null;
+        if (bodyBobArr && bodyBobArr.length !== n) {
+          console.warn(
+            `[build-soldier-components] ${poseId}.bob.body length ${bodyBobArr.length} ` +
+            `does not match frame count ${n} — extra/missing values clamp to 0.`,
+          );
+        }
         for (let i = 0; i < n; i++) {
           const sliced = frameSliceOverride(override, i);
+          const bobBody = bodyBobArr && Number.isFinite(bodyBobArr[i]) ? (bodyBobArr[i] | 0) : 0;
           const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}-${i}`);
           const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}-${i}`) : null;
-          compositeAndWrite(poseId, sliced, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId} frame ${i}`);
+          compositeAndWrite(poseId, sliced, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId} frame ${i}`, bobBody);
         }
       } else {
         const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}`);

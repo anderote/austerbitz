@@ -3,6 +3,7 @@ import {
   isMultiFrameOverride,
   frameSliceOverride,
   frameCount,
+  resolveEffectiveLayers,
 } from './build-soldier-components.mjs';
 
 describe('build-soldier-components multi-frame helpers', () => {
@@ -50,5 +51,19 @@ describe('build-soldier-components multi-frame helpers', () => {
     };
     expect(frameSliceOverride(override, 0)).toEqual({ N: ['n0'], S: ['s0'] });
     expect(frameSliceOverride(override, 1)).toEqual({ N: ['n1'], S: ['s1'] });
+  });
+});
+
+describe('resolveEffectiveLayers', () => {
+  it('falls back to configLayers when overrideLayers is null', () => {
+    expect(resolveEffectiveLayers(null, ['c1', 'c2'])).toEqual(['c1', 'c2']);
+  });
+
+  it('falls back to configLayers when overrideLayers is an empty array', () => {
+    expect(resolveEffectiveLayers([], ['c1', 'c2'])).toEqual(['c1', 'c2']);
+  });
+
+  it('uses overrideLayers when it has entries', () => {
+    expect(resolveEffectiveLayers(['a', 'b'], ['c1', 'c2'])).toEqual(['a', 'b']);
   });
 });

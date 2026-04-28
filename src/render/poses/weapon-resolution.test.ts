@@ -63,10 +63,10 @@ describe('runtimePoseToEditorPoseName', () => {
     expect(runtimePoseToEditorPoseName(Pose.ragdoll)).toBe('dying');
     expect(runtimePoseToEditorPoseName(Pose.dead)).toBe('dying');
   });
-  it('returns null for poses with no editor counterpart (idle / walking / running)', () => {
-    expect(runtimePoseToEditorPoseName(Pose.idle)).toBeNull();
-    expect(runtimePoseToEditorPoseName(Pose.walking)).toBeNull();
-    expect(runtimePoseToEditorPoseName(Pose.running)).toBeNull();
+  it('maps idle / walking / running to their editor pose names so per-pose weapon authoring is honored', () => {
+    expect(runtimePoseToEditorPoseName(Pose.idle)).toBe('idle');
+    expect(runtimePoseToEditorPoseName(Pose.walking)).toBe('walking');
+    expect(runtimePoseToEditorPoseName(Pose.running)).toBe('running');
   });
 });
 
@@ -218,12 +218,11 @@ describe('end-to-end weapon resolution (kit + atlas)', () => {
     expect(resolved.spriteKey).toBe('musket-brown-bess-NW');
     expect(resolved.transform).toBe('flipX');
 
-    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot). Per the
-    // updated flipX-inheritance rule, derivation through `flipX` XORs the
-    // source's flipX flag with `true`; NW has no authored flipX, so NE's
-    // inherited flipX is `true`.
+    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot). The
+    // canonical NE sprite is already the flipX'd NW, so the inherited offset
+    // carries no per-pose flip flag.
     const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'NE', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: -1, y: -1, rot: -5, flipX: true });
+    expect(offset).toEqual({ x: -1, y: -1, rot: -5 });
   });
 
   it('derived SE facing during fire inherits NW via rot180 (both x and y negate, rot unchanged)', () => {

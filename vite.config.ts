@@ -219,7 +219,7 @@ function offsetsApiPlugin(): Plugin {
                   let existing = parsed.poses[poseId][facing];
                   if (!existing) continue;
                   if (Array.isArray(existing)) {
-                    existing = { layers: existing };
+                    existing = existing.length > 0 ? { layers: existing } : {};
                   } else if (typeof existing !== 'object') {
                     continue;
                   }
@@ -329,6 +329,7 @@ function offsetsApiPlugin(): Plugin {
                 '16',
               ])
             );
+            out.push(await runStep(['scripts/bake-weapon-edits.mjs']));
             out.push(await runStep(['scripts/slice-component-atlas.mjs']));
             out.push(await runStep(['scripts/draw-cuirassier-poses.mjs']));
             out.push(await runStep(['scripts/build-pose-manifest.mjs']));

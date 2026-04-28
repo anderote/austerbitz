@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildDirLookup,
   normalizePoseFacingEntry,
+  readWeaponVariantPool,
   resolveWeaponFacing,
   resolveWeaponPoseTransform,
   type Facing,
@@ -182,13 +183,13 @@ describe('resolveWeaponPoseTransform', () => {
         NW: { layers: [], weapon: { x: 5, y: 6, rot: 30 } },
       },
     };
-    // Per spec: a flipX facing-share with an unflipped source yields flipX:true
-    // on the derived facing (XOR true).
+    // x and rot negate through flipX; y is unchanged. The inherited offset
+    // sits on top of the canonical NE sprite (NW with flipX) — no per-pose
+    // flip flag, since per-pose authoring can't pick a different sprite.
     expect(resolveWeaponPoseTransform(poses, 'present', 'NE', MUSKET_BLOCK)).toEqual({
       x: -5,
       y: 6,
       rot: -30,
-      flipX: true,
     });
   });
 
@@ -211,12 +212,10 @@ describe('resolveWeaponPoseTransform', () => {
         W: { layers: [], weapon: { x: 2, y: -1, rot: -10 } },
       },
     };
-    // Per spec: flipX facing-share + unflipped source → flipX:true.
     expect(resolveWeaponPoseTransform(poses, 'hit', 'E', MUSKET_BLOCK)).toEqual({
       x: -2,
       y: -1,
       rot: 10,
-      flipX: true,
     });
   });
 
@@ -282,104 +281,61 @@ describe('resolveWeaponPoseTransform', () => {
     });
   });
 
-  // ----- flipX-related inheritance tests -----
-
-  it('returns authored flipX on the queried facing', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 1, y: 2, rot: 3, flipX: true } },
+  it('returns zero offset for a legacy bare-array facing mixed with new-shape facings in the same pose', () => {
+    // After idle/walking/running map to editor poses, the runtime queries
+    // these for legacy bare-array facings — must not crash, must return zero.
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      walking: {
+        N: ['body-north-base'],
+        S: { layers: ['body-south-base'], weapon: { x: 4, y: 5, rot: 6 } },
       },
     };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'N', MUSKET_BLOCK)).toEqual({
-      x: 1,
-      y: 2,
-      rot: 3,
-      flipX: true,
+    expect(resolveWeaponPoseTransform(poses, 'walking', 'N', MUSKET_BLOCK)).toEqual({
+      x: 0,
+      y: 0,
+      rot: 0,
+    });
+    // Sanity: shaped facings in the same pose still resolve normally.
+    expect(resolveWeaponPoseTransform(poses, 'walking', 'S', MUSKET_BLOCK)).toEqual({
+      x: 4,
+      y: 5,
+      rot: 6,
     });
   });
 
-  it('omits flipX when stored value is false (or undefined) on direct read', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 1, y: 2, rot: 3 } },
+});
+
+describe('readWeaponVariantPool', () => {
+  it('returns an empty pool for a legacy bare-array facing', () => {
+    const poses: Record<string, Record<string, string[] | PoseFacingEntry>> = {
+      walking: {
+        N: ['body-north-base'],
       },
     };
-    const out = resolveWeaponPoseTransform(poses, 'fire', 'N', MUSKET_BLOCK);
-    expect(out.flipX).toBeUndefined();
-    expect(out).toEqual({ x: 1, y: 2, rot: 3 });
+    expect(readWeaponVariantPool(poses, 'walking', 'N')).toEqual([]);
   });
 
-  it('inherits flipX through flipY mirror unchanged (S from N): flipped stays flipped', () => {
+  it('returns [weapon, ...weaponVariants] when authored', () => {
     const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
+      idle: {
+        N: {
+          layers: [],
+          weapon: { x: 1, y: 2, rot: 3 },
+          weaponVariants: [
+            { x: 4, y: 5, rot: 6 },
+            { x: 7, y: 8, rot: 9 },
+          ],
+        },
       },
     };
-    const out = resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK);
-    expect(out.flipX).toBe(true);
+    expect(readWeaponVariantPool(poses, 'idle', 'N')).toEqual([
+      { x: 1, y: 2, rot: 3 },
+      { x: 4, y: 5, rot: 6 },
+      { x: 7, y: 8, rot: 9 },
+    ]);
   });
 
-  it('inherits flipX through flipY mirror unchanged (S from N): unflipped stays unflipped', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 0, y: 0, rot: 0 } },
-      },
-    };
-    const out = resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK);
-    expect(out.flipX).toBeUndefined();
-  });
-
-  it('inherits flipX through rot180 mirror unchanged (SE from NW)', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        NW: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
-      },
-    };
-    const out = resolveWeaponPoseTransform(poses, 'fire', 'SE', MUSKET_BLOCK);
-    expect(out.flipX).toBe(true);
-  });
-
-  it('XORs flipX through flipX mirror (NE from NW): flipped source becomes unflipped', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        NW: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
-      },
-    };
-    const out = resolveWeaponPoseTransform(poses, 'fire', 'NE', MUSKET_BLOCK);
-    expect(out.flipX).toBeUndefined();
-  });
-
-  it('XORs flipX through flipX mirror (NE from NW): unflipped source becomes flipped', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        NW: { layers: [], weapon: { x: 0, y: 0, rot: 0 } },
-      },
-    };
-    const out = resolveWeaponPoseTransform(poses, 'fire', 'NE', MUSKET_BLOCK);
-    expect(out.flipX).toBe(true);
-  });
-
-  it('XORs flipX through flipX mirror (E from W) consistently', () => {
-    const flippedW: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: { W: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } } },
-    };
-    expect(resolveWeaponPoseTransform(flippedW, 'fire', 'E', MUSKET_BLOCK).flipX).toBeUndefined();
-    const unflippedW: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: { W: { layers: [], weapon: { x: 0, y: 0, rot: 0 } } },
-    };
-    expect(resolveWeaponPoseTransform(unflippedW, 'fire', 'E', MUSKET_BLOCK).flipX).toBe(true);
-  });
-
-  it('authored flipX on the derived facing wins over inheritance', () => {
-    const poses: Record<string, Record<string, PoseFacingEntry>> = {
-      fire: {
-        N: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
-        // S authored without flipX even though N has it — explicit wins.
-        S: { layers: [], weapon: { x: 9, y: 9, rot: 9 } },
-      },
-    };
-    expect(resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK)).toEqual({
-      x: 9, y: 9, rot: 9,
-    });
+  it('returns an empty pool when the pose entry is absent', () => {
+    expect(readWeaponVariantPool({}, 'walking', 'N')).toEqual([]);
   });
 });
