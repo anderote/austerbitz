@@ -2336,7 +2336,7 @@
             kitsList = [{ id: 'line-infantry', label: 'Line Infantry', poses: ['idle'] }];
           }
           state.kits = kitsList;
-          state.kitId = kitsList[0].id;
+          state.kitId = (kitsList.find(function (k) { return k.id === 'line-infantry'; }) || kitsList[0]).id;
           state.poseId = 'idle';
 
           state.regiments = await loadRegiments();
