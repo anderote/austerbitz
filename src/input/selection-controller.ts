@@ -3,7 +3,7 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueReformInPlace, issueReformAtTarget } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions } from './formation';
 import { isDead, EntityState } from '../sim/entities';
 import {
@@ -52,6 +52,7 @@ interface ControllerInternals {
   onMouseMove(e: { clientX: number; clientY: number }): void;
   onMouseUp(e: { button: number; clientX: number; clientY: number; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void;
   onKeyDown(e: { key: string; code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void;
+  onKeyUp(e: { code: string }): void;
   onBlur(): void;
   getCursorMode(): CursorMode;
 }
@@ -85,6 +86,11 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
   let lastClick: { id: number; t: number; x: number; y: number } | null = null;
+  // Hold-F locks the selection into a fixed grid: centroid/forward/ranks are
+  // captured on first press and re-applied each frame so jostled units get
+  // pushed back to their slots.
+  let fHeld = false;
+  let lockedGrid: { centroid: Vec2; forward: Vec2; ranks: number } | null = null;
   const DOUBLE_CLICK_MS = 300;
   const DOUBLE_CLICK_PX = 6;
 
@@ -122,6 +128,29 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     const len = Math.hypot(sx, sy);
     if (len < 1e-6) return { x: 1, y: 0 };
     return { x: sx / len, y: sy / len };
+  }
+
+  function selectionCentroid(): Vec2 | null {
+    const e = world.entities;
+    let cx = 0, cy = 0, n = 0;
+    for (const id of selection.ids) {
+      if (e.alive[id] !== 1) continue;
+      cx += e.posX[id]!; cy += e.posY[id]!; n++;
+    }
+    if (n === 0) return null;
+    return { x: cx / n, y: cy / n };
+  }
+
+  function selectionAliveCount(): number {
+    const e = world.entities;
+    let n = 0;
+    for (const id of selection.ids) if (e.alive[id] === 1) n++;
+    return n;
+  }
+
+  function clearGridHold(): void {
+    fHeld = false;
+    lockedGrid = null;
   }
 
   // Snapshot rank count BEFORE issuing reform — once units are packed tight,
@@ -278,13 +307,18 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         const endW = screenToWorld(camera, formationDrag.currentScreen);
         const units = materializeUnits(world, selection.ids);
         if (units.length > 0) {
+          // Drag tool is independent of the hotkey rank lock — drag length
+          // alone determines the rank count.
           const { slots, forward } = computeFormationSlots({
             units, startW, endW,
             spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
-            ranksOverride: formationParams.ranks,
+            ranksOverride: null,
           });
           const targets = assignFormationSlots(units, slots, forward);
-          const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+          // Unit facing is perpendicular to the front-rank axis, opposite the
+          // depth direction so units face away from the back of the formation.
+          const face = { x: forward.y, y: -forward.x };
+          const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]!, face }));
           issueFormationMove(world, assignments, opts);
           const mx = (startW.x + endW.x) / 2;
           const my = (startW.y + endW.y) / 2;
@@ -300,6 +334,14 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       formationDrag.active = false;
 
       const w = screenToWorld(camera, { x: e.clientX, y: e.clientY });
+
+      // Ctrl + RMB: march in formation. Skips queueing (Shift is ignored here).
+      if ((e.ctrlKey || e.metaKey) && selection.ids.size > 0) {
+        issueMarchFormation(world, selection, w, formationParams);
+        puff(w.x, w.y);
+        return;
+      }
+
       const hit = hitTestPoint(world, w);
       if (hit !== -1 && world.entities.team[hit] !== PLAYER_TEAM) {
         issueAttack(world, selection, hit, opts);
@@ -392,12 +434,33 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
     if (e.code === 'KeyF') {
-      issueRegroup(world, selection);
+      // F = push selection into a square-ish grid formation. The actual
+      // order issuance happens in update() each frame F is held — a tap
+      // applies one frame's worth of force, holding applies it continuously.
+      if (fHeld) return; // OS key-repeat: state already captured
+      if (selection.ids.size === 0) return;
+      const N = selectionAliveCount();
+      if (N === 0) return;
+      const centroid = selectionCentroid();
+      if (!centroid) return;
+      lockedGrid = {
+        centroid,
+        forward: averageFacing(),
+        ranks: Math.max(1, Math.floor(Math.sqrt(N))),
+      };
+      fHeld = true;
+      tightHeld = false;
       return;
     }
     if (e.code === 'Delete' || e.code === 'Backspace') {
       issueStop(world, selection);
       return;
+    }
+  }
+
+  function onKeyUp(e: { code: string }): void {
+    if (e.code === 'KeyF') {
+      clearGridHold();
     }
   }
 
@@ -407,6 +470,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     pendingFormationStart = null;
     formationDrag.active = false;
     cursorMode = 'normal';
+    clearGridHold();
   }
 
   // DOM bindings — narrow event types pass through to the pure handlers above.
@@ -414,6 +478,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   const mm = (e: MouseEvent) => onMouseMove({ clientX: e.clientX, clientY: e.clientY });
   const mu = (e: MouseEvent) => onMouseUp({ button: e.button, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
   const kd = (e: KeyboardEvent) => onKeyDown({ key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
+  const ku = (e: KeyboardEvent) => onKeyUp({ code: e.code });
   const bl = () => onBlur();
 
   if (typeof window !== 'undefined') {
@@ -421,6 +486,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     window.addEventListener('mousemove', mm);
     window.addEventListener('mouseup', mu);
     window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
     window.addEventListener('blur', bl);
   }
 
@@ -434,7 +500,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     const { slots, rect } = computeFormationSlots({
       units, startW, endW,
       spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
-      ranksOverride: formationParams.ranks,
+      ranksOverride: null,
     });
     return { rect, slots };
   }
@@ -461,7 +527,22 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (sig !== lastSelectionSig) {
         resetFormationParams(formationParams);
         tightHeld = false;
+        clearGridHold();
         lastSelectionSig = sig;
+      }
+
+      // F = push selection into grid formation. Each frame F is held, re-issue
+      // the reform at the locked centroid; that replaces any post-arrival
+      // settle/recovery orders with a fresh move at full speed, so jostled
+      // units snap back to their slots instead of drifting in slowly.
+      if (fHeld && lockedGrid && selection.ids.size > 0) {
+        issueReformAtTarget(
+          world, selection,
+          lockedGrid.centroid,
+          lockedGrid.forward,
+          Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
+          lockedGrid.ranks,
+        );
       }
 
       // Auto-pack on idle when in tight stance.
@@ -485,9 +566,10 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         window.removeEventListener('mousemove', mm);
         window.removeEventListener('mouseup', mu);
         window.removeEventListener('keydown', kd);
+        window.removeEventListener('keyup', ku);
         window.removeEventListener('blur', bl);
       }
     },
-    _internals: { onMouseDown, onMouseMove, onMouseUp, onKeyDown, onBlur, getCursorMode: () => cursorMode },
+    _internals: { onMouseDown, onMouseMove, onMouseUp, onKeyDown, onKeyUp, onBlur, getCursorMode: () => cursorMode },
   };
 }

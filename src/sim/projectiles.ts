@@ -20,6 +20,7 @@ export interface Projectiles {
   life: Float32Array;            // max-flight-time safety countdown
   kind: Uint8Array;              // ProjectileKind
   team: Uint8Array;
+  ownerId: Int32Array;           // entity id of firer, or -1 if ownerless
   damage: Float32Array;          // depletes for solid-shot
   mass: Float32Array;            // for impulse on hit
   ricochets: Uint8Array;         // remaining bounces (solid-shot)
@@ -50,6 +51,7 @@ export function createProjectiles(capacity: number): Projectiles {
     life: new Float32Array(capacity),
     kind: new Uint8Array(capacity),
     team: new Uint8Array(capacity),
+    ownerId: new Int32Array(capacity).fill(-1),
     damage: new Float32Array(capacity),
     mass: new Float32Array(capacity),
     ricochets: new Uint8Array(capacity),
@@ -72,6 +74,7 @@ export function allocProjectile(p: Projectiles): number {
   p.life[id] = 0;
   p.kind[id] = ProjectileKind.Musket;
   p.team[id] = 0;
+  p.ownerId[id] = -1;
   p.damage[id] = 0;
   p.mass[id] = 0;
   p.ricochets[id] = 0;
@@ -96,6 +99,7 @@ export function spawnMusketBall(
   muzzleSpeed: number,
   mass: number,
   maxLife: number,
+  ownerId: number,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -114,6 +118,7 @@ export function spawnMusketBall(
   p.mass[id] = mass;
   p.ricochets[id] = 0;
   p.fuseT[id] = 0;
+  p.ownerId[id] = ownerId;
   return id;
 }
 
@@ -126,6 +131,7 @@ export function spawnSolidShot(
   mass: number,
   maxLife: number,
   ricochets: number,
+  ownerId: number,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -144,6 +150,7 @@ export function spawnSolidShot(
   p.mass[id] = mass;
   p.ricochets[id] = ricochets;
   p.fuseT[id] = 0;
+  p.ownerId[id] = ownerId;
   return id;
 }
 
@@ -156,6 +163,7 @@ export function spawnShell(
   mass: number,
   maxLife: number,
   fuseT: number,
+  ownerId: number,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -174,5 +182,6 @@ export function spawnShell(
   p.mass[id] = mass;
   p.ricochets[id] = 0;
   p.fuseT[id] = fuseT;
+  p.ownerId[id] = ownerId;
   return id;
 }

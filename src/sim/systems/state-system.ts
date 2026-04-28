@@ -5,6 +5,7 @@ import type { Puffs } from '../../puffs/puffs';
 import type { Rng } from '../../util/rng';
 import { resolveFire } from '../fire-resolver';
 import { getUnitKindByIndex } from '../../data/units';
+import { effectiveReload } from '../veterancy';
 import { writeFacingIntent } from './facing-system';
 import { Pose, RUN_THRESHOLD_PX_S } from '../../render/poses/pose-config';
 import { writeFireSignal, type FireSignal } from '../fire-signal';
@@ -115,7 +116,7 @@ export function tickStates(
           const kind = getUnitKindByIndex(e.kindId[i]!);
           e.state[i] = EntityState.Reloading;
           // Jitter ±20% so units don't resync into a single volley over time.
-          e.reloadT[i] = kind.baseStats.weaponReload * rng.range(0.8, 1.2);
+          e.reloadT[i] = effectiveReload(e, i, kind.baseStats.weaponReload) * rng.range(0.8, 1.2);
           e.stateT[i] = 0;
         }
         break;

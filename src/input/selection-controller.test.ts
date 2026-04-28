@@ -624,3 +624,66 @@ describe('selection-controller — tight stance', () => {
     expect(minD).toBeGreaterThanOrEqual(0.9 - 1e-6);
   });
 });
+
+describe('selectionController Ctrl+RMB march-formation', () => {
+  it('Ctrl+RMB up with non-empty selection on terrain creates a march group', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 200,
+      shiftKey: false, ctrlKey: true, metaKey: false,
+    });
+
+    expect(world.marchGroups.size).toBe(1);
+    const head = world.orderQueue.get(id)![0]!;
+    expect(head.kind).toBe('march-formation');
+  });
+
+  it('Ctrl+RMB up with empty selection is a no-op', () => {
+    const { ctrl, world, selection } = makeDeps();
+    expect(selection.ids.size).toBe(0);
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 200,
+      shiftKey: false, ctrlKey: true, metaKey: false,
+    });
+
+    expect(world.marchGroups.size).toBe(0);
+  });
+
+  it('Ctrl+Shift+RMB behaves the same as Ctrl+RMB (Shift ignored, no queueing)', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 200,
+      shiftKey: true, ctrlKey: true, metaKey: false,
+    });
+
+    // One queue entry (replace, not append).
+    expect(world.orderQueue.get(id)!.length).toBe(1);
+    expect(world.orderQueue.get(id)![0]!.kind).toBe('march-formation');
+    expect(world.marchGroups.size).toBe(1);
+  });
+
+  it('Ctrl+RMB during a formation drag falls through to the drag commit', () => {
+    const { ctrl, world, selection } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    // Start an RMB drag past the threshold so formationDrag.active becomes true.
+    ctrl._internals.onMouseDown({ button: 2, clientX: 100, clientY: 100, target: null });
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 100 });
+
+    ctrl._internals.onMouseUp({
+      button: 2, clientX: 200, clientY: 100,
+      shiftKey: false, ctrlKey: true, metaKey: false,
+    });
+
+    // Drag commit produces 'move' orders via issueFormationMove, not march-formation.
+    expect(world.marchGroups.size).toBe(0);
+    expect(world.orderQueue.get(id)![0]!.kind).toBe('move');
+  });
+});

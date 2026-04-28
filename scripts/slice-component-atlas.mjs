@@ -2,10 +2,10 @@
 // reads. Companion to scripts/build-soldier-components.mjs:
 //
 //   build-soldier-components.mjs writes:
-//     public/sprites/british-line-infantry-components.png            (idle, 8 dirs)
-//     public/sprites/british-line-infantry-components-make-ready.png (S only authored)
-//     public/sprites/british-line-infantry-components-present.png    (S only authored)
-//     public/sprites/british-line-infantry-components-fire.png       (S only authored)
+//     public/sprites/line-infantry-components.png            (idle, 8 dirs)
+//     public/sprites/line-infantry-components-make-ready.png (S only authored)
+//     public/sprites/line-infantry-components-present.png    (S only authored)
+//     public/sprites/line-infantry-components-fire.png       (S only authored)
 //
 // This script slices each into:
 //   public/sprites/poses/line-infantry/<runtimePose>/<DIR>/0/0.png

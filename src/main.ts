@@ -15,6 +15,7 @@ import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
+import { marchSystem } from './sim/systems/march-system';
 import type { System } from './sim/world';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
@@ -89,6 +90,7 @@ const projectileSystem: System = (w, dt) =>
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
 
 world.systems = [
+  marchSystem,
   ordersSystem,
   combatSystem,
   movementSystem,

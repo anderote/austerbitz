@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:soldier-components": "node scripts/build-soldier-components.mjs --kit british-line-infantry && node scripts/slice-component-atlas.mjs",
+    "build:soldier-components": "node scripts/build-soldier-components.mjs --kit line-infantry && node scripts/slice-component-atlas.mjs",
     "build:poses": "npm run build:soldier-components && node scripts/build-pose-manifest.mjs",
     "draw:cuirassier-poses": "node scripts/draw-cuirassier-poses.mjs",
     "dev": "npm run build:poses && vite",
@@ -16,7 +16,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.12.0",
+    "@types/pngjs": "^6.0.5",
     "pngjs": "^7.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.4.0",
     "vite": "^5.2.0",
     "vitest": "^1.5.0"

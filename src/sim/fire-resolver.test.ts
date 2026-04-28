@@ -5,7 +5,9 @@ import { createParticles } from '../particles/particles';
 import { createPuffs } from '../puffs/puffs';
 import { createRng } from '../util/rng';
 import { getUnitKindIndex } from '../data/units';
+import { lineInfantry } from '../data/units/line-infantry';
 import { resolveFire, RECOIL_T } from './fire-resolver';
+import { Rank } from './veterancy';
 
 describe('resolveFire', () => {
   it('line-infantry firing east: spawns one musket ball + muzzle FX, sets recoilT', () => {
@@ -122,6 +124,77 @@ describe('resolveFire', () => {
     expect(ok).toBe(false);
     expect(projectiles.count).toBe(0);
     expect(particles.count).toBe(0);
+  });
+
+  it('uses kind.baseStats.weaponDamage as the projectile damage', () => {
+    const e = createEntities(8);
+    const projectiles = createProjectiles(16);
+    const particles = createParticles(256);
+    const puffs = createPuffs(64);
+    const rng = createRng(42);
+
+    const id = allocEntity(e);
+    e.kindId[id] = getUnitKindIndex('line-infantry');
+    e.posX[id] = 0;
+    e.posY[id] = 0;
+    e.facing[id] = 0; // east
+    e.team[id] = 1;
+
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 50, 0);
+
+    expect(ok).toBe(true);
+    expect(projectiles.count).toBe(1);
+    expect(projectiles.damage[0]).toBe(lineInfantry.baseStats.weaponDamage);
+  });
+
+  it('changing baseStats.weaponDamage flows through to the projectile', () => {
+    const original = lineInfantry.baseStats.weaponDamage;
+    try {
+      (lineInfantry.baseStats as { weaponDamage: number }).weaponDamage = 99;
+
+      const e = createEntities(8);
+      const projectiles = createProjectiles(16);
+      const particles = createParticles(256);
+      const puffs = createPuffs(64);
+      const rng = createRng(42);
+
+      const id = allocEntity(e);
+      e.kindId[id] = getUnitKindIndex('line-infantry');
+      e.posX[id] = 0;
+      e.posY[id] = 0;
+      e.facing[id] = 0; // east
+      e.team[id] = 1;
+
+      const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 50, 0);
+
+      expect(ok).toBe(true);
+      expect(projectiles.count).toBe(1);
+      expect(projectiles.damage[0]).toBe(99);
+    } finally {
+      (lineInfantry.baseStats as { weaponDamage: number }).weaponDamage = original;
+    }
+  });
+
+  it('applies rank damage multiplier on fire', () => {
+    const e = createEntities(8);
+    const projectiles = createProjectiles(16);
+    const particles = createParticles(256);
+    const puffs = createPuffs(64);
+    const rng = createRng(42);
+
+    const id = allocEntity(e);
+    e.kindId[id] = getUnitKindIndex('line-infantry');
+    e.posX[id] = 0;
+    e.posY[id] = 0;
+    e.facing[id] = 0; // east
+    e.team[id] = 1;
+    e.rank[id] = Rank.Captain;
+
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 50, 0);
+
+    expect(ok).toBe(true);
+    expect(projectiles.count).toBe(1);
+    expect(projectiles.damage[0]).toBeCloseTo(lineInfantry.baseStats.weaponDamage * 1.25, 6);
   });
 
   it('musket recoil sets a render-only peak offset opposite the shot direction; sim pos/vel untouched', () => {

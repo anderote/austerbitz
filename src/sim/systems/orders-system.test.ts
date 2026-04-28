@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createWorld } from '../world';
+import { createWorld, type Order } from '../world';
 import { allocEntity, EntityState } from '../entities';
 import { ordersSystem } from './orders-system';
 import { ordersSystem as _ordersSystem } from './orders-system';
@@ -90,7 +90,7 @@ describe('ordersSystem march-formation handler', () => {
     world.entities.facing[id] = 2;
     const gid = 1;
     world.marchGroups.set(gid, createMarchGroup(gid, [id], { x: 1, y: 0 }, 0));
-    const order = { kind: 'march-formation' as const, targetX: 100, targetY: 0, groupId: gid };
+    const order: Extract<Order, { kind: 'march-formation' }> = { kind: 'march-formation', targetX: 100, targetY: 0, groupId: gid };
     world.orderQueue.set(id, [order]);
 
     _ordersSystem(world, 1 / 60);

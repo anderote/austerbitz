@@ -71,7 +71,7 @@ describe('Projectiles SoA', () => {
     const dirX = 1;
     const dirY = 0;
     const muzzleSpeed = 400;
-    const id = spawnMusketBall(p, 5, 7, dirX, dirY, /*team*/ 1, /*damage*/ 25, muzzleSpeed, /*mass*/ 0.03, /*maxLife*/ 0.4);
+    const id = spawnMusketBall(p, 5, 7, dirX, dirY, /*team*/ 1, /*damage*/ 25, muzzleSpeed, /*mass*/ 0.03, /*maxLife*/ 0.4, /*ownerId*/ -1);
     expect(id).toBe(0);
     expect(p.alive[id]).toBe(1);
     expect(p.kind[id]).toBe(ProjectileKind.Musket);
@@ -93,9 +93,9 @@ describe('Projectiles SoA', () => {
 
   it('spawnMusketBall returns -1 when the pool is full', () => {
     const p = createProjectiles(1);
-    const a = spawnMusketBall(p, 0, 0, 1, 0, 0, 10, 400, 0.03, 0.4);
+    const a = spawnMusketBall(p, 0, 0, 1, 0, 0, 10, 400, 0.03, 0.4, -1);
     expect(a).toBe(0);
-    const b = spawnMusketBall(p, 0, 0, 1, 0, 0, 10, 400, 0.03, 0.4);
+    const b = spawnMusketBall(p, 0, 0, 1, 0, 0, 10, 400, 0.03, 0.4, -1);
     expect(b).toBe(-1);
   });
 
@@ -107,6 +107,7 @@ describe('Projectiles SoA', () => {
       /*vx*/ 200, /*vy*/ 50, /*vz*/ 30,
       /*team*/ 0, /*damage*/ 80, /*mass*/ 6,
       /*maxLife*/ 4, /*ricochets*/ 3,
+      /*ownerId*/ -1,
     );
     expect(id).toBe(0);
     expect(p.kind[id]).toBe(ProjectileKind.SolidShot);
@@ -134,6 +135,7 @@ describe('Projectiles SoA', () => {
       /*vx*/ 180, /*vy*/ 0, /*vz*/ 40,
       /*team*/ 1, /*damage*/ 60, /*mass*/ 6,
       /*maxLife*/ 5, /*fuseT*/ 1.5,
+      /*ownerId*/ -1,
     );
     expect(id).toBe(0);
     expect(p.kind[id]).toBe(ProjectileKind.Shell);
@@ -148,7 +150,7 @@ describe('Projectiles SoA', () => {
     const p = createProjectiles(4);
 
     // First occupant: a solid-shot with a lot of state set.
-    const first = spawnSolidShot(p, 10, 20, 0.7, 100, 50, 25, /*team*/ 1, /*damage*/ 100, /*mass*/ 6, /*maxLife*/ 4, /*ricochets*/ 3);
+    const first = spawnSolidShot(p, 10, 20, 0.7, 100, 50, 25, /*team*/ 1, /*damage*/ 100, /*mass*/ 6, /*maxLife*/ 4, /*ricochets*/ 3, /*ownerId*/ -1);
     expect(first).toBe(0);
     expect(p.kind[first]).toBe(ProjectileKind.SolidShot);
     expect(p.ricochets[first]).toBe(3);
@@ -158,7 +160,7 @@ describe('Projectiles SoA', () => {
 
     // Second occupant in the same slot: a musket ball. None of the prior shot's
     // fields should leak through.
-    const reused = spawnMusketBall(p, 1, 2, 1, 0, /*team*/ 0, /*damage*/ 10, /*muzzleSpeed*/ 400, /*mass*/ 0.03, /*maxLife*/ 0.4);
+    const reused = spawnMusketBall(p, 1, 2, 1, 0, /*team*/ 0, /*damage*/ 10, /*muzzleSpeed*/ 400, /*mass*/ 0.03, /*maxLife*/ 0.4, /*ownerId*/ -1);
     expect(reused).toBe(first);
     expect(p.kind[reused]).toBe(ProjectileKind.Musket);
     expect(p.posX[reused]).toBeCloseTo(1, 5);
@@ -183,5 +185,31 @@ describe('ProjectileKind enum', () => {
     expect(ProjectileKind.Musket).toBe(0);
     expect(ProjectileKind.SolidShot).toBe(1);
     expect(ProjectileKind.Shell).toBe(2);
+  });
+});
+
+describe('projectiles — ownerId', () => {
+  it('alloc resets ownerId to -1', () => {
+    const p = createProjectiles(4);
+    const id = allocProjectile(p);
+    expect(p.ownerId[id]).toBe(-1);
+  });
+
+  it('spawnMusketBall stores ownerId', () => {
+    const p = createProjectiles(4);
+    const id = spawnMusketBall(p, 0, 0, 1, 0, 0, 12, 80, 0.03, 1.5, 7);
+    expect(p.ownerId[id]).toBe(7);
+  });
+
+  it('spawnSolidShot stores ownerId', () => {
+    const p = createProjectiles(4);
+    const id = spawnSolidShot(p, 0, 0, 0, 1, 0, 0, 0, 80, 6, 4, 2, 42);
+    expect(p.ownerId[id]).toBe(42);
+  });
+
+  it('spawnShell stores ownerId', () => {
+    const p = createProjectiles(4);
+    const id = spawnShell(p, 0, 0, 0, 1, 0, 0, 0, 80, 6, 4, 1.5, 99);
+    expect(p.ownerId[id]).toBe(99);
   });
 });

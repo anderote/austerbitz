@@ -15,7 +15,7 @@ export interface WorldConfig {
 }
 
 export type Order =
-  | { kind: 'move'; targetX: number; targetY: number; arrived?: boolean }
+  | { kind: 'move'; targetX: number; targetY: number; arrived?: boolean; faceX?: number; faceY?: number }
   | { kind: 'attack'; targetId: number }
   | { kind: 'attack-move'; targetX: number; targetY: number; arrived?: boolean }
   | { kind: 'stop' }

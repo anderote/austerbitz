@@ -409,6 +409,38 @@ describe('combatSystem', () => {
     expect(fireOrders.has(shooter)).toBe(false);
   });
 
+  it('acquires targets within sightRange but does not fire beyond weaponRange', () => {
+    // line-infantry: sightRange 120, weaponRange 80.
+    // Enemy at 100 m is in sight (acquire) but out of weapon range (no fire).
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    const enemy   = spawnLineInfantry(world, 1, 100, 0);
+
+    // Force stateT past any maxHold so a fire WOULD trigger if the gate
+    // allowed it — proves the gate, not the hold timer, is what's blocking.
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(enemy);
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+
+    // Move enemy into weapon range and tick again. Fast-path on prev
+    // target now passes the rangeSq check and fire triggers.
+    world.entities.posX[enemy] = 60;
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.targetId[shooter]).toBe(enemy);
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+    expect(fireOrders.get(shooter)).toEqual({ tx: 60, ty: 0 });
+  });
+
   it('maxHoldFor returns a value within [MAX_HOLD_MIN_S, MAX_HOLD_MAX_S]', () => {
     for (let id = 0; id < 200; id++) {
       const v = maxHoldFor(id);

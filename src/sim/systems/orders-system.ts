@@ -1,6 +1,6 @@
 import type { System } from '../world';
 import { getUnitKindByIndex } from '../../data/units';
-import { writeFacingIntent } from './facing-system';
+import { writeFacingIntent, quantizeDirectionToFacing } from './facing-system';
 import { isDead } from '../entities';
 import { MARCH_SPEED_FACTOR } from './march-system';
 
@@ -93,12 +93,18 @@ export const ordersSystem: System = (world, dt) => {
         e.velX[id] = 0;
         e.velY[id] = 0;
         e.pushedT[id] = 0;
-        // The target becomes the new rest anchor; the unit's facing as it
-        // arrived (set by movement-driven facing updates last tick) becomes
-        // the formation facing it returns to on regroup.
+        // The target becomes the new rest anchor. If the order carried an
+        // explicit face direction (formation reforms), adopt it so the
+        // formation's intended facing is preserved across the move; otherwise
+        // fall back to whatever direction the unit was facing on arrival.
         e.restPosX[id] = order.targetX;
         e.restPosY[id] = order.targetY;
-        e.restFacing[id] = e.facing[id]!;
+        if (order.kind === 'move' && order.faceX !== undefined && order.faceY !== undefined) {
+          e.restFacing[id] = quantizeDirectionToFacing(order.faceX, order.faceY);
+          writeFacingIntent(e, id, order.faceX, order.faceY);
+        } else {
+          e.restFacing[id] = e.facing[id]!;
+        }
         // Keep the final move/attack-move order parked on its target so
         // collision pushes can't permanently displace the unit — it re-engages
         // next tick if it's nudged out of position. Only consume the order if

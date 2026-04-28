@@ -48,8 +48,8 @@ describe('resetStage', () => {
     const stage = setupStage(world, projectiles, particles, 'line-infantry');
 
     // Pollute pools.
-    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 12, 400, 0.03, 0.4);
-    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 12, 400, 0.03, 0.4);
+    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 12, 400, 0.03, 0.4, -1);
+    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 12, 400, 0.03, 0.4, -1);
     spawnParticle(particles, {
       x: 0, y: 0, vx: 0, vy: 0,
       life: 1, size: 0.5, r: 1, g: 1, b: 1,
@@ -69,7 +69,7 @@ describe('resetStage', () => {
     // succeed up to capacity again.
     let allocations = 0;
     for (let i = 0; i < projectiles.capacity; i++) {
-      if (spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 12, 400, 0.03, 0.4) !== -1) allocations++;
+      if (spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 12, 400, 0.03, 0.4, -1) !== -1) allocations++;
     }
     expect(allocations).toBe(projectiles.capacity);
   });

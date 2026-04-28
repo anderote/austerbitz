@@ -158,6 +158,24 @@ describe('EntityState enum', () => {
   });
 });
 
+describe('entities — veterancy fields', () => {
+  it('initializes rank and xp to 0 on alloc', () => {
+    const e = createEntities(4);
+    const id = allocEntity(e);
+    expect(id).not.toBe(-1);
+    expect(e.rank[id]).toBe(0);
+    expect(e.xp[id]).toBe(0);
+  });
+
+  it('rank is a Uint8Array, xp is a Uint16Array', () => {
+    const e = createEntities(4);
+    expect(e.rank).toBeInstanceOf(Uint8Array);
+    expect(e.xp).toBeInstanceOf(Uint16Array);
+    expect(e.rank.length).toBe(4);
+    expect(e.xp.length).toBe(4);
+  });
+});
+
 describe('isDead', () => {
   it('returns true only for Dying and Dead', () => {
     const e = createEntities(4);

@@ -47,6 +47,10 @@ export interface Entities {
   reloadT: Float32Array;
   targetId: Int32Array;     // -1 if none
 
+  // Veterancy
+  rank: Uint8Array;     // 0..4 (Recruit, Veteran, Sergeant, SgtMajor, Captain)
+  xp: Uint16Array;      // kills toward next promotion; saturates at 65535
+
   // State-machine transients
   recoilT: Float32Array;    // countdown for visual recoil offset
   recoilPeakX: Float32Array; // peak render-only recoil displacement x
@@ -102,6 +106,8 @@ export function createEntities(capacity: number): Entities {
     state: new Uint8Array(capacity),
     reloadT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
+    rank: new Uint8Array(capacity),
+    xp: new Uint16Array(capacity),
     recoilT: new Float32Array(capacity),
     recoilPeakX: new Float32Array(capacity),
     recoilPeakY: new Float32Array(capacity),
@@ -145,6 +151,8 @@ export function allocEntity(e: Entities): number {
   e.state[id] = EntityState.Idle;
   e.reloadT[id] = 0;
   e.targetId[id] = -1;
+  e.rank[id] = 0;
+  e.xp[id] = 0;
   e.recoilT[id] = 0;
   e.recoilPeakX[id] = 0;
   e.recoilPeakY[id] = 0;

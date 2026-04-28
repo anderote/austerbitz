@@ -35,27 +35,22 @@ export function rankAccuracyAdd(rank: number): number { return ACCURACY_ADD[rank
 export function rankReloadMul(rank: number): number   { return RELOAD_MUL[rank]!; }
 export function rankArmorAdd(rank: number): number    { return ARMOR_ADD[rank]!; }
 
-// NOTE: `Entities` does not yet declare `rank` / `xp` typed-array fields;
-// those are added by Task 2 of the veterancy plan. Until then we read/write
-// them via `(e as any)` so this module compiles and the tests can run. The
-// casts disappear once Task 2 lands and the Entities interface has the fields.
-
 export function effectiveDamage(e: Entities, id: number, base: number): number {
-  return base * DAMAGE_MUL[(e as any).rank[id]!]!;
+  return base * DAMAGE_MUL[e.rank[id]!]!;
 }
 
 export function effectiveAccuracy(e: Entities, id: number, base: number): number {
-  const v = base + ACCURACY_ADD[(e as any).rank[id]!]!;
+  const v = base + ACCURACY_ADD[e.rank[id]!]!;
   return v > ACCURACY_CAP ? ACCURACY_CAP : v;
 }
 
 export function effectiveReload(e: Entities, id: number, base: number): number {
-  const v = base * RELOAD_MUL[(e as any).rank[id]!]!;
+  const v = base * RELOAD_MUL[e.rank[id]!]!;
   return v < RELOAD_FLOOR ? RELOAD_FLOOR : v;
 }
 
 export function effectiveArmor(e: Entities, id: number, base: number): number {
-  return base + ARMOR_ADD[(e as any).rank[id]!]!;
+  return base + ARMOR_ADD[e.rank[id]!]!;
 }
 
 /** Cumulative kills required to reach a given rank from Recruit. */
@@ -70,10 +65,10 @@ export function cumulativeKillsForRank(target: Rank): number {
  * the rank and reset xp. Saturates at MAX_RANK. Returns true iff promoted.
  */
 export function promote(e: Entities, id: number): boolean {
-  const r = (e as any).rank[id]! as number;
+  const r = e.rank[id]!;
   if (r >= MAX_RANK) return false;
-  if (((e as any).xp[id]! as number) < RANK_THRESHOLDS[r]!) return false;
-  (e as any).rank[id] = (r + 1) as Rank;
-  (e as any).xp[id] = 0;
+  if (e.xp[id]! < RANK_THRESHOLDS[r]!) return false;
+  e.rank[id] = r + 1;
+  e.xp[id] = 0;
   return true;
 }

@@ -31,6 +31,7 @@ describe('computeProjectileInstances', () => {
       4.5,             // mass
       5.0,             // maxLife
       0,               // ricochets
+      -1,              // ownerId
     );
     expect(id).toBeGreaterThanOrEqual(0);
 
@@ -60,7 +61,7 @@ describe('computeProjectileInstances', () => {
 
   it('a shell also produces a shadow + a ball', () => {
     const projectiles = createProjectiles(8);
-    spawnShell(projectiles, 0, 0, 1, 0, 0, 0, 0, 50, 5, 1.0, 1.5);
+    spawnShell(projectiles, 0, 0, 1, 0, 0, 0, 0, 50, 5, 1.0, 1.5, -1);
     const buckets = createProjectileInstanceBuckets(32);
     computeProjectileInstances(projectiles, buckets);
     expect(buckets.shadow.count).toBe(1);
@@ -70,7 +71,7 @@ describe('computeProjectileInstances', () => {
 
   it('a musket ball renders as a small light-grey 4px square at its current position', () => {
     const projectiles = createProjectiles(8);
-    const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
+    const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0, -1);
     expect(id).toBeGreaterThanOrEqual(0);
     projectiles.prevX[id] = 0;
     projectiles.prevY[id] = 0;
@@ -100,7 +101,7 @@ describe('computeProjectileInstances', () => {
   it('a moving musket ball emits a translucent white streak oriented along velocity', () => {
     const projectiles = createProjectiles(8);
     // Direction +x, muzzle 380 → velX=380, velY=0.
-    const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
+    const id = spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0, -1);
     projectiles.posX[id] = 10;
     projectiles.posY[id] = 0;
 
@@ -125,7 +126,7 @@ describe('computeProjectileInstances', () => {
 
   it('a stationary musket ball still renders as a square at its position', () => {
     const projectiles = createProjectiles(8);
-    const id = spawnMusketBall(projectiles, 3, 4, 1, 0, 0, 5, 380, 0.025, 1.0);
+    const id = spawnMusketBall(projectiles, 3, 4, 1, 0, 0, 5, 380, 0.025, 1.0, -1);
     projectiles.prevX[id] = 3;
     projectiles.prevY[id] = 4;
     projectiles.posX[id] = 3;
@@ -143,9 +144,9 @@ describe('computeProjectileInstances', () => {
 
   it('three projectiles of different kinds populate all three buckets', () => {
     const projectiles = createProjectiles(8);
-    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
-    spawnSolidShot(projectiles, 1, 1, 0.5, 0, 0, 0, 0, 100, 4.5, 5.0, 0);
-    spawnShell(projectiles, 2, 2, 1.0, 0, 0, 0, 0, 50, 5, 1.0, 1.5);
+    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0, -1);
+    spawnSolidShot(projectiles, 1, 1, 0.5, 0, 0, 0, 0, 100, 4.5, 5.0, 0, -1);
+    spawnShell(projectiles, 2, 2, 1.0, 0, 0, 0, 0, 50, 5, 1.0, 1.5, -1);
 
     const buckets = createProjectileInstanceBuckets(32);
     computeProjectileInstances(projectiles, buckets);
@@ -158,7 +159,7 @@ describe('computeProjectileInstances', () => {
 
   it('counts reset on subsequent calls (mutable bucket reuse)', () => {
     const projectiles = createProjectiles(8);
-    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0);
+    spawnMusketBall(projectiles, 0, 0, 1, 0, 0, 5, 380, 0.025, 1.0, -1);
     const buckets = createProjectileInstanceBuckets(32);
 
     computeProjectileInstances(projectiles, buckets);

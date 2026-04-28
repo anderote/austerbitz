@@ -29,8 +29,9 @@ export function spawnExplosion(
   x: number,
   y: number,
   profile: ExplosionProfile,
-  excludeTeam?: number,
-  splats?: BloodSplats,
+  excludeTeam: number | undefined,
+  splats: BloodSplats | undefined,
+  attackerId: number,
 ): void {
   // 1. Flash — one bright additive particle at the centre, snaps out via high drag.
   spawnParticle(particles, {
@@ -106,6 +107,7 @@ export function spawnExplosion(
       dirY * profile.impulse * falloff,
       'explosion',
       splats,
+      attackerId,
     );
   }
 }

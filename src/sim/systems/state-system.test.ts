@@ -8,6 +8,8 @@ import { getUnitKindByIndex, getUnitKindIndex } from '../../data/units';
 import { triggerFire, tickStates, type FireOrders } from './state-system';
 import { createGrid } from '../spatial/grid';
 import { createFireSignal } from '../fire-signal';
+import { Rank } from '../veterancy';
+import { lineInfantry } from '../../data/units/line-infantry';
 
 function makeFireSignalGrid() {
   const grid = createGrid({ minX: 0, minY: 0, maxX: 100, maxY: 100, cellSize: 2, capacity: 8 });
@@ -102,6 +104,22 @@ describe('tickStates', () => {
 
     tickStates(e, projectiles, particles, puffs, rng, fireOrders, 1.0, 0, fs, grid);
     expect(e.recoilT[id]).toBe(0);
+  });
+
+  it('applies rank reload multiplier on reload restart', () => {
+    const { e, projectiles, particles, puffs, rng, fireOrders, id, grid, fs } = setupLineInfantry();
+    e.state[id] = EntityState.Aiming;
+    e.stateT[id] = 0;
+    e.rank[id] = Rank.Captain;
+
+    tickStates(e, projectiles, particles, puffs, rng, fireOrders, 1.0, 0, fs, grid);
+
+    expect(e.state[id]).toBe(EntityState.Reloading);
+    // Captain reload multiplier is 0.75; ±20% jitter applied on top.
+    // baseStats.weaponReload = 10 → range [10 * 0.75 * 0.8, 10 * 0.75 * 1.2] = [6.0, 9.0]
+    const baseReload = lineInfantry.baseStats.weaponReload;
+    expect(e.reloadT[id]).toBeGreaterThanOrEqual(baseReload * 0.75 * 0.8);
+    expect(e.reloadT[id]).toBeLessThanOrEqual(baseReload * 0.75 * 1.2);
   });
 
   it('Aiming with no fireOrder entry still transitions to Reloading without spawning anything', () => {

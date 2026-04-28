@@ -2,6 +2,8 @@ import type { World, Order } from '../sim/world';
 import type { Selection } from './selection';
 import type { Vec2 } from '../util/math';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits, syntheticFormationDrag, inferRanksFromPositions } from './formation';
+import { createMarchGroup } from '../sim/march-groups';
+import { spacingMultiplier, type FormationParams } from './formation-params';
 
 export interface OrderOpts {
   /** Append to the end of each unit's queue instead of replacing it. */
@@ -107,6 +109,8 @@ export function issueRegroup(world: World, sel: Selection): void {
 export interface FormationAssignment {
   id: number;
   target: Vec2;
+  /** Optional unit facing to adopt on arrival; preserved across the move. */
+  face?: Vec2;
 }
 
 export function issueFormationMove(
@@ -116,7 +120,9 @@ export function issueFormationMove(
 ): void {
   for (const a of assignments) {
     if (world.entities.alive[a.id] !== 1) continue;
-    const order: Order = { kind: 'move', targetX: a.target.x, targetY: a.target.y };
+    const order: Order = a.face
+      ? { kind: 'move', targetX: a.target.x, targetY: a.target.y, faceX: a.face.x, faceY: a.face.y }
+      : { kind: 'move', targetX: a.target.x, targetY: a.target.y };
     if (opts.queue) {
       const q = world.orderQueue.get(a.id);
       if (q) q.push(order);
@@ -148,7 +154,8 @@ export function issueReformInPlace(
     units, startW, endW, spacingMult, ranksOverride: chosenRanks,
   });
   const targets = assignFormationSlots(units, slots, forward);
-  const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+  const face: Vec2 = { x: forwardW.x, y: forwardW.y };
+  const assignments = units.map((u, i) => ({ id: u.id, target: targets[i]!, face }));
   issueFormationMove(world, assignments, { queue: false });
 }
 
@@ -174,7 +181,67 @@ export function issueReformAtTarget(
     units, startW, endW, spacingMult, ranksOverride: chosenRanks,
   });
   const targets = assignFormationSlots(units, slots, forward);
-  const assignments: MoveAssignment[] = units.map((u, i) => ({ id: u.id, target: targets[i]! }));
+  const face: Vec2 = { x: forwardW.x, y: forwardW.y };
+  const assignments: (MoveAssignment & { face: Vec2 })[] = units.map((u, i) => ({ id: u.id, target: targets[i]!, face }));
   issueFormationMove(world, assignments, opts);
   return assignments;
+}
+
+/**
+ * March the current selection toward `target` in formation. Pivots the group's
+ * facing to point at `target`, lays out pivoted slots anchored at `target`,
+ * and dispatches `march-formation` orders. Allocates a fresh march group on
+ * the world; the prior group (if any) is reconciled out by march-system on
+ * its next tick when each unit's head order no longer references it.
+ *
+ * Always replaces the queue (no queue option) — repeated Ctrl+RMB is the way
+ * to chain marches.
+ */
+export function issueMarchFormation(
+  world: World,
+  sel: Selection,
+  target: Vec2,
+  formationParams: FormationParams,
+): void {
+  const units = liveFormationUnits(world, sel.ids);
+  if (units.length === 0) return;
+
+  // Centroid of the live selection.
+  let cx = 0, cy = 0;
+  for (const u of units) { cx += u.x; cy += u.y; }
+  cx /= units.length; cy /= units.length;
+
+  // Forward = direction from centroid to target. Fall back to +x if degenerate.
+  let fx = target.x - cx;
+  let fy = target.y - cy;
+  const len = Math.hypot(fx, fy);
+  if (len < 1e-6) { fx = 1; fy = 0; } else { fx /= len; fy /= len; }
+  const forwardW: Vec2 = { x: fx, y: fy };
+
+  const spacingMult = spacingMultiplier(formationParams);
+  const chosenRanks = formationParams.ranks ?? inferRanksFromPositions(units, forwardW);
+
+  // Synthetic drag anchored at the TARGET (not the centroid) so slots land at
+  // the destination after the march.
+  const { startW, endW } = syntheticFormationDrag(units, forwardW, chosenRanks, spacingMult, target);
+  const { slots, forward } = computeFormationSlots({
+    units, startW, endW, spacingMult, ranksOverride: chosenRanks,
+  });
+  const targets = assignFormationSlots(units, slots, forward);
+
+  // Allocate the group and dispatch orders.
+  const gid = world.nextMarchGroupId++;
+  const memberIds = units.map(u => u.id);
+  world.marchGroups.set(gid, createMarchGroup(gid, memberIds, forwardW, world.simTime));
+
+  for (let i = 0; i < units.length; i++) {
+    const id = units[i]!.id;
+    const t = targets[i]!;
+    world.orderQueue.set(id, [{
+      kind: 'march-formation',
+      targetX: t.x,
+      targetY: t.y,
+      groupId: gid,
+    }]);
+  }
 }

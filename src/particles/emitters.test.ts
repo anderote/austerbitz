@@ -5,6 +5,7 @@ import {
   spawnBlood,
   emitRicochetBurst,
   emitImpactDust,
+  emitPromotionSparkle,
 } from './emitters';
 import { createRng } from '../util/rng';
 import { musket } from '../data/weapons/musket';
@@ -98,6 +99,38 @@ describe('emitImpactDust', () => {
     expect(p.count).toBeGreaterThanOrEqual(4);
     expect(p.count).toBeLessThanOrEqual(6);
     expect(countByClass(p, ParticleClass.Dust)).toBe(p.count);
+  });
+});
+
+describe('emitPromotionSparkle', () => {
+  it('spawns 6 particles', () => {
+    const p = createParticles(64);
+    const rng = createRng(1);
+    emitPromotionSparkle(p, 5, 5, rng);
+    expect(p.count).toBe(6);
+  });
+
+  it('all spawned particles drift upward (velY < 0)', () => {
+    const p = createParticles(64);
+    const rng = createRng(1);
+    emitPromotionSparkle(p, 5, 5, rng);
+    let upward = 0;
+    for (let i = 0; i < p.capacity; i++) {
+      if (p.alive[i] === 1 && p.velY[i]! < 0) upward++;
+    }
+    expect(upward).toBe(6);
+  });
+
+  it('particles are short-lived (life <= 0.6 s)', () => {
+    const p = createParticles(64);
+    const rng = createRng(1);
+    emitPromotionSparkle(p, 5, 5, rng);
+    for (let i = 0; i < p.capacity; i++) {
+      if (p.alive[i] === 1) {
+        expect(p.life[i]).toBeLessThanOrEqual(0.6);
+        expect(p.life[i]).toBeGreaterThan(0);
+      }
+    }
   });
 });
 

@@ -537,7 +537,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const arrowLen = 7 / cam.zoom;
       const arrowHalf = 5 / cam.zoom;
 
-      const renderChains = (chains: number[][], alpha: number, rgb?: readonly [number, number, number]): void => {
+      const renderChains = (chains: number[][], alpha: number, rgb?: readonly [number, number, number], noArrow?: boolean): void => {
         if (chains.length === 0) return;
         let wpN = 0;
         const writeVert = (x: number, y: number): void => {
@@ -563,7 +563,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
             writeVert(x0 - px, y0 - py);
             writeVert(x1 - px, y1 - py);
           }
-          if (wpN + 3 <= WP_MAX_VERTS) {
+          if (!noArrow && wpN + 3 <= WP_MAX_VERTS) {
             const ix = chain.length - 4;
             const x0 = chain[ix]!, y0 = chain[ix + 1]!;
             const x1 = chain[ix + 2]!, y1 = chain[ix + 3]!;
@@ -842,6 +842,50 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
           const tipX = cx + ux * half;
           const tipY = cy + uy * half;
           renderChains([[tailX, tailY, tipX, tipY]], 0.45, [0.55, 1.0, 0.6]);
+
+          // Firing-range preview: a dotted white line from the arrow tip
+          // forward by the longest weapon range in the selection, capped by
+          // a solid white perpendicular bar marking the max effective reach.
+          let maxRange = 0;
+          for (const id of sel.ids) {
+            if (e.alive[id] !== 1) continue;
+            if (isDead(e, id)) continue;
+            const kindIdx = e.kindId[id];
+            if (kindIdx === undefined) continue;
+            const kind = getUnitKindByIndex(kindIdx);
+            if (!kind.weapon) continue;
+            const r = kind.baseStats.weaponRange;
+            if (r > maxRange) maxRange = r;
+          }
+          if (maxRange > 0) {
+            // Anchor at the front-rank midpoint so the endpoint matches the
+            // yellow range overlay (which is measured from each unit outward).
+            const frontMidX = (rect.tl.x + rect.tr.x) * 0.5;
+            const frontMidY = (rect.tl.y + rect.tr.y) * 0.5;
+            const endX = frontMidX + ux * maxRange;
+            const endY = frontMidY + uy * maxRange;
+            const lv = DRAG_RECT_VERTS;
+            lv[0] = frontMidX; lv[1] = frontMidY;
+            lv[2] = endX;      lv[3] = endY;
+            gl.useProgram(dragProg);
+            gl.bindVertexArray(dragVao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, dragBuf);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, lv.subarray(0, 4));
+            gl.uniformMatrix3fv(dragU.u_viewProj, false, viewProjection(cam));
+            gl.uniform1f(dragU.u_time, performance.now() * 0.001);
+            gl.uniform3f(dragU.u_color, 1.0, 1.0, 1.0);
+            gl.drawArrays(gl.LINES, 0, 2);
+            gl.bindVertexArray(null);
+
+            const px = -uy;
+            const py = ux;
+            const tickHalf = Math.max(depthLen * 0.5, 3);
+            const aX = endX + px * tickHalf;
+            const aY = endY + py * tickHalf;
+            const bX = endX - px * tickHalf;
+            const bY = endY - py * tickHalf;
+            renderChains([[aX, aY, bX, bY]], 0.95, [1, 1, 1], true);
+          }
         }
       }
     },

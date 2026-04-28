@@ -126,6 +126,38 @@ export function emitRicochetBurst(
   }
 }
 
+/**
+ * Tiny gold particles drifting upward over ~0.4 s. Cute promotion effect.
+ * Reuses ParticleClass.Flash so it draws additively over sprites.
+ */
+export function emitPromotionSparkle(
+  particles: Particles,
+  x: number,
+  y: number,
+  rng: Rng,
+): void {
+  const N = 6;
+  for (let i = 0; i < N; i++) {
+    // Upward cone: in this codebase world-y grows downward, so upward = velY < 0.
+    // Angle range [-0.6π, -0.4π] keeps sin(angle) strictly negative → vy < 0.
+    const angle = rng.range(-Math.PI * 0.6, -Math.PI * 0.4);
+    const speed = rng.range(0.6, 1.4);
+    spawnParticle(particles, {
+      x: x + rng.range(-0.15, 0.15),
+      y: y + rng.range(-0.15, 0.15),
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: rng.range(0.3, 0.5),
+      size: 0.08,
+      r: 1.0, g: 0.84, b: 0.32,
+      drag: 0.7,
+      accelY: 0,
+      sizeGrowth: -0.05,
+      klass: ParticleClass.Flash,
+    });
+  }
+}
+
 /** Small upward-kick dust puff for a musket ball that ran out of life on the ground. */
 export function emitImpactDust(
   particles: Particles,

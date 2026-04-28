@@ -13,6 +13,7 @@ import type { Rng } from '../util/rng';
 import { barrelTip } from '../fx/barrel';
 import { solveCannonLaunch } from '../fx/ballistics';
 import { getUnitKindByIndex } from '../data/units';
+import { effectiveAccuracy, effectiveDamage } from './veterancy';
 
 /**
  * Total duration of the visual recoil animation in seconds. The render-side
@@ -59,7 +60,7 @@ export function resolveFire(
     let dirY = dy / d;
 
     const baseSpread = weapon.projectile.accuracySpreadRad ?? 0;
-    const accuracy = kind.baseStats.weaponAccuracy;
+    const accuracy = effectiveAccuracy(e, id, kind.baseStats.weaponAccuracy);
     const spreadRad = Math.max(0, baseSpread * (1 - accuracy));
     if (spreadRad) {
       const spread = (rng.next() - 0.5) * 2 * spreadRad;
@@ -76,10 +77,11 @@ export function resolveFire(
       tip.x, tip.y,
       dirX, dirY,
       team,
-      weapon.projectile.damage,
+      effectiveDamage(e, id, kind.baseStats.weaponDamage),
       weapon.projectile.muzzleVelocity,
       weapon.projectile.mass,
       weapon.projectile.maxLife,
+      id,
     );
 
     if (weapon.muzzle) {
@@ -122,10 +124,11 @@ export function resolveFire(
         tip.x, tip.y, launchHeight,
         launch.vx, launch.vy, launch.vz,
         team,
-        weapon.projectile.damage,
+        effectiveDamage(e, id, kind.baseStats.weaponDamage),
         weapon.projectile.mass,
         weapon.projectile.maxLife,
         weapon.projectile.ricochetCount ?? 0,
+        id,
       );
     } else {
       spawnShell(
@@ -133,10 +136,11 @@ export function resolveFire(
         tip.x, tip.y, launchHeight,
         launch.vx, launch.vy, launch.vz,
         team,
-        weapon.projectile.damage,
+        effectiveDamage(e, id, kind.baseStats.weaponDamage),
         weapon.projectile.mass,
         weapon.projectile.maxLife,
         weapon.projectile.fuse ?? 1.5,
+        id,
       );
     }
 

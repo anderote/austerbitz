@@ -3,7 +3,8 @@ import { createWorld } from '../sim/world';
 import { allocEntity } from '../sim/entities';
 import { getUnitKindIndex } from '../data/units';
 import { createSelection } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueRegroup, issueFormationMove, issueMarchFormation } from './commands';
+import { createFormationParams } from './formation-params';
 
 function spawn(world: ReturnType<typeof createWorld>, x: number, y: number): number {
   const id = allocEntity(world.entities);
@@ -164,5 +165,94 @@ describe('issueFormationMove', () => {
     world.entities.alive[a] = 0;
     issueFormationMove(world, [{ id: a, target: { x: 5, y: 5 } }]);
     expect(world.orderQueue.get(a)).toBeUndefined();
+  });
+});
+
+describe('issueMarchFormation', () => {
+  it('empty selection is a no-op', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const sel = createSelection();
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+    expect(world.marchGroups.size).toBe(0);
+  });
+
+  it('creates a new march group whose members match the live selection', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const b = spawn(world, 4, 0);
+    world.entities.team[a] = 0; world.entities.team[b] = 0;
+    const sel = createSelection(); sel.ids.add(a); sel.ids.add(b);
+
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+
+    expect(world.marchGroups.size).toBe(1);
+    const [, g] = [...world.marchGroups.entries()][0]!;
+    expect([...g.members].sort()).toEqual([a, b].sort());
+    expect(g.phase).toBe('march');
+    // Forward should be roughly +x (centroid is (2,0), target (100,0)).
+    expect(g.forward.x).toBeGreaterThan(0.99);
+    expect(Math.abs(g.forward.y)).toBeLessThan(0.01);
+  });
+
+  it('each member receives a march-formation order with the same groupId', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const b = spawn(world, 4, 0);
+    const sel = createSelection(); sel.ids.add(a); sel.ids.add(b);
+
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+
+    const [gid] = [...world.marchGroups.keys()];
+    const qa = world.orderQueue.get(a)![0]!;
+    const qb = world.orderQueue.get(b)![0]!;
+    expect(qa.kind).toBe('march-formation');
+    expect(qb.kind).toBe('march-formation');
+    expect((qa as { groupId: number }).groupId).toBe(gid);
+    expect((qb as { groupId: number }).groupId).toBe(gid);
+  });
+
+  it('replaces existing orders on each unit', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    world.orderQueue.set(a, [{ kind: 'move', targetX: 999, targetY: 999 }]);
+    const sel = createSelection(); sel.ids.add(a);
+
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+
+    const q = world.orderQueue.get(a)!;
+    expect(q.length).toBe(1);
+    expect(q[0]!.kind).toBe('march-formation');
+  });
+
+  it('re-issuing on the same selection allocates a new groupId; prior group is reconciled out by march-system on next tick', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const sel = createSelection(); sel.ids.add(a);
+
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+    const [gid1] = [...world.marchGroups.keys()];
+
+    issueMarchFormation(world, sel, { x: 50, y: 0 }, createFormationParams());
+    const gids = [...world.marchGroups.keys()];
+
+    // Both groups exist immediately after dispatch. The old one's only member
+    // now has a head order that references the NEW group, so march-system will
+    // remove the member and dissolve the old group on its next tick.
+    expect(gids).toContain(gid1);
+    expect(gids.length).toBe(2);
+    expect(world.nextMarchGroupId).toBeGreaterThan(gid1!);
+  });
+
+  it('skips dead selected units', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawn(world, 0, 0);
+    const b = spawn(world, 4, 0);
+    world.entities.alive[b] = 0;
+    const sel = createSelection(); sel.ids.add(a); sel.ids.add(b);
+
+    issueMarchFormation(world, sel, { x: 100, y: 0 }, createFormationParams());
+
+    const [, g] = [...world.marchGroups.entries()][0]!;
+    expect([...g.members]).toEqual([a]);
   });
 });
