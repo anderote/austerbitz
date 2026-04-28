@@ -111,7 +111,15 @@
           "coat-line-south-make-ready",
           "shako-standard-south"
         ],
-        "weapon": "nw-42"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 0,
+            "y": 4,
+            "rot": 180
+          }
+        ]
       },
       "N": {
         "layers": [
@@ -120,7 +128,14 @@
           "coat-line-north-make-ready",
           "shako-standard-north"
         ],
-        "weapon": "n-0"
+        "weapons": [
+          {
+            "src": "N",
+            "x": -7,
+            "y": -3,
+            "rot": 0
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -129,7 +144,15 @@
           "coat-line-east-make-ready",
           "shako-standard-east"
         ],
-        "weapon": "w-0"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 3,
+            "y": 4,
+            "rot": 0
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -138,7 +161,14 @@
           "coat-line-west-make-ready",
           "shako-standard-west"
         ],
-        "weapon": "w-2"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -2,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -147,7 +177,15 @@
           "coat-line-northeast-make-ready",
           "shako-standard-northeast"
         ],
-        "weapon": "nw-0"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": -1,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -156,7 +194,14 @@
           "coat-line-northwest-make-ready",
           "shako-standard-northwest"
         ],
-        "weapon": "nw-8"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -1,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -165,7 +210,15 @@
           "coat-line-southeast-make-ready",
           "shako-standard-southeast"
         ],
-        "weapon": "nw-3"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 3,
+            "y": 2,
+            "rot": 0
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -174,7 +227,15 @@
           "coat-line-southwest-make-ready",
           "shako-standard-southwest"
         ],
-        "weapon": "nw-6"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -2,
+            "y": 2,
+            "rot": 0
+          }
+        ]
       }
     },
     "present": {
@@ -185,7 +246,15 @@
           "coat-line-south-present",
           "shako-standard-south"
         ],
-        "weapon": "nw-12"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -194,7 +263,15 @@
           "coat-line-east-present",
           "shako-standard-east"
         ],
-        "weapon": "w-5"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 2,
+            "y": 0,
+            "rot": 20
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -203,7 +280,14 @@
           "coat-line-west-present",
           "shako-standard-west"
         ],
-        "weapon": "w-6"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -4,
+            "y": 2,
+            "rot": 20
+          }
+        ]
       },
       "N": {
         "layers": [
@@ -212,7 +296,14 @@
           "coat-line-north-present",
           "shako-standard-north"
         ],
-        "weapon": "n-8"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -221,7 +312,15 @@
           "coat-line-northeast-present",
           "shako-standard-northeast"
         ],
-        "weapon": "nw-10"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -230,7 +329,15 @@
           "coat-line-southeast-present",
           "shako-standard-southeast"
         ],
-        "weapon": "nw-11"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -239,7 +346,14 @@
           "coat-line-northwest-present",
           "shako-standard-northwest"
         ],
-        "weapon": "nw-13"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -248,7 +362,15 @@
           "coat-line-southwest-present",
           "shako-standard-southwest"
         ],
-        "weapon": "nw-12"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       }
     },
     "fire": {
@@ -259,7 +381,15 @@
           "coat-line-south-fire",
           "shako-standard-south"
         ],
-        "weapon": "nw-12"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -268,7 +398,15 @@
           "coat-line-east-fire",
           "shako-standard-east"
         ],
-        "weapon": "w-7"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 1,
+            "y": -2,
+            "rot": 20
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -277,7 +415,14 @@
           "coat-line-west-fire",
           "shako-standard-west"
         ],
-        "weapon": "w-8"
+        "weapons": [
+          {
+            "src": "W",
+            "x": 1,
+            "y": -2,
+            "rot": 20
+          }
+        ]
       },
       "N": {
         "layers": [
@@ -286,7 +431,14 @@
           "coat-line-north-fire",
           "shako-standard-north"
         ],
-        "weapon": "n-10"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 1,
+            "y": -2,
+            "rot": 20
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -295,7 +447,15 @@
           "coat-line-northeast-fire",
           "shako-standard-northeast"
         ],
-        "weapon": "nw-14"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 1,
+            "y": -2,
+            "rot": 20
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -304,7 +464,15 @@
           "coat-line-southeast-fire",
           "shako-standard-southeast"
         ],
-        "weapon": "nw-15"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 1,
+            "y": -2,
+            "rot": 20
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -313,7 +481,14 @@
           "coat-line-northwest-fire",
           "shako-standard-northwest"
         ],
-        "weapon": "nw-13"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": 1,
+            "y": -1,
+            "rot": 20
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -322,7 +497,15 @@
           "coat-line-southwest-fire",
           "shako-standard-southwest"
         ],
-        "weapon": "nw-16"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 1,
+            "y": -2,
+            "rot": 20
+          }
+        ]
       }
     },
     "hit": {
@@ -335,7 +518,15 @@
           "shako-standard-south",
           "blood-south-hit"
         ],
-        "weapon": "nw-43"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 0,
+            "y": 0,
+            "rot": 0
+          }
+        ]
       },
       "N": {
         "layers": [
@@ -346,7 +537,14 @@
           "shako-standard-north",
           "blood-north-hit"
         ],
-        "weapon": "n-11"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 0,
+            "y": 1,
+            "rot": -10
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -357,7 +555,15 @@
           "shako-standard-east",
           "blood-east-hit"
         ],
-        "weapon": "w-9"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 4,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -368,7 +574,14 @@
           "shako-standard-west",
           "blood-west-hit"
         ],
-        "weapon": "w-32"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -2,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -379,7 +592,15 @@
           "shako-standard-northeast",
           "blood-northeast-hit"
         ],
-        "weapon": "nw-18"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 4,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -390,7 +611,14 @@
           "shako-standard-northwest",
           "blood-northwest-hit"
         ],
-        "weapon": "nw-21"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": 4,
+            "y": 4,
+            "rot": -10
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -401,7 +629,15 @@
           "shako-standard-southeast",
           "blood-southeast-hit"
         ],
-        "weapon": "nw-19"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 0,
+            "y": 1,
+            "rot": -10
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -412,7 +648,15 @@
           "shako-standard-southwest",
           "blood-southwest-hit"
         ],
-        "weapon": "nw-20"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 0,
+            "y": 4,
+            "rot": 80
+          }
+        ]
       }
     },
     "dying": {
@@ -425,7 +669,15 @@
           "shako-standard-south-dying",
           "blood-south-dying"
         ],
-        "weapon": "nw-44"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 10,
+            "y": 5,
+            "rot": 180
+          }
+        ]
       },
       "N": {
         "layers": [
@@ -436,7 +688,14 @@
           "shako-standard-north-dying",
           "blood-north-dying"
         ],
-        "weapon": "n-13"
+        "weapons": [
+          {
+            "src": "N",
+            "x": 10,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "E": {
         "layers": [
@@ -447,7 +706,15 @@
           "shako-standard-east-dying",
           "blood-east-dying"
         ],
-        "weapon": "w-11"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 8,
+            "y": 6,
+            "rot": -90
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -458,7 +725,14 @@
           "shako-standard-west-dying",
           "blood-west-dying"
         ],
-        "weapon": "w-12"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -4,
+            "y": 5,
+            "rot": -90
+          }
+        ]
       },
       "NE": {
         "layers": [
@@ -469,7 +743,15 @@
           "shako-standard-northeast-dying",
           "blood-northeast-dying"
         ],
-        "weapon": "nw-22"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": -3,
+            "y": 4,
+            "rot": -90
+          }
+        ]
       },
       "NW": {
         "layers": [
@@ -480,7 +762,14 @@
           "shako-standard-northwest-dying",
           "blood-northwest-dying"
         ],
-        "weapon": "nw-25"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": 2,
+            "y": 5,
+            "rot": 90
+          }
+        ]
       },
       "SE": {
         "layers": [
@@ -491,7 +780,15 @@
           "shako-standard-southeast-dying",
           "blood-southeast-dying"
         ],
-        "weapon": "nw-23"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 4,
+            "y": 5,
+            "rot": -90
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -502,37 +799,99 @@
           "shako-standard-southwest-dying",
           "blood-southwest-dying"
         ],
-        "weapon": "nw-24"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -3,
+            "y": 5,
+            "rot": 90
+          }
+        ]
       }
     },
     "idle": {
       "W": {
         "layers": [],
-        "weapon": "w-20"
+        "weapons": [
+          {
+            "src": "W",
+            "x": 0,
+            "y": 8,
+            "rot": 0
+          }
+        ]
       },
       "S": {
         "layers": [],
-        "weapon": "nw-33"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 6,
+            "y": 8,
+            "rot": 0,
+            "flipX": true
+          }
+        ]
       },
       "SE": {
         "layers": [],
-        "weapon": "nw-26"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 1,
+            "y": 7,
+            "rot": 0
+          }
+        ]
       },
       "E": {
         "layers": [],
-        "weapon": "w-13"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 2,
+            "y": 6,
+            "rot": 0
+          }
+        ]
       },
       "N": {
         "layers": [],
-        "weapon": "n-15"
+        "weapons": [
+          {
+            "src": "N",
+            "x": -8,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "SW": {
         "layers": [],
-        "weapon": "nw-34"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 0,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "NW": {
         "layers": [],
-        "weapon": "nw-37"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -7,
+            "y": 2,
+            "rot": 0
+          }
+        ]
       }
     },
     "walking": {
@@ -641,7 +1000,15 @@
             "shako-standard-southeast"
           ]
         ],
-        "weapon": "nw-41"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 1,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "S": {
         "layers": [
@@ -670,7 +1037,15 @@
             "shako-standard-south"
           ]
         ],
-        "weapon": "nw-45"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -2,
+            "y": 5,
+            "rot": 0
+          }
+        ]
       },
       "SW": {
         "layers": [
@@ -699,7 +1074,15 @@
             "shako-standard-southwest"
           ]
         ],
-        "weapon": "nw-6"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": -2,
+            "y": 2,
+            "rot": 0
+          }
+        ]
       },
       "W": {
         "layers": [
@@ -728,7 +1111,14 @@
             "shako-standard-west"
           ]
         ],
-        "weapon": "w-27"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -3,
+            "y": 4,
+            "rot": 0
+          }
+        ]
       },
       "NW": [
         [
@@ -863,7 +1253,15 @@
             "shako-standard-east"
           ]
         ],
-        "weapon": "w-28"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 8,
+            "y": 1,
+            "rot": 0
+          }
+        ]
       },
       "SE": [
         [
@@ -994,7 +1392,14 @@
             "shako-standard-west"
           ]
         ],
-        "weapon": "w-31"
+        "weapons": [
+          {
+            "src": "W",
+            "x": -3,
+            "y": 3,
+            "rot": 0
+          }
+        ]
       },
       "NW": [
         [
@@ -1075,382 +1480,6 @@
     {
       "name": "head",
       "layerPrefix": "shako-"
-    }
-  ],
-  "weaponPalette": [
-    {
-      "id": "n-0",
-      "src": "N",
-      "x": -7,
-      "y": -3,
-      "rot": 0
-    },
-    {
-      "id": "n-10",
-      "src": "N",
-      "x": 1,
-      "y": -2,
-      "rot": 20
-    },
-    {
-      "id": "n-11",
-      "src": "N",
-      "x": 0,
-      "y": 1,
-      "rot": -10
-    },
-    {
-      "id": "n-13",
-      "src": "N",
-      "x": 10,
-      "y": 5,
-      "rot": 0
-    },
-    {
-      "id": "n-15",
-      "src": "N",
-      "x": -8,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "n-8",
-      "src": "N",
-      "x": 1,
-      "y": -1,
-      "rot": 20
-    },
-    {
-      "id": "nw-0",
-      "src": "NW",
-      "x": -1,
-      "y": 1,
-      "rot": 0,
-      "transform": "flipX"
-    },
-    {
-      "id": "nw-10",
-      "src": "NW",
-      "x": 1,
-      "y": -1,
-      "rot": 20,
-      "transform": "flipX"
-    },
-    {
-      "id": "nw-11",
-      "src": "NW",
-      "x": 1,
-      "y": -1,
-      "rot": 20,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-12",
-      "src": "NW",
-      "x": 1,
-      "y": -1,
-      "rot": 20,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-13",
-      "src": "NW",
-      "x": 1,
-      "y": -1,
-      "rot": 20
-    },
-    {
-      "id": "nw-14",
-      "src": "NW",
-      "x": 1,
-      "y": -2,
-      "rot": 20,
-      "transform": "flipX"
-    },
-    {
-      "id": "nw-15",
-      "src": "NW",
-      "x": 1,
-      "y": -2,
-      "rot": 20,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-16",
-      "src": "NW",
-      "x": 1,
-      "y": -2,
-      "rot": 20,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-18",
-      "src": "NW",
-      "x": 4,
-      "y": 4,
-      "rot": -10,
-      "transform": "flipX"
-    },
-    {
-      "id": "nw-19",
-      "src": "NW",
-      "x": 0,
-      "y": 1,
-      "rot": -10,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-20",
-      "src": "NW",
-      "x": 0,
-      "y": 4,
-      "rot": 80,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-21",
-      "src": "NW",
-      "x": 4,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "nw-22",
-      "src": "NW",
-      "x": -3,
-      "y": 4,
-      "rot": -90,
-      "transform": "flipX"
-    },
-    {
-      "id": "nw-23",
-      "src": "NW",
-      "x": 4,
-      "y": 5,
-      "rot": -90,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-24",
-      "src": "NW",
-      "x": -3,
-      "y": 5,
-      "rot": 90,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-25",
-      "src": "NW",
-      "x": 2,
-      "y": 5,
-      "rot": 90
-    },
-    {
-      "id": "nw-26",
-      "src": "NW",
-      "x": 1,
-      "y": 7,
-      "rot": 0,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-3",
-      "src": "NW",
-      "x": 3,
-      "y": 2,
-      "rot": 0,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-33",
-      "src": "NW",
-      "x": 6,
-      "y": 8,
-      "rot": 0,
-      "transform": "flipY",
-      "flipX": true
-    },
-    {
-      "id": "nw-34",
-      "src": "NW",
-      "x": 0,
-      "y": 1,
-      "rot": 0,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-37",
-      "src": "NW",
-      "x": -7,
-      "y": 2,
-      "rot": 0
-    },
-    {
-      "id": "nw-41",
-      "src": "NW",
-      "x": 1,
-      "y": 1,
-      "rot": 0,
-      "transform": "rot180"
-    },
-    {
-      "id": "nw-42",
-      "src": "NW",
-      "x": 0,
-      "y": 4,
-      "rot": 180,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-43",
-      "src": "NW",
-      "x": 0,
-      "y": 0,
-      "rot": 0,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-44",
-      "src": "NW",
-      "x": 10,
-      "y": 5,
-      "rot": 180,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-45",
-      "src": "NW",
-      "x": -2,
-      "y": 5,
-      "rot": 0,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-6",
-      "src": "NW",
-      "x": -2,
-      "y": 2,
-      "rot": 0,
-      "transform": "flipY"
-    },
-    {
-      "id": "nw-8",
-      "src": "NW",
-      "x": -1,
-      "y": 1,
-      "rot": 0
-    },
-    {
-      "id": "w-0",
-      "src": "W",
-      "x": 3,
-      "y": 4,
-      "rot": 0,
-      "transform": "flipX"
-    },
-    {
-      "id": "w-11",
-      "src": "W",
-      "x": 8,
-      "y": 6,
-      "rot": -90,
-      "transform": "flipX"
-    },
-    {
-      "id": "w-12",
-      "src": "W",
-      "x": -4,
-      "y": 5,
-      "rot": -90
-    },
-    {
-      "id": "w-13",
-      "src": "W",
-      "x": 2,
-      "y": 6,
-      "rot": 0,
-      "transform": "flipX"
-    },
-    {
-      "id": "w-2",
-      "src": "W",
-      "x": -2,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "w-20",
-      "src": "W",
-      "x": 0,
-      "y": 8,
-      "rot": 0
-    },
-    {
-      "id": "w-27",
-      "src": "W",
-      "x": -3,
-      "y": 4,
-      "rot": 0
-    },
-    {
-      "id": "w-28",
-      "src": "W",
-      "x": 8,
-      "y": 1,
-      "rot": 0,
-      "transform": "flipX"
-    },
-    {
-      "id": "w-31",
-      "src": "W",
-      "x": -3,
-      "y": 3,
-      "rot": 0
-    },
-    {
-      "id": "w-32",
-      "src": "W",
-      "x": -2,
-      "y": 4,
-      "rot": -10
-    },
-    {
-      "id": "w-5",
-      "src": "W",
-      "x": 2,
-      "y": 0,
-      "rot": 20,
-      "transform": "flipX"
-    },
-    {
-      "id": "w-6",
-      "src": "W",
-      "x": -4,
-      "y": 2,
-      "rot": 20
-    },
-    {
-      "id": "w-7",
-      "src": "W",
-      "x": 1,
-      "y": -2,
-      "rot": 20,
-      "transform": "flipX"
-    },
-    {
-      "id": "w-8",
-      "src": "W",
-      "x": 1,
-      "y": -2,
-      "rot": 20
-    },
-    {
-      "id": "w-9",
-      "src": "W",
-      "x": 4,
-      "y": 4,
-      "rot": -10,
-      "transform": "flipX"
     }
   ]
 }

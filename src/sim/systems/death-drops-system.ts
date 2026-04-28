@@ -2,7 +2,7 @@ import type { System } from '../world';
 import { EntityState, PartLost } from '../entities';
 import { spawnDroppedHat, spawnDroppedWeapon } from '../dropped-items';
 import { getUnitKindByIndex } from '../../data/units';
-import { resolvePoseWeaponEntry, type Facing } from '../../render/poses/resolver';
+import { readWeaponVariantPool, type Facing } from '../../render/poses/resolver';
 import type { KitConfig } from '../../render/poses/kit-loader';
 import { Pose } from '../../render/poses/pose-config';
 
@@ -86,15 +86,11 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
       }
       const facing = e.facing[id]!;
       const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
-      // Palette lookup: corpses spawn from the dying pose's authored weapon
-      // entry. If the kit has no `dying` palette ref for this facing, we drop
-      // at the body's base position with no extra offset.
-      const dyingEntry = resolvePoseWeaponEntry(
-        kit.poses,
-        'dying',
-        facingLetter,
-        kit.weaponPalette,
-      );
+      // Inline-weapons lookup: corpses spawn from the dying pose's authored
+      // primary orientation. If the kit has no `dying` weapon for this facing,
+      // we drop at the body's base position with no extra offset.
+      const dyingPool = readWeaponVariantPool(kit.poses, 'dying', facingLetter);
+      const dyingEntry = dyingPool[0] ?? null;
       const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;
       const sprH = kind.spriteSize?.h ?? kind.placeholderSize.h;
       const pxToWorld = sprW / SPRITE_CELL_PX;
@@ -120,11 +116,11 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
         e.posX[id]!, e.posY[id]!, 0, 0.15, world.simTime, 0.35,
       );
 
-      // ~25% chance for infantry to also drop their shako. Mark the corpse as
+      // ~35% chance for infantry to also drop their shako. Mark the corpse as
       // "head lost" so sprite-pass swaps to the `--no-head` body variant —
       // otherwise we'd render both the hat on the body and a duplicate one on
       // the ground. Skip for cavalry/artillery: they don't carry shakos.
-      if (kind.category === 'infantry' && kit.head && world.rng.range(0, 1) < 0.25) {
+      if (kind.category === 'infantry' && kit.head && world.rng.range(0, 1) < 0.35) {
         e.partLost[id] |= PartLost.Head;
         // Spawn position: small radial offset so the hat lands nearby the corpse.
         const angle = world.rng.range(0, Math.PI * 2);

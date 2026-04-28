@@ -417,6 +417,127 @@ describe('combatSystem', () => {
     expect(fireOrders.get(shooter)).toEqual({ tx: 60, ty: 0 });
   });
 
+  it('a soldier with 3 friendlies stacked in its forward arc does not fire (back rank)', () => {
+    // Default facingIntent is (1, 0) → forward = +X. Place 3 friendlies at +1m,
+    // +2m, +3m ahead. Shooter is the 4th rank — should be blocked.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 0, 1, 0);
+    spawnLineInfantry(world, 0, 2, 0);
+    spawnLineInfantry(world, 0, 3, 0);
+    spawnLineInfantry(world, 1, 50, 0); // enemy in range
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.canFire[shooter]).toBe(0);
+    expect(world.entities.state[shooter]).toBe(EntityState.Idle);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
+  it('a soldier with 2 friendlies in its forward arc still fires (front 3 ranks)', () => {
+    // 2 friendlies ahead → shooter is the 3rd rank, still in the front 3.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 0, 1, 0);
+    spawnLineInfantry(world, 0, 2, 0);
+    const target = spawnLineInfantry(world, 1, 50, 0);
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.canFire[shooter]).toBe(1);
+    expect(world.entities.targetId[shooter]).toBe(target);
+    expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
+  });
+
+  it('lateral neighbours (1 m to the side) do not count as blockers', () => {
+    // Forward arc is ±0.5 m wide; 1 m to the side is well outside it.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 0, 0, 1);
+    spawnLineInfantry(world, 0, 0, -1);
+    spawnLineInfantry(world, 0, 1, 1);
+    const target = spawnLineInfantry(world, 1, 50, 0);
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.canFire[shooter]).toBe(1);
+    expect(world.entities.targetId[shooter]).toBe(target);
+  });
+
+  it('enemy soldiers in the forward arc do not count as blockers', () => {
+    // Only same-team soldiers occlude the firing line.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 1, 0);
+    spawnLineInfantry(world, 1, 2, 0);
+    spawnLineInfantry(world, 1, 3, 0);
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.canFire[shooter]).toBe(1);
+  });
+
+  it('forward arc tracks direction-to-target, not last facing', () => {
+    // 3 friendlies along +X. Enemy along +Y → target direction is +Y, so the
+    // +X friendlies are off-axis (lateral) and do not block.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 0, 1, 0);
+    spawnLineInfantry(world, 0, 2, 0);
+    spawnLineInfantry(world, 0, 3, 0);
+    spawnLineInfantry(world, 1, 0, 50);
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.canFire[shooter]).toBe(1);
+  });
+
+  it('blocks at default line-infantry spacing (1.2 m between ranks)', () => {
+    // Real spacingY = 1.2; three ranks ahead at 1.2, 2.4, 3.6 m must all land
+    // inside the forward arc (FORWARD_FAR ≈ 1.2 × 4.5 = 5.4 m).
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const shooter = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 0, 1.2, 0);
+    spawnLineInfantry(world, 0, 2.4, 0);
+    spawnLineInfantry(world, 0, 3.6, 0);
+    spawnLineInfantry(world, 1, 60, 0);
+
+    world.entities.stateT[shooter] = 999;
+    rebuildGrid(world);
+    system(world, 1 / 60);
+
+    expect(world.entities.canFire[shooter]).toBe(0);
+    expect(fireOrders.has(shooter)).toBe(false);
+  });
+
   it('maxHoldFor returns a value within [MAX_HOLD_MIN_S, MAX_HOLD_MAX_S]', () => {
     for (let id = 0; id < 200; id++) {
       const v = maxHoldFor(id);

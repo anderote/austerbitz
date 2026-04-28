@@ -16,7 +16,7 @@
  */
 
 import type { KitConfig } from './kit-loader';
-import type { Facing, PoseFacingEntry, WeaponPaletteEntry } from './resolver';
+import type { Facing, PoseFacingEntry, WeaponOrientation } from './resolver';
 
 export interface LiveReloadHandles {
   /** In-memory kit map; mutated in place on diffs. */
@@ -159,30 +159,17 @@ export function startLiveReload(
 }
 
 /**
- * Merge any per-(pose, facing) palette-id changes + palette-entry edits from
- * `fresh` into `target` in place. We sync:
- *   - `kit.weaponPalette` entry positions/rotations/flipX (so the editor's
- *     nudge buttons on a palette card flow into the running game).
- *   - `kit.poses[pose][facing].weapon` and `weaponVariants[]` ids (so the
- *     editor's palette-picker swaps surface immediately).
+ * Merge any per-(pose, facing) inline `weapons[]` edits from `fresh` into
+ * `target` in place. We sync the inline orientation arrays so the editor's
+ * nudge / mirror / rotate buttons flow into the running game.
+ *
  * Layers and the top-level weapon block aren't synced — those need a full
- * reload. Returns true when at least one tuple changed.
+ * reload. Returns true when at least one orientation changed.
  */
 function mergeWeaponPoseDiff(target: KitConfig, fresh: KitConfig): boolean {
   if (!fresh || typeof fresh !== 'object') return false;
   let dirty = false;
 
-  // Sync the palette: replace entry-by-id when (x, y, rot, flipX, src,
-  // transform) changed. Keep it simple — we just re-clone the fresh palette
-  // when any entry differs or the ids changed.
-  if (!palettesEqual(target.weaponPalette, fresh.weaponPalette)) {
-    target.weaponPalette = fresh.weaponPalette
-      ? fresh.weaponPalette.map(clonePaletteEntry)
-      : undefined;
-    dirty = true;
-  }
-
-  // Sync per-(pose, facing) palette ids.
   const freshPoses = fresh.poses;
   if (!freshPoses || typeof freshPoses !== 'object') return dirty;
   if (!target.poses || typeof target.poses !== 'object') {
@@ -201,32 +188,25 @@ function mergeWeaponPoseDiff(target: KitConfig, fresh: KitConfig): boolean {
       const freshNorm = normalizePoseEntry(freshEntry);
       const targetEntry = targetFacings[facing];
       const targetNorm = targetEntry ? normalizePoseEntry(targetEntry) : { layers: [] };
-      if (
-        freshNorm.weapon !== targetNorm.weapon ||
-        !idArraysEqual(freshNorm.weaponVariants, targetNorm.weaponVariants)
-      ) {
+      if (!weaponsEqual(freshNorm.weapons, targetNorm.weapons)) {
+        const cloned = freshNorm.weapons
+          ? freshNorm.weapons.map(cloneOrientation)
+          : undefined;
         if (Array.isArray(targetEntry)) {
           targetFacings[facing] = {
             layers: targetEntry,
-            weapon: freshNorm.weapon,
-            ...(freshNorm.weaponVariants
-              ? { weaponVariants: freshNorm.weaponVariants.slice() }
-              : {}),
+            ...(cloned ? { weapons: cloned } : {}),
           };
         } else if (targetEntry && typeof targetEntry === 'object') {
-          (targetEntry as PoseFacingEntry).weapon = freshNorm.weapon;
-          if (freshNorm.weaponVariants) {
-            (targetEntry as PoseFacingEntry).weaponVariants = freshNorm.weaponVariants.slice();
+          if (cloned) {
+            (targetEntry as PoseFacingEntry).weapons = cloned;
           } else {
-            delete (targetEntry as PoseFacingEntry).weaponVariants;
+            delete (targetEntry as PoseFacingEntry).weapons;
           }
         } else {
           targetFacings[facing] = {
             layers: [],
-            weapon: freshNorm.weapon,
-            ...(freshNorm.weaponVariants
-              ? { weaponVariants: freshNorm.weaponVariants.slice() }
-              : {}),
+            ...(cloned ? { weapons: cloned } : {}),
           };
         }
         dirty = true;
@@ -242,22 +222,8 @@ function normalizePoseEntry(raw: unknown): PoseFacingEntry {
   return { layers: [] };
 }
 
-function idArraysEqual(
-  a: readonly string[] | undefined,
-  b: readonly string[] | undefined,
-): boolean {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
-function paletteEntryEquals(a: WeaponPaletteEntry, b: WeaponPaletteEntry): boolean {
+function orientationEquals(a: WeaponOrientation, b: WeaponOrientation): boolean {
   return (
-    a.id === b.id &&
     a.src === b.src &&
     (a.transform ?? 'none') === (b.transform ?? 'none') &&
     a.x === b.x &&
@@ -267,21 +233,21 @@ function paletteEntryEquals(a: WeaponPaletteEntry, b: WeaponPaletteEntry): boole
   );
 }
 
-function palettesEqual(
-  a: WeaponPaletteEntry[] | undefined,
-  b: WeaponPaletteEntry[] | undefined,
+function weaponsEqual(
+  a: WeaponOrientation[] | undefined,
+  b: WeaponOrientation[] | undefined,
 ): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (!paletteEntryEquals(a[i]!, b[i]!)) return false;
+    if (!orientationEquals(a[i]!, b[i]!)) return false;
   }
   return true;
 }
 
-function clonePaletteEntry(e: WeaponPaletteEntry): WeaponPaletteEntry {
-  const out: WeaponPaletteEntry = { id: e.id, src: e.src, x: e.x, y: e.y, rot: e.rot };
+function cloneOrientation(e: WeaponOrientation): WeaponOrientation {
+  const out: WeaponOrientation = { src: e.src, x: e.x, y: e.y, rot: e.rot };
   if (e.transform) out.transform = e.transform;
   if (e.flipX === true) out.flipX = true;
   return out;
