@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:soldier-components": "node scripts/build-soldier-components.mjs --kit line-infantry && node scripts/slice-component-atlas.mjs",
+    "seed:line-infantry-locomotion": "node scripts/seed-line-infantry-locomotion.mjs",
     "build:poses": "npm run build:soldier-components && node scripts/build-pose-manifest.mjs",
     "draw:cuirassier-poses": "node scripts/draw-cuirassier-poses.mjs",
     "dev": "npm run build:poses && vite",

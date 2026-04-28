@@ -197,6 +197,40 @@ function recolorMarkers(png, regiment) {
   }
 }
 
+export function isMultiFrameOverride(override) {
+  if (!override || typeof override !== 'object') return false;
+  for (const value of Object.values(override)) {
+    if (Array.isArray(value) && value.length > 0) {
+      const first = value[0];
+      if (Array.isArray(first)) return true;
+      return false;
+    }
+  }
+  return false;
+}
+
+export function frameCount(override) {
+  let n = 0;
+  for (const frames of Object.values(override)) {
+    if (Array.isArray(frames)) n = Math.max(n, frames.length);
+  }
+  return n;
+}
+
+export function frameSliceOverride(override, frameIdx) {
+  const out = {};
+  for (const [facing, frames] of Object.entries(override)) {
+    if (!Array.isArray(frames) || frames.length === 0) continue;
+    const useIdx = Math.min(frameIdx, frames.length - 1);
+    const layers = frames[useIdx];
+    if (!Array.isArray(layers)) {
+      throw new Error(`Pose '${facing}' frame ${frameIdx} is not a layer array (got ${typeof layers}).`);
+    }
+    out[facing] = layers;
+  }
+  return out;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const kitId = args.get('kit') ?? 'line-infantry';
@@ -335,9 +369,19 @@ async function main() {
   // Per-pose composites (S-only overrides for now; other facings fall back to base layers).
   if (kit.poses && typeof kit.poses === 'object') {
     for (const [poseId, override] of Object.entries(kit.poses)) {
-      const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}`);
-      const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}`) : null;
-      compositeAndWrite(poseId, override, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId}`);
+      if (isMultiFrameOverride(override)) {
+        const n = frameCount(override);
+        for (let i = 0; i < n; i++) {
+          const sliced = frameSliceOverride(override, i);
+          const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}-${i}`);
+          const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}-${i}`) : null;
+          compositeAndWrite(poseId, sliced, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId} frame ${i}`);
+        }
+      } else {
+        const poseAtlasPath = withSuffix(outputAtlasPath, `-${poseId}`);
+        const posePreviewPath = outputPreviewPath ? withSuffix(outputPreviewPath, `-${poseId}`) : null;
+        compositeAndWrite(poseId, override, poseAtlasPath, posePreviewPath, `Compositing pose: ${poseId}`);
+      }
     }
   }
 }
@@ -354,7 +398,10 @@ function clampScale(value) {
   return Math.max(1, Math.min(16, n));
 }
 
-await main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exitCode = 1;
-});
+// Only run main() if this file is executed directly (not imported).
+if (import.meta.url === `file://${process.argv[1]}` || fileURLToPath(import.meta.url) === process.argv[1]) {
+  await main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exitCode = 1;
+  });
+}
