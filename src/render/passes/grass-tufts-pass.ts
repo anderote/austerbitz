@@ -35,7 +35,9 @@ function scatter(map: WorldMap): Float32Array[] {
 
 export function createGrassTuftsPass(gl: WebGL2RenderingContext, map: WorldMap): GrassTuftsPass {
   const prog = linkProgram(gl, TUFT_VS, TUFT_FS);
-  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_atlasGrid', 'u_aspect'] as const);
+  const u = getUniforms(gl, prog, [
+    'u_viewProj', 'u_atlas', 'u_atlasGrid', 'u_aspect', 'u_worldH',
+  ] as const);
 
   const atlas = createTextureRGBA(gl, TUFT_ATLAS_W, TUFT_ATLAS_H, generateTuftAtlas(), {
     wrap: gl.CLAMP_TO_EDGE,
@@ -79,15 +81,20 @@ export function createGrassTuftsPass(gl: WebGL2RenderingContext, map: WorldMap):
       gl.useProgram(prog);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
       gl.bindVertexArray(vao);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, atlas);
       gl.uniform1i(u.u_atlas, 0);
       gl.uniform1f(u.u_atlasGrid, TUFT_VARIANTS);
       gl.uniform1f(u.u_aspect, TUFT_H / TUFT_W);
+      gl.uniform1f(u.u_worldH, map.size.h);
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
       gl.bindVertexArray(null);
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
     },
   };
 }

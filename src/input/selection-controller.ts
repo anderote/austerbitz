@@ -5,7 +5,7 @@ import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
 import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots, issueNudge } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
-import { isDead, EntityState } from '../sim/entities';
+import { isDead, EntityState, FireStance } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
   bumpSpacing, bumpRanks, spacingMultiplier, minSpacingIndexForMult,
@@ -454,6 +454,19 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         // Merge group into current selection (alive only).
         for (const id of groups[digit]!) {
           if (world.entities.alive[id] === 1 && !isDead(world.entities, id)) selection.ids.add(id);
+        }
+        return;
+      }
+      // Digits 1–4 with a non-empty selection: set fire stance.
+      if (digit >= 1 && digit <= 4 && selection.ids.size > 0) {
+        const stance = digit === 1 ? FireStance.AtWill
+                     : digit === 2 ? FireStance.Volley
+                     : digit === 3 ? FireStance.ByRanks
+                     :               FireStance.Hold;
+        const ents = world.entities;
+        for (const id of selection.ids) {
+          if (ents.alive[id] !== 1) continue;
+          ents.stance[id] = stance;
         }
         return;
       }

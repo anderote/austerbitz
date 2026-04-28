@@ -11,6 +11,7 @@ layout(location = 3) in float a_variant;  // 0..VARIANTS-1
 
 uniform mat3  u_viewProj;
 uniform float u_aspect;                    // TUFT_H / TUFT_W
+uniform float u_worldH;                    // for foot-Y → depth
 
 out vec2 v_uv;
 flat out float v_variant;
@@ -23,7 +24,10 @@ void main() {
   v_uv = vec2(a_corner.x + 0.5, a_corner.y);
   v_variant = a_variant;
   vec3 clip = u_viewProj * vec3(wp, 1.0);
-  gl_Position = vec4(clip.xy, 0.0, 1.0);
+  // Larger foot-Y → closer to viewer → smaller z (drawn on top under LESS).
+  // Range: [0.05, 0.95] keeps headroom for things behind/in-front.
+  float depth = clamp(0.95 - 0.90 * (a_foot.y / u_worldH), 0.05, 0.95);
+  gl_Position = vec4(clip.xy, depth, 1.0);
 }
 `;
 

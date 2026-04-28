@@ -11,6 +11,7 @@ layout(location = 6) in vec3 a_secondary;  // per-instance secondary uniform col
 layout(location = 7) in float a_pattern;   // 0 = none, 1 = check, 2 = h-stripes
 layout(location = 8) in vec3 a_tertiary;   // per-instance tertiary uniform color
 layout(location = 9) in float a_rot;       // per-instance rotation in radians (0 = no rot, applied around centre)
+layout(location = 10) in float a_footYWorld; // per-instance world-Y of the body's foot line (used for depth sort vs terrain features)
 
 out vec2 v_uv;
 out vec2 v_world;
@@ -20,7 +21,8 @@ out vec3 v_secondary;
 out vec3 v_tertiary;
 out float v_pattern;
 
-uniform mat3 u_viewProj;
+uniform mat3  u_viewProj;
+uniform float u_worldH;                     // for foot-Y → depth sort against grass/trees
 
 void main() {
   // Quad spans world size; -y in clip-space points up but our world Y grows
@@ -33,7 +35,9 @@ void main() {
   vec2 rotated = vec2(c * corner.x - s * corner.y, s * corner.x + c * corner.y);
   vec2 wp = a_pos + rotated;
   vec3 clip = u_viewProj * vec3(wp, 1.0);
-  gl_Position = vec4(clip.xy, 0.0, 1.0);
+  // Larger foot-Y → closer to viewer → smaller z (drawn on top under LESS).
+  float depth = clamp(0.95 - 0.90 * (a_footYWorld / u_worldH), 0.05, 0.95);
+  gl_Position = vec4(clip.xy, depth, 1.0);
   vec2 quadUv = a_corner + 0.5;            // 0..1 across quad
   // a_uvRect.zw may be negative (flipX/flipY/rot180 weapon transforms encode
   // the mirror via signed UV span). Negative span walks the atlas cell

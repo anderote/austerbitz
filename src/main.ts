@@ -4,7 +4,7 @@ import { createCamera } from './render/camera';
 import { createInputManager } from './input/input-manager';
 import { createCameraControls } from './input/camera-controls';
 import { createWorld, tickWorld } from './sim/world';
-import { allocEntity, EntityState } from './sim/entities';
+import { allocEntity, EntityState, type Entities } from './sim/entities';
 import { getUnitKind, getUnitKindIndex } from './data/units';
 import { createDefaultMap } from './map/world-map';
 import { ordersSystem } from './sim/systems/orders-system';
@@ -20,7 +20,7 @@ import { createDeathDropsSystem } from './sim/systems/death-drops-system';
 import { marchSystem } from './sim/systems/march-system';
 import { assignIdentity } from './sim/spawn-identity';
 import type { System } from './sim/world';
-import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
+import { createSelection, createDragRect, createFormationDrag, createControlGroups, type Selection } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
 import './ui/styles.css';
 import { createOverlay } from './ui/overlay';
@@ -32,7 +32,7 @@ import { createScaleBar } from './ui/scale-bar';
 import { createWindIndicator } from './ui/wind-indicator';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
-import { createFormationControlsPanel } from './ui/formation-controls-panel';
+import { createFormationControlsPanel, type StanceSummary } from './ui/formation-controls-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
@@ -337,6 +337,18 @@ const controller = createSelectionController({
 });
 
 let lastT = performance.now();
+function computeStanceSummary(sel: Selection, e: Entities): StanceSummary {
+  if (sel.ids.size === 0) return { kind: 'none' };
+  let first: number | undefined;
+  for (const id of sel.ids) {
+    if (e.alive[id] !== 1) continue;
+    if (first === undefined) { first = e.stance[id]!; continue; }
+    if (e.stance[id]! !== first) return { kind: 'mixed' };
+  }
+  if (first === undefined) return { kind: 'none' };
+  return { kind: 'uniform', stance: first };
+}
+
 let smoothedFps = 60;
 let simElapsed = 0;
 function frame(t: number) {
@@ -376,7 +388,7 @@ function frame(t: number) {
   scaleBar.update(camera);
   minimap.update(world, camera);
   cgPanel.update(world, controlGroups);
-  fcPanel.update(selection, controller.formationParams);
+  fcPanel.update(selection, controller.formationParams, computeStanceSummary(selection, world.entities));
   groupBadges.update(world, camera, selection, controlGroups);
   requestAnimationFrame(frame);
 }

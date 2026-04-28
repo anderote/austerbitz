@@ -144,13 +144,14 @@ export function createSpritePass(
   capacity: number,
   poseAtlas: PoseAtlas | null,
   kits: ReadonlyMap<string, KitConfig> = new Map(),
+  worldH = 2000,
 ): SpritePass {
   // Fire-and-forget regiment load; falls back to the hardcoded defaults until
   // the fetch resolves. Validation + warning live inside loadRegimentsAsync.
   void loadRegimentsAsync();
 
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
-  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld'] as const);
+  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld', 'u_worldH'] as const);
 
   // Ground-shadow program. Reuses the same VAO and atlas as the sprite pass;
   // its VS reads attributes 0,1,2,4,9,10,11 and projects each vertex onto the
@@ -882,11 +883,15 @@ export function createSpritePass(
         gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, wn);
       }
 
-      // ---- Sprite draws.
+      // ---- Sprite draws. Depth-write the body z derived from foot-Y so that
+      // grass / trees in front (larger foot-Y) cover the body and vice versa.
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
       gl.useProgram(prog);
       gl.uniform1i(u.u_atlas, 0);
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
       gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
+      gl.uniform1f(u.u_worldH, worldH);
 
       // Weapons-behind pass: rear-facings (N/NE/NW) drawn FIRST so the body
       // composited next will occlude the weapon.
@@ -958,6 +963,8 @@ export function createSpritePass(
       }
 
       gl.disable(gl.BLEND);
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
 
       gl.bindVertexArray(null);
     },

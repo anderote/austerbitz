@@ -18,9 +18,8 @@ void main() {
   v_uv = vec2(a_corner.x + 0.5, a_corner.y);
   v_variant = a_variant;
   vec3 clip = u_viewProj * vec3(wp, 1.0);
-  // Depth from foot-Y: larger world-Y is closer (drawn on top).
-  // Map foot-Y → [0.05, 0.95] so terrain (z=0.99) is behind everything.
-  float depth = 0.95 - 0.90 * clamp(a_foot.y / u_worldSize.y, 0.0, 1.0);
+  // Larger foot-Y → closer to viewer → smaller z (drawn on top under LESS).
+  float depth = clamp(0.95 - 0.90 * (a_foot.y / u_worldSize.y), 0.05, 0.95);
   gl_Position = vec4(clip.xy, depth, 1.0);
 }
 `;

@@ -80,6 +80,8 @@ export function createTreesPass(gl: WebGL2RenderingContext, map: WorldMap): Tree
       gl.useProgram(prog);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
       gl.bindVertexArray(vao);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, atlas);
@@ -90,6 +92,8 @@ export function createTreesPass(gl: WebGL2RenderingContext, map: WorldMap): Tree
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
       gl.bindVertexArray(null);
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
     },
   };
 }
