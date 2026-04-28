@@ -25,8 +25,13 @@ export interface UnitKind {
   /** Tint color (RGB 0..255). Multiplied with the sprite cell at render time;
    *  for sprite-less kinds the cell is solid white so this becomes the fill. */
   placeholderColor: [number, number, number];
-  /** Sprite size in world units (≈ meters). */
+  /** Footprint size in world units (≈ meters). Drives hitbox, selection
+   *  disc, group-badge anchor, and health-bar layout. */
   placeholderSize: { w: number; h: number };
+  /** Sprite display size in world units. Defaults to placeholderSize. Override
+   *  when the texture cell is wider than the unit's footprint (e.g. a
+   *  centered figure with extra horizontal padding for muskets/equipment). */
+  spriteSize?: { w: number; h: number };
   /** Vertical offset from sprite center to foot line, in world units.
    *  Defaults to placeholderSize.h * 0.5 (bottom of quad), which is correct
    *  when the texture has minimal empty padding below the figure. Override

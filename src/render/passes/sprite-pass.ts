@@ -318,8 +318,10 @@ export function createSpritePass(
           scratchUv[k * 4 + 2] = uv[2];
           scratchUv[k * 4 + 3] = uv[3];
         } else {
-          scratchSize[k * 2 + 0] = kind.placeholderSize.w;
-          scratchSize[k * 2 + 1] = kind.placeholderSize.h;
+          const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;
+          const sprH = kind.spriteSize?.h ?? kind.placeholderSize.h;
+          scratchSize[k * 2 + 0] = sprW;
+          scratchSize[k * 2 + 1] = sprH;
           scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;
           scratchColor[k * 4 + 1] = kind.placeholderColor[1] / 255;
           scratchColor[k * 4 + 2] = kind.placeholderColor[2] / 255;

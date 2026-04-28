@@ -30,7 +30,7 @@ const REPO_ROOT = resolve(__dirname, '..');
 const SPRITES = resolve(REPO_ROOT, 'public', 'sprites');
 const POSES_OUT = resolve(SPRITES, 'poses');
 
-const CELL_W = 16;
+const CELL_W = 32;
 const CELL_H = 36;
 
 // 3x3 cell grid layout used by the components atlas. Mirrors POSE_CELLS in

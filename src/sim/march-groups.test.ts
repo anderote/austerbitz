@@ -23,4 +23,9 @@ describe('march-groups', () => {
     const g = createMarchGroup(1, [], { x: 1, y: 0 }, 0);
     expect(removeMarchGroupMember(g, 99)).toBe(true);
   });
+
+  it('createMarchGroup initializes paceMaxDist to 0', () => {
+    const g = createMarchGroup(1, [10, 11], { x: 1, y: 0 }, 0);
+    expect(g.paceMaxDist).toBe(0);
+  });
 });

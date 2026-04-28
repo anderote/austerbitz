@@ -4,11 +4,11 @@ import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
 import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation } from './commands';
-import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions } from './formation';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
 import { isDead, EntityState } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
-  bumpSpacing, bumpRanks, spacingMultiplier,
+  bumpSpacing, bumpRanks, spacingMultiplier, minSpacingIndexForMult,
   MARCH_FLOOR_MULT, isTightStance,
   type FormationParams,
 } from './formation-params';
@@ -38,6 +38,8 @@ export interface SelectionController {
   readonly formationParams: FormationParams;
   /** True when units are packed (or about to pack) at a sub-march-floor spacing. */
   readonly tightHeld: boolean;
+  /** Hidden rank snapshot used to preserve the rectangle across [/] presses. */
+  readonly lockedRanks: number | null;
   /** Called once per frame. Currently a no-op; reserved for per-frame work. */
   update(dt: number): void;
   destroy(): void;
@@ -52,7 +54,7 @@ interface ControllerInternals {
   onMouseMove(e: { clientX: number; clientY: number }): void;
   onMouseUp(e: { button: number; clientX: number; clientY: number; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void;
   onKeyDown(e: { key: string; code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void;
-  onKeyUp(e: { code: string }): void;
+  onKeyUp(e: { key: string; code: string }): void;
   onBlur(): void;
   getCursorMode(): CursorMode;
 }
@@ -82,6 +84,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   let cursorMode: CursorMode = 'normal';
   const formationParams = createFormationParams();
   let tightHeld = false;
+  let ctrlHeld = false;
+  let lastCursorScreen: { x: number; y: number } | null = null;
   let lastSelectionSig = 0;
   let pendingClickStart: { x: number; y: number } | null = null;
   let pendingFormationStart: { x: number; y: number } | null = null;
@@ -91,6 +95,11 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   // pushed back to their slots.
   let fHeld = false;
   let lockedGrid: { centroid: Vec2; forward: Vec2; ranks: number } | null = null;
+  // Hidden rank snapshot used to preserve the visual rectangle across spacing
+  // changes when the user has not set an explicit rank override. Separate from
+  // formationParams.ranks (which is user-facing and shown as "auto" when null)
+  // so that pressing [ ] never appears to change ranks in the UI.
+  let lockedRanks: number | null = null;
   const DOUBLE_CLICK_MS = 300;
   const DOUBLE_CLICK_PX = 6;
 
@@ -153,23 +162,23 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     lockedGrid = null;
   }
 
-  // Snapshot rank count BEFORE issuing reform — once units are packed tight,
-  // inferRanksFromPositions can't tell ranks apart anymore, so capture the
-  // current arrangement now and lock it in. Subsequent spacing changes will
-  // preserve this rank count instead of collapsing.
-  function snapshotRanksIfMissing(fwd: { x: number; y: number }): void {
-    if (formationParams.ranks == null) {
+  // Resolve the rank count to reform with. User override (formationParams.ranks)
+  // wins. Otherwise fall back to the hidden snapshot — captured once from the
+  // current positions — so subsequent spacing changes preserve the rectangle
+  // even after units pack tight (which breaks live inference).
+  function effectiveReformRanks(fwd: { x: number; y: number }): number | null {
+    if (formationParams.ranks != null) return formationParams.ranks;
+    if (lockedRanks == null) {
       const units = materializeUnits(world, selection.ids);
-      if (units.length > 0) {
-        formationParams.ranks = inferRanksFromPositions(units, fwd);
-      }
+      if (units.length > 0) lockedRanks = inferRanksFromPositions(units, fwd);
     }
+    return lockedRanks;
   }
 
   function reformNow(): void {
     const fwd = averageFacing();
-    snapshotRanksIfMissing(fwd);
-    issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), formationParams.ranks);
+    const ranks = effectiveReformRanks(fwd);
+    issueReformInPlace(world, selection, fwd, spacingMultiplier(formationParams), ranks);
   }
 
   function onMouseDown(e: { button: number; clientX: number; clientY: number; target: EventTarget | null }): void {
@@ -190,6 +199,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   }
 
   function onMouseMove(e: { clientX: number; clientY: number }): void {
+    lastCursorScreen = { x: e.clientX, y: e.clientY };
     if (pendingClickStart) {
       drag.currentScreen = { x: e.clientX, y: e.clientY };
       const dx = e.clientX - pendingClickStart.x;
@@ -351,8 +361,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         let assignments;
         if (isTightStance(formationParams)) {
           const fwd = averageFacing();
-          snapshotRanksIfMissing(fwd);
-          assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, formationParams.ranks, opts);
+          const ranks = effectiveReformRanks(fwd);
+          assignments = issueReformAtTarget(world, selection, w, fwd, MARCH_FLOOR_MULT, ranks, opts);
         } else {
           assignments = issueMove(world, selection, w, opts);
         }
@@ -367,6 +377,10 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   }
 
   function onKeyDown(e: { key: string; code: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): void {
+    if (e.key === 'Control' || e.key === 'Meta') {
+      ctrlHeld = true;
+      // fall through; other modifiers may still drive other handlers below
+    }
     if (e.key === 'Escape') {
       if (formationDrag.active) {
         pendingFormationStart = null;
@@ -412,7 +426,16 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (selection.ids.size === 0) return;
-      bumpSpacing(formationParams, e.code === 'BracketLeft' ? -1 : +1);
+      // Floor: never pack units inside their own body radius.
+      const units = materializeUnits(world, selection.ids);
+      let minMult = 0;
+      for (const u of units) {
+        const r = u.bodyRadius ?? 0;
+        const m = (2 * r) / Math.min(u.spacingX, u.spacingY);
+        if (m > minMult) minMult = m;
+      }
+      const floorIdx = minSpacingIndexForMult(minMult);
+      bumpSpacing(formationParams, e.code === 'BracketLeft' ? -1 : +1, floorIdx);
       reformNow();
       tightHeld = isTightStance(formationParams);
       return;
@@ -423,6 +446,9 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (selection.ids.size === 0) return;
       bumpRanks(formationParams, e.code === 'Comma' ? -1 : +1);
+      // Drop the hidden snapshot — user is taking explicit control of ranks,
+      // and if they cycle back to "auto" we want a fresh inference.
+      lockedRanks = null;
       reformNow();
       tightHeld = isTightStance(formationParams);
       return;
@@ -458,7 +484,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     }
   }
 
-  function onKeyUp(e: { code: string }): void {
+  function onKeyUp(e: { key: string; code: string }): void {
+    if (e.key === 'Control' || e.key === 'Meta') ctrlHeld = false;
     if (e.code === 'KeyF') {
       clearGridHold();
     }
@@ -471,6 +498,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     formationDrag.active = false;
     cursorMode = 'normal';
     clearGridHold();
+    ctrlHeld = false;
+    lastCursorScreen = null;
   }
 
   // DOM bindings — narrow event types pass through to the pure handlers above.
@@ -478,7 +507,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   const mm = (e: MouseEvent) => onMouseMove({ clientX: e.clientX, clientY: e.clientY });
   const mu = (e: MouseEvent) => onMouseUp({ button: e.button, clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
   const kd = (e: KeyboardEvent) => onKeyDown({ key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
-  const ku = (e: KeyboardEvent) => onKeyUp({ code: e.code });
+  const ku = (e: KeyboardEvent) => onKeyUp({ key: e.key, code: e.code });
   const bl = () => onBlur();
 
   if (typeof window !== 'undefined') {
@@ -491,24 +520,38 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
   }
 
   function formationPreview(): FormationPreview | null {
-    if (!formationDrag.active) return null;
     if (cursorMode !== 'normal') return null;
-    const units = materializeUnits(world, selection.ids);
-    if (units.length === 0) return null;
-    const startW = formationDrag.startWorld;
-    const endW = screenToWorld(camera, formationDrag.currentScreen);
-    const { slots, rect } = computeFormationSlots({
-      units, startW, endW,
-      spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
-      ranksOverride: null,
-    });
-    return { rect, slots };
+
+    // Drag preview wins when an RMB drag is active.
+    if (formationDrag.active) {
+      const units = materializeUnits(world, selection.ids);
+      if (units.length === 0) return null;
+      const startW = formationDrag.startWorld;
+      const endW = screenToWorld(camera, formationDrag.currentScreen);
+      const { slots, rect } = computeFormationSlots({
+        units, startW, endW,
+        spacingMult: Math.max(spacingMultiplier(formationParams), MARCH_FLOOR_MULT),
+        ranksOverride: null,
+      });
+      return { rect, slots };
+    }
+
+    // March preview when Ctrl is held over the canvas with a non-empty selection.
+    if (ctrlHeld && selection.ids.size > 0 && lastCursorScreen) {
+      const w = screenToWorld(camera, lastCursorScreen);
+      const r = computeMarchSlots(world, selection.ids, w, formationParams);
+      if (!r) return null;
+      return { rect: r.rect, slots: r.slots };
+    }
+
+    return null;
   }
 
   return {
     get cursorMode() { return cursorMode; },
     get formationParams() { return formationParams; },
     get tightHeld() { return tightHeld; },
+    get lockedRanks() { return lockedRanks; },
     formationPreview,
     update(_dt) {
       const e = world.entities;
@@ -526,6 +569,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       sig = (sig * 2654435761) ^ first ^ (last << 1);
       if (sig !== lastSelectionSig) {
         resetFormationParams(formationParams);
+        lockedRanks = null;
         tightHeld = false;
         clearGridHold();
         lastSelectionSig = sig;

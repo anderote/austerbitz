@@ -10,6 +10,9 @@ export interface MarchGroup {
   phaseStartT: number;
   /** Unit-vector facing direction, locked at issue time. */
   forward: Vec2;
+  /** Max distance-to-slot across live members, recomputed each tick by march-system.
+   *  Used by orders-system to pace the group so the furthest unit sets the speed. */
+  paceMaxDist: number;
 }
 
 export function createMarchGroup(
@@ -24,6 +27,7 @@ export function createMarchGroup(
     phase: 'march',
     phaseStartT: simTime,
     forward: { x: forward.x, y: forward.y },
+    paceMaxDist: 0,
   };
 }
 

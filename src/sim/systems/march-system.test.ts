@@ -131,3 +131,51 @@ describe('marchSystem', () => {
     expect(world.marchGroups.get(gid)!.phase).toBe('march');
   });
 });
+
+describe('marchSystem paceMaxDist', () => {
+  it('computes max distance from each member to its slot', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawnInfantry(world, 0, 0, 0);
+    const b = spawnInfantry(world, 0, 10, 0);
+    const gid = 1;
+    world.marchGroups.set(gid, createMarchGroup(gid, [a, b], { x: 1, y: 0 }, 0));
+    // Slots: a's slot at (50, 0) → distance 50; b's slot at (52, 0) → distance 42.
+    world.orderQueue.set(a, [{ kind: 'march-formation', targetX: 50, targetY: 0, groupId: gid }]);
+    world.orderQueue.set(b, [{ kind: 'march-formation', targetX: 52, targetY: 0, groupId: gid }]);
+    rebuildGrid(world);
+
+    marchSystem(world, 1 / 60);
+
+    expect(world.marchGroups.get(gid)!.paceMaxDist).toBeCloseTo(50, 5);
+  });
+
+  it('reflects the live max across both march and volley phases', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawnInfantry(world, 0, 0, 0);
+    const gid = 1;
+    const g = createMarchGroup(gid, [a], { x: 1, y: 0 }, 0);
+    g.phase = 'volley';
+    world.marchGroups.set(gid, g);
+    world.orderQueue.set(a, [{ kind: 'march-formation', targetX: 30, targetY: 40, groupId: gid }]);
+    rebuildGrid(world);
+
+    marchSystem(world, 1 / 60);
+
+    // Distance = sqrt(30² + 40²) = 50, even in volley phase.
+    expect(world.marchGroups.get(gid)!.paceMaxDist).toBeCloseTo(50, 5);
+  });
+
+  it('paceMaxDist is ~0 when all members are at their slots', () => {
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    // Spawn at (100, 0) — exactly at the target slot.
+    const a = spawnInfantry(world, 0, 100, 0);
+    const gid = 1;
+    world.marchGroups.set(gid, createMarchGroup(gid, [a], { x: 1, y: 0 }, 0));
+    world.orderQueue.set(a, [{ kind: 'march-formation', targetX: 100, targetY: 0, groupId: gid }]);
+    rebuildGrid(world);
+
+    marchSystem(world, 1 / 60);
+
+    expect(world.marchGroups.get(gid)!.paceMaxDist).toBeLessThanOrEqual(0.01);
+  });
+});

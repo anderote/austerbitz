@@ -1,9 +1,9 @@
 import type { World, Order } from '../sim/world';
 import type { Selection } from './selection';
 import type { Vec2 } from '../util/math';
-import { computeFormationSlots, assignFormationSlots, liveFormationUnits, syntheticFormationDrag, inferRanksFromPositions } from './formation';
+import { computeFormationSlots, assignFormationSlots, liveFormationUnits, syntheticFormationDrag, inferRanksFromPositions, computeMarchSlots } from './formation';
 import { createMarchGroup } from '../sim/march-groups';
-import { spacingMultiplier, type FormationParams } from './formation-params';
+import type { FormationParams } from './formation-params';
 
 export interface OrderOpts {
   /** Append to the end of each unit's queue instead of replacing it. */
@@ -203,40 +203,16 @@ export function issueMarchFormation(
   target: Vec2,
   formationParams: FormationParams,
 ): void {
-  const units = liveFormationUnits(world, sel.ids);
-  if (units.length === 0) return;
+  const r = computeMarchSlots(world, sel.ids, target, formationParams);
+  if (!r) return;
 
-  // Centroid of the live selection.
-  let cx = 0, cy = 0;
-  for (const u of units) { cx += u.x; cy += u.y; }
-  cx /= units.length; cy /= units.length;
-
-  // Forward = direction from centroid to target. Fall back to +x if degenerate.
-  let fx = target.x - cx;
-  let fy = target.y - cy;
-  const len = Math.hypot(fx, fy);
-  if (len < 1e-6) { fx = 1; fy = 0; } else { fx /= len; fy /= len; }
-  const forwardW: Vec2 = { x: fx, y: fy };
-
-  const spacingMult = spacingMultiplier(formationParams);
-  const chosenRanks = formationParams.ranks ?? inferRanksFromPositions(units, forwardW);
-
-  // Synthetic drag anchored at the TARGET (not the centroid) so slots land at
-  // the destination after the march.
-  const { startW, endW } = syntheticFormationDrag(units, forwardW, chosenRanks, spacingMult, target);
-  const { slots, forward } = computeFormationSlots({
-    units, startW, endW, spacingMult, ranksOverride: chosenRanks,
-  });
-  const targets = assignFormationSlots(units, slots, forward);
-
-  // Allocate the group and dispatch orders.
   const gid = world.nextMarchGroupId++;
-  const memberIds = units.map(u => u.id);
-  world.marchGroups.set(gid, createMarchGroup(gid, memberIds, forwardW, world.simTime));
+  const memberIds = r.units.map(u => u.id);
+  world.marchGroups.set(gid, createMarchGroup(gid, memberIds, r.forward, world.simTime));
 
-  for (let i = 0; i < units.length; i++) {
-    const id = units[i]!.id;
-    const t = targets[i]!;
+  for (let i = 0; i < r.units.length; i++) {
+    const id = r.units[i]!.id;
+    const t = r.targets[i]!;
     world.orderQueue.set(id, [{
       kind: 'march-formation',
       targetX: t.x,

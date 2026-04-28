@@ -78,7 +78,9 @@ export const ordersSystem: System = (world, dt) => {
         e.velY[id] = (dy / dist) * settle;
         writeFacingIntent(e, id, dx, dy);
       } else {
-        const speed = baseSpeed * MARCH_SPEED_FACTOR;
+        const marchSpeed = baseSpeed * MARCH_SPEED_FACTOR;
+        const pace = group.paceMaxDist > 0 ? Math.min(1, dist / group.paceMaxDist) : 0;
+        const speed = marchSpeed * pace;
         e.velX[id] = (dx / dist) * speed;
         e.velY[id] = (dy / dist) * speed;
         writeFacingIntent(e, id, dx, dy);

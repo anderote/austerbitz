@@ -46,10 +46,23 @@ export function resetFormationParams(p: FormationParams): void {
   p.ranks = null;
 }
 
-export function bumpSpacing(p: FormationParams, dir: 1 | -1): void {
+export function bumpSpacing(p: FormationParams, dir: 1 | -1, minIndex = 0): void {
+  const lo = Math.max(0, Math.min(SPACING_STEPS.length - 1, minIndex));
   const next = p.spacingIndex + dir;
-  if (next < 0 || next >= SPACING_STEPS.length) return; // clamp at ends
+  if (next < lo || next >= SPACING_STEPS.length) return; // clamp at ends
   p.spacingIndex = next;
+}
+
+/**
+ * Smallest spacing-step index whose multiplier keeps the given (per-unit)
+ * minimum-spacing-multiplier achievable. Used to floor `[` so units never
+ * pack into overlap.
+ */
+export function minSpacingIndexForMult(minMult: number): number {
+  for (let i = 0; i < SPACING_STEPS.length; i++) {
+    if (SPACING_STEPS[i]!.mult >= minMult) return i;
+  }
+  return SPACING_STEPS.length - 1;
 }
 
 /**

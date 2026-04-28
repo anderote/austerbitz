@@ -1,5 +1,7 @@
 import type { Vec2 } from '../util/math';
 import type { World } from '../sim/world';
+import type { FormationParams } from './formation-params';
+import { spacingMultiplier } from './formation-params';
 import { getUnitKindByIndex } from '../data/units';
 import { isDead } from '../sim/entities';
 
@@ -9,6 +11,9 @@ export interface FormationUnit {
   y: number;
   spacingX: number;
   spacingY: number;
+  /** Physical body radius — used to floor the spacing multiplier so units
+   *  never get packed into overlap. Optional in pure-math test fixtures. */
+  bodyRadius?: number;
 }
 
 export interface FormationInput {
@@ -250,6 +255,10 @@ export function assignFormationSlots(
  *
  * `computeFormationSlots` interprets drag direction as the front-rank axis;
  * the perpendicular is depth. So the synthetic drag lies along perp(forwardW).
+ *
+ * The drag is anchored such that the formation's overall centroid (not the
+ * front rank) lands on the centroid arg — important for in-place reforms,
+ * where changing spacing/ranks should not drift the formation's center.
  */
 export function syntheticFormationDrag(
   units: FormationUnit[],
@@ -271,10 +280,15 @@ export function syntheticFormationDrag(
     cx /= N; cy /= N;
   }
 
-  let spacingX = 0;
-  for (const u of units) if (u.spacingX > spacingX) spacingX = u.spacingX;
+  let spacingX = 0, spacingY = 0;
+  for (const u of units) {
+    if (u.spacingX > spacingX) spacingX = u.spacingX;
+    if (u.spacingY > spacingY) spacingY = u.spacingY;
+  }
   if (spacingX <= 0) spacingX = 1;
+  if (spacingY <= 0) spacingY = 1;
   spacingX *= spacingMult;
+  spacingY *= spacingMult;
 
   const r = Math.max(1, Math.min(ranks, N));
   const frontCount = Math.ceil(N / r);
@@ -283,15 +297,23 @@ export function syntheticFormationDrag(
   const dx = -forwardW.y;
   const dy = forwardW.x;
 
+  // computeFormationSlots places rank 0 at the drag midpoint and extends
+  // subsequent ranks BACKWARD (along -forward). To keep the formation's
+  // overall centroid on `cx,cy` (instead of just rank 0), shift the drag
+  // forward by half the formation depth.
+  const halfDepth = ((r - 1) * spacingY) / 2;
+  const ax = cx + forwardW.x * halfDepth;
+  const ay = cy + forwardW.y * halfDepth;
+
   // When frontCount == 1, halfFront == 0 → both endpoints collapse to the
-  // centroid, and computeFormationSlots' dragLen<eps fallback would lose our
+  // anchor, and computeFormationSlots' dragLen<eps fallback would lose our
   // facing. Emit a tiny offset along dragDir to preserve `forward`.
   const eps = 1e-3;
   const off = halfFront < eps ? eps : halfFront;
 
   return {
-    startW: { x: cx - dx * off, y: cy - dy * off },
-    endW:   { x: cx + dx * off, y: cy + dy * off },
+    startW: { x: ax - dx * off, y: ay - dy * off },
+    endW:   { x: ax + dx * off, y: ay + dy * off },
   };
 }
 
@@ -334,7 +356,59 @@ export function liveFormationUnits(world: World, ids: Iterable<number>): Formati
       y: e.posY[id]!,
       spacingX: kind.baseStats.formationSpacing.x,
       spacingY: kind.baseStats.formationSpacing.y,
+      bodyRadius: kind.baseStats.bodyRadius,
     });
   }
   return out;
+}
+
+export interface MarchSlotsResult {
+  /** Slot world-positions in row-major order from `computeFormationSlots`. */
+  slots: Vec2[];
+  /** Bounding rectangle of the formation footprint. */
+  rect: { tl: Vec2; tr: Vec2; br: Vec2; bl: Vec2 };
+  /** Unit-vector forward direction (centroid → target). */
+  forward: Vec2;
+  /** Per-unit Hungarian-assigned destinations, parallel to `units`. */
+  targets: Vec2[];
+  /** The live formation units used to build the slots, in their assignment order. */
+  units: FormationUnit[];
+}
+
+/**
+ * Compute the pivoted formation footprint for a march to `target`. Pivots the
+ * selection so its facing points from current centroid to `target`, anchored
+ * at `target` so the formation lands at the destination after marching.
+ *
+ * Pure read of world state; no side effects. Returns null when no live units.
+ */
+export function computeMarchSlots(
+  world: World,
+  ids: Iterable<number>,
+  target: Vec2,
+  formationParams: FormationParams,
+): MarchSlotsResult | null {
+  const units = liveFormationUnits(world, ids);
+  if (units.length === 0) return null;
+
+  let cx = 0, cy = 0;
+  for (const u of units) { cx += u.x; cy += u.y; }
+  cx /= units.length; cy /= units.length;
+
+  let fx = target.x - cx;
+  let fy = target.y - cy;
+  const len = Math.hypot(fx, fy);
+  if (len < 1e-6) { fx = 1; fy = 0; } else { fx /= len; fy /= len; }
+  const forwardW: Vec2 = { x: fx, y: fy };
+
+  const spacingMult = spacingMultiplier(formationParams);
+  const chosenRanks = formationParams.ranks ?? inferRanksFromPositions(units, forwardW);
+
+  const { startW, endW } = syntheticFormationDrag(units, forwardW, chosenRanks, spacingMult, target);
+  const { slots, rect, forward: dragForward } = computeFormationSlots({
+    units, startW, endW, spacingMult, ranksOverride: chosenRanks,
+  });
+  const targets = assignFormationSlots(units, slots, dragForward);
+
+  return { slots, rect, forward: forwardW, targets, units };
 }

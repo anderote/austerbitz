@@ -31,6 +31,20 @@ export const marchSystem: System = (world, _dt) => {
       continue;
     }
 
+    // Pace: max distance any live member has to its slot. Drives lock-step
+    // velocity in orders-system so the furthest unit sets the group's pace.
+    let paceMax2 = 0;
+    for (const id of group.members) {
+      const q = world.orderQueue.get(id);
+      const head = q && q[0];
+      if (!head || head.kind !== 'march-formation') continue;
+      const dx = head.targetX - e.posX[id]!;
+      const dy = head.targetY - e.posY[id]!;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > paceMax2) paceMax2 = d2;
+    }
+    group.paceMaxDist = Math.sqrt(paceMax2);
+
     // 2. Phase transitions.
     if (group.phase === 'volley') {
       if (world.simTime - group.phaseStartT >= VOLLEY_DURATION) {

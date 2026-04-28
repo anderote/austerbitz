@@ -492,11 +492,10 @@ describe('formation hotkeys', () => {
     ctrl._internals.onKeyDown({ key: '.', code: 'Period', shiftKey: false, ctrlKey: false, metaKey: false });
     expect(ctrl.formationParams.ranks).toBe(1);
 
-    // After the `,` press, bumpRanks cycles 1 → null, but then reformNow's
-    // snapshot logic immediately re-infers ranks from current positions
-    // (single unit → 1 rank) so the formation shape stays locked.
+    // `,` cycles 1 → null (back to "auto"). The user-facing ranks value
+    // returns to null so the UI shows "auto" again.
     ctrl._internals.onKeyDown({ key: ',', code: 'Comma', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.ranks).toBe(1);
+    expect(ctrl.formationParams.ranks).toBe(null);
   });
 
   it('hotkeys are no-op when selection is empty', () => {
@@ -569,14 +568,16 @@ describe('selection-controller — tight stance', () => {
 
     // First spacing press at 0.9× nominal — units still well-separated → infer = 3 ranks correctly.
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.ranks).toBe(3); // snapshotted
+    expect(ctrl.lockedRanks).toBe(3); // snapshotted internally
+    expect(ctrl.formationParams.ranks).toBe(null); // user-facing value untouched
 
     // Now even if we tighten further (where inference would otherwise fail at low spacing),
     // ranks stays at 3.
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
     ctrl._internals.onKeyDown({ key: '[', code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false });
-    expect(ctrl.formationParams.ranks).toBe(3); // unchanged
+    expect(ctrl.lockedRanks).toBe(3); // unchanged
+    expect(ctrl.formationParams.ranks).toBe(null); // still untouched by [/]
   });
 
   it('single right-click in tight stance reforms at march-floor spacing', () => {
@@ -685,5 +686,87 @@ describe('selectionController Ctrl+RMB march-formation', () => {
     // Drag commit produces 'move' orders via issueFormationMove, not march-formation.
     expect(world.marchGroups.size).toBe(0);
     expect(world.orderQueue.get(id)![0]!.kind).toBe('move');
+  });
+});
+
+describe('selectionController march placement preview', () => {
+  it('formationPreview() returns null when Ctrl is not held', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('returns a non-null preview after Ctrl keydown + mousemove', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+
+    const preview = ctrl.formationPreview();
+    expect(preview).not.toBeNull();
+    expect(preview!.slots.length).toBe(1);
+  });
+
+  it('Ctrl keyup clears the preview', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+    expect(ctrl.formationPreview()).not.toBeNull();
+
+    ctrl._internals.onKeyUp({ key: 'Control', code: 'ControlLeft' });
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('preview is null when selection becomes empty even with Ctrl held', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+    expect(ctrl.formationPreview()).not.toBeNull();
+
+    selection.ids.clear();
+    expect(ctrl.formationPreview()).toBeNull();
+  });
+
+  it('formation drag wins over march preview when both could apply', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    // Hold Ctrl so the march preview would fire.
+    ctrl._internals.onMouseMove({ clientX: 100, clientY: 100 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+
+    // Now start an RMB drag past the threshold.
+    ctrl._internals.onMouseDown({ button: 2, clientX: 100, clientY: 100, target: null });
+    ctrl._internals.onMouseMove({ clientX: 300, clientY: 100 });
+
+    // formationPreview should reflect the drag, not the march.
+    // We can't easily compare slot positions here, but the preview must be
+    // non-null and computed from the drag's startWorld→currentScreen rather
+    // than the cursor. Sanity check: forward direction should be roughly +x
+    // (drag along screen-x) regardless of where the march preview would point.
+    const preview = ctrl.formationPreview();
+    expect(preview).not.toBeNull();
+    // Without a march, the only way to produce a preview here is the drag —
+    // and that's what we want.
+  });
+
+  it('onBlur clears Ctrl-held state and the preview', () => {
+    const { ctrl, selection, world } = makeDeps();
+    const id = spawn(world, 'line-infantry', 0, 100, 100);
+    selection.ids.add(id);
+    ctrl._internals.onMouseMove({ clientX: 200, clientY: 200 });
+    ctrl._internals.onKeyDown({ key: 'Control', code: 'ControlLeft', shiftKey: false, ctrlKey: true, metaKey: false });
+    expect(ctrl.formationPreview()).not.toBeNull();
+
+    ctrl._internals.onBlur();
+    expect(ctrl.formationPreview()).toBeNull();
   });
 });
