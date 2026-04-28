@@ -55,8 +55,6 @@ export function createCombatSystem(fireOrders: FireOrders): System {
       const weapon = kind.weapon;
       if (!weapon) continue;
 
-      const sightRange = kind.baseStats.sightRange;
-      const sightSq = sightRange * sightRange;
       const range = kind.baseStats.weaponRange;
       const rangeSq = range * range;
       const team = e.team[id]!;
@@ -65,10 +63,10 @@ export function createCombatSystem(fireOrders: FireOrders): System {
 
       // Step 1: acquire a valid target. Fast-path on prev target if still
       // alive + in weapon range; otherwise scan-throttled grid query at
-      // sightRange (closest pick). targetD2 carries the chosen target's
-      // squared distance so the fire gate below can compare to rangeSq.
+      // weaponRange and take the first valid opposing-team entity. Distance
+      // is checked against rangeSq because the grid rect overscans the
+      // inscribed circle by ~21% at the corners.
       let targetId = -1;
-      let targetD2 = Infinity;
       const prev = e.targetId[id]!;
       if (prev !== -1 && e.alive[prev] === 1 && e.team[prev] !== team) {
         const ps = e.state[prev]!;
@@ -79,10 +77,8 @@ export function createCombatSystem(fireOrders: FireOrders): System {
         ) {
           const dxp = e.posX[prev]! - px;
           const dyp = e.posY[prev]! - py;
-          const d2p = dxp * dxp + dyp * dyp;
-          if (d2p <= rangeSq) {
+          if (dxp * dxp + dyp * dyp <= rangeSq) {
             targetId = prev;
-            targetD2 = d2p;
           }
         }
       }
@@ -90,12 +86,10 @@ export function createCombatSystem(fireOrders: FireOrders): System {
         if ((tick + id) % SCAN_PERIOD !== 0) continue;
         const count = gridQueryRect(
           grid,
-          px - sightRange, py - sightRange,
-          px + sightRange, py + sightRange,
+          px - range, py - range,
+          px + range, py + range,
           candidateBuf,
         );
-        let bestId = -1;
-        let bestD2 = Infinity;
         for (let k = 0; k < count; k++) {
           const cid = candidateBuf[k]!;
           if (e.alive[cid] === 0) continue;
@@ -108,26 +102,17 @@ export function createCombatSystem(fireOrders: FireOrders): System {
           ) continue;
           const dx = e.posX[cid]! - px;
           const dy = e.posY[cid]! - py;
-          const d2 = dx * dx + dy * dy;
-          if (d2 > sightSq) continue;
-          if (d2 < bestD2) {
-            bestD2 = d2;
-            bestId = cid;
-          }
+          if (dx * dx + dy * dy > rangeSq) continue;
+          targetId = cid;
+          e.targetId[id] = cid;
+          break;
         }
-        if (bestId === -1) continue;
-        targetId = bestId;
-        targetD2 = bestD2;
-        e.targetId[id] = bestId;
+        if (targetId === -1) continue;
       }
 
-      // Step 2: hold-then-fire decision. Targets between weaponRange and
-      // sightRange are acquired (targetId is set above) but cannot be shot
-      // at — skip the firing logic entirely. Inside weapon range: join a
-      // hot volley with 0 windup, else fire alone with full windup once
-      // the per-id maxHold expires, else wait (stateT keeps incrementing
-      // in tickStates).
-      if (targetD2 > rangeSq) continue;
+      // Step 2: hold-then-fire decision. Join a hot volley with 0 windup,
+      // else fire alone with full windup once the per-id maxHold expires,
+      // else wait (stateT keeps incrementing in tickStates).
       const tx = e.posX[targetId]!;
       const ty = e.posY[targetId]!;
       const hot = hasRecentFire(fireSignal, grid, px, py, team, tick, VOLLEY_WINDOW_TICKS);
