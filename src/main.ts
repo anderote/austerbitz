@@ -52,6 +52,8 @@ import { loadKits } from './render/poses/kit-loader';
 import { startLiveReload } from './render/poses/live-reload';
 import { composeCombinedAtlas } from './render/poses/combined-atlas';
 import { generateCombinedAtlas, COMBINED_SHEET_W, COMBINED_SHEET_H } from './render/sprite-atlas';
+import { profiler } from './dev/profiler';
+import { createPerfPanel } from './ui/perf-panel';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
@@ -330,6 +332,7 @@ const groupBadges = createGroupBadges(overlay);
 const placementInfo = createPlacementInfo(overlay);
 const movePreview = createMovePreview(overlay);
 createMusicPlayer(overlay);
+const perfPanel = createPerfPanel(overlay, input);
 
 const controller = createSelectionController({
   canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
@@ -352,6 +355,7 @@ function computeStanceSummary(sel: Selection, e: Entities): StanceSummary {
 let smoothedFps = 60;
 let simElapsed = 0;
 function frame(t: number) {
+  profiler.beginFrame();
   const dt = Math.min(0.1, (t - lastT) / 1000);
   lastT = t;
   simElapsed += dt;
@@ -359,26 +363,30 @@ function frame(t: number) {
   input.beginFrame();
   cameraControls.update(dt);
   controller.update(dt);
-  tickWorld(world, dt);
-  emitDustForFrame(world, puffs, dt);
-  tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
-  updatePuffs(puffs, dt);
+  profiler.time('sim/tickWorld', () => tickWorld(world, dt));
+  profiler.time('puffs/emitDust', () => emitDustForFrame(world, puffs, dt));
+  profiler.time('puffs/ambient', () => tickAmbientClouds(puffs, cloudCfg, dt, world.rng));
+  profiler.time('puffs/update', () => updatePuffs(puffs, dt));
   tickWind(windState, simElapsed, world.rng);
   const wind = windAt(windState, simElapsed);
-  applyWindToPuffs(puffs, wind.x, wind.y, dt);
+  profiler.time('puffs/wind', () => applyWindToPuffs(puffs, wind.x, wind.y, dt));
   windIndicator.update(wind.x, wind.y);
-  coalesceStep(puffs, dt, world.rng, getProfileByIndex);
-  updateParticles(particles, dt, world.bloodSplats);
+  profiler.time('puffs/coalesce', () => coalesceStep(puffs, dt, world.rng, getProfileByIndex));
+  profiler.time('particles/update', () => updateParticles(particles, dt, world.bloodSplats));
   // Drain sim-queued blood splats into the GPU stain pass.
+  profiler.begin('blood/drain');
   const bs = world.bloodSplats;
   for (let i = 0; i < bs.count; i++) {
     renderer.bloodStain.splat(bs.posX[i]!, bs.posY[i]!, bs.radius[i]!, bs.intensity[i]!);
   }
   clearBloodSplats(bs);
+  profiler.end('blood/drain');
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
   const showMovePreview = input.state.keys.has('Space');
   const formationPreview = controller.formationPreview();
-  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
+  profiler.time('render/all', () => {
+    renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
+  });
   hud.update(smoothedFps, world, controller.cursorMode);
   placementInfo.update(world, camera, selection, formationPreview);
   movePreview.update(camera);
@@ -390,6 +398,8 @@ function frame(t: number) {
   cgPanel.update(world, controlGroups);
   fcPanel.update(selection, controller.formationParams, computeStanceSummary(selection, world.entities));
   groupBadges.update(world, camera, selection, controlGroups);
+  profiler.endFrame();
+  perfPanel.update();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

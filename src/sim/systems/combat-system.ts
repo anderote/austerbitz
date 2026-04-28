@@ -54,7 +54,7 @@ export function maxHoldFor(id: number, stance: number): number {
 }
 
 export function createCombatSystem(fireOrders: FireOrders): System {
-  return (world, _dt) => {
+  return function combatSystem(world, _dt) {
     const e = world.entities;
     const grid = world.grid;
     const fireSignal = world.fireSignal;
@@ -151,6 +151,14 @@ export function createCombatSystem(fireOrders: FireOrders): System {
 
       if (stance === FireStance.AtWill) {
         triggerFire(e, fireOrders, id, tx, ty, tun.leaderWindup);
+        continue;
+      }
+
+      // Loaded-during-Hold short-circuit: if the unit reloaded while held
+      // and the player just flipped stance, release the shot on the very
+      // next stripe tick — no maxHold wait, no volley signal needed.
+      if (e.holdLoaded[id]) {
+        triggerFire(e, fireOrders, id, tx, ty, tun.joinerWindup);
         continue;
       }
 

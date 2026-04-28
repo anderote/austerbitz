@@ -90,32 +90,37 @@ describe('combat-system — stance behaviour', () => {
   });
 
   it('By Ranks: rank-0 fire signal does not pull rank-1 in', () => {
-    const r0 = spawnLineInfantry(world, 0, 0, 0);
-    const r1 = spawnLineInfantry(world, 0, 0, 5); // different position so rank inference doesn't merge them
-    spawnLineInfantry(world, 1, 30, 0);
-    spawnLineInfantry(world, 1, 30, 5);
+    // r0 is one spacing-y ahead of r1 along facing (east). inferFormationRank
+    // will naturally derive r0=0, r1=1. Both share the same fire-signal cell
+    // neighborhood, so only rank-keying separates them.
+    // line-infantry formationSpacing: x=1.0, y=1.2 → put r0 at restPosX=1.2, r1 at 0.
+    const r0 = spawnLineInfantry(world, 0, 1.2, 0);
+    const r1 = spawnLineInfantry(world, 0, 0, 0);
+    spawnLineInfantry(world, 1, 30, 0); // shared enemy target nearby
     world.entities.stance[r0] = FireStance.ByRanks;
     world.entities.stance[r1] = FireStance.ByRanks;
-
-    // Freeze stateT at 0 so the Idle-hold gate does NOT trigger leader-fire.
-    world.entities.stateT[r0] = 0;
-    world.entities.stateT[r1] = 0;
+    // restPos drives inferFormationRank; set so r0 is ahead of r1 along facing (east).
+    world.entities.restPosX[r0] = 1.2; world.entities.restPosY[r0] = 0;
+    world.entities.restPosX[r1] = 0;   world.entities.restPosY[r1] = 0;
+    // Same restFacing (0 = east) so they qualify as formation neighbors.
+    world.entities.restFacing[r0] = 0;
+    world.entities.restFacing[r1] = 0;
 
     rebuildGrid(world);
 
-    // Run combat-system ticks. Each tick:
-    //  - Re-write a fresh rank-0 fire signal in r0's cell.
-    //  - Pin formationRank so combat-system doesn't overwrite them on the stripe tick.
-    //  - r0 sees a rank-0 hot signal → joins → Aiming.
-    //  - r1 reads rank-1 only → no matching signal → stays Idle.
-    for (let t = 0; t < 8; t++) {
-      writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, 0, world.tickCount);
-      world.entities.formationRank[r0] = 0;
-      world.entities.formationRank[r1] = 1;
-      system(world, 1 / 60);
+    // Run 16 ticks — covers both stripe periods, letting inferFormationRank derive
+    // r0=0, r1=1 naturally. Refresh the rank-0 signal each tick so it stays hot.
+    for (let t = 0; t < 16; t++) {
+      // Rank-0 signal at r0's position; r1 is within the 3x3 neighborhood.
+      writeFireSignal(world.fireSignal, world.grid, 1.2, 0, 0, 0, world.tickCount);
+      system(world, 1/60);
       world.tickCount++;
     }
+
+    // r0 (rank 0) sees the rank-0 signal → joins, transitions to Aiming.
     expect(world.entities.state[r0]).toBe(EntityState.Aiming);
+    // r1 (rank 1) reads with rank=1, finds nothing in the rank-1 bucket,
+    // and stays Idle (well below maxHold).
     expect(world.entities.state[r1]).toBe(EntityState.Idle);
   });
 
@@ -152,7 +157,6 @@ describe('combat-system — stance behaviour', () => {
 
     // Flip to Volley — next combat-system ticks should put it into Aiming.
     world.entities.stance[me] = FireStance.Volley;
-    world.entities.stateT[me] = 999; // ensure idle-hold gate fires immediately
     for (let t = 0; t < 16; t++) {
       system(world, 1 / 60);
       world.tickCount++;

@@ -93,7 +93,7 @@ Done on the existing `combat-system` stripe (`(tick + id) % SCAN_PERIOD === 0`),
    - `fwd = dx*fx + dy*fy`
    - `lat = -dx*fy + dy*fx`
    - If `fwd > 0.5 × spacing.y` AND `|lat| ≤ 0.6 × spacing.x` → count as "rank ahead."
-4. Distinct rank levels ahead = `floor((fwd - 0.5*spacing.y) / spacing.y) + 1`, taking the *minimum* across all qualifying neighbors. Save as `formationRank[i]`, capped at `min(254, MAX_TRACKED_RANKS - 1)` for indexing simplicity.
+4. Distinct rank levels ahead = `floor((fwd - 0.5*spacing.y) / spacing.y) + 1`, taking the **maximum** across all qualifying neighbors. Save as `formationRank[i]`, capped at `min(254, MAX_TRACKED_RANKS - 1)` for indexing simplicity.
 5. No qualifying neighbors → `formationRank[i] = 0`.
 
 When a front-ranker dies, units behind recompute on their next stripe tick (≤ 8 ticks ≈ 130 ms at 60 Hz), unblocking responsively.

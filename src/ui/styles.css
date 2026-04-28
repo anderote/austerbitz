@@ -27,6 +27,16 @@
   white-space: pre;
 }
 
+#ui-root .perf-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: pre;
+  min-width: 280px;
+}
+
 #ui-root .selection-panel {
   position: absolute;
   bottom: 8px;

@@ -76,9 +76,9 @@ export interface Entities {
   state: Uint8Array;        // EntityState (0..8)
   reloadT: Float32Array;
   targetId: Int32Array;     // -1 if none
-  // 1 = clear forward arc (front-rank), 0 = blocked by ≥3 same-team soldiers
-  // along facingIntent. Refreshed on combat-system's SCAN_PERIOD stripe; back
-  // rankers early-exit before target acquisition.
+  // 1 = unit is in rank 0 or 1 (front two ranks) and may fire; 0 = blocked
+  // (rank 2+, the line in front would be hit). Derived from formationRank
+  // every tick after target acquisition.
   canFire: Uint8Array;
 
   // Firing stance + rank within formation. See `FireStance` and

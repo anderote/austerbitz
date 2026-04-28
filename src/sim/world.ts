@@ -6,6 +6,7 @@ import { createDebris, type Debris } from './debris';
 import { createDroppedItems, type DroppedItems } from './dropped-items';
 import { createFireSignal, type FireSignal } from './fire-signal';
 import type { MarchGroup } from './march-groups';
+import { profiler } from '../dev/profiler';
 
 export type System = (world: World, dt: number) => void;
 
@@ -82,8 +83,13 @@ export function rebuildGrid(world: World): void {
 }
 
 export function tickWorld(world: World, dt: number): void {
-  rebuildGrid(world);
-  for (const sys of world.systems) sys(world, dt);
+  profiler.time('sim/gridRebuild', () => rebuildGrid(world));
+  for (const sys of world.systems) {
+    const label = `sim/${sys.name || 'anon'}`;
+    profiler.begin(label);
+    sys(world, dt);
+    profiler.end(label);
+  }
   world.tickCount++;
   world.simTime += dt;
 }

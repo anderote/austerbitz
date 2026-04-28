@@ -23,6 +23,7 @@ import {
   type WeaponOrientation,
 } from '../poses/resolver';
 import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader';
+import { profiler } from '../../dev/profiler';
 import { Pose, POSE_CONFIG } from '../poses/pose-config';
 
 // Held-weapon vertical bob during locomotion. The body sprite's bob is baked
@@ -525,7 +526,9 @@ export function createSpritePass(
       // World Y grows downward, so larger Y = in front. Draw ascending by Y
       // so front sprites overwrite back ones (painter's algorithm).
       sortPosY = e.posY;
+      profiler.begin('render/sprite-ysort');
       sortIdx.subarray(0, n).sort(sortByY);
+      profiler.end('render/sprite-ysort');
 
       const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
       const cavalryDot = CAVALRY_DOT_PIXELS / cam.zoom;
