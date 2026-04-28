@@ -193,6 +193,14 @@ interface WeaponRef {
   facing: Facing;
 }
 
+/** Normalize a `(pose, facing)` raw entry to an object with optional weapons[]. */
+function readPoseFacingWeapons(raw: unknown): readonly { src: Facing }[] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return [];
+  const w = (raw as { weapons?: unknown }).weapons;
+  if (!Array.isArray(w)) return [];
+  return w as { src: Facing }[];
+}
+
 interface HeadRef {
   /** `kit.head.layerPrefix`, e.g. `'shako-standard'`. */
   layerPrefix: string;
@@ -200,11 +208,16 @@ interface HeadRef {
 }
 
 /**
- * Resolve component paths for the source-facing PNGs each kit's weapon
- * palette actually uses. Walks every kit's `weaponPalette` and packs only
- * the unique `(layerPrefix, src)` pairs it references. Returns parallel
- * refs + urls arrays so the caller can fetch + pack them alongside body
- * pose frames.
+ * Resolve component paths for the source-facing PNGs each kit's inline
+ * `weapons[]` orientations actually use. Walks every kit's
+ * `kit.poses[*][*].weapons[]` and packs only the unique `(layerPrefix, src)`
+ * pairs it references. Returns parallel refs + urls arrays so the caller can
+ * fetch + pack them alongside body pose frames.
+ *
+ * Dedup is keyed on `(layerPrefix, src)` — the per-source sprite is identical
+ * regardless of `transform`, since `transform` is applied as a UV flip at
+ * sample time. Packing the same source × multiple transforms once is the
+ * correct economy.
  */
 function collectWeaponRefs(
   kits: ReadonlyMap<string, KitConfig>,
@@ -218,29 +231,44 @@ function collectWeaponRefs(
   const seen = new Set<string>();
   for (const kit of kits.values()) {
     if (!kit.weapon) continue;
-    const palette = kit.weaponPalette ?? [];
-    if (palette.length === 0) {
+    const layerPrefix = kit.weapon.layerPrefix;
+    const poses = kit.poses;
+    if (!poses || typeof poses !== 'object') {
       console.warn(
-        `[pose-atlas] kit '${kit.id}' has a weapon block but no weaponPalette; ` +
+        `[pose-atlas] kit '${kit.id}' has a weapon block but no poses; ` +
           `weapon sprites will not be packed.`,
       );
       continue;
     }
-    for (const entry of palette) {
-      const key = `${kit.weapon.layerPrefix}|${entry.src}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const componentId = `${kit.weapon.layerPrefix}-${facingToComponentSuffix(entry.src)}`;
-      const path = componentPaths.get(componentId);
-      if (!path) {
-        console.warn(
-          `[pose-atlas] weapon sprite '${componentId}' missing from component registry; ` +
-            `skipping src=${entry.src} of '${kit.weapon.layerPrefix}'`,
-        );
-        continue;
+    let kitHadAnyWeapon = false;
+    for (const poseEntry of Object.values(poses)) {
+      if (!poseEntry || typeof poseEntry !== 'object' || Array.isArray(poseEntry)) continue;
+      for (const facingEntry of Object.values(poseEntry)) {
+        const weapons = readPoseFacingWeapons(facingEntry);
+        for (const orientation of weapons) {
+          kitHadAnyWeapon = true;
+          const key = `${layerPrefix}|${orientation.src}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const componentId = `${layerPrefix}-${facingToComponentSuffix(orientation.src)}`;
+          const path = componentPaths.get(componentId);
+          if (!path) {
+            console.warn(
+              `[pose-atlas] weapon sprite '${componentId}' missing from component registry; ` +
+                `skipping src=${orientation.src} of '${layerPrefix}'`,
+            );
+            continue;
+          }
+          refs.push({ layerPrefix, facing: orientation.src });
+          urls.push(`${componentBaseUrl}/${path}`);
+        }
       }
-      refs.push({ layerPrefix: kit.weapon.layerPrefix, facing: entry.src });
-      urls.push(`${componentBaseUrl}/${path}`);
+    }
+    if (!kitHadAnyWeapon) {
+      console.warn(
+        `[pose-atlas] kit '${kit.id}' has a weapon block but no inline weapons[] ` +
+          `entries on any (pose, facing); weapon sprites will not be packed.`,
+      );
     }
   }
   return { refs, urls };

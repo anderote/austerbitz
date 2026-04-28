@@ -36,6 +36,7 @@ import { createFormationControlsPanel } from './ui/formation-controls-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
+import { createMusicPlayer } from './ui/music-player';
 import { createParticles, updateParticles } from './particles/particles';
 import { createPuffs, updatePuffs } from './puffs/puffs';
 import { coalesceStep } from './puffs/coalesce';
@@ -328,6 +329,7 @@ const fcPanel = createFormationControlsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
 const placementInfo = createPlacementInfo(overlay);
 const movePreview = createMovePreview(overlay);
+createMusicPlayer(overlay);
 
 const controller = createSelectionController({
   canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,

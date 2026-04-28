@@ -19,8 +19,8 @@ import {
 import { type PoseAtlas, pickPoseUv, pickPoseVariantUv, pickWeaponUv, pickHeadUv } from '../poses/atlas';
 import { composeCombinedAtlas } from '../poses/combined-atlas';
 import {
-  readWeaponVariantPool,
   type Facing,
+  type WeaponOrientation,
 } from '../poses/resolver';
 import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader';
 
@@ -333,34 +333,74 @@ export function createSpritePass(
   let sortIdx = new Int32Array(capacity);
 
   /**
-   * Pre-resolved weapon UV cache keyed by `kit.weapon.layerPrefix` then by
-   * palette id. Built once at startup by walking each kit's weaponPalette and
-   * computing one UV per entry via `(src, transform)`. Per-frame the renderer
-   * resolves `(pose, facing).weapon` (palette id) → UV through this map.
+   * Per-source UV cache keyed by `${layerPrefix}|${src}|${transform}`. The
+   * underlying atlas cell is shared per source facing; the transform is
+   * encoded as signed UV spans by `pickWeaponUv`. Dedup ensures we pay the
+   * UV math at most once per `(layerPrefix, src, transform)` combo across
+   * all the kits' inline orientations.
    */
-  const weaponUvByPaletteId = new Map<string, Map<string, [number, number, number, number]>>();
+  const weaponUvBySource = new Map<string, [number, number, number, number]>();
+  function getOrComputeSourceUv(
+    layerPrefix: string,
+    orientation: WeaponOrientation,
+  ): [number, number, number, number] | null {
+    if (!poseAtlas) return null;
+    const transform = orientation.transform ?? 'none';
+    const key = `${layerPrefix}|${orientation.src}|${transform}`;
+    const cached = weaponUvBySource.get(key);
+    if (cached) return cached;
+    const uv = pickWeaponUv(
+      poseAtlas,
+      layerPrefix,
+      orientation.src,
+      transform,
+      poseAtlasY,
+      sheetW,
+      sheetH,
+    );
+    if (uv) weaponUvBySource.set(key, uv);
+    return uv;
+  }
+
+  /**
+   * Pre-resolved per-kit weapon-orientation pool keyed by `(kit.id, pose,
+   * facing)`, indexed by variant index. Each slot carries the resolved UV +
+   * a reference to the source orientation (for `(x, y, rot, flipX)` at draw
+   * time). Variants whose source PNG isn't packed are stored as null, which
+   * the per-frame loop treats as "skip overlay."
+   *
+   * The per-frame draw loop reads:
+   *   pool = weaponPoolByKey.get(`${kindId}|${editorPose}|${facingLetter}`)
+   *   slot = pool[entity.id % pool.length]
+   * — the same `entity.id % length` rule as the old palette path.
+   */
+  interface WeaponSlot {
+    uv: [number, number, number, number];
+    orientation: WeaponOrientation;
+  }
+  const weaponPoolByKey = new Map<string, Array<WeaponSlot | null>>();
   if (poseAtlas) {
     for (const kit of kits.values()) {
       if (!kit.weapon) continue;
-      const palette = kit.weaponPalette;
-      if (!palette || palette.length === 0) continue;
-      let perKit = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
-      if (!perKit) {
-        perKit = new Map();
-        weaponUvByPaletteId.set(kit.weapon.layerPrefix, perKit);
-      }
-      for (const entry of palette) {
-        if (perKit.has(entry.id)) continue;
-        const uv = pickWeaponUv(
-          poseAtlas,
-          kit.weapon.layerPrefix,
-          entry.src,
-          entry.transform ?? 'none',
-          poseAtlasY,
-          sheetW,
-          sheetH,
-        );
-        if (uv) perKit.set(entry.id, uv);
+      const layerPrefix = kit.weapon.layerPrefix;
+      const poses = kit.poses;
+      if (!poses) continue;
+      for (const [poseName, poseEntry] of Object.entries(poses)) {
+        if (!poseEntry || typeof poseEntry !== 'object' || Array.isArray(poseEntry)) continue;
+        for (const [facing, facingEntryRaw] of Object.entries(poseEntry)) {
+          if (!facingEntryRaw || typeof facingEntryRaw !== 'object' || Array.isArray(facingEntryRaw)) {
+            continue;
+          }
+          const weapons = (facingEntryRaw as { weapons?: WeaponOrientation[] }).weapons;
+          if (!Array.isArray(weapons) || weapons.length === 0) continue;
+          const slots: Array<WeaponSlot | null> = new Array(weapons.length).fill(null);
+          for (let i = 0; i < weapons.length; i++) {
+            const orientation = weapons[i]!;
+            const uv = getOrComputeSourceUv(layerPrefix, orientation);
+            if (uv) slots[i] = { uv, orientation };
+          }
+          weaponPoolByKey.set(`${kit.id}|${poseName}|${facing}`, slots);
+        }
       }
     }
   }
@@ -369,8 +409,8 @@ export function createSpritePass(
    * Per-runtime-facing weapon UV cache, keyed by `kit.weapon.layerPrefix`.
    * Used by dropped-items-pass: a dropped weapon picks its sprite based on
    * the facing the entity died on. We resolve each runtime facing to the
-   * palette entry referenced by `kit.poses.dying[<facing>].weapon`, then
-   * to its UV. If the kit doesn't author a dying-pose weapon for some
+   * primary inline orientation on `kit.poses.dying[<facing>].weapons[0]`,
+   * then to its UV. If the kit doesn't author a dying-pose weapon for some
    * facing, that slot stays null and the dropped-items pass skips it.
    */
   const weaponUvByPrefix = new Map<string, Array<[number, number, number, number] | null>>();
@@ -379,19 +419,19 @@ export function createSpritePass(
     for (const kit of kits.values()) {
       if (!kit.weapon) continue;
       if (weaponUvByPrefix.has(kit.weapon.layerPrefix)) continue;
-      const perKit = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
-      if (!perKit) continue;
+      const layerPrefix = kit.weapon.layerPrefix;
       const dying = kit.poses?.dying;
       const uvs: Array<[number, number, number, number] | null> = new Array(8).fill(null);
       for (let i = 0; i < 8; i++) {
         const facing = RUNTIME_FACING_ORDER_FOR_DROPS[i]!;
         const facingEntry = dying?.[facing];
         if (!facingEntry || Array.isArray(facingEntry)) continue;
-        const id = (facingEntry as { weapon?: string }).weapon;
-        if (typeof id !== 'string') continue;
-        uvs[i] = perKit.get(id) ?? null;
+        const weapons = (facingEntry as { weapons?: WeaponOrientation[] }).weapons;
+        if (!Array.isArray(weapons) || weapons.length === 0) continue;
+        const orientation = weapons[0]!;
+        uvs[i] = getOrComputeSourceUv(layerPrefix, orientation);
       }
-      weaponUvByPrefix.set(kit.weapon.layerPrefix, uvs);
+      weaponUvByPrefix.set(layerPrefix, uvs);
     }
   }
 
@@ -635,34 +675,30 @@ export function createSpritePass(
           scratchUv[k * 4 + 3] = uv[3];
 
           // Weapon overlay (if this kit has a weapon block + the atlas packed
-          // its source sprites). Per-(pose, facing) palette ids resolve through
-          // the kit's weaponPalette to a complete (UV, x, y, rot, flipX)
-          // snapshot. Behind-facings (N/NE/NW) emit into a separate set drawn
-          // BEFORE bodies so the body occludes the weapon; front-facings emit
-          // into the regular set drawn AFTER bodies (overlay on top).
+          // its source sprites). Inline `(pose, facing).weapons[]` carries
+          // the full (src, transform, x, y, rot, flipX) tuples; the pre-built
+          // `weaponPoolByKey` carries one UV slot per orientation. Behind-
+          // facings (N/NE/NW) emit into a separate set drawn BEFORE bodies so
+          // the body occludes the weapon; front-facings emit into the regular
+          // set drawn AFTER bodies (overlay on top).
           const stateNow = e.state[i]!;
           const isDyingOrDead = stateNow === EntityState.Dying || stateNow === EntityState.Dead;
           const kit = kits.get(kind.id);
           if (kit && kit.weapon && !isDyingOrDead) {
             const facingLetter = RUNTIME_FACING_TO_LETTER[facing]!;
             const editorPose = runtimePoseToEditorPoseName(pose);
-            const palette = kit.weaponPalette;
-            // Pool `[primary, ...variants]` resolved through the palette;
-            // pick by `entity.id % pool.length` so soldiers in a formation
-            // get visual variety without flickering frame-to-frame.
-            const variantPool = editorPose && palette
-              ? readWeaponVariantPool(kit.poses, palette, editorPose, facingLetter)
-              : [];
-            // Avoid double-resolution: readWeaponVariantPool returns
-            // [primary, ...variants] resolved; just index into it.
-            const chosenEntry = variantPool.length > 0
-              ? variantPool[((i % variantPool.length) + variantPool.length) % variantPool.length]!
+            // Per-frame variant pick: `entity.id % weapons.length`. Pulls
+            // from the prebuilt slot pool keyed on `(kindId, pose, facing)`;
+            // each slot is a `(uv, orientation)` pair or `null` if the source
+            // PNG wasn't packed.
+            const poolKey = editorPose ? `${kind.id}|${editorPose}|${facingLetter}` : null;
+            const pool = poolKey ? weaponPoolByKey.get(poolKey) : undefined;
+            const slot = pool && pool.length > 0
+              ? pool[((i % pool.length) + pool.length) % pool.length] ?? null
               : null;
-            const perKitUvs = weaponUvByPaletteId.get(kit.weapon.layerPrefix);
-            const wuv: readonly [number, number, number, number] | null =
-              chosenEntry && perKitUvs ? perKitUvs.get(chosenEntry.id) ?? null : null;
-            if (wuv && chosenEntry) {
-              const offset = chosenEntry;
+            if (slot) {
+              const wuv = slot.uv;
+              const offset = slot.orientation;
               // Body sprite is rendered at `sprW` world units wide for a
               // SPRITE_CELL_PX-wide cell, so the weapon must use the SAME
               // pixel-to-world ratio for both its size AND its per-pose pixel

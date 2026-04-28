@@ -56,6 +56,10 @@ export interface Entities {
   state: Uint8Array;        // EntityState (0..8)
   reloadT: Float32Array;
   targetId: Int32Array;     // -1 if none
+  // 1 = clear forward arc (front-rank), 0 = blocked by ≥3 same-team soldiers
+  // along facingIntent. Refreshed on combat-system's SCAN_PERIOD stripe; back
+  // rankers early-exit before target acquisition.
+  canFire: Uint8Array;
 
   // Veterancy
   rank: Uint8Array;     // 0..4 (Recruit, Veteran, Sergeant, SgtMajor, Captain)
@@ -145,6 +149,7 @@ export function createEntities(capacity: number): Entities {
     state: new Uint8Array(capacity),
     reloadT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
+    canFire: new Uint8Array(capacity),
     rank: new Uint8Array(capacity),
     xp: new Uint16Array(capacity),
     kills: new Uint16Array(capacity),
@@ -201,6 +206,7 @@ export function allocEntity(e: Entities): number {
   e.state[id] = EntityState.Idle;
   e.reloadT[id] = 0;
   e.targetId[id] = -1;
+  e.canFire[id] = 1;
   e.rank[id] = 0;
   e.xp[id] = 0;
   e.kills[id] = 0;
