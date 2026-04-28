@@ -9,6 +9,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
+import { loadEdits, lookupEdits, applyEdits } from './lib/pose-frame-edits.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -145,6 +146,7 @@ async function writePng(path, png) {
 
 async function main() {
   const kit = JSON.parse(await readFile(KIT_PATH, 'utf8'));
+  const editsTree = await loadEdits(REPO_ROOT);
   const work = buildWorkList(kit, kit.id ?? 'line-infantry');
 
   let written = 0;
@@ -160,6 +162,11 @@ async function main() {
     }
     for (const cell of w.cells) {
       const png = sliceCell(src, cell.col, cell.row);
+      const edits = lookupEdits(editsTree, w.kind, w.runtimePose, cell.dir, 0, w.frameIdx);
+      const n = applyEdits(png.data, CELL_W, CELL_H, edits);
+      if (n > 0) {
+        console.log(`[slice] applied ${n} pose-frame edits to ${w.runtimePose}/${cell.dir}/0/${w.frameIdx}.png`);
+      }
       const outPath = resolve(POSES_OUT, w.kind, w.runtimePose, cell.dir, '0', `${w.frameIdx}.png`);
       await writePng(outPath, png);
       console.log(`[slice-component-atlas] ${w.runtimePose}/${cell.dir}/${w.frameIdx} ← ${w.atlasFile}`);

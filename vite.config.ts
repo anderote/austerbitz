@@ -101,6 +101,19 @@ function offsetsApiPlugin(): Plugin {
           return;
         }
 
+        if (method === 'POST' && url === '/api/pose-frame-edits') {
+          try {
+            const body = await readJsonBody(req);
+            const target = resolve(PROJECT_ROOT, 'public/sprites/poses/edits.json');
+            await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
+            sendJson(res, 200, { ok: true });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 400, { ok: false, error: message });
+          }
+          return;
+        }
+
         if (method === 'POST' && url === '/api/regiments') {
           try {
             const body = await readJsonBody(req);
@@ -115,32 +128,42 @@ function offsetsApiPlugin(): Plugin {
         }
 
         if (method === 'POST' && url === '/api/build') {
-          try {
-            const result = await new Promise<{ stdout: string; stderr: string }>(
-              (resolvePromise, rejectPromise) => {
-                execFile(
-                  process.execPath,
-                  [
-                    'scripts/build-soldier-components.mjs',
-                    '--kit',
-                    'line-infantry',
-                    '--scale',
-                    '16',
-                  ],
-                  { cwd: PROJECT_ROOT, maxBuffer: 16 * 1024 * 1024 },
-                  (error, stdout, stderr) => {
-                    if (error) {
-                      rejectPromise(
-                        Object.assign(error, { stdout: String(stdout), stderr: String(stderr) })
-                      );
-                      return;
-                    }
-                    resolvePromise({ stdout: String(stdout), stderr: String(stderr) });
+          function runStep(args: string[]): Promise<{ stdout: string; stderr: string }> {
+            return new Promise((resolveStep, rejectStep) => {
+              execFile(
+                process.execPath,
+                args,
+                { cwd: PROJECT_ROOT, maxBuffer: 16 * 1024 * 1024 },
+                (error, stdout, stderr) => {
+                  if (error) {
+                    rejectStep(
+                      Object.assign(error, { stdout: String(stdout), stderr: String(stderr) })
+                    );
+                    return;
                   }
-                );
-              }
+                  resolveStep({ stdout: String(stdout), stderr: String(stderr) });
+                }
+              );
+            });
+          }
+
+          try {
+            const out: Array<{ stdout: string; stderr: string }> = [];
+            out.push(
+              await runStep([
+                'scripts/build-soldier-components.mjs',
+                '--kit',
+                'line-infantry',
+                '--scale',
+                '16',
+              ])
             );
-            sendJson(res, 200, { ok: true, stdout: result.stdout, stderr: result.stderr });
+            out.push(await runStep(['scripts/slice-component-atlas.mjs']));
+            out.push(await runStep(['scripts/draw-cuirassier-poses.mjs']));
+            out.push(await runStep(['scripts/build-pose-manifest.mjs']));
+            const stdout = out.map((o) => o.stdout).join('\n');
+            const stderr = out.map((o) => o.stderr).join('\n');
+            sendJson(res, 200, { ok: true, stdout, stderr });
           } catch (err) {
             const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
             const message = e.stderr || e.message || String(err);

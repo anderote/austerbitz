@@ -22,6 +22,7 @@ import {
   renderFrame,
   mirrorFrame,
 } from './lib/cuirassier-poses.mjs';
+import { loadEdits, lookupEdits, applyEdits } from './lib/pose-frame-edits.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -35,15 +36,22 @@ async function writePng(rgba, outPath) {
   await writeFile(outPath, buffer);
 }
 
-async function emitDir(pose, dir, frames) {
-  for (let i = 0; i < frames.length; i++) {
-    const rgba = renderFrame(frames[i]);
-    const outPath = resolve(OUT_BASE, pose, dir, '0', `${i}.png`);
-    await writePng(rgba, outPath);
-  }
-}
-
 async function main() {
+  const editsTree = await loadEdits(REPO_ROOT);
+
+  async function emitDir(pose, dir, frames) {
+    for (let i = 0; i < frames.length; i++) {
+      const rgba = renderFrame(frames[i]);
+      const edits = lookupEdits(editsTree, 'cuirassier', pose, dir, 0, i);
+      const n = applyEdits(rgba, CELL_W, CELL_H, edits);
+      if (n > 0) {
+        console.log(`[cuirassier] applied ${n} pose-frame edits to ${pose}/${dir}/0/${i}.png`);
+      }
+      const outPath = resolve(OUT_BASE, pose, dir, '0', `${i}.png`);
+      await writePng(rgba, outPath);
+    }
+  }
+
   let total = 0;
   for (const pose of Object.keys(POSES)) {
     const data = POSES[pose];
