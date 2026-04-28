@@ -128,6 +128,7 @@ export function createDroppedItemsPass(
     draw(world, cam) {
       const PATTERN_FEATURE_PIXELS = 4;
       const d = world.droppedItems;
+      const simTime = world.simTime;
       let n = 0;
       for (let id = 0; id < d.capacity; id++) {
         if (d.alive[id] !== 1) continue;
@@ -158,8 +159,35 @@ export function createDroppedItemsPass(
         const wWorldW = WEAPON_PX_W * pxToWorld;
         const wWorldH = WEAPON_PX_H * pxToWorld;
 
-        scratchPos[n * 2 + 0] = d.posX[id]!;
-        scratchPos[n * 2 + 1] = d.posY[id]!;
+        // Tumble interpolation: while elapsed < animDur, lerp between start
+        // and end pose and add a parabolic vertical lift + extra rotational
+        // turns so the item visibly arcs and spins. After animDur, snap to
+        // the final resting pose.
+        const dur = d.animDur[id]!;
+        const elapsed = simTime - d.spawnTime[id]!;
+        let drawX: number;
+        let drawY: number;
+        let drawRot: number;
+        if (dur > 0 && elapsed < dur) {
+          const t = elapsed / dur;
+          drawX = d.startX[id]! + (d.posX[id]! - d.startX[id]!) * t;
+          drawY = d.startY[id]! + (d.posY[id]! - d.startY[id]!) * t;
+          // World Y grows downward, so subtracting moves the sprite visually
+          // upward (toward the camera/north) at the arc's apex.
+          drawY -= d.arcH[id]! * 4 * t * (1 - t);
+          // Total turns: hats whirl more than muskets. Direction follows the
+          // horizontal travel sign so the spin matches the visible motion.
+          const totalTurns = d.kind[id] === DroppedKind.Hat ? 1.75 : 0.75;
+          const sign = (d.posX[id]! - d.startX[id]!) >= 0 ? 1 : -1;
+          drawRot = d.startRot[id]! + (d.rot[id]! - d.startRot[id]!) * t + sign * totalTurns * Math.PI * 2 * t;
+        } else {
+          drawX = d.posX[id]!;
+          drawY = d.posY[id]!;
+          drawRot = d.rot[id]!;
+        }
+
+        scratchPos[n * 2 + 0] = drawX;
+        scratchPos[n * 2 + 1] = drawY;
         scratchSize[n * 2 + 0] = wWorldW;
         scratchSize[n * 2 + 1] = wWorldH;
         scratchColor[n * 4 + 0] = 1;
@@ -189,7 +217,7 @@ export function createDroppedItemsPass(
         scratchTertiary[n * 3 + 1] = team.tertiary[1] / 255;
         scratchTertiary[n * 3 + 2] = team.tertiary[2] / 255;
         scratchPattern[n] = 0;
-        scratchRot[n] = d.rot[id]!;
+        scratchRot[n] = drawRot;
         n++;
       }
       if (n === 0) return;

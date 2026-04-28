@@ -313,7 +313,7 @@
           "coat-line-northwest-fire",
           "shako-standard-northwest"
         ],
-        "weapon": "nw-17"
+        "weapon": "nw-10"
       },
       "SW": {
         "layers": [
@@ -1040,38 +1040,7 @@
     }
   },
   "weapon": {
-    "layerPrefix": "musket-brown-bess",
-    "facings": {
-      "N": {
-        "src": "self"
-      },
-      "NW": {
-        "src": "self"
-      },
-      "W": {
-        "src": "self"
-      },
-      "S": {
-        "src": "N",
-        "transform": "flipY"
-      },
-      "NE": {
-        "src": "NW",
-        "transform": "flipX"
-      },
-      "SE": {
-        "src": "NW",
-        "transform": "rot180"
-      },
-      "SW": {
-        "src": "NW",
-        "transform": "flipY"
-      },
-      "E": {
-        "src": "W",
-        "transform": "flipX"
-      }
-    }
+    "layerPrefix": "musket-brown-bess"
   },
   "head": {
     "layerPrefix": "shako-standard",
@@ -1140,10 +1109,10 @@
     {
       "id": "n-12",
       "src": "N",
-      "transform": "flipY",
       "x": 0,
       "y": 0,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "n-13",
@@ -1155,10 +1124,10 @@
     {
       "id": "n-14",
       "src": "N",
-      "transform": "flipY",
       "x": 10,
       "y": 5,
-      "rot": 180
+      "rot": 180,
+      "transform": "flipY"
     },
     {
       "id": "n-15",
@@ -1226,61 +1195,61 @@
     {
       "id": "n-23",
       "src": "N",
-      "transform": "flipY",
       "x": 7,
       "y": 6,
       "rot": 0,
+      "transform": "flipY",
       "flipX": true
     },
     {
       "id": "n-24",
       "src": "N",
-      "transform": "flipY",
       "x": -7,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "n-25",
       "src": "N",
-      "transform": "flipY",
       "x": -7,
       "y": 7,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "n-26",
       "src": "N",
-      "transform": "flipY",
       "x": -6,
       "y": 7,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "n-27",
       "src": "N",
-      "transform": "flipY",
       "x": 8,
       "y": 7,
       "rot": 0,
+      "transform": "flipY",
       "flipX": true
     },
     {
       "id": "n-28",
       "src": "N",
-      "transform": "flipY",
       "x": 7,
       "y": 7,
       "rot": 0,
+      "transform": "flipY",
       "flipX": true
     },
     {
       "id": "n-29",
       "src": "N",
-      "transform": "flipY",
       "x": -2,
       "y": 5,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "n-3",
@@ -1292,34 +1261,34 @@
     {
       "id": "n-4",
       "src": "N",
-      "transform": "flipY",
       "x": 0,
       "y": 4,
-      "rot": 180
+      "rot": 180,
+      "transform": "flipY"
     },
     {
       "id": "n-5",
       "src": "N",
-      "transform": "flipY",
       "x": 7,
       "y": 5,
-      "rot": 180
+      "rot": 180,
+      "transform": "flipY"
     },
     {
       "id": "n-6",
       "src": "N",
-      "transform": "flipY",
       "x": 7,
       "y": 4,
-      "rot": 180
+      "rot": 180,
+      "transform": "flipY"
     },
     {
       "id": "n-7",
       "src": "N",
-      "transform": "flipY",
       "x": -1,
       "y": 0,
-      "rot": 90
+      "rot": 90,
+      "transform": "flipY"
     },
     {
       "id": "n-8",
@@ -1331,50 +1300,50 @@
     {
       "id": "n-9",
       "src": "N",
-      "transform": "flipY",
       "x": 1,
       "y": -1,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipY"
     },
     {
       "id": "nw-0",
       "src": "NW",
-      "transform": "flipX",
       "x": -1,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "nw-1",
       "src": "NW",
-      "transform": "flipX",
       "x": 0,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "nw-10",
       "src": "NW",
-      "transform": "flipX",
       "x": 1,
       "y": -1,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipX"
     },
     {
       "id": "nw-11",
       "src": "NW",
-      "transform": "rot180",
       "x": 1,
       "y": -1,
-      "rot": 20
+      "rot": 20,
+      "transform": "rot180"
     },
     {
       "id": "nw-12",
       "src": "NW",
-      "transform": "flipY",
       "x": 1,
       "y": -1,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipY"
     },
     {
       "id": "nw-13",
@@ -1386,26 +1355,26 @@
     {
       "id": "nw-14",
       "src": "NW",
-      "transform": "flipX",
       "x": 1,
       "y": -2,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipX"
     },
     {
       "id": "nw-15",
       "src": "NW",
-      "transform": "rot180",
       "x": 1,
       "y": -2,
-      "rot": 20
+      "rot": 20,
+      "transform": "rot180"
     },
     {
       "id": "nw-16",
       "src": "NW",
-      "transform": "flipY",
       "x": 1,
       "y": -2,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipY"
     },
     {
       "id": "nw-17",
@@ -1417,34 +1386,34 @@
     {
       "id": "nw-18",
       "src": "NW",
-      "transform": "flipX",
       "x": 4,
       "y": 4,
-      "rot": -10
+      "rot": -10,
+      "transform": "flipX"
     },
     {
       "id": "nw-19",
       "src": "NW",
-      "transform": "rot180",
       "x": 0,
       "y": 1,
-      "rot": -10
+      "rot": -10,
+      "transform": "rot180"
     },
     {
       "id": "nw-2",
       "src": "NW",
-      "transform": "flipX",
       "x": -2,
       "y": -1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "nw-20",
       "src": "NW",
-      "transform": "flipY",
       "x": 0,
       "y": 4,
-      "rot": 80
+      "rot": 80,
+      "transform": "flipY"
     },
     {
       "id": "nw-21",
@@ -1456,26 +1425,26 @@
     {
       "id": "nw-22",
       "src": "NW",
-      "transform": "flipX",
       "x": -3,
       "y": 4,
-      "rot": -90
+      "rot": -90,
+      "transform": "flipX"
     },
     {
       "id": "nw-23",
       "src": "NW",
-      "transform": "rot180",
       "x": 4,
       "y": 5,
-      "rot": -90
+      "rot": -90,
+      "transform": "rot180"
     },
     {
       "id": "nw-24",
       "src": "NW",
-      "transform": "flipY",
       "x": -3,
       "y": 5,
-      "rot": 90
+      "rot": 90,
+      "transform": "flipY"
     },
     {
       "id": "nw-25",
@@ -1487,99 +1456,99 @@
     {
       "id": "nw-26",
       "src": "NW",
-      "transform": "rot180",
       "x": 1,
       "y": 7,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-27",
       "src": "NW",
-      "transform": "rot180",
       "x": 3,
       "y": 6,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-28",
       "src": "NW",
-      "transform": "rot180",
       "x": -7,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-29",
       "src": "NW",
-      "transform": "rot180",
       "x": 0,
       "y": 6,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-3",
       "src": "NW",
-      "transform": "rot180",
       "x": 3,
       "y": 2,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-30",
       "src": "NW",
-      "transform": "rot180",
       "x": 2,
       "y": 6,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-31",
       "src": "NW",
-      "transform": "rot180",
       "x": 1,
       "y": 5,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-32",
       "src": "NW",
-      "transform": "rot180",
       "x": 0,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-33",
       "src": "NW",
-      "transform": "flipY",
       "x": 6,
       "y": 8,
       "rot": 0,
+      "transform": "flipY",
       "flipX": true
     },
     {
       "id": "nw-34",
       "src": "NW",
-      "transform": "flipY",
       "x": 0,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "nw-35",
       "src": "NW",
-      "transform": "flipY",
       "x": 0,
       "y": 2,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "nw-36",
       "src": "NW",
-      "transform": "flipY",
       "x": -1,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "nw-37",
@@ -1605,10 +1574,10 @@
     {
       "id": "nw-4",
       "src": "NW",
-      "transform": "rot180",
       "x": 2,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-40",
@@ -1620,34 +1589,34 @@
     {
       "id": "nw-41",
       "src": "NW",
-      "transform": "rot180",
       "x": 1,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-5",
       "src": "NW",
-      "transform": "rot180",
       "x": 3,
       "y": 3,
-      "rot": 0
+      "rot": 0,
+      "transform": "rot180"
     },
     {
       "id": "nw-6",
       "src": "NW",
-      "transform": "flipY",
       "x": -2,
       "y": 2,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "nw-7",
       "src": "NW",
-      "transform": "flipY",
       "x": -2,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipY"
     },
     {
       "id": "nw-8",
@@ -1666,34 +1635,34 @@
     {
       "id": "w-0",
       "src": "W",
-      "transform": "flipX",
       "x": 3,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-1",
       "src": "W",
-      "transform": "flipX",
       "x": 3,
       "y": 3,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-10",
       "src": "W",
-      "transform": "flipX",
       "x": -2,
       "y": 4,
-      "rot": -10
+      "rot": -10,
+      "transform": "flipX"
     },
     {
       "id": "w-11",
       "src": "W",
-      "transform": "flipX",
       "x": 8,
       "y": 6,
-      "rot": -90
+      "rot": -90,
+      "transform": "flipX"
     },
     {
       "id": "w-12",
@@ -1705,58 +1674,58 @@
     {
       "id": "w-13",
       "src": "W",
-      "transform": "flipX",
       "x": 2,
       "y": 6,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-14",
       "src": "W",
-      "transform": "flipX",
       "x": 1,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-15",
       "src": "W",
-      "transform": "flipX",
       "x": 2,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-16",
       "src": "W",
-      "transform": "flipX",
       "x": 8,
       "y": 2,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-17",
       "src": "W",
-      "transform": "flipX",
       "x": 1,
       "y": 5,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-18",
       "src": "W",
-      "transform": "flipX",
       "x": 9,
       "y": 2,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-19",
       "src": "W",
-      "transform": "flipX",
       "x": 8,
       "y": 4,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-2",
@@ -1824,18 +1793,18 @@
     {
       "id": "w-28",
       "src": "W",
-      "transform": "flipX",
       "x": 8,
       "y": 1,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-29",
       "src": "W",
-      "transform": "flipX",
       "x": 2,
       "y": 5,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-3",
@@ -1847,10 +1816,10 @@
     {
       "id": "w-30",
       "src": "W",
-      "transform": "flipX",
       "x": 8,
       "y": 0,
-      "rot": 0
+      "rot": 0,
+      "transform": "flipX"
     },
     {
       "id": "w-31",
@@ -1869,10 +1838,10 @@
     {
       "id": "w-5",
       "src": "W",
-      "transform": "flipX",
       "x": 2,
       "y": 0,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipX"
     },
     {
       "id": "w-6",
@@ -1884,10 +1853,10 @@
     {
       "id": "w-7",
       "src": "W",
-      "transform": "flipX",
       "x": 1,
       "y": -2,
-      "rot": 20
+      "rot": 20,
+      "transform": "flipX"
     },
     {
       "id": "w-8",
@@ -1899,10 +1868,10 @@
     {
       "id": "w-9",
       "src": "W",
-      "transform": "flipX",
       "x": 4,
       "y": 4,
-      "rot": -10
+      "rot": -10,
+      "transform": "flipX"
     }
   ]
 }

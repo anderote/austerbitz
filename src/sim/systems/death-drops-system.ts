@@ -96,6 +96,7 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
         kit.weaponPalette,
       );
       const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;
+      const sprH = kind.spriteSize?.h ?? kind.placeholderSize.h;
       const pxToWorld = sprW / SPRITE_CELL_PX;
       const offX = dyingEntry?.x ?? 0;
       const offY = dyingEntry?.y ?? 0;
@@ -110,7 +111,12 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
       const wSign = world.rng.range(0, 1) < 0.5 ? -1 : 1;
       const rot = (wSign * wMag * Math.PI) / 180;
       const flipX = dyingEntry?.flipX === true ? 1 : 0;
-      spawnDroppedWeapon(d, px, py, rot, kindIdx, e.team[id]!, facing, flipX);
+      // Weapon tumble: starts at the body's torso (sprite center) with rot 0,
+      // low arc, short duration — the musket drops more than it flies.
+      spawnDroppedWeapon(
+        d, px, py, rot, kindIdx, e.team[id]!, facing, flipX,
+        e.posX[id]!, e.posY[id]!, 0, 0.15, world.simTime, 0.35,
+      );
 
       // ~25% chance for infantry to also drop their shako. Mark the corpse as
       // "head lost" so sprite-pass swaps to the `--no-head` body variant —
@@ -125,7 +131,15 @@ export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): Sy
         const hpy = e.posY[id]! + Math.sin(angle) * radius;
         // Hats land at any orientation — no E-W bias like muskets.
         const hrot = world.rng.range(-Math.PI, Math.PI);
-        spawnDroppedHat(d, hpx, hpy, hrot, kindIdx, e.team[id]!, facing, 0);
+        // Hat tumble: starts at the head (offset upward from body center;
+        // 0.45 * sprH world-units approximates the head-pixel position rather
+        // than the strict top edge). High arc + longer duration so the shako
+        // visibly arcs through the air before settling.
+        const hatStartY = e.posY[id]! - sprH * pxToWorld * 0.45;
+        spawnDroppedHat(
+          d, hpx, hpy, hrot, kindIdx, e.team[id]!, facing, 0,
+          e.posX[id]!, hatStartY, 0, 0.7, world.simTime, 0.55,
+        );
       }
 
       e.weaponDropped[id] = 1;

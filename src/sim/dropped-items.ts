@@ -22,6 +22,16 @@ export interface DroppedItems {
   flipX: Uint8Array;             // 0/1, copied from the dying-pose offset's flipX flag
   kind: Uint8Array;              // DroppedKind: 0=weapon, 1=hat
 
+  // Drop-tumble animation: renderer interpolates from start* -> pos*/rot
+  // across [spawnTime, spawnTime+animDur]. After that the item snaps to
+  // posX/posY/rot and is effectively static.
+  startX: Float32Array;
+  startY: Float32Array;
+  startRot: Float32Array;
+  arcH: Float32Array;            // peak parabolic lift in world units (positive = drifts upward at midpoint)
+  spawnTime: Float32Array;       // world.simTime when the drop began
+  animDur: Float32Array;         // animation duration in seconds
+
   // Free-list
   freeListHead: number;
   freeListNext: Int32Array;
@@ -44,6 +54,12 @@ export function createDroppedItems(capacity: number): DroppedItems {
     facing: new Uint8Array(capacity),
     flipX: new Uint8Array(capacity),
     kind: new Uint8Array(capacity),
+    startX: new Float32Array(capacity),
+    startY: new Float32Array(capacity),
+    startRot: new Float32Array(capacity),
+    arcH: new Float32Array(capacity),
+    spawnTime: new Float32Array(capacity),
+    animDur: new Float32Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -63,6 +79,11 @@ export function allocDroppedItem(d: DroppedItems): number {
   d.facing[id] = 0;
   d.flipX[id] = 0;
   d.kind[id] = 0;
+  d.startX[id] = 0; d.startY[id] = 0;
+  d.startRot[id] = 0;
+  d.arcH[id] = 0;
+  d.spawnTime[id] = 0;
+  d.animDur[id] = 0;
   return id;
 }
 
@@ -83,6 +104,12 @@ export function spawnDroppedWeapon(
   team: number,
   facing: number,
   flipX: number,
+  startX: number,
+  startY: number,
+  startRot: number,
+  arcH: number,
+  spawnTime: number,
+  animDur: number,
 ): number {
   const id = allocDroppedItem(d);
   if (id === -1) return -1;
@@ -94,6 +121,12 @@ export function spawnDroppedWeapon(
   d.facing[id] = facing;
   d.flipX[id] = flipX;
   d.kind[id] = DroppedKind.Weapon;
+  d.startX[id] = startX;
+  d.startY[id] = startY;
+  d.startRot[id] = startRot;
+  d.arcH[id] = arcH;
+  d.spawnTime[id] = spawnTime;
+  d.animDur[id] = animDur;
   return id;
 }
 
@@ -106,6 +139,12 @@ export function spawnDroppedHat(
   team: number,
   facing: number,
   flipX: number,
+  startX: number,
+  startY: number,
+  startRot: number,
+  arcH: number,
+  spawnTime: number,
+  animDur: number,
 ): number {
   const id = allocDroppedItem(d);
   if (id === -1) return -1;
@@ -117,5 +156,11 @@ export function spawnDroppedHat(
   d.facing[id] = facing;
   d.flipX[id] = flipX;
   d.kind[id] = DroppedKind.Hat;
+  d.startX[id] = startX;
+  d.startY[id] = startY;
+  d.startRot[id] = startRot;
+  d.arcH[id] = arcH;
+  d.spawnTime[id] = spawnTime;
+  d.animDur[id] = animDur;
   return id;
 }
