@@ -188,6 +188,58 @@ export function issueReformAtTarget(
 }
 
 /**
+ * Nudge each selected unit by a world-space delta, preserving formation facing.
+ *
+ * Accumulates: if the head order is already a `move`, the new target is
+ * `(headTarget + delta)`, so rapid taps (or OS key-repeat) compound into a
+ * larger displacement instead of all snapping to `pos + delta`. With
+ * `opts.queue`, appends a move whose target is `(lastQueuedTarget + delta)`
+ * if the tail is a move, else `(pos + delta)`.
+ */
+export function issueNudge(
+  world: World,
+  sel: Selection,
+  deltaX: number,
+  deltaY: number,
+  face: Vec2,
+  opts: OrderOpts = {},
+): MoveAssignment[] {
+  const e = world.entities;
+  const ids = Array.from(sel.ids).filter(id => e.alive[id] === 1);
+  if (ids.length === 0) return [];
+  const out: MoveAssignment[] = new Array(ids.length);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i]!;
+    const queue = world.orderQueue.get(id);
+    let baseX = e.posX[id]!;
+    let baseY = e.posY[id]!;
+    if (opts.queue && queue && queue.length > 0) {
+      const tail = queue[queue.length - 1]!;
+      if (tail.kind === 'move') { baseX = tail.targetX; baseY = tail.targetY; }
+    } else if (!opts.queue && queue && queue.length > 0) {
+      const head = queue[0]!;
+      if (head.kind === 'move') { baseX = head.targetX; baseY = head.targetY; }
+    }
+    const t: Vec2 = { x: baseX + deltaX, y: baseY + deltaY };
+    const order: Order = {
+      kind: 'move',
+      targetX: t.x,
+      targetY: t.y,
+      faceX: face.x,
+      faceY: face.y,
+    };
+    if (opts.queue) {
+      if (queue) queue.push(order);
+      else world.orderQueue.set(id, [order]);
+    } else {
+      world.orderQueue.set(id, [order]);
+    }
+    out[i] = { id, target: t };
+  }
+  return out;
+}
+
+/**
  * "Hurry to your slot" — for each selected unit, send it toward the position
  * and facing it's already trying to reach, at full base speed. Designed to be
  * re-issued every frame F is held so jostled units get continuously pushed

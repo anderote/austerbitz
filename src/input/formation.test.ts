@@ -455,6 +455,36 @@ describe('computeMarchSlots', () => {
     expect(bins).toBe(3);
   });
 
+  it('uses head-order target (not current pos) when units are mid-march', () => {
+    // Two units mid-march: their CURRENT positions are scattered, but their
+    // march targets form a clean rank. The next Ctrl+RMB should use the
+    // targets so the chain preserves the destination formation, not the
+    // momentary in-flight shape.
+    const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
+    const a = spawnLI(world, 0, 0);     // current pos doesn't matter
+    const b = spawnLI(world, 50, 50);   // very off-axis from b's destination
+    // Both have an active march-formation order toward a clean line at y=10.
+    world.orderQueue.set(a, [{ kind: 'march-formation', targetX: 0, targetY: 10, groupId: 1 }]);
+    world.orderQueue.set(b, [{ kind: 'march-formation', targetX: 4, targetY: 10, groupId: 1 }]);
+    world.entities.restFacing[a] = 2; // facing north (+y)
+    world.entities.restFacing[b] = 2;
+
+    // New Ctrl+RMB to (2, 100). Effective centroid should be (2, 10) (avg of
+    // targets), forward should point north.
+    const r = computeMarchSlots(world, [a, b], { x: 2, y: 100 }, createFormationParams())!;
+    expect(r).not.toBeNull();
+    // Slot centroid should land at the new target.
+    const cx = (r.targets[0]!.x + r.targets[1]!.x) / 2;
+    const cy = (r.targets[0]!.y + r.targets[1]!.y) / 2;
+    expect(cx).toBeCloseTo(2, 3);
+    expect(cy).toBeCloseTo(100, 3);
+    // The two slots should be 4 apart (the file spacing of the destinations) —
+    // NOT sqrt(50²+50²)=70.7 (the spread of current scattered positions).
+    const dx = r.targets[0]!.x - r.targets[1]!.x;
+    const dy = r.targets[0]!.y - r.targets[1]!.y;
+    expect(Math.hypot(dx, dy)).toBeCloseTo(4, 3);
+  });
+
   it('two-unit selection: forward points along centroid→target; slot centroid lands at target', () => {
     const world = createWorld({ seed: 1, capacity: 16, mapSize: 1000 });
     // Units side-by-side along the lateral axis (perpendicular to forward +x)

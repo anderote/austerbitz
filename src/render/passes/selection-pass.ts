@@ -1,6 +1,6 @@
 import { linkProgram, getUniforms } from '../../gl/program';
 import { createBuffer, createVertexArray } from '../../gl/buffer';
-import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, PIP_VS, PIP_FS, RANGE_VS, RANGE_FS } from '../shaders/selection.glsl';
+import { SELECTION_VS, SELECTION_FS, WAYPOINT_VS, WAYPOINT_FS, DRAG_VS, DRAG_FS, RANGE_VS, RANGE_FS } from '../shaders/selection.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import type { World } from '../../sim/world';
@@ -77,26 +77,6 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
-
-  // Formation slot pips — instanced hollow-square quads.
-  const pipProg = linkProgram(gl, PIP_VS, PIP_FS);
-  const pipU = getUniforms(gl, pipProg, ['u_viewProj', 'u_size', 'u_color'] as const);
-  const pipVao = createVertexArray(gl);
-  gl.bindVertexArray(pipVao);
-  const pipCornersBuf = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array([
-    -0.5, -0.5,  0.5, -0.5, -0.5, 0.5,
-    -0.5,  0.5,  0.5, -0.5,  0.5, 0.5,
-  ]), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-  const pipPosBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
-  gl.bufferData(gl.ARRAY_BUFFER, capacity * 2 * 4, gl.DYNAMIC_DRAW);
-  gl.enableVertexAttribArray(1);
-  gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
-  gl.vertexAttribDivisor(1, 1);
-  gl.bindVertexArray(null);
-  const pipScratch = new Float32Array(capacity * 2);
-  void pipCornersBuf;
 
   // Waypoint polylines — solid-color line segments through queued orders
   const wpProg = linkProgram(gl, WAYPOINT_VS, WAYPOINT_FS);
@@ -807,17 +787,41 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
 
         const m = Math.min(slots.length, capacity);
         if (m > 0) {
-          for (let i = 0; i < m; i++) {
-            pipScratch[i * 2 + 0] = slots[i]!.x;
-            pipScratch[i * 2 + 1] = slots[i]!.y;
+          // Per-slot base discs in formation green — same ellipse shape as
+          // selection / move-preview discs. Size derives from the widest
+          // selected unit's placeholder, so mixed selections still fit.
+          let maxW = 0;
+          let repFootY = 0;
+          for (const id of sel.ids) {
+            if (e.alive[id] !== 1) continue;
+            if (isDead(e, id)) continue;
+            const kind = getUnitKindByIndex(e.kindId[id]!);
+            if (kind.placeholderSize.w > maxW) {
+              maxW = kind.placeholderSize.w;
+              repFootY = kind.footYFromCenter ?? kind.placeholderSize.h * 0.5;
+            }
           }
-          gl.useProgram(pipProg);
-          gl.bindVertexArray(pipVao);
-          gl.bindBuffer(gl.ARRAY_BUFFER, pipPosBuf);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, pipScratch.subarray(0, m * 2));
-          gl.uniformMatrix3fv(pipU.u_viewProj, false, viewProjection(cam));
-          gl.uniform1f(pipU.u_size, 1.2); // world units; ~1m square pip
-          gl.uniform3f(pipU.u_color, 0.55, 1.0, 0.6);
+          if (maxW <= 0) maxW = 1;
+          const sx = maxW * 1.25;
+          const sy = maxW * 0.55;
+          for (let i = 0; i < m; i++) {
+            scratchPos[i * 2 + 0] = slots[i]!.x;
+            scratchPos[i * 2 + 1] = slots[i]!.y + repFootY;
+            scratchSize[i * 2 + 0] = sx;
+            scratchSize[i * 2 + 1] = sy;
+            scratchCol[i * 3 + 0] = 0.55;
+            scratchCol[i * 3 + 1] = 1.0;
+            scratchCol[i * 3 + 2] = 0.6;
+          }
+          gl.useProgram(prog);
+          gl.bindVertexArray(vao);
+          gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchPos.subarray(0, m * 2));
+          gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchSize.subarray(0, m * 2));
+          gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchCol.subarray(0, m * 3));
+          gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
           gl.enable(gl.BLEND);
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
           gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, m);
@@ -896,7 +900,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
         if (!queue || queue.length === 0) return null;
         for (let k = queue.length - 1; k >= 0; k--) {
           const o = queue[k]!;
-          if (o.kind === 'move' || o.kind === 'attack-move') {
+          if (o.kind === 'move' || o.kind === 'attack-move' || o.kind === 'march-formation') {
             return { x: o.targetX, y: o.targetY };
           }
         }

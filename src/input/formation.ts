@@ -401,17 +401,33 @@ export function computeMarchSlots(
   target: Vec2,
   _formationParams: FormationParams,
 ): MarchSlotsResult | null {
-  const units = liveFormationUnits(world, ids);
-  if (units.length === 0) return null;
+  // Use each unit's INTENDED position (head order's target if mid-move,
+  // otherwise current position). For mid-march units this anchors the rigid
+  // transform on where they're heading, not where they are right now —
+  // chained Ctrl+RMBs preserve the destination shape.
+  const liveBase = liveFormationUnits(world, ids);
+  if (liveBase.length === 0) return null;
+  const e = world.entities;
+  const units: FormationUnit[] = liveBase.map(u => {
+    const q = world.orderQueue.get(u.id);
+    const head = q && q[0];
+    if (
+      head &&
+      (head.kind === 'move' || head.kind === 'attack-move' || head.kind === 'march-formation') &&
+      !head.arrived
+    ) {
+      return { ...u, x: head.targetX, y: head.targetY };
+    }
+    return u;
+  });
 
-  // Centroid of current positions.
+  // Centroid of intended positions.
   let cx = 0, cy = 0;
   for (const u of units) { cx += u.x; cy += u.y; }
   cx /= units.length; cy /= units.length;
 
   // Current facing: averaged restFacing of the selection.
   let sxF = 0, syF = 0;
-  const e = world.entities;
   for (const u of units) {
     const a = (e.restFacing[u.id]! * Math.PI) / 4;
     sxF += Math.cos(a); syF += Math.sin(a);
