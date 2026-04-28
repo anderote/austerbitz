@@ -176,7 +176,7 @@ function frame(t: number) {
   movementSystem(world, dt);
   facingSystem(world, dt);
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
-  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, dt, world.bloodSplats);
+  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
   tickRagdoll(world.entities, dt);
   deathDropsSystem(world, dt);
 
