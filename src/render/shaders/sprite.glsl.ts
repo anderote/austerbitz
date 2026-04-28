@@ -5,11 +5,12 @@ layout(location = 0) in vec2 a_corner;     // unit-quad (-0.5..0.5)
 layout(location = 1) in vec2 a_pos;        // per-instance world pos
 layout(location = 2) in vec2 a_size;       // per-instance world size
 layout(location = 3) in vec4 a_color;      // per-instance tint rgba (0..1)
-layout(location = 4) in vec4 a_uvRect;     // (uMin, vMin, uSize, vSize) in atlas
+layout(location = 4) in vec4 a_uvRect;     // (uMin, vMin, uSize, vSize) in atlas — uSize/vSize may be negative for UV flips
 layout(location = 5) in vec3 a_primary;    // per-instance primary uniform color
 layout(location = 6) in vec3 a_secondary;  // per-instance secondary uniform color
 layout(location = 7) in float a_pattern;   // 0 = none, 1 = check, 2 = h-stripes
 layout(location = 8) in vec3 a_tertiary;   // per-instance tertiary uniform color
+layout(location = 9) in float a_rot;       // per-instance rotation in radians (0 = no rot, applied around centre)
 
 out vec2 v_uv;
 out vec2 v_world;
@@ -24,10 +25,19 @@ uniform mat3 u_viewProj;
 void main() {
   // Quad spans world size; -y in clip-space points up but our world Y grows
   // downward (top-down map), so the corner Y maps directly to atlas V.
-  vec2 wp = a_pos + a_corner * a_size;
+  // a_rot rotates the quad's corner offsets around the sprite centre. For
+  // bodies a_rot is 0 and the rotation collapses to identity.
+  float c = cos(a_rot);
+  float s = sin(a_rot);
+  vec2 corner = a_corner * a_size;
+  vec2 rotated = vec2(c * corner.x - s * corner.y, s * corner.x + c * corner.y);
+  vec2 wp = a_pos + rotated;
   vec3 clip = u_viewProj * vec3(wp, 1.0);
   gl_Position = vec4(clip.xy, 0.0, 1.0);
   vec2 quadUv = a_corner + 0.5;            // 0..1 across quad
+  // a_uvRect.zw may be negative (flipX/flipY/rot180 weapon transforms encode
+  // the mirror via signed UV span). Negative span walks the atlas cell
+  // backwards, mirroring the sampled pixels for free.
   v_uv = a_uvRect.xy + quadUv * a_uvRect.zw;
   v_world = wp;
   v_color = a_color;

@@ -44,3 +44,146 @@ export function buildDirLookup(available: readonly Direction[]): Direction[] {
   }
   return result;
 }
+
+// ----------------------------------------------------------------------------
+// Per-pose weapon attachment schema (see
+// docs/superpowers/specs/2026-04-27-per-pose-weapon-attachment-design.md).
+//
+// A kit may declare a top-level `weapon` block listing per-facing entries that
+// either author their own sprite (`src: 'self'`) or re-use another facing's
+// sprite with a flip/rotate transform. Each body pose × facing then carries an
+// optional `(x, y, rot)` to position that weapon for that pose. Missing pose
+// entries derive from the mirror source (negate rot, flip x/y per transform).
+// ----------------------------------------------------------------------------
+
+/** 8-way compass facing. The weapon system ignores `omni`. */
+export type Facing = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+
+export const FACINGS: readonly Facing[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+
+/** Texture-space transform applied when re-using a source facing's sprite. */
+export type WeaponFacingTransform = 'flipX' | 'flipY' | 'rot180';
+
+/** Either authored on this facing (`self`) or borrowed from another facing. */
+export type WeaponFacingEntry =
+  | { src: 'self' }
+  | { src: Facing; transform: WeaponFacingTransform };
+
+/** Top-level kit weapon block. */
+export interface WeaponBlock {
+  layerPrefix: string;
+  facings: Record<Facing, WeaponFacingEntry>;
+}
+
+/** Per-pose weapon attachment offset + rotation (degrees). */
+export interface WeaponPoseTransform {
+  x: number;
+  y: number;
+  rot: number;
+}
+
+/** Normalized shape for `kit.poses[pose][facing]`. */
+export interface PoseFacingEntry {
+  layers: string[];
+  weapon?: WeaponPoseTransform;
+}
+
+/**
+ * Wraps a bare layer array (legacy shape) as a `PoseFacingEntry`. Already-shaped
+ * inputs pass through unchanged.
+ */
+export function normalizePoseFacingEntry(
+  raw: string[] | PoseFacingEntry,
+): PoseFacingEntry {
+  if (Array.isArray(raw)) return { layers: raw };
+  return raw;
+}
+
+/**
+ * Resolve which atlas key + transform to draw for a given facing of a weapon.
+ *
+ * - `src: 'self'` → key is `<layerPrefix>-<facing>`, transform is `'none'`.
+ * - Otherwise → key is `<layerPrefix>-<src>`, transform is the entry's transform.
+ */
+export function resolveWeaponFacing(
+  weapon: WeaponBlock,
+  facing: Facing,
+): { spriteKey: string; transform: 'none' | WeaponFacingTransform } {
+  const entry = weapon.facings[facing];
+  if (!entry) {
+    throw new Error(`weapon block has no facing entry for '${facing}'`);
+  }
+  if (entry.src === 'self') {
+    return { spriteKey: `${weapon.layerPrefix}-${facing}`, transform: 'none' };
+  }
+  return {
+    spriteKey: `${weapon.layerPrefix}-${entry.src}`,
+    transform: entry.transform,
+  };
+}
+
+/**
+ * Apply a facing transform to a `(x, y, rot)` triplet.
+ *
+ * The transform encodes how the runtime mirrors the *base sprite*; we mirror
+ * the per-pose offset the same way so a hand-authored offset on a source
+ * facing flows through unchanged to its derived facings.
+ *
+ * - `flipX`: mirror about the vertical axis → negate `x` and `rot`.
+ * - `flipY`: mirror about the horizontal axis → negate `y` and `rot`.
+ * - `rot180`: rotate 180° → negate both `x` and `y`; `rot` is unchanged
+ *   (since rotating a rotation by 180° wraps to the same effective heading).
+ */
+function applyFacingTransform(
+  base: WeaponPoseTransform,
+  transform: WeaponFacingTransform,
+): WeaponPoseTransform {
+  switch (transform) {
+    case 'flipX':
+      return { x: -base.x, y: base.y, rot: -base.rot };
+    case 'flipY':
+      return { x: base.x, y: -base.y, rot: -base.rot };
+    case 'rot180':
+      return { x: -base.x, y: -base.y, rot: base.rot };
+  }
+}
+
+/** Read `poses[pose][facing].weapon` if present, else null. */
+function readPoseWeapon(
+  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
+  pose: string,
+  facing: Facing,
+): WeaponPoseTransform | null {
+  if (!poses) return null;
+  const poseEntry = poses[pose];
+  if (!poseEntry) return null;
+  const facingEntry = poseEntry[facing];
+  if (!facingEntry) return null;
+  const normalized = normalizePoseFacingEntry(facingEntry);
+  return normalized.weapon ?? null;
+}
+
+/**
+ * Resolve the per-pose `(x, y, rot)` for a (pose, facing) on this kit.
+ *
+ * - If authored directly on `(pose, facing)`, return it.
+ * - Else, if the facing is derived (`src !== 'self'`), pull the source
+ *   facing's pose offset and apply the facing transform (`flipX`/`flipY`/
+ *   `rot180`).
+ * - Else fall back to `{ x: 0, y: 0, rot: 0 }`.
+ */
+export function resolveWeaponPoseTransform(
+  poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
+  pose: string,
+  facing: Facing,
+  weapon: WeaponBlock,
+): WeaponPoseTransform {
+  const direct = readPoseWeapon(poses, pose, facing);
+  if (direct) return direct;
+  const entry = weapon.facings[facing];
+  if (entry && entry.src !== 'self') {
+    const source = readPoseWeapon(poses, pose, entry.src);
+    if (source) return applyFacingTransform(source, entry.transform);
+  }
+  return { x: 0, y: 0, rot: 0 };
+}

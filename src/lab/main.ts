@@ -30,6 +30,7 @@ import {
 import { applyWind } from './wind';
 import { createLabUi, type ActionHandlers, type GridToggle, type TimeScaleState, type WindState } from './lab-ui';
 import { loadPoseAtlas } from '../render/poses/atlas';
+import { loadKits } from '../render/poses/kit-loader';
 
 const CAPACITY = 256;
 const PARTICLE_CAPACITY = 50_000;
@@ -46,9 +47,10 @@ try {
 } catch (err) {
   console.warn('[lab] pose atlas load failed; continuing without it:', err);
 }
+const kits = await loadKits();
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
-  LAB_MAP_SIZE, LAB_MAP_SIZE, poseAtlas,
+  LAB_MAP_SIZE, LAB_MAP_SIZE, poseAtlas, kits,
 );
 const camera = createCamera();
 const input = createInputManager(canvas);

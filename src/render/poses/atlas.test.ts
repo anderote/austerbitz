@@ -101,7 +101,14 @@ describe('pickPoseUv', () => {
     lineLookup.set(Pose.idle, buildDirLookup(['N', 'S']) as string[]);
     dirLookup.set('line-infantry', lineLookup);
 
-    return { pixels: new Uint8Array(4), width: 100, height: 100, cells, dirLookup };
+    return {
+      pixels: new Uint8Array(4),
+      width: 100,
+      height: 100,
+      cells,
+      dirLookup,
+      weaponCells: new Map(),
+    };
   }
 
   it('returns null for unknown kind', () => {

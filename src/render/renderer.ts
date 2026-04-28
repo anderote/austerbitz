@@ -15,6 +15,7 @@ import type { Projectiles } from '../sim/projectiles';
 import type { Puffs } from '../puffs/puffs';
 import { PLAYER_TEAM } from '../sim/player';
 import type { PoseAtlas } from './poses/atlas';
+import type { KitConfig } from './poses/kit-loader';
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
@@ -54,11 +55,12 @@ export function createRenderer(
   worldW: number,
   worldH: number,
   poseAtlas: PoseAtlas | null,
+  kits: ReadonlyMap<string, KitConfig> = new Map(),
 ): Renderer {
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
   terrain.setBlood(bloodStain.texture, worldW, worldH);
-  const sprites = createSpritePass(gl, capacity, poseAtlas);
+  const sprites = createSpritePass(gl, capacity, poseAtlas, kits);
   const selectionPass = createSelectionPass(gl, capacity);
   const particlesPass = createParticlePass(gl, particleCapacity);
   const puffsPass = createPuffPass(gl, puffCapacity);

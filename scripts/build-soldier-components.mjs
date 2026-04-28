@@ -284,7 +284,13 @@ async function main() {
         throw new Error(`Kit ${kitId} facing ${facing} is missing a cell coordinate.`);
       }
       const [col, row] = config.cell;
-      const layers = (layerOverrides && layerOverrides[facing]) || config.layers;
+      // Per-pose override may be either a bare array of layer ids (legacy)
+      // or `{ layers, weapon? }` (post per-pose-weapon-attachment migration).
+      const rawOverride = layerOverrides && layerOverrides[facing];
+      const overrideLayers = Array.isArray(rawOverride)
+        ? rawOverride
+        : (rawOverride && Array.isArray(rawOverride.layers) ? rawOverride.layers : null);
+      const layers = overrideLayers || config.layers;
       console.log(`\nCompositing facing ${facing} at cell (${col}, ${row})`);
       clearCell(markersTarget, col, row);
       for (const id of layers) {

@@ -196,7 +196,7 @@
       img.layer-img { image-rendering: pixelated; }
 
       /* --- Stage canvas + facing grid side-by-side --- */
-      .stage-body { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+      .stage-body { display: flex; gap: 16px; align-items: flex-start; }
       .facing-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -231,6 +231,22 @@
         pointer-events: none;
       }
       .facing-cell-empty { width: 96px; height: 108px; }
+      .facing-cell .mirror-badge {
+        position: absolute; bottom: 2px; right: 2px;
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+        font-size: 9px; color: #1f2937;
+        background: rgba(255, 255, 255, 0.92);
+        padding: 1px 4px; border-radius: 2px;
+        pointer-events: none;
+        border: 1px solid rgba(55, 65, 81, 0.2);
+        line-height: 1.1;
+      }
+      .facing-cell .source-dot {
+        position: absolute; top: 2px; right: 4px;
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #22c55e; pointer-events: none;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.6);
+      }
 
       /* Background-position offsets per facing (3x scale of native atlas).
        * Atlas physical layout: NW [0,0], W [0,1], SW [0,2], S [1,1], N [1,2],
@@ -362,7 +378,9 @@
         <div class='stage-header'>
           <span class='stage-title' id='stage-title'>Composite</span>
           <span class='selected-info' id='selected-info'>Selected: &mdash;</span>
+          <button id='reset-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Reset weapon</button>
         </div>
+        <div id='weapon-banner' style='display:none;margin-bottom:8px;padding:6px 10px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;'></div>
         <div class='stage-body'>
           <div>
             <div class='canvas-wrap'>
@@ -408,7 +426,80 @@
         'make-ready': 'Make ready',
         'present': 'Present',
         'fire': 'Fire',
+        'weapon': 'Weapon',
       };
+
+      // Special pose id for the weapon-authoring view. Selecting it shows ONLY
+      // the base weapon sprite (no body) for the active facing, and pixel
+      // edits store under the resolved sprite id (long name) so they share
+      // with body-pose weapon overlays. Body-pose per-pose deltas store under
+      // componentKey = "weapon".
+      const WEAPON_POSE_ID = 'weapon';
+
+      // Map short facing code (resolver convention) to long form used in
+      // sprite registry ids and existing layer names.
+      const FACING_LONG = {
+        N: 'north', NE: 'northeast', E: 'east', SE: 'southeast',
+        S: 'south', SW: 'southwest', W: 'west', NW: 'northwest',
+      };
+      function facingLong(f) { return FACING_LONG[f] || String(f).toLowerCase(); }
+
+      // ---- JS port of resolver helpers (kept in sync with src/render/poses/resolver.ts) ----
+      function normalizePoseFacingEntry(raw) {
+        if (Array.isArray(raw)) return { layers: raw };
+        if (raw && typeof raw === 'object') return raw;
+        return { layers: [] };
+      }
+
+      // Returns { spriteKey, transform } where transform is 'none' | 'flipX' | 'flipY' | 'rot180'.
+      // spriteKey uses long facing names (matches registered sprite ids).
+      function resolveWeaponFacing(weapon, facing) {
+        if (!weapon || !weapon.facings) return null;
+        const entry = weapon.facings[facing];
+        if (!entry) return null;
+        if (entry.src === 'self') {
+          return { spriteKey: weapon.layerPrefix + '-' + facingLong(facing), transform: 'none' };
+        }
+        return {
+          spriteKey: weapon.layerPrefix + '-' + facingLong(entry.src),
+          transform: entry.transform,
+        };
+      }
+
+      function applyFacingTransformXform(base, transform) {
+        switch (transform) {
+          case 'flipX':  return { x: -base.x, y:  base.y, rot: -base.rot };
+          case 'flipY':  return { x:  base.x, y: -base.y, rot: -base.rot };
+          case 'rot180': return { x: -base.x, y: -base.y, rot:  base.rot };
+          default:       return { x:  base.x, y:  base.y, rot:  base.rot };
+        }
+      }
+
+      function readPoseWeapon(poses, pose, facing) {
+        if (!poses) return null;
+        const poseEntry = poses[pose];
+        if (!poseEntry) return null;
+        const facingEntry = poseEntry[facing];
+        if (!facingEntry) return null;
+        const normalized = normalizePoseFacingEntry(facingEntry);
+        return normalized.weapon ? { x: +normalized.weapon.x || 0, y: +normalized.weapon.y || 0, rot: +normalized.weapon.rot || 0 } : null;
+      }
+
+      function resolveWeaponPoseTransform(poses, pose, facing, weapon) {
+        const direct = readPoseWeapon(poses, pose, facing);
+        if (direct) return direct;
+        const entry = weapon && weapon.facings ? weapon.facings[facing] : null;
+        if (entry && entry.src !== 'self') {
+          const source = readPoseWeapon(poses, pose, entry.src);
+          if (source) return applyFacingTransformXform(source, entry.transform);
+        }
+        return { x: 0, y: 0, rot: 0 };
+      }
+
+      function wrapAngleDeg(d) {
+        d = ((d + 180) % 360 + 360) % 360 - 180;
+        return d === -180 ? 180 : d;
+      }
 
       function poseLabel(poseId) {
         if (POSE_LABELS[poseId]) return POSE_LABELS[poseId];
@@ -463,6 +554,15 @@
         layerCanvasCache: new Map(), // key: poseId|facing|id|version -> HTMLCanvasElement
         regiments: [],
         regiment: null,
+        // Per-pose, per-facing weapon attachment (x, y, rot in degrees).
+        // Hydrated from kit.poses[pose][facing].weapon and persisted via
+        // POST /api/kits/<unit>. Shape: { kitId: { poseId: { facing: {x,y,rot} } } }.
+        weaponXform: {},
+        // Sentinel: when true, the weapon is the active "layer" — drag/Q/E/arrow
+        // keys operate on the weapon transform instead of layer offsets.
+        weaponActive: false,
+        // Drag state for weapon attachment.
+        weaponDrag: null,
       };
 
       // Per-pose, per-regiment recolored atlas data-URL cache.
@@ -611,6 +711,63 @@
         } catch (_err) { /* ignore */ }
       }
 
+      function getKitWeaponXform() {
+        if (!state.kitId) return {};
+        if (!state.weaponXform[state.kitId]) state.weaponXform[state.kitId] = {};
+        return state.weaponXform[state.kitId];
+      }
+
+      // Authored (raw) per-pose weapon transform for (pose, facing); null if none.
+      function readWeaponXformAuthored(poseId, facing) {
+        const kit = state.weaponXform[state.kitId];
+        if (!kit) return null;
+        const pose = kit[poseId];
+        if (!pose) return null;
+        const v = pose[facing];
+        if (!v) return null;
+        return { x: +v.x || 0, y: +v.y || 0, rot: +v.rot || 0 };
+      }
+
+      // Resolved per-pose weapon transform: authored override, else mirror-source
+      // fallback derived from the kit's weapon block, else (0,0,0).
+      function resolveWeaponXformLive(poseId, facing) {
+        const direct = readWeaponXformAuthored(poseId, facing);
+        if (direct) return direct;
+        const weapon = state.kit && state.kit.weapon ? state.kit.weapon : null;
+        if (!weapon || !weapon.facings) return { x: 0, y: 0, rot: 0 };
+        const entry = weapon.facings[facing];
+        if (entry && entry.src !== 'self') {
+          const src = readWeaponXformAuthored(poseId, entry.src);
+          if (src) return applyFacingTransformXform(src, entry.transform);
+        }
+        return { x: 0, y: 0, rot: 0 };
+      }
+
+      function setWeaponXform(poseId, facing, x, y, rot) {
+        const kit = getKitWeaponXform();
+        if (!kit[poseId]) kit[poseId] = {};
+        kit[poseId][facing] = { x: x | 0, y: y | 0, rot: +rot || 0 };
+      }
+
+      // Build the autosave body: only the (pose × facing) tuples we have
+      // values for, under the new endpoint shape.
+      function buildKitAutosaveBody() {
+        const kitMap = state.weaponXform[state.kitId] || {};
+        const poses = {};
+        for (const poseId of Object.keys(kitMap)) {
+          if (poseId === WEAPON_POSE_ID) continue; // weapon view does not author per-pose xforms
+          const facingMap = kitMap[poseId] || {};
+          const out = {};
+          for (const f of Object.keys(facingMap)) {
+            const v = facingMap[f];
+            if (!v) continue;
+            out[f] = { weapon: { x: v.x | 0, y: v.y | 0, rot: +v.rot || 0 } };
+          }
+          if (Object.keys(out).length > 0) poses[poseId] = out;
+        }
+        return { poses };
+      }
+
       function getKitPixelEdits() {
         if (!state.kitId) return {};
         if (!state.pixelEdits[state.kitId]) state.pixelEdits[state.kitId] = {};
@@ -702,17 +859,45 @@
 
       function poseHasOverrideForFacing(poseId, facing) {
         if (poseId === 'idle') return true;
+        if (poseId === WEAPON_POSE_ID) return true;
         const poseDef = state.kit && state.kit.poses && state.kit.poses[poseId];
-        return !!(poseDef && Array.isArray(poseDef[facing]));
+        if (!poseDef) return false;
+        const entry = poseDef[facing];
+        if (!entry) return false;
+        const norm = normalizePoseFacingEntry(entry);
+        return Array.isArray(norm.layers) && norm.layers.length > 0;
       }
 
+      // Returns true if the kit declares a weapon block AND the active facing
+      // exists in it (either as a source or a derived facing).
+      function kitHasWeapon() {
+        return !!(state.kit && state.kit.weapon && state.kit.weapon.facings);
+      }
+
+      // The single registered base-sprite id used as the weapon's "active layer"
+      // when in the weapon-pose view, e.g. "musket-brown-bess-north".
+      function weaponSpriteIdForFacing(facing) {
+        if (!kitHasWeapon()) return null;
+        const r = resolveWeaponFacing(state.kit.weapon, facing);
+        return r ? r.spriteKey : null;
+      }
+
+      // Body-pose composition layers (no weapon — that's overlaid separately).
       function getCurrentLayers() {
         if (!state.kit) return [];
         const poseId = state.poseId;
         const facing = state.facing;
+        // Weapon-pose-view: only the resolved base weapon sprite (no body).
+        if (poseId === WEAPON_POSE_ID) {
+          const id = weaponSpriteIdForFacing(facing);
+          return id ? [id] : [];
+        }
         if (poseId === 'idle') return getIdleLayers(facing);
         const poseDef = state.kit.poses && state.kit.poses[poseId];
-        if (poseDef && Array.isArray(poseDef[facing])) return poseDef[facing];
+        if (poseDef && poseDef[facing]) {
+          const norm = normalizePoseFacingEntry(poseDef[facing]);
+          if (Array.isArray(norm.layers) && norm.layers.length > 0) return norm.layers;
+        }
         return getIdleLayers(facing);
       }
 
@@ -738,6 +923,31 @@
         document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
           cell.style.backgroundImage = "url('" + url + "')";
         });
+        renderMirrorBadges();
+      }
+
+      // Render mirror-source badges on the 5 derived facings + a small "src"
+      // dot on N / NW / W. Pulls from kit.weapon.facings when the kit has one.
+      function renderMirrorBadges() {
+        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
+          // Clear any prior decorations.
+          cell.querySelectorAll('.mirror-badge, .source-dot').forEach(function (el) { el.remove(); });
+          if (!kitHasWeapon()) return;
+          const f = cell.dataset.facing;
+          const entry = state.kit.weapon.facings && state.kit.weapon.facings[f];
+          if (!entry) return;
+          if (entry.src === 'self') {
+            const dot = document.createElement('span');
+            dot.className = 'source-dot';
+            dot.title = 'authored source facing';
+            cell.appendChild(dot);
+          } else {
+            const badge = document.createElement('span');
+            badge.className = 'mirror-badge';
+            badge.textContent = '← ' + entry.src + ' ' + entry.transform;
+            cell.appendChild(badge);
+          }
+        });
       }
 
       function updateFacingButtons() {
@@ -752,32 +962,86 @@
       function switchFacing(facing) {
         state.facing = facing;
         const layers = getCurrentLayers();
-        if (!state.selectedLayerId || !layers.includes(state.selectedLayerId)) {
+        // Keep weaponActive when present on body poses; clear on weapon view.
+        if (state.poseId === WEAPON_POSE_ID) state.weaponActive = false;
+        if (!state.weaponActive && (!state.selectedLayerId || !layers.includes(state.selectedLayerId))) {
           state.selectedLayerId = layers[0] || null;
         }
         updateFacingButtons();
         renderLayersList();
         renderOffsetReadout();
         renderPoseNote();
+        renderWeaponUi();
         redraw();
       }
 
       function renderPoseNote() {
         if (!poseNoteEl) return;
-        if (state.poseId !== 'idle' && !poseHasOverrideForFacing(state.poseId, state.facing)) {
+        if (state.poseId !== 'idle' && state.poseId !== WEAPON_POSE_ID && !poseHasOverrideForFacing(state.poseId, state.facing)) {
           poseNoteEl.textContent = 'no pose override for this facing - showing idle layers';
         } else {
           poseNoteEl.textContent = '';
         }
       }
 
+      function renderWeaponUi() {
+        const banner = document.getElementById('weapon-banner');
+        const resetBtnEl = document.getElementById('reset-weapon-btn');
+        // Reset-weapon button is only visible when a body pose with a weapon is selected.
+        if (resetBtnEl) {
+          resetBtnEl.style.display =
+            (state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) ? '' : 'none';
+        }
+        if (!banner) return;
+        // Weapon-pose-view + derived facing → show banner directing user to source.
+        if (state.poseId === WEAPON_POSE_ID && kitHasWeapon()) {
+          const e = state.kit.weapon.facings[state.facing];
+          if (e && e.src !== 'self') {
+            banner.textContent = 'Edit base sprite at facing ' + e.src + ' — this facing is derived (← ' + e.src + ' ' + e.transform + ').';
+            banner.style.display = '';
+            return;
+          }
+        }
+        banner.style.display = 'none';
+      }
+
       function renderLayersList() {
         // Display top-to-bottom: topmost (drawn last) first, bottom (drawn first) last.
         const layers = [...getCurrentLayers()].reverse();
         layersEl.innerHTML = '';
+
+        // For body poses with a weapon, prepend a synthetic "weapon" entry as
+        // the top-most layer. Selecting it switches into weaponActive mode.
+        const showWeaponEntry = state.poseId !== WEAPON_POSE_ID && kitHasWeapon();
+        if (showWeaponEntry) {
+          const item = document.createElement('div');
+          const isSelected = state.weaponActive;
+          item.className = 'layer-item' + (isSelected ? ' selected' : '');
+          const name = document.createElement('span');
+          name.className = 'layer-name';
+          name.textContent = 'weapon';
+          const xform = resolveWeaponXformLive(state.poseId, state.facing);
+          const tag = document.createElement('span');
+          tag.className = 'layer-offset';
+          tag.textContent = (xform.x || xform.y || xform.rot)
+            ? '[' + xform.x + ',' + xform.y + ',' + xform.rot + 'd]'
+            : '';
+          item.appendChild(name);
+          item.appendChild(tag);
+          item.addEventListener('click', () => {
+            state.weaponActive = true;
+            state.selectedLayerId = 'weapon';
+            renderLayersList();
+            renderOffsetReadout();
+            redraw();
+          });
+          layersEl.appendChild(item);
+        }
+
         for (const id of layers) {
           const item = document.createElement('div');
-          item.className = 'layer-item' + (id === state.selectedLayerId ? ' selected' : '');
+          const isSelected = !state.weaponActive && id === state.selectedLayerId;
+          item.className = 'layer-item' + (isSelected ? ' selected' : '');
           const name = document.createElement('span');
           name.className = 'layer-name';
           name.textContent = id;
@@ -788,15 +1052,35 @@
           item.appendChild(name);
           item.appendChild(offsetTag);
           item.addEventListener('click', () => {
+            state.weaponActive = false;
             state.selectedLayerId = id;
             renderLayersList();
             renderOffsetReadout();
+            redraw();
           });
           layersEl.appendChild(item);
         }
       }
 
       function renderOffsetReadout() {
+        if (state.weaponActive && kitHasWeapon()) {
+          const x = resolveWeaponXformLive(state.poseId, state.facing);
+          const parts = [
+            'Layer: weapon',
+            'pose: ' + state.poseId,
+            'facing: ' + state.facing,
+            'xform: (' + x.x + ',' + x.y + ',' + x.rot + 'deg)',
+          ];
+          const w = state.kit && state.kit.weapon;
+          if (w && w.facings && w.facings[state.facing] && w.facings[state.facing].src !== 'self') {
+            const e = w.facings[state.facing];
+            parts.push('← ' + e.src + ' ' + e.transform);
+          }
+          selectedInfoEl.textContent = parts.join('  ·  ');
+          dxValueEl.textContent = String(x.x);
+          dyValueEl.textContent = String(x.y);
+          return;
+        }
         if (!state.selectedLayerId) {
           selectedInfoEl.textContent = 'Selected: -';
           dxValueEl.textContent = '0';
@@ -1030,6 +1314,90 @@
         return canvas;
       }
 
+      // Draw a base canvas onto a destination ctx with the named facing transform
+      // applied (texture-space mirror/rotate). The destination ctx is left in its
+      // original transform on return. Source canvas is assumed to be CELL_W×CELL_H.
+      function drawWithFacingTransform(destCtx, srcCanvas, transform, dx, dy, rotDeg) {
+        destCtx.save();
+        destCtx.imageSmoothingEnabled = false;
+        // Translate to the sprite's centre for pose rotation; then apply the
+        // facing transform around that same centre (origin shifted accordingly).
+        const cx = CELL_W / 2 + dx;
+        const cy = CELL_H / 2 + dy;
+        destCtx.translate(cx, cy);
+        if (rotDeg) destCtx.rotate((rotDeg * Math.PI) / 180);
+        // Apply facing transform (around centre). For each transform we end up
+        // drawing the sprite with its centre at (0,0).
+        switch (transform) {
+          case 'flipX': destCtx.scale(-1, 1); break;
+          case 'flipY': destCtx.scale(1, -1); break;
+          case 'rot180': destCtx.rotate(Math.PI); break;
+          default: break;
+        }
+        destCtx.drawImage(srcCanvas, -CELL_W / 2, -CELL_H / 2);
+        destCtx.restore();
+      }
+
+      // For weapon-pose-view, base-sprite pixel edits are stored under the
+      // SOURCE facing (e.g. all derived-from-W edits live under facing 'W'),
+      // so look up the base canvas using the source facing — not the current
+      // display facing.
+      function sourceFacingFor(facing) {
+        if (!kitHasWeapon()) return facing;
+        const e = state.kit.weapon.facings[facing];
+        if (!e) return facing;
+        return e.src === 'self' ? facing : e.src;
+      }
+
+      // Composite the weapon overlay for a body pose × facing onto destCtx.
+      // Pulls the resolved base sprite layer canvas (with its own pixel-edits),
+      // applies facing transform + per-pose (x,y,rot), then composites the
+      // per-pose pixel overlay (componentKey "weapon") on top in transformed
+      // coords (we model that as a tiny canvas with the same transform pipeline).
+      async function compositeWeaponOverlay(destCtx, poseId, facing) {
+        if (!kitHasWeapon()) return null;
+        const resolved = resolveWeaponFacing(state.kit.weapon, facing);
+        if (!resolved) return null;
+        // Sample the base sprite layer canvas (key = registered sprite id, e.g.
+        // "musket-brown-bess-north"). Use poseId = WEAPON_POSE_ID + the SOURCE
+        // facing so edits authored on the source (in weapon view) appear here.
+        const srcFacing = sourceFacingFor(facing);
+        const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
+        if (!baseCanvas) return null;
+        const xform = resolveWeaponXformLive(poseId, facing);
+        // First lay down the base sprite with facing+pose transform.
+        drawWithFacingTransform(destCtx, baseCanvas, resolved.transform, xform.x, xform.y, xform.rot);
+        // Then composite per-pose-per-facing overlay (componentKey = "weapon").
+        // These pixels are in BASE-SPRITE LOCAL COORDS, so we paint them onto a
+        // tiny 1x1 canvas array? No — paint them into a separate base-sized
+        // canvas, then run it through the same transform pipeline.
+        const overlayEdits = getLayerEdits(poseId, facing, 'weapon');
+        if (overlayEdits && overlayEdits.length > 0) {
+          const overlay = document.createElement('canvas');
+          overlay.width = CELL_W;
+          overlay.height = CELL_H;
+          const octx = overlay.getContext('2d');
+          octx.imageSmoothingEnabled = false;
+          for (const edit of overlayEdits) {
+            if (!edit || typeof edit !== 'object') continue;
+            const x = edit.x | 0, y = edit.y | 0;
+            if (x < 0 || x >= CELL_W || y < 0 || y >= CELL_H) continue;
+            if (edit.color === 'clear') {
+              octx.clearRect(x, y, 1, 1);
+            } else if (typeof edit.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(edit.color)) {
+              octx.fillStyle = edit.color;
+              octx.fillRect(x, y, 1, 1);
+            }
+          }
+          drawWithFacingTransform(destCtx, overlay, resolved.transform, xform.x, xform.y, xform.rot);
+        }
+        return { resolved, xform };
+      }
+
+      // Cache of last-rendered weapon bounds in atlas-pixel coords, used for
+      // hit-testing mouse clicks for weapon drag.
+      let _lastWeaponBoundsAtlas = null;
+
       async function redraw() {
         const layers = getCurrentLayers();
         const off = document.createElement('canvas');
@@ -1039,26 +1407,88 @@
         offCtx.imageSmoothingEnabled = false;
         offCtx.clearRect(0, 0, CELL_W, CELL_H);
 
-        for (const id of layers) {
-          const layerCanvas = await getCachedLayerCanvas(state.poseId, state.facing, id);
-          if (!layerCanvas) continue;
-          const [dx, dy] = getOffset(state.poseId, state.facing, id);
-          // Apply offset by drawing through a clip-sized canvas (matches build script).
-          const shifted = document.createElement('canvas');
-          shifted.width = CELL_W;
-          shifted.height = CELL_H;
-          const sctx = shifted.getContext('2d');
-          sctx.imageSmoothingEnabled = false;
-          sctx.drawImage(layerCanvas, dx, dy);
-          offCtx.drawImage(shifted, 0, 0);
+        // Weapon-pose-view: draw only the resolved base sprite, with facing
+        // transform applied (derived facings show the mirrored/rotated source).
+        if (state.poseId === WEAPON_POSE_ID && kitHasWeapon()) {
+          const resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
+          if (resolved) {
+            // Look up the base canvas using the SOURCE facing so derived facings
+            // pick up edits authored on the source (mirrored at draw time).
+            const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, sourceFacingFor(state.facing), resolved.spriteKey);
+            if (baseCanvas) {
+              drawWithFacingTransform(offCtx, baseCanvas, resolved.transform, 0, 0, 0);
+            }
+          }
+        } else {
+          for (const id of layers) {
+            const layerCanvas = await getCachedLayerCanvas(state.poseId, state.facing, id);
+            if (!layerCanvas) continue;
+            const [dx, dy] = getOffset(state.poseId, state.facing, id);
+            // Apply offset by drawing through a clip-sized canvas (matches build script).
+            const shifted = document.createElement('canvas');
+            shifted.width = CELL_W;
+            shifted.height = CELL_H;
+            const sctx = shifted.getContext('2d');
+            sctx.imageSmoothingEnabled = false;
+            sctx.drawImage(layerCanvas, dx, dy);
+            offCtx.drawImage(shifted, 0, 0);
+          }
+        }
+
+        // Body-pose: composite the weapon on top.
+        _lastWeaponBoundsAtlas = null;
+        if (state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) {
+          const result = await compositeWeaponOverlay(offCtx, state.poseId, state.facing);
+          if (result) {
+            const { xform } = result;
+            // Bounds (atlas-pixel) for hit-testing — use full sprite box centred
+            // at (CELL_W/2 + xform.x, CELL_H/2 + xform.y), padded a touch for
+            // rotation. v1: use AABB of the original box, ignoring rotation.
+            const cx = CELL_W / 2 + xform.x;
+            const cy = CELL_H / 2 + xform.y;
+            // Generous diagonal pad for any rotation.
+            const halfDiag = Math.ceil(Math.sqrt(CELL_W * CELL_W + CELL_H * CELL_H) / 2);
+            _lastWeaponBoundsAtlas = {
+              x0: Math.floor(cx - halfDiag),
+              y0: Math.floor(cy - halfDiag),
+              x1: Math.ceil(cx + halfDiag),
+              y1: Math.ceil(cy + halfDiag),
+              cx, cy,
+            };
+          }
         }
 
         previewCtx.imageSmoothingEnabled = false;
         previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
         previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
+
+        // Faint outline highlighting weapon bounds when weapon is active.
+        if (state.weaponActive && _lastWeaponBoundsAtlas) {
+          const b = _lastWeaponBoundsAtlas;
+          previewCtx.save();
+          previewCtx.strokeStyle = 'rgba(37, 99, 235, 0.65)';
+          previewCtx.lineWidth = 2;
+          previewCtx.setLineDash([6, 4]);
+          previewCtx.strokeRect(
+            b.x0 * SCALE, b.y0 * SCALE,
+            (b.x1 - b.x0) * SCALE, (b.y1 - b.y0) * SCALE,
+          );
+          previewCtx.restore();
+        }
       }
 
       function nudge(ddx, ddy) {
+        if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
+          // Use authored value if any (else current resolved live value) so
+          // arrow nudges are stable even on unauthored derived facings.
+          const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+          setWeaponXform(state.poseId, state.facing, cur.x + ddx, cur.y + ddy, cur.rot);
+          renderLayersList();
+          renderOffsetReadout();
+          redraw();
+          scheduleKitAutoSave();
+          return;
+        }
         if (!state.selectedLayerId) return;
         const [dx, dy] = getOffset(state.poseId, state.facing, state.selectedLayerId);
         setOffset(state.poseId, state.facing, state.selectedLayerId, dx + ddx, dy + ddy);
@@ -1066,6 +1496,17 @@
         renderOffsetReadout();
         redraw();
         scheduleAutoSave();
+      }
+
+      function rotateWeapon(deltaDeg) {
+        if (!(state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID)) return;
+        const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+        const nextRot = wrapAngleDeg(cur.rot + deltaDeg);
+        setWeaponXform(state.poseId, state.facing, cur.x, cur.y, nextRot);
+        renderLayersList();
+        renderOffsetReadout();
+        redraw();
+        scheduleKitAutoSave();
       }
 
       function onKey(e) {
@@ -1076,9 +1517,24 @@
         else if (e.key === 'ArrowRight') { nudge(1, 0); e.preventDefault(); }
         else if (e.key === 'ArrowUp') { nudge(0, -1); e.preventDefault(); }
         else if (e.key === 'ArrowDown') { nudge(0, 1); e.preventDefault(); }
+        else if (e.key === 'q' || e.key === 'Q') {
+          rotateWeapon(e.shiftKey ? -15 : -1);
+          e.preventDefault();
+        } else if (e.key === 'e' || e.key === 'E') {
+          rotateWeapon(e.shiftKey ? 15 : 1);
+          e.preventDefault();
+        }
       }
 
       function resetSelected() {
+        if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
+          setWeaponXform(state.poseId, state.facing, 0, 0, 0);
+          renderLayersList();
+          renderOffsetReadout();
+          redraw();
+          scheduleKitAutoSave();
+          return;
+        }
         if (!state.selectedLayerId) return;
         setOffset(state.poseId, state.facing, state.selectedLayerId, 0, 0);
         renderLayersList();
@@ -1107,6 +1563,19 @@
         if (!res.ok) throw new Error('Save pixel-edits failed: HTTP ' + res.status);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'Save pixel-edits failed');
+      }
+
+      async function saveKit() {
+        if (!state.kitId) return;
+        const body = buildKitAutosaveBody();
+        const res = await fetch('/api/kits/' + encodeURIComponent(state.kitId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error('Save kit failed: HTTP ' + res.status);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save kit failed');
       }
 
       function buildPalette() {
@@ -1172,16 +1641,165 @@
         return { cx, cy };
       }
 
-      function onCanvasMouseDown(event) {
+      // Inverse-map an atlas-pixel coord (cx, cy) to base-sprite local coord,
+      // un-applying per-pose (x, y, rot) and the facing transform. Returns null
+      // if the result lands outside the base sprite.
+      function atlasToBaseSprite(cx, cy, xform, transform) {
+        // Translate so weapon's drawn centre (CELL_W/2 + dx, CELL_H/2 + dy) is origin.
+        let lx = cx - (CELL_W / 2 + xform.x);
+        let ly = cy - (CELL_H / 2 + xform.y);
+        // Un-rotate.
+        if (xform.rot) {
+          const r = (-xform.rot * Math.PI) / 180;
+          const c = Math.cos(r), s = Math.sin(r);
+          const rx = lx * c - ly * s;
+          const ry = lx * s + ly * c;
+          lx = rx; ly = ry;
+        }
+        // Un-apply facing transform.
+        switch (transform) {
+          case 'flipX': lx = -lx; break;
+          case 'flipY': ly = -ly; break;
+          case 'rot180': lx = -lx; ly = -ly; break;
+          default: break;
+        }
+        // Translate back so origin is top-left of base sprite.
+        const bx = Math.floor(lx + CELL_W / 2);
+        const by = Math.floor(ly + CELL_H / 2);
+        if (bx < 0 || bx >= CELL_W || by < 0 || by >= CELL_H) return null;
+        return { x: bx, y: by };
+      }
+
+      // Test whether the current (cx, cy) atlas-pixel point hits the weapon's
+      // drawn pixels in the active body pose. Sample the base sprite (with edits)
+      // through the same transform pipeline used for rendering.
+      async function pointHitsWeapon(cx, cy) {
+        if (!kitHasWeapon() || state.poseId === WEAPON_POSE_ID) return false;
+        const resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
+        if (!resolved) return false;
+        const xform = resolveWeaponXformLive(state.poseId, state.facing);
+        const local = atlasToBaseSprite(cx, cy, xform, resolved.transform);
+        if (!local) return false;
+        const base = await getCachedLayerCanvas(WEAPON_POSE_ID, sourceFacingFor(state.facing), resolved.spriteKey);
+        if (!base) return false;
+        const ctx = base.getContext('2d', { willReadFrequently: true });
+        try {
+          const px = ctx.getImageData(local.x, local.y, 1, 1).data;
+          if (px[3] > 0) return true;
+        } catch (_e) { /* ignore */ }
+        // Also include any pose-local overlay pixels at that base coord.
+        const overlay = getLayerEdits(state.poseId, state.facing, 'weapon');
+        if (overlay) {
+          for (const e of overlay) {
+            if (e && (e.x | 0) === local.x && (e.y | 0) === local.y && e.color !== 'clear') return true;
+          }
+        }
+        return false;
+      }
+
+      // Returns true if the user is allowed to paint on the current selected layer.
+      // For weapon-pose-view + a derived facing (src !== 'self'), painting is
+      // disabled — user must edit the source facing.
+      function paintAllowed() {
+        if (state.poseId === WEAPON_POSE_ID && kitHasWeapon()) {
+          const e = state.kit.weapon.facings[state.facing];
+          if (e && e.src !== 'self') return false;
+        }
+        return true;
+      }
+
+      async function onCanvasMouseDown(event) {
         if (event.button !== 0 && event.button !== 2) return;
         event.preventDefault();
-        if (!state.selectedLayerId) return;
         const { cx, cy } = clientToCell(event);
         if (cx < 0 || cx >= CELL_W || cy < 0 || cy >= CELL_H) return;
+
+        // If the user is in a body pose with a weapon, left-clicking on
+        // weapon-drawn pixels enters weapon-drag mode rather than painting.
+        if (
+          event.button === 0 &&
+          state.poseId !== WEAPON_POSE_ID &&
+          kitHasWeapon()
+        ) {
+          const hit = await pointHitsWeapon(cx, cy);
+          if (hit) {
+            // Activate weapon mode and start drag.
+            state.weaponActive = true;
+            state.selectedLayerId = 'weapon';
+            const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+            // Seed authored value if it was previously inherited so dragging is stable.
+            setWeaponXform(state.poseId, state.facing, cur.x, cur.y, cur.rot);
+            state.weaponDrag = {
+              startCx: cx, startCy: cy,
+              startX: cur.x, startY: cur.y,
+              rot: cur.rot,
+            };
+            renderLayersList();
+            renderOffsetReadout();
+            redraw();
+            return;
+          }
+          // Click outside the weapon → exit weapon mode (if any) and fall
+          // through to normal layer-select / pixel-paint handling.
+          if (state.weaponActive) {
+            state.weaponActive = false;
+            // Reselect a body layer so paint works as before.
+            const layers = getCurrentLayers();
+            if (!state.selectedLayerId || state.selectedLayerId === 'weapon' || !layers.includes(state.selectedLayerId)) {
+              state.selectedLayerId = layers[0] || null;
+            }
+            renderLayersList();
+            renderOffsetReadout();
+            redraw();
+          }
+        }
+
+        // Pixel-paint path. Determine the component key.
+        let componentKey;
+        let paintCx = cx;
+        let paintCy = cy;
+        if (state.weaponActive && state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) {
+          // Body-pose weapon overlay: store under "weapon" in BASE-sprite local coords.
+          const resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
+          if (!resolved) return;
+          const xform = resolveWeaponXformLive(state.poseId, state.facing);
+          const local = atlasToBaseSprite(cx, cy, xform, resolved.transform);
+          if (!local) return;
+          componentKey = 'weapon';
+          paintCx = local.x;
+          paintCy = local.y;
+        } else if (state.poseId === WEAPON_POSE_ID) {
+          if (!paintAllowed()) return;
+          if (!state.selectedLayerId) return;
+          // Active layer = registered base sprite id (long facing).
+          componentKey = state.selectedLayerId;
+        } else {
+          if (!state.selectedLayerId) return;
+          componentKey = state.selectedLayerId;
+        }
         const color = event.button === 2 ? 'clear' : state.activeColor;
-        appendPixelEdit(state.poseId, state.facing, state.selectedLayerId, { x: cx, y: cy, color });
+        appendPixelEdit(state.poseId, state.facing, componentKey, { x: paintCx, y: paintCy, color });
         redraw();
         scheduleAutoSave();
+      }
+
+      function onCanvasMouseMove(event) {
+        if (!state.weaponDrag) return;
+        const { cx, cy } = clientToCell(event);
+        const drag = state.weaponDrag;
+        const nx = drag.startX + (cx - drag.startCx);
+        const ny = drag.startY + (cy - drag.startCy);
+        setWeaponXform(state.poseId, state.facing, nx, ny, drag.rot);
+        renderLayersList();
+        renderOffsetReadout();
+        redraw();
+      }
+
+      function onCanvasMouseUp() {
+        if (state.weaponDrag) {
+          state.weaponDrag = null;
+          scheduleKitAutoSave();
+        }
       }
 
       function onCanvasMove(event) {
@@ -1215,8 +1833,15 @@
       }
 
       function onUndo() {
-        if (!state.selectedLayerId) return;
-        const popped = popPixelEdit(state.poseId, state.facing, state.selectedLayerId);
+        let key;
+        if (state.weaponActive && state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) {
+          key = 'weapon';
+        } else if (!state.selectedLayerId) {
+          return;
+        } else {
+          key = state.selectedLayerId;
+        }
+        const popped = popPixelEdit(state.poseId, state.facing, key);
         if (popped) {
           redraw();
           scheduleAutoSave();
@@ -1279,6 +1904,38 @@
         }, ms);
       }
 
+      // --- Kit autosave (debounced, weapon-block + per-pose-facing weapon transforms) ---
+      let _kitAutoTimer = null;
+      let _kitAutoInFlight = null;
+      let _kitAutoQueued = false;
+      async function _kitAutoFlush() {
+        if (_kitAutoInFlight) { _kitAutoQueued = true; return; }
+        setAutoStatus('saving', 'saving');
+        _kitAutoInFlight = (async function () {
+          try {
+            await saveKit();
+            setAutoStatus('saved', 'saved');
+          } catch (err) {
+            setAutoStatus('error: ' + (err.message || err), 'error');
+          } finally {
+            _kitAutoInFlight = null;
+            if (_kitAutoQueued) {
+              _kitAutoQueued = false;
+              scheduleKitAutoSave(0);
+            }
+          }
+        })();
+      }
+      function scheduleKitAutoSave(delay) {
+        if (_kitAutoTimer) clearTimeout(_kitAutoTimer);
+        const ms = typeof delay === 'number' ? delay : 400;
+        setAutoStatus('pending', 'saving');
+        _kitAutoTimer = setTimeout(function () {
+          _kitAutoTimer = null;
+          _kitAutoFlush();
+        }, ms);
+      }
+
       // Detect legacy schema (kitId -> facing -> ...) and migrate to (kitId -> poseId -> facing -> ...).
       // Heuristic per the spec: if any direct child key under a kit is uppercase (1-3 chars),
       // it's a facing -> old schema. Otherwise it's a pose -> already new.
@@ -1320,7 +1977,9 @@
       function buildPoseDropdown() {
         poseSelectEl.innerHTML = '';
         const kitMeta = state.kits.find(function (k) { return k.id === state.kitId; });
-        const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
+        const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses.slice() : ['idle'];
+        // Append the synthetic weapon-authoring pose for kits that have a weapon block.
+        if (kitHasWeapon() && !poses.includes(WEAPON_POSE_ID)) poses.push(WEAPON_POSE_ID);
         for (const pid of poses) {
           const opt = document.createElement('option');
           opt.value = pid;
@@ -1332,7 +1991,12 @@
 
       function poseAtlasPath(poseId) {
         const base = 'sprites/' + state.kitId + '-components';
-        return poseId === 'idle' ? (base + '.png') : (base + '-' + poseId + '.png');
+        if (poseId === 'idle') return base + '.png';
+        // The synthetic weapon-authoring view falls back to the legacy "musket"
+        // atlas if it exists; otherwise fall back to the idle atlas (renderer
+        // will show body+weapon facings, which is at least non-broken).
+        if (poseId === WEAPON_POSE_ID) return base + '-musket.png';
+        return base + '-' + poseId + '.png';
       }
 
       async function buildPoseStrip() {
@@ -1380,6 +2044,31 @@
         const kit = await fetchJson('/components/kits/' + kitId + '.json');
         state.kit = kit;
         state.kitId = kitId;
+        hydrateWeaponXformFromKit();
+      }
+
+      // Walk kit.poses[pose][facing].weapon and copy authored values into
+      // state.weaponXform[kitId][pose][facing]. Does not overwrite any in-memory
+      // edits already pending — but call this only on load, so it's a clean fill.
+      function hydrateWeaponXformFromKit() {
+        if (!state.kit || !state.kitId) return;
+        if (!state.weaponXform[state.kitId]) state.weaponXform[state.kitId] = {};
+        const kitMap = state.weaponXform[state.kitId];
+        const poses = state.kit.poses || {};
+        for (const [poseId, facingMap] of Object.entries(poses)) {
+          if (!facingMap || typeof facingMap !== 'object') continue;
+          if (!kitMap[poseId]) kitMap[poseId] = {};
+          for (const [facing, raw] of Object.entries(facingMap)) {
+            const norm = normalizePoseFacingEntry(raw);
+            if (norm.weapon && typeof norm.weapon === 'object') {
+              kitMap[poseId][facing] = {
+                x: +norm.weapon.x || 0,
+                y: +norm.weapon.y || 0,
+                rot: +norm.weapon.rot || 0,
+              };
+            }
+          }
+        }
       }
 
       async function switchUnit(kitId) {
@@ -1388,6 +2077,7 @@
         const kitMeta = state.kits.find(function (k) { return k.id === kitId; });
         const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
         state.poseId = poses.includes('idle') ? 'idle' : (poses[0] || 'idle');
+        state.weaponActive = false;
         buildPoseDropdown();
         buildPoseStrip();
         refreshFacingGridArtwork();
@@ -1399,6 +2089,7 @@
         renderLayersList();
         renderOffsetReadout();
         renderPoseNote();
+        renderWeaponUi();
         await redraw();
       }
 
@@ -1406,8 +2097,10 @@
         if (state.poseId === poseId) return;
         state.poseId = poseId;
         invalidateAllLayerCache();
+        // Weapon-pose-view always operates on the resolved sprite id; clear weaponActive.
+        if (poseId === WEAPON_POSE_ID) state.weaponActive = false;
         const layers = getCurrentLayers();
-        if (!state.selectedLayerId || !layers.includes(state.selectedLayerId)) {
+        if (!state.weaponActive && (!state.selectedLayerId || !layers.includes(state.selectedLayerId))) {
           state.selectedLayerId = layers[0] || null;
         }
         if (poseSelectEl.value !== poseId) poseSelectEl.value = poseId;
@@ -1416,6 +2109,7 @@
         renderLayersList();
         renderOffsetReadout();
         renderPoseNote();
+        renderWeaponUi();
         await redraw();
       }
 
@@ -1446,6 +2140,7 @@
           state.kit = kit;
           state.registry = registry;
           state.componentsById = new Map(registry.components.map((e) => [e.id, e]));
+          hydrateWeaponXformFromKit();
 
           // Load offsets: prefer localStorage (v2), else server file. Migrate old shapes.
           let loaded = null;
@@ -1483,9 +2178,29 @@
           window.addEventListener('keydown', onKey);
           resetBtn.addEventListener('click', resetSelected);
           undoBtn.addEventListener('click', onUndo);
-          previewCanvas.addEventListener('mousedown', onCanvasMouseDown);
+          const resetWeaponBtn = document.getElementById('reset-weapon-btn');
+          if (resetWeaponBtn) {
+            resetWeaponBtn.addEventListener('click', function () {
+              if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
+              setWeaponXform(state.poseId, state.facing, 0, 0, 0);
+              renderLayersList();
+              renderOffsetReadout();
+              redraw();
+              scheduleKitAutoSave();
+            });
+          }
+          renderWeaponUi();
+          previewCanvas.addEventListener('mousedown', function (ev) {
+            onCanvasMouseDown(ev).catch(function (err) {
+              showToast('Click failed: ' + (err.message || err), { error: true });
+            });
+          });
           previewCanvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-          previewCanvas.addEventListener('mousemove', onCanvasMove);
+          previewCanvas.addEventListener('mousemove', function (ev) {
+            onCanvasMove(ev);
+            onCanvasMouseMove(ev);
+          });
+          window.addEventListener('mouseup', onCanvasMouseUp);
           previewCanvas.addEventListener('mouseleave', onCanvasLeave);
           unitSelectEl.addEventListener('change', function (ev) {
             switchUnit(ev.target.value).catch(function (err) {

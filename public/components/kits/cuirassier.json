@@ -1,0 +1,17 @@
+{
+  "id": "cuirassier",
+  "label": "Cuirassier (WIP)",
+  "baseAtlas": "public/sprites/cuirassier.png",
+  "outputAtlas": "public/sprites/cuirassier-components.png",
+  "outputPreview": "public/sprites/cuirassier-components-preview.png",
+  "facings": {
+    "N":  { "cell": [1, 2], "layers": ["horse-bay-north"] },
+    "NE": { "cell": [2, 0], "layers": ["horse-bay-northeast"] },
+    "E":  { "cell": [2, 1], "layers": ["horse-bay-east"] },
+    "SE": { "cell": [2, 2], "layers": ["horse-bay-southeast"] },
+    "S":  { "cell": [1, 1], "layers": ["horse-bay-south"] },
+    "SW": { "cell": [0, 2], "layers": ["horse-bay-southwest"] },
+    "W":  { "cell": [0, 1], "layers": ["horse-bay-west"] },
+    "NW": { "cell": [0, 0], "layers": ["horse-bay-northwest"] }
+  }
+}

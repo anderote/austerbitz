@@ -42,6 +42,7 @@ import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clou
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
 import { loadPoseAtlas } from './render/poses/atlas';
+import { loadKits } from './render/poses/kit-loader';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
@@ -58,9 +59,10 @@ try {
 } catch (err) {
   console.warn('[main] pose atlas load failed; continuing without it:', err);
 }
+const kits = await loadKits();
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
-  map.size.w, map.size.h, poseAtlas,
+  map.size.w, map.size.h, poseAtlas, kits,
 );
 const camera = createCamera();
 const input = createInputManager(canvas);

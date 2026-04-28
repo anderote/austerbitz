@@ -101,6 +101,79 @@ function offsetsApiPlugin(): Plugin {
           return;
         }
 
+        // POST /api/kits/:unit — deep-merge weapon block + pose weapon transforms
+        // into the kit JSON. Replaces leaf values; never deletes existing keys.
+        // 404 if the kit file is missing, 400 on malformed JSON.
+        if (method === 'POST' && url.startsWith('/api/kits/')) {
+          try {
+            const unit = decodeURIComponent(url.slice('/api/kits/'.length));
+            // Defend against path traversal: only allow simple kit ids.
+            if (!/^[a-zA-Z0-9_-]+$/.test(unit)) {
+              sendJson(res, 400, { ok: false, error: 'invalid unit id' });
+              return;
+            }
+            const target = resolve(PROJECT_ROOT, `public/components/kits/${unit}.json`);
+            let raw: string;
+            try {
+              raw = await readFile(target, 'utf8');
+            } catch {
+              sendJson(res, 404, { ok: false, error: `kit not found: ${unit}` });
+              return;
+            }
+            let parsed: any;
+            try {
+              parsed = JSON.parse(raw);
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              sendJson(res, 500, { ok: false, error: 'kit file is malformed: ' + message });
+              return;
+            }
+            const body = (await readJsonBody(req)) as any;
+            if (!body || typeof body !== 'object') {
+              sendJson(res, 400, { ok: false, error: 'expected JSON object body' });
+              return;
+            }
+            // Shallow merge of top-level `weapon` block (full replace if present).
+            if (body.weapon && typeof body.weapon === 'object') {
+              parsed.weapon = body.weapon;
+            }
+            // Deep merge of poses[pose][facing].weapon = { x, y, rot }, never
+            // touching any non-weapon keys (layers, etc.) of pose entries.
+            if (body.poses && typeof body.poses === 'object') {
+              if (!parsed.poses || typeof parsed.poses !== 'object') {
+                parsed.poses = {};
+              }
+              for (const [poseId, poseFacings] of Object.entries(body.poses)) {
+                if (!poseFacings || typeof poseFacings !== 'object') continue;
+                if (!parsed.poses[poseId] || typeof parsed.poses[poseId] !== 'object') {
+                  parsed.poses[poseId] = {};
+                }
+                for (const [facing, facingEntry] of Object.entries(
+                  poseFacings as Record<string, unknown>
+                )) {
+                  if (!facingEntry || typeof facingEntry !== 'object') continue;
+                  const fe = facingEntry as { weapon?: unknown };
+                  if (!fe.weapon || typeof fe.weapon !== 'object') continue;
+                  let existing = parsed.poses[poseId][facing];
+                  if (Array.isArray(existing)) {
+                    existing = { layers: existing };
+                  } else if (!existing || typeof existing !== 'object') {
+                    existing = { layers: [] };
+                  }
+                  existing.weapon = fe.weapon;
+                  parsed.poses[poseId][facing] = existing;
+                }
+              }
+            }
+            await writeFile(target, JSON.stringify(parsed, null, 2) + '\n', 'utf8');
+            sendJson(res, 200, { ok: true });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 400, { ok: false, error: message });
+          }
+          return;
+        }
+
         if (method === 'POST' && url === '/api/regiments') {
           try {
             const body = await readJsonBody(req);

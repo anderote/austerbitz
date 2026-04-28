@@ -1659,6 +1659,14 @@
       "facings": ["SW"],
       "path": "fx/blood/southwest/dying.png",
       "notes": "Blood pool (SW dying)."
-    }
+    },
+    { "id": "horse-bay-north",     "type": "anatomy", "category": "horse", "facings": ["N"],  "path": "anatomy/horse/north/idle.png" },
+    { "id": "horse-bay-northeast", "type": "anatomy", "category": "horse", "facings": ["NE"], "path": "anatomy/horse/northeast/idle.png" },
+    { "id": "horse-bay-east",      "type": "anatomy", "category": "horse", "facings": ["E"],  "path": "anatomy/horse/east/idle.png" },
+    { "id": "horse-bay-southeast", "type": "anatomy", "category": "horse", "facings": ["SE"], "path": "anatomy/horse/southeast/idle.png" },
+    { "id": "horse-bay-south",     "type": "anatomy", "category": "horse", "facings": ["S"],  "path": "anatomy/horse/south/idle.png" },
+    { "id": "horse-bay-southwest", "type": "anatomy", "category": "horse", "facings": ["SW"], "path": "anatomy/horse/southwest/idle.png" },
+    { "id": "horse-bay-west",      "type": "anatomy", "category": "horse", "facings": ["W"],  "path": "anatomy/horse/west/idle.png" },
+    { "id": "horse-bay-northwest", "type": "anatomy", "category": "horse", "facings": ["NW"], "path": "anatomy/horse/northwest/idle.png" }
   ]
 }

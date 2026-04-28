@@ -344,7 +344,7 @@
   "line-infantry": {
     "musket": {
       "NW": {
-        "musket-brown-bess-northwest": [
+        "weapon": [
           {
             "x": 20,
             "y": 11,
@@ -618,6 +618,62 @@
           {
             "x": 21,
             "y": 24,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 21,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 22,
+            "color": "clear"
+          },
+          {
+            "x": 20,
+            "y": 23,
+            "color": "#F0CDA0"
+          },
+          {
+            "x": 19,
+            "y": 20,
+            "color": "#3F2A1B"
+          },
+          {
+            "x": 19,
+            "y": 22,
+            "color": "#3F2A1B"
+          },
+          {
+            "x": 20,
+            "y": 22,
+            "color": "#3F2A1B"
+          },
+          {
+            "x": 19,
+            "y": 25,
+            "color": "#3F2A1B"
+          },
+          {
+            "x": 20,
+            "y": 25,
+            "color": "#3F2A1B"
+          },
+          {
+            "x": 20,
+            "y": 25,
+            "color": "clear"
+          }
+        ]
+      }
+    },
+    "idle": {
+      "NE": {
+        "musket-brown-bess-northeast": [
+          {
+            "x": 3,
+            "y": 16,
             "color": "clear"
           }
         ]

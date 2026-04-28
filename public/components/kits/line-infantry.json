@@ -14,8 +14,7 @@
         "body-north-base",
         "trousers-north",
         "coat-line-north",
-        "shako-standard-north",
-        "musket-brown-bess-north"
+        "shako-standard-north"
       ]
     },
     "NE": {
@@ -27,8 +26,7 @@
         "body-northeast-base",
         "trousers-northeast",
         "coat-line-northeast",
-        "shako-standard-northeast",
-        "musket-brown-bess-northeast"
+        "shako-standard-northeast"
       ]
     },
     "E": {
@@ -40,8 +38,7 @@
         "body-east-base",
         "trousers-east",
         "coat-line-east",
-        "shako-standard-east",
-        "musket-brown-bess-east"
+        "shako-standard-east"
       ]
     },
     "SE": {
@@ -53,8 +50,7 @@
         "body-southeast-base",
         "trousers-southeast",
         "coat-line-southeast",
-        "shako-standard-southeast",
-        "musket-brown-bess-southeast"
+        "shako-standard-southeast"
       ]
     },
     "S": {
@@ -66,8 +62,7 @@
         "body-south-base",
         "trousers-south",
         "coat-line-south",
-        "shako-standard-south",
-        "musket-brown-bess-south"
+        "shako-standard-south"
       ]
     },
     "SW": {
@@ -79,8 +74,7 @@
         "body-southwest-base",
         "trousers-southwest",
         "coat-line-southwest",
-        "shako-standard-southwest",
-        "musket-brown-bess-southwest"
+        "shako-standard-southwest"
       ]
     },
     "W": {
@@ -92,8 +86,7 @@
         "body-west-base",
         "trousers-west",
         "coat-line-west",
-        "shako-standard-west",
-        "musket-brown-bess-west"
+        "shako-standard-west"
       ]
     },
     "NW": {
@@ -105,343 +98,606 @@
         "body-northwest-base",
         "trousers-northwest",
         "coat-line-northwest",
-        "shako-standard-northwest",
-        "musket-brown-bess-northwest"
+        "shako-standard-northwest"
       ]
     }
   },
   "poses": {
     "make-ready": {
-      "S": [
-        "body-south-base",
-        "trousers-south",
-        "coat-line-south-make-ready",
-        "shako-standard-south",
-        "musket-brown-bess-south-make-ready"
-      ],
-      "N": [
-        "body-north-base",
-        "trousers-north",
-        "coat-line-north-make-ready",
-        "shako-standard-north",
-        "musket-brown-bess-north-make-ready"
-      ],
-      "E": [
-        "body-east-base",
-        "trousers-east",
-        "coat-line-east-make-ready",
-        "shako-standard-east",
-        "musket-brown-bess-east-make-ready"
-      ],
-      "W": [
-        "body-west-base",
-        "trousers-west",
-        "coat-line-west-make-ready",
-        "shako-standard-west",
-        "musket-brown-bess-west-make-ready"
-      ],
-      "NE": [
-        "body-northeast-base",
-        "trousers-northeast",
-        "coat-line-northeast-make-ready",
-        "shako-standard-northeast",
-        "musket-brown-bess-northeast-make-ready"
-      ],
-      "NW": [
-        "body-northwest-base",
-        "trousers-northwest",
-        "coat-line-northwest-make-ready",
-        "shako-standard-northwest",
-        "musket-brown-bess-northwest-make-ready"
-      ],
-      "SE": [
-        "body-southeast-base",
-        "trousers-southeast",
-        "coat-line-southeast-make-ready",
-        "shako-standard-southeast",
-        "musket-brown-bess-southeast-make-ready"
-      ],
-      "SW": [
-        "body-southwest-base",
-        "trousers-southwest",
-        "coat-line-southwest-make-ready",
-        "shako-standard-southwest",
-        "musket-brown-bess-southwest-make-ready"
-      ]
+      "S": {
+        "layers": [
+          "body-south-base",
+          "trousers-south",
+          "coat-line-south-make-ready",
+          "shako-standard-south"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "N": {
+        "layers": [
+          "body-north-base",
+          "trousers-north",
+          "coat-line-north-make-ready",
+          "shako-standard-north"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "E": {
+        "layers": [
+          "body-east-base",
+          "trousers-east",
+          "coat-line-east-make-ready",
+          "shako-standard-east"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "W": {
+        "layers": [
+          "body-west-base",
+          "trousers-west",
+          "coat-line-west-make-ready",
+          "shako-standard-west"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "NE": {
+        "layers": [
+          "body-northeast-base",
+          "trousers-northeast",
+          "coat-line-northeast-make-ready",
+          "shako-standard-northeast"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "NW": {
+        "layers": [
+          "body-northwest-base",
+          "trousers-northwest",
+          "coat-line-northwest-make-ready",
+          "shako-standard-northwest"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "SE": {
+        "layers": [
+          "body-southeast-base",
+          "trousers-southeast",
+          "coat-line-southeast-make-ready",
+          "shako-standard-southeast"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      },
+      "SW": {
+        "layers": [
+          "body-southwest-base",
+          "trousers-southwest",
+          "coat-line-southwest-make-ready",
+          "shako-standard-southwest"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": -1,
+          "rot": 0
+        }
+      }
     },
     "present": {
-      "S": [
-        "body-south-base",
-        "trousers-south",
-        "coat-line-south-present",
-        "shako-standard-south",
-        "musket-brown-bess-south-present"
-      ],
-      "E": [
-        "body-east-base",
-        "trousers-east",
-        "coat-line-east-present",
-        "shako-standard-east",
-        "musket-brown-bess-east-present"
-      ],
-      "W": [
-        "body-west-base",
-        "trousers-west",
-        "coat-line-west-present",
-        "shako-standard-west",
-        "musket-brown-bess-west-present"
-      ],
-      "N": [
-        "body-north-base",
-        "trousers-north",
-        "coat-line-north-present",
-        "shako-standard-north",
-        "musket-brown-bess-north-present"
-      ],
-      "NE": [
-        "body-northeast-base",
-        "trousers-northeast",
-        "coat-line-northeast-present",
-        "shako-standard-northeast",
-        "musket-brown-bess-northeast-present"
-      ],
-      "SE": [
-        "body-southeast-base",
-        "trousers-southeast",
-        "coat-line-southeast-present",
-        "shako-standard-southeast",
-        "musket-brown-bess-southeast-present"
-      ],
-      "NW": [
-        "body-northwest-base",
-        "trousers-northwest",
-        "coat-line-northwest-present",
-        "shako-standard-northwest",
-        "musket-brown-bess-northwest-present"
-      ],
-      "SW": [
-        "body-southwest-base",
-        "trousers-southwest",
-        "coat-line-southwest-present",
-        "shako-standard-southwest",
-        "musket-brown-bess-southwest-present"
-      ]
+      "S": {
+        "layers": [
+          "body-south-base",
+          "trousers-south",
+          "coat-line-south-present",
+          "shako-standard-south"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "E": {
+        "layers": [
+          "body-east-base",
+          "trousers-east",
+          "coat-line-east-present",
+          "shako-standard-east"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "W": {
+        "layers": [
+          "body-west-base",
+          "trousers-west",
+          "coat-line-west-present",
+          "shako-standard-west"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "N": {
+        "layers": [
+          "body-north-base",
+          "trousers-north",
+          "coat-line-north-present",
+          "shako-standard-north"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "NE": {
+        "layers": [
+          "body-northeast-base",
+          "trousers-northeast",
+          "coat-line-northeast-present",
+          "shako-standard-northeast"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "SE": {
+        "layers": [
+          "body-southeast-base",
+          "trousers-southeast",
+          "coat-line-southeast-present",
+          "shako-standard-southeast"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "NW": {
+        "layers": [
+          "body-northwest-base",
+          "trousers-northwest",
+          "coat-line-northwest-present",
+          "shako-standard-northwest"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      },
+      "SW": {
+        "layers": [
+          "body-southwest-base",
+          "trousers-southwest",
+          "coat-line-southwest-present",
+          "shako-standard-southwest"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -1,
+          "rot": 20
+        }
+      }
     },
     "fire": {
-      "S": [
-        "body-south-base",
-        "trousers-south",
-        "coat-line-south-fire",
-        "shako-standard-south",
-        "musket-brown-bess-south-fire"
-      ],
-      "E": [
-        "body-east-base",
-        "trousers-east",
-        "coat-line-east-fire",
-        "shako-standard-east",
-        "musket-brown-bess-east-fire"
-      ],
-      "W": [
-        "body-west-base",
-        "trousers-west",
-        "coat-line-west-fire",
-        "shako-standard-west",
-        "musket-brown-bess-west-fire"
-      ],
-      "N": [
-        "body-north-base",
-        "trousers-north",
-        "coat-line-north-fire",
-        "shako-standard-north",
-        "musket-brown-bess-north-fire"
-      ],
-      "NE": [
-        "body-northeast-base",
-        "trousers-northeast",
-        "coat-line-northeast-fire",
-        "shako-standard-northeast",
-        "musket-brown-bess-northeast-fire"
-      ],
-      "SE": [
-        "body-southeast-base",
-        "trousers-southeast",
-        "coat-line-southeast-fire",
-        "shako-standard-southeast",
-        "musket-brown-bess-southeast-fire"
-      ],
-      "NW": [
-        "body-northwest-base",
-        "trousers-northwest",
-        "coat-line-northwest-fire",
-        "shako-standard-northwest",
-        "musket-brown-bess-northwest-fire"
-      ],
-      "SW": [
-        "body-southwest-base",
-        "trousers-southwest",
-        "coat-line-southwest-fire",
-        "shako-standard-southwest",
-        "musket-brown-bess-southwest-fire"
-      ]
+      "S": {
+        "layers": [
+          "body-south-base",
+          "trousers-south",
+          "coat-line-south-fire",
+          "shako-standard-south"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "E": {
+        "layers": [
+          "body-east-base",
+          "trousers-east",
+          "coat-line-east-fire",
+          "shako-standard-east"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "W": {
+        "layers": [
+          "body-west-base",
+          "trousers-west",
+          "coat-line-west-fire",
+          "shako-standard-west"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "N": {
+        "layers": [
+          "body-north-base",
+          "trousers-north",
+          "coat-line-north-fire",
+          "shako-standard-north"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "NE": {
+        "layers": [
+          "body-northeast-base",
+          "trousers-northeast",
+          "coat-line-northeast-fire",
+          "shako-standard-northeast"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "SE": {
+        "layers": [
+          "body-southeast-base",
+          "trousers-southeast",
+          "coat-line-southeast-fire",
+          "shako-standard-southeast"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "NW": {
+        "layers": [
+          "body-northwest-base",
+          "trousers-northwest",
+          "coat-line-northwest-fire",
+          "shako-standard-northwest"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      },
+      "SW": {
+        "layers": [
+          "body-southwest-base",
+          "trousers-southwest",
+          "coat-line-southwest-fire",
+          "shako-standard-southwest"
+        ],
+        "weapon": {
+          "x": 1,
+          "y": -2,
+          "rot": 20
+        }
+      }
     },
     "hit": {
-      "S": [
-        "shadow-south",
-        "body-south-base",
-        "trousers-south",
-        "coat-line-south-hit",
-        "shako-standard-south",
-        "musket-brown-bess-south-hit",
-        "blood-south-hit"
-      ],
-      "N": [
-        "shadow-north",
-        "body-north-base",
-        "trousers-north",
-        "coat-line-north-hit",
-        "shako-standard-north",
-        "musket-brown-bess-north-hit",
-        "blood-north-hit"
-      ],
-      "E": [
-        "shadow-east",
-        "body-east-base",
-        "trousers-east",
-        "coat-line-east-hit",
-        "shako-standard-east",
-        "musket-brown-bess-east-hit",
-        "blood-east-hit"
-      ],
-      "W": [
-        "shadow-west",
-        "body-west-base",
-        "trousers-west",
-        "coat-line-west-hit",
-        "shako-standard-west",
-        "musket-brown-bess-west-hit",
-        "blood-west-hit"
-      ],
-      "NE": [
-        "shadow-northeast",
-        "body-northeast-base",
-        "trousers-northeast",
-        "coat-line-northeast-hit",
-        "shako-standard-northeast",
-        "musket-brown-bess-northeast-hit",
-        "blood-northeast-hit"
-      ],
-      "NW": [
-        "shadow-northwest",
-        "body-northwest-base",
-        "trousers-northwest",
-        "coat-line-northwest-hit",
-        "shako-standard-northwest",
-        "musket-brown-bess-northwest-hit",
-        "blood-northwest-hit"
-      ],
-      "SE": [
-        "shadow-southeast",
-        "body-southeast-base",
-        "trousers-southeast",
-        "coat-line-southeast-hit",
-        "shako-standard-southeast",
-        "musket-brown-bess-southeast-hit",
-        "blood-southeast-hit"
-      ],
-      "SW": [
-        "shadow-southwest",
-        "body-southwest-base",
-        "trousers-southwest",
-        "coat-line-southwest-hit",
-        "shako-standard-southwest",
-        "musket-brown-bess-southwest-hit",
-        "blood-southwest-hit"
-      ]
+      "S": {
+        "layers": [
+          "shadow-south",
+          "body-south-base",
+          "trousers-south",
+          "coat-line-south-hit",
+          "shako-standard-south",
+          "blood-south-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 0,
+          "rot": 0
+        }
+      },
+      "N": {
+        "layers": [
+          "shadow-north",
+          "body-north-base",
+          "trousers-north",
+          "coat-line-north-hit",
+          "shako-standard-north",
+          "blood-north-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      },
+      "E": {
+        "layers": [
+          "shadow-east",
+          "body-east-base",
+          "trousers-east",
+          "coat-line-east-hit",
+          "shako-standard-east",
+          "blood-east-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      },
+      "W": {
+        "layers": [
+          "shadow-west",
+          "body-west-base",
+          "trousers-west",
+          "coat-line-west-hit",
+          "shako-standard-west",
+          "blood-west-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      },
+      "NE": {
+        "layers": [
+          "shadow-northeast",
+          "body-northeast-base",
+          "trousers-northeast",
+          "coat-line-northeast-hit",
+          "shako-standard-northeast",
+          "blood-northeast-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      },
+      "NW": {
+        "layers": [
+          "shadow-northwest",
+          "body-northwest-base",
+          "trousers-northwest",
+          "coat-line-northwest-hit",
+          "shako-standard-northwest",
+          "blood-northwest-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      },
+      "SE": {
+        "layers": [
+          "shadow-southeast",
+          "body-southeast-base",
+          "trousers-southeast",
+          "coat-line-southeast-hit",
+          "shako-standard-southeast",
+          "blood-southeast-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      },
+      "SW": {
+        "layers": [
+          "shadow-southwest",
+          "body-southwest-base",
+          "trousers-southwest",
+          "coat-line-southwest-hit",
+          "shako-standard-southwest",
+          "blood-southwest-hit"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 1,
+          "rot": -10
+        }
+      }
     },
     "dying": {
-      "S": [
-        "shadow-south",
-        "body-south-dying",
-        "trousers-south-dying",
-        "coat-line-south-dying",
-        "shako-standard-south-dying",
-        "musket-brown-bess-south-dying",
-        "blood-south-dying"
-      ],
-      "N": [
-        "shadow-north",
-        "body-north-dying",
-        "trousers-north-dying",
-        "coat-line-north-dying",
-        "shako-standard-north-dying",
-        "musket-brown-bess-north-dying",
-        "blood-north-dying"
-      ],
-      "E": [
-        "shadow-east",
-        "body-east-dying",
-        "trousers-east-dying",
-        "coat-line-east-dying",
-        "shako-standard-east-dying",
-        "musket-brown-bess-east-dying",
-        "blood-east-dying"
-      ],
-      "W": [
-        "shadow-west",
-        "body-west-dying",
-        "trousers-west-dying",
-        "coat-line-west-dying",
-        "shako-standard-west-dying",
-        "musket-brown-bess-west-dying",
-        "blood-west-dying"
-      ],
-      "NE": [
-        "shadow-northeast",
-        "body-northeast-dying",
-        "trousers-northeast-dying",
-        "coat-line-northeast-dying",
-        "shako-standard-northeast-dying",
-        "musket-brown-bess-northeast-dying",
-        "blood-northeast-dying"
-      ],
-      "NW": [
-        "shadow-northwest",
-        "body-northwest-dying",
-        "trousers-northwest-dying",
-        "coat-line-northwest-dying",
-        "shako-standard-northwest-dying",
-        "musket-brown-bess-northwest-dying",
-        "blood-northwest-dying"
-      ],
-      "SE": [
-        "shadow-southeast",
-        "body-southeast-dying",
-        "trousers-southeast-dying",
-        "coat-line-southeast-dying",
-        "shako-standard-southeast-dying",
-        "musket-brown-bess-southeast-dying",
-        "blood-southeast-dying"
-      ],
-      "SW": [
-        "shadow-southwest",
-        "body-southwest-dying",
-        "trousers-southwest-dying",
-        "coat-line-southwest-dying",
-        "shako-standard-southwest-dying",
-        "musket-brown-bess-southwest-dying",
-        "blood-southwest-dying"
-      ]
-    },
-    "musket": {
-      "N":  ["musket-brown-bess-north"],
-      "NE": ["musket-brown-bess-northeast"],
-      "E":  ["musket-brown-bess-east"],
-      "SE": ["musket-brown-bess-southeast"],
-      "S":  ["musket-brown-bess-south"],
-      "SW": ["musket-brown-bess-southwest"],
-      "W":  ["musket-brown-bess-west"],
-      "NW": ["musket-brown-bess-northwest"]
+      "S": {
+        "layers": [
+          "shadow-south",
+          "body-south-dying",
+          "trousers-south-dying",
+          "coat-line-south-dying",
+          "shako-standard-south-dying",
+          "blood-south-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "N": {
+        "layers": [
+          "shadow-north",
+          "body-north-dying",
+          "trousers-north-dying",
+          "coat-line-north-dying",
+          "shako-standard-north-dying",
+          "blood-north-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "E": {
+        "layers": [
+          "shadow-east",
+          "body-east-dying",
+          "trousers-east-dying",
+          "coat-line-east-dying",
+          "shako-standard-east-dying",
+          "blood-east-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "W": {
+        "layers": [
+          "shadow-west",
+          "body-west-dying",
+          "trousers-west-dying",
+          "coat-line-west-dying",
+          "shako-standard-west-dying",
+          "blood-west-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "NE": {
+        "layers": [
+          "shadow-northeast",
+          "body-northeast-dying",
+          "trousers-northeast-dying",
+          "coat-line-northeast-dying",
+          "shako-standard-northeast-dying",
+          "blood-northeast-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "NW": {
+        "layers": [
+          "shadow-northwest",
+          "body-northwest-dying",
+          "trousers-northwest-dying",
+          "coat-line-northwest-dying",
+          "shako-standard-northwest-dying",
+          "blood-northwest-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "SE": {
+        "layers": [
+          "shadow-southeast",
+          "body-southeast-dying",
+          "trousers-southeast-dying",
+          "coat-line-southeast-dying",
+          "shako-standard-southeast-dying",
+          "blood-southeast-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      },
+      "SW": {
+        "layers": [
+          "shadow-southwest",
+          "body-southwest-dying",
+          "trousers-southwest-dying",
+          "coat-line-southwest-dying",
+          "shako-standard-southwest-dying",
+          "blood-southwest-dying"
+        ],
+        "weapon": {
+          "x": 0,
+          "y": 2,
+          "rot": 0
+        }
+      }
+    }
+  },
+  "weapon": {
+    "layerPrefix": "musket-brown-bess",
+    "facings": {
+      "N": {
+        "src": "self"
+      },
+      "NW": {
+        "src": "self"
+      },
+      "W": {
+        "src": "self"
+      },
+      "S": {
+        "src": "N",
+        "transform": "flipY"
+      },
+      "NE": {
+        "src": "NW",
+        "transform": "flipX"
+      },
+      "SE": {
+        "src": "NW",
+        "transform": "rot180"
+      },
+      "SW": {
+        "src": "NW",
+        "transform": "flipY"
+      },
+      "E": {
+        "src": "W",
+        "transform": "flipX"
+      }
     }
   }
 }
