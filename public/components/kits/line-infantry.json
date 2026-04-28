@@ -871,8 +871,8 @@
       "SE": {
         "layers": [],
         "weapon": {
-          "x": 0,
-          "y": 6,
+          "x": 1,
+          "y": 7,
           "rot": 0,
           "flipX": true,
           "src": "NW",
@@ -930,8 +930,8 @@
       "E": {
         "layers": [],
         "weapon": {
-          "x": 6,
-          "y": 8,
+          "x": 2,
+          "y": 6,
           "rot": 0,
           "flipX": true,
           "src": "NW",
@@ -982,14 +982,6 @@
             "rot": 0,
             "flipX": true,
             "src": "N",
-            "transform": "none"
-          },
-          {
-            "x": 3,
-            "y": 5,
-            "rot": 0,
-            "flipX": true,
-            "src": "NW",
             "transform": "none"
           },
           {

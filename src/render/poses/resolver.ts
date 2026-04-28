@@ -154,14 +154,39 @@ function applyFacingTransform(
   base: WeaponPoseTransform,
   transform: WeaponFacingTransform,
 ): WeaponPoseTransform {
+  // flipX inheritance mirrors the editor (`applyFacingTransformXform`):
+  // `flipX` toggles the per-pose flipX, `flipY`/`rot180` pass it through.
+  const baseFlip = base.flipX === true;
   switch (transform) {
-    case 'flipX':
-      return { x: -base.x, y: base.y, rot: -base.rot };
-    case 'flipY':
-      return { x: base.x, y: -base.y, rot: -base.rot };
-    case 'rot180':
-      return { x: -base.x, y: -base.y, rot: base.rot };
+    case 'flipX': {
+      const out: WeaponPoseTransform = { x: -base.x, y: base.y, rot: -base.rot };
+      if (!baseFlip) out.flipX = true;
+      return out;
+    }
+    case 'flipY': {
+      const out: WeaponPoseTransform = { x: base.x, y: -base.y, rot: -base.rot };
+      if (baseFlip) out.flipX = true;
+      return out;
+    }
+    case 'rot180': {
+      const out: WeaponPoseTransform = { x: -base.x, y: -base.y, rot: base.rot };
+      if (baseFlip) out.flipX = true;
+      return out;
+    }
   }
+}
+
+/** Normalize a raw weapon entry to a WeaponPoseTransform, carrying optional
+ * flipX/src/transform fields so the runtime can honor the per-pose source
+ * override authored by the editor. */
+function normalizeWeaponPoseTransform(w: WeaponPoseTransform): WeaponPoseTransform {
+  const out: WeaponPoseTransform = { x: w.x, y: w.y, rot: w.rot };
+  if (w.flipX === true) out.flipX = true;
+  if (typeof w.src === 'string') {
+    out.src = w.src;
+    if (w.src !== 'self' && typeof w.transform === 'string') out.transform = w.transform;
+  }
+  return out;
 }
 
 /** Read `poses[pose][facing].weapon` if present, else null. */
@@ -177,15 +202,14 @@ function readPoseWeapon(
   if (!facingEntry) return null;
   const normalized = normalizePoseFacingEntry(facingEntry);
   if (!normalized.weapon) return null;
-  const w = normalized.weapon;
-  return { x: w.x, y: w.y, rot: w.rot };
+  return normalizeWeaponPoseTransform(normalized.weapon);
 }
 
 /**
  * Pool the variants authored for a (pose, facing): `[weapon, ...weaponVariants]`.
- * Each entry is normalized to `{x, y, rot}` only — variants tune position for
- * formation variety; they cannot pick a different sprite than the canonical
- * `kit.weapon.facings[F]`.
+ * Each entry preserves its optional flipX/src/transform fields so the runtime
+ * can mirror the editor's per-pose source override (e.g. present.S authored as
+ * src='NE') and per-pose flipX UV inversion.
  */
 export function readWeaponVariantPool(
   poses: Record<string, Record<string, string[] | PoseFacingEntry>> | undefined,
@@ -199,10 +223,10 @@ export function readWeaponVariantPool(
   if (!facingEntry) return [];
   const norm = normalizePoseFacingEntry(facingEntry);
   const out: WeaponPoseTransform[] = [];
-  if (norm.weapon) out.push({ x: norm.weapon.x, y: norm.weapon.y, rot: norm.weapon.rot });
+  if (norm.weapon) out.push(normalizeWeaponPoseTransform(norm.weapon));
   if (Array.isArray(norm.weaponVariants)) {
     for (const v of norm.weaponVariants) {
-      if (v && typeof v === 'object') out.push({ x: v.x, y: v.y, rot: v.rot });
+      if (v && typeof v === 'object') out.push(normalizeWeaponPoseTransform(v));
     }
   }
   return out;
