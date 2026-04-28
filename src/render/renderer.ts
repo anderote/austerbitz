@@ -5,9 +5,11 @@ import { createSpritePass } from './passes/sprite-pass';
 import { createDroppedItemsPass } from './passes/dropped-items-pass';
 import { createSelectionPass } from './passes/selection-pass';
 import { createParticlePass } from './passes/particle-pass';
+import { createRingPass, type RingPass } from './passes/ring-pass';
 import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
 import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
+import { createCraterStainPass, type CraterStainPass } from './passes/crater-stain-pass';
 import { createPuffPass } from './passes/puff-pass';
 import { createDebrisPass } from './passes/debris-pass';
 import { createGrassTuftsPass, type GrassTuftsPass } from './passes/grass-tufts-pass';
@@ -22,13 +24,19 @@ import { PLAYER_TEAM } from '../sim/player';
 import type { PoseAtlas } from './poses/atlas';
 import type { KitConfig } from './poses/kit-loader';
 import type { DebrisAtlas } from './debris-atlas';
+import { createCameraShake, kickShake, advanceShake, currentOffset } from './camera-shake';
+import { clearShakeRequests } from '../sim/shake-requests';
+import { clearCraterSplats } from '../sim/crater-splats';
+import { createRng } from '../util/rng';
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
   (1 << ParticleClass.Smoke) |
   (1 << ParticleClass.Flash) |
   (1 << ParticleClass.Blood) |
-  (1 << ParticleClass.Debris);
+  (1 << ParticleClass.Debris) |
+  (1 << ParticleClass.Ember);
+  // Ring is intentionally excluded — the dedicated ring-pass renders it as an annulus.
 
 export interface RenderOptions {
   showHealthBars: boolean;
@@ -46,9 +54,12 @@ export interface Renderer {
     drag: DragRect,
     formation: FormationPreview | null,
     opts: RenderOptions,
+    dt: number,
   ): void;
   resize(): void;
   bloodStain: BloodStainPass;
+  craterStain: CraterStainPass;
+  ringPass: RingPass;
   /**
    * Swap the sprite-pass atlas texture mid-session. Used by the dev-mode
    * live-reload watcher; production builds never call this.
@@ -80,6 +91,8 @@ export function createRenderer(
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
   terrain.setBlood(bloodStain.texture, worldW, worldH);
+  const craterStain = createCraterStainPass(gl, worldW, worldH);
+  terrain.setCrater(craterStain.texture, worldW, worldH);
   const sprites = createSpritePass(gl, capacity, poseAtlas, kits, worldH);
   const droppedItems = createDroppedItemsPass(
     gl,
@@ -91,6 +104,7 @@ export function createRenderer(
   );
   const selectionPass = createSelectionPass(gl, capacity);
   const particlesPass = createParticlePass(gl, particleCapacity);
+  const ringPass = createRingPass(gl, particleCapacity);
   const puffsPass = createPuffPass(gl, puffCapacity);
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
@@ -98,6 +112,13 @@ export function createRenderer(
   const grassTuftsPass: GrassTuftsPass | null = map ? createGrassTuftsPass(gl, map) : null;
   const treesPass: TreesPass | null = map ? createTreesPass(gl, map) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
+
+  // Camera shake state — owned by the renderer, invisible to the sim.
+  const cameraShake = createCameraShake();
+  // Dedicated RNG for shake jitter; seeded arbitrarily since visual noise has
+  // no gameplay consequence. Kept separate from world.rng to avoid coupling
+  // render timing to sim determinism.
+  const shakeRng = createRng(0xdead_beef);
 
   // Set the depth comparison once. Individual passes flip DEPTH_TEST and the
   // depth mask on/off; default state is OFF so existing passes keep behaving
@@ -108,16 +129,45 @@ export function createRenderer(
 
   return {
     bloodStain,
+    craterStain,
+    ringPass,
     resize() {
       resizeToDisplay(gl, canvas);
     },
     replaceSpriteAtlas(image) {
       sprites.replaceAtlasTexture(image);
     },
-    render(world, projectiles, puffs, particlePool, cam, sel, drag, formation, opts) {
+    render(world, projectiles, puffs, particlePool, cam, sel, drag, formation, opts, frameDt) {
+      // Drain camera-shake requests from the sim. Attenuate by camera distance
+      // (30 m reference distance) so far-away explosions cause less shake.
+      const sr = world.shakeRequests;
+      for (let i = 0; i < sr.count; i++) {
+        const dist = Math.hypot(cam.center.x - sr.x[i]!, cam.center.y - sr.y[i]!);
+        const attenuatedMag = sr.magnitude[i]! / Math.max(1, dist / 30);
+        kickShake(cameraShake, attenuatedMag, sr.duration[i]!);
+      }
+      clearShakeRequests(sr);
+
+      // Apply jitter to camera center for this frame only — revert after drawing.
+      const off = currentOffset(cameraShake, shakeRng);
+      cam.center.x += off.x;
+      cam.center.y += off.y;
+
       // Bake any queued blood splats into the persistent stain texture before
       // terrain samples it.
       bloodStain.flush();
+
+      // Bake any queued crater splats into the persistent stain texture.
+      for (let i = 0; i < world.craterSplats.count; i++) {
+        craterStain.splat(
+          world.craterSplats.posX[i]!,
+          world.craterSplats.posY[i]!,
+          world.craterSplats.radius[i]!,
+          world.craterSplats.intensity[i]!,
+        );
+      }
+      clearCraterSplats(world.craterSplats);
+      craterStain.flush();
 
       gl.clearColor(0, 0, 0, 1);
       gl.depthMask(true);                                       // allow depth clear
@@ -142,9 +192,17 @@ export function createRenderer(
       // Puffs first (under), sparks after (over).
       puffsPass.draw(puffs, cam);
       particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK);
+      ringPass.draw(particlePool, cam);
       selectionPass.draw(world, cam, sel, drag, formation);
       if (opts.showMovePreview) selectionPass.drawMovePreview(world, cam, sel);
       if (opts.showHealthBars) healthBarPass.draw(world, cam);
+
+      // Revert the per-frame jitter so the persistent camera state is unshaken.
+      cam.center.x -= off.x;
+      cam.center.y -= off.y;
+
+      // Advance the shake decay timer at the end of the frame (after all draws).
+      advanceShake(cameraShake, frameDt);
     },
   };
 }

@@ -556,7 +556,8 @@ export function createSpritePass(
         const rt = e.recoilT[i]!;
         let wave = 0;
         if (rt > 0) {
-          const phase = 1 - rt / RECOIL_T;
+          const total = e.recoilTotal[i]! > 0 ? e.recoilTotal[i]! : RECOIL_T;
+          const phase = 1 - rt / total;
           if (phase < RECOIL_PUSH_END) {
             const u = phase / RECOIL_PUSH_END;
             const inv = 1 - u;

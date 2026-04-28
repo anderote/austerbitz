@@ -2,11 +2,15 @@ import { createEntities, type Entities } from './entities';
 import { createGrid, gridRebuild, type Grid } from './spatial/grid';
 import { createRng, type Rng } from '../util/rng';
 import { createBloodSplats, type BloodSplats } from './blood-splats';
+import { createCraterSplats, type CraterSplats } from './crater-splats';
 import { createDebris, type Debris } from './debris';
 import { createDroppedItems, type DroppedItems } from './dropped-items';
 import { createFireSignal, type FireSignal } from './fire-signal';
 import type { MarchGroup } from './march-groups';
 import { profiler } from '../dev/profiler';
+import { createShockwaves, type Shockwaves } from '../fx/shockwaves';
+import { createShakeRequests, type ShakeRequests } from './shake-requests';
+import { createSfxRequests, type SfxRequests } from './sfx-requests';
 
 export type System = (world: World, dt: number) => void;
 
@@ -36,16 +40,24 @@ export interface World {
   orderQueue: Map<number, Order[]>;
   /** Per-frame blood-stain splat queue, drained by the renderer each frame. */
   bloodSplats: BloodSplats;
+  /** Per-frame crater-stain splat queue, drained by the renderer each frame. */
+  craterSplats: CraterSplats;
   /** Visual debris (gib chunks) — short-lived. */
   debris: Debris;
   /** Weapons dropped by dying units. Persists indefinitely. */
   droppedItems: DroppedItems;
   /** Per-cell-per-team most-recent-fire-tick — drives volley contagion. */
   fireSignal: FireSignal;
+  /** Active shockwave records — advanced each tick by shockwave-system. */
+  shockwaves: Shockwaves;
   /** Active march groups, keyed by groupId. Lifecycle managed by march-system. */
   marchGroups: Map<number, MarchGroup>;
   /** Monotonic counter for new march-group ids; never reused. Starts at 1 so 0 stays a sentinel. */
   nextMarchGroupId: number;
+  /** Per-frame camera-shake requests from explosions. Drained each frame by the renderer. */
+  shakeRequests: ShakeRequests;
+  /** Per-frame sfx play requests from the sim. Drained each frame by the render loop. */
+  sfxRequests: SfxRequests;
 }
 
 export function createWorld(cfg: WorldConfig): World {
@@ -66,14 +78,18 @@ export function createWorld(cfg: WorldConfig): World {
     systems: [],
     orderQueue: new Map(),
     bloodSplats: createBloodSplats(4096),
+    craterSplats: createCraterSplats(256),
     // Sized for "keep as much gibs as we can" — corpses persist past TTL
     // (debris-system.ts), so the cap is the soft limit on how many can pile
     // up before the allocator evicts the oldest settled one.
     debris: createDebris(8192),
     droppedItems: createDroppedItems(cfg.capacity),
+    shockwaves: createShockwaves(32, cfg.capacity),
     marchGroups: new Map(),
     nextMarchGroupId: 1,
     fireSignal: createFireSignal(grid),
+    shakeRequests: createShakeRequests(16),
+    sfxRequests: createSfxRequests(64),
   };
 }
 

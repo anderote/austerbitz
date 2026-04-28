@@ -16,8 +16,6 @@ export interface CameraControlsConfig {
   panKeySpeed: number;       // world units / second at zoom = 1
   sprintMultiplier: number;  // pan speed multiplier while Shift is held
   bounds?: CameraBounds;     // if set, clamps cam.center so the viewport stays inside
-  /** When this returns true, arrow keys do NOT pan the camera (WASD still does). */
-  suppressArrowsWhen?: () => boolean;
 }
 
 const DEFAULTS: CameraControlsConfig = {
@@ -89,15 +87,14 @@ export function createCameraControls(
         dragLastY = input.state.mouse.y;
       }
 
-      // Keyboard pan — WASD always; arrows unless suppressed (e.g. selection
-      // is active and arrow keys are nudging troops).
+      // Keyboard pan — WASD only. Arrow keys are reserved for game features
+      // (unit nudging, cannon aim) and never pan the camera.
       const k = input.state.keys;
-      const arrows = !(c.suppressArrowsWhen?.() ?? false);
       let kx = 0, ky = 0;
-      if ((arrows && k.has('ArrowLeft')) || k.has('KeyA')) kx -= 1;
-      if ((arrows && k.has('ArrowRight')) || k.has('KeyD')) kx += 1;
-      if ((arrows && k.has('ArrowUp')) || k.has('KeyW')) ky -= 1;
-      if ((arrows && k.has('ArrowDown')) || k.has('KeyS')) ky += 1;
+      if (k.has('KeyA')) kx -= 1;
+      if (k.has('KeyD')) kx += 1;
+      if (k.has('KeyW')) ky -= 1;
+      if (k.has('KeyS')) ky += 1;
       if (kx !== 0 || ky !== 0) {
         const sprint = (k.has('ShiftLeft') || k.has('ShiftRight')) ? c.sprintMultiplier : 1;
         const len = Math.hypot(kx, ky);

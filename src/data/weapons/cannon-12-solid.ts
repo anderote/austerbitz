@@ -11,6 +11,7 @@ export const cannon12Muzzle: MuzzleProfile = {
     speed: { min: 7, max: 13 },
   },
   recoilFirer: 4.0,
+  recoilDuration: 3.5,
 };
 
 export const cannon12Solid: WeaponProfile = {
@@ -19,7 +20,7 @@ export const cannon12Solid: WeaponProfile = {
   muzzle: cannon12Muzzle,
   projectile: {
     mass: 6,
-    muzzleVelocity: 250,
+    muzzleVelocity: 60,
     damage: 80,
     maxLife: 6.0,
     launchHeight: 0.7,

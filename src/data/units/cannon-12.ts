@@ -10,7 +10,7 @@ export const cannon12: UnitKind = {
   spriteCell: { col: 1, row: 1 },
   baseStats: {
     hp: 200,
-    moveSpeed: 1.2,
+    moveSpeed: 0.5,
     morale: 160,
     sightRange: 200,
     weaponRange: 600,

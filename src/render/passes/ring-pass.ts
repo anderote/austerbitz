@@ -1,33 +1,17 @@
+// src/render/passes/ring-pass.ts
 import { linkProgram, getUniforms } from '../../gl/program';
 import { createBuffer, createVertexArray } from '../../gl/buffer';
-import { PARTICLE_VS, PARTICLE_FS } from '../shaders/particle.glsl';
+import { RING_VS, RING_FS } from '../shaders/ring.glsl';
 import type { Camera } from '../camera';
 import { viewProjection } from '../camera';
 import { ParticleClass, type Particles } from '../../particles/particles';
 
-// Per-class alpha multiplier baked into the lifeRatio fade. Blood spurts
-// looked too saturated against the new desaturated terrain — knock them
-// back so they read as droplets rather than a wash of red.
-const CLASS_ALPHA: Record<ParticleClass, number> = {
-  [ParticleClass.Dust]: 1,
-  [ParticleClass.Smoke]: 1,
-  [ParticleClass.Flash]: 1,
-  [ParticleClass.Blood]: 0.6,
-  [ParticleClass.Debris]: 1,
-  [ParticleClass.Ring]: 1,
-  [ParticleClass.Ember]: 1,
-};
-
-export interface ParticlePass {
-  /**
-   * Draw particles. If `klassMask` is provided, only particles whose
-   * `(1 << klass) & klassMask` is non-zero are rendered.
-   */
-  draw(particles: Particles, cam: Camera, klassMask?: number): void;
+export interface RingPass {
+  draw(particles: Particles, cam: Camera): void;
 }
 
-export function createParticlePass(gl: WebGL2RenderingContext, capacity: number): ParticlePass {
-  const prog = linkProgram(gl, PARTICLE_VS, PARTICLE_FS);
+export function createRingPass(gl: WebGL2RenderingContext, capacity: number): RingPass {
+  const prog = linkProgram(gl, RING_VS, RING_FS);
   const u = getUniforms(gl, prog, ['u_viewProj'] as const);
 
   const vao = createVertexArray(gl);
@@ -66,20 +50,19 @@ export function createParticlePass(gl: WebGL2RenderingContext, capacity: number)
   const scratchColor = new Float32Array(capacity * 4);
 
   return {
-    draw(p, cam, klassMask) {
+    draw(p, cam) {
       let n = 0;
       for (let i = 0; i < p.capacity; i++) {
         if (p.alive[i] === 0) continue;
-        if (klassMask !== undefined && ((1 << p.klass[i]!) & klassMask) === 0) continue;
+        if (p.klass[i] !== ParticleClass.Ring) continue;
         scratchPos[n * 2 + 0] = p.posX[i]!;
         scratchPos[n * 2 + 1] = p.posY[i]!;
         scratchSize[n] = p.size[i]!;
         const t = p.lifeMax[i]! > 0 ? p.life[i]! / p.lifeMax[i]! : 0;
-        const a = t * CLASS_ALPHA[p.klass[i]! as ParticleClass];
         scratchColor[n * 4 + 0] = p.r[i]!;
         scratchColor[n * 4 + 1] = p.g[i]!;
         scratchColor[n * 4 + 2] = p.b[i]!;
-        scratchColor[n * 4 + 3] = a;
+        scratchColor[n * 4 + 3] = t;
         n++;
       }
       if (n === 0) return;
@@ -94,7 +77,7 @@ export function createParticlePass(gl: WebGL2RenderingContext, capacity: number)
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchColor.subarray(0, n * 4));
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
       gl.enable(gl.BLEND);
-      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied additive-ish
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
       gl.disable(gl.BLEND);
       gl.bindVertexArray(null);

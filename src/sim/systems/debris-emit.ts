@@ -66,13 +66,14 @@ export function planGibSpawn(rng: Rng, kind: HitKind, lethal: boolean = true): G
     case 'cannon':
     case 'explosion': {
       const chunks: number[] = [CHUNK_TORSO, CHUNK_HEAD, CHUNK_HAT];
-      // 1–2 arms.
-      const arms = 1 + rng.intRange(0, 2);
+      // 1–3 arms.
+      const arms = 1 + rng.intRange(0, 3);
       for (let i = 0; i < arms; i++) chunks.push(pickArmChunk(rng));
-      // 0–1 leg(s) — keep total in 4–6 range.
-      if (chunks.length < 6 && rng.next() < 0.6) chunks.push(pickLegChunk(rng));
-      const bloodBlobs = 4 + rng.intRange(0, 5); // 4..8
-      return { chunks: chunks.slice(0, 6), bloodBlobs };
+      // 0–2 legs — keep total in 4–8 range.
+      if (chunks.length < 8 && rng.next() < 0.7) chunks.push(pickLegChunk(rng));
+      if (chunks.length < 8 && rng.next() < 0.4) chunks.push(pickLegChunk(rng));
+      const bloodBlobs = (kind === 'explosion' ? 6 : 4) + rng.intRange(0, 6);
+      return { chunks: chunks.slice(0, 8), bloodBlobs };
     }
     case 'melee':
     case 'charge': {
@@ -135,8 +136,13 @@ export function spawnGibs(
     const jx = dirX * c - dirY * s;
     const jy = dirX * s + dirY * c;
 
-    const speed = rng.range(0.7, 1.2) * (light ? 18 : 11);
-    const upZ = light ? rng.range(5, 8) : rng.range(3, 5);
+    const speedBase = light ? 18 : 11;
+    const speedBonus = kind === 'explosion' && !light ? 1.3 : 1.0;
+    const speed = rng.range(0.7, 1.2) * speedBase * speedBonus;
+    const upZ =
+      kind === 'explosion'
+        ? (light ? rng.range(8, 12) : rng.range(5, 9))
+        : (light ? rng.range(5, 8) : rng.range(3, 5));
 
     d.posX[id] = x;
     d.posY[id] = y;

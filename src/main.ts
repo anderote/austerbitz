@@ -13,6 +13,7 @@ import { collisionSystem } from './sim/systems/collision-system';
 import { facingSystem } from './sim/systems/facing-system';
 import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
+import { updateShockwaves } from './sim/systems/shockwave-system';
 import { tickDebris } from './sim/systems/debris-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
@@ -46,6 +47,8 @@ import { emitDustForFrame } from './puffs/emit-dust';
 import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clouds';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
+import { clearSfxRequests } from './sim/sfx-requests';
+import { initSfx, playSfx } from './audio/sfx';
 import { loadPoseAtlas } from './render/poses/atlas';
 import { loadDebrisAtlas } from './render/debris-atlas';
 import { loadKits } from './render/poses/kit-loader';
@@ -135,8 +138,10 @@ const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
   tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
-const projectileSystem: System = (w, dt) =>
-  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.debris, dt, w.bloodSplats);
+const projectileSystem: System = (w, dt) => {
+  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.shockwaves, w.debris, dt, w.bloodSplats, w.shakeRequests, w.craterSplats, w.sfxRequests);
+  updateShockwaves(w.shockwaves, w.entities, w.grid, particles, w.rng, w.bloodSplats, w.debris, dt);
+};
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
 const debrisSystem: System = (w, dt) => tickDebris(w.debris, dt);
 const deathDropsSystem = createDeathDropsSystem(kits);
@@ -157,7 +162,6 @@ world.systems = [
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
-  suppressArrowsWhen: () => selection.ids.size > 0,
 });
 
 function spawn(kindId: string, team: number, x: number, y: number, facing = 0): number {
@@ -313,6 +317,8 @@ function syncViewport() {
 }
 window.addEventListener('resize', syncViewport);
 syncViewport();
+window.addEventListener('pointerdown', initSfx, { once: true });
+window.addEventListener('keydown', initSfx, { once: true });
 
 camera.center.x = cx;
 camera.center.y = cy;
@@ -381,11 +387,17 @@ function frame(t: number) {
   }
   clearBloodSplats(bs);
   profiler.end('blood/drain');
+  // Drain sim-queued sfx requests.
+  const sfx = world.sfxRequests;
+  for (let i = 0; i < sfx.count; i++) {
+    playSfx(sfx.name[i]!, sfx.x[i]!, sfx.y[i]!, camera);
+  }
+  clearSfxRequests(sfx);
   const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
   const showMovePreview = input.state.keys.has('Space');
   const formationPreview = controller.formationPreview();
   profiler.time('render/all', () => {
-    renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
+    renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview }, dt);
   });
   hud.update(smoothedFps, world, controller.cursorMode);
   placementInfo.update(world, camera, selection, formationPreview);

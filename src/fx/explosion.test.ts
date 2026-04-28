@@ -8,6 +8,8 @@ import { getUnitKindIndex } from '../data/units';
 import { cannon12Shell } from '../data/weapons/cannon-12-shell';
 import { spawnExplosion } from './explosion';
 import { createDebris } from '../sim/debris';
+import { createShockwaves } from './shockwaves';
+import { updateShockwaves } from '../sim/systems/shockwave-system';
 
 const explosionProfile = cannon12Shell.projectile.explosion!;
 
@@ -47,12 +49,23 @@ function placeEntity(
   return id;
 }
 
+/** Drive shockwave damage delivery for ~10 ticks (well past the ~50ms resolution window). */
+function driveShockwaves(
+  shockwaves: ReturnType<typeof createShockwaves>,
+  s: Setup,
+): void {
+  for (let i = 0; i < 10; i++) {
+    updateShockwaves(shockwaves, s.e, s.grid, s.particles, s.rng, undefined, s.debris, 1 / 60);
+  }
+}
+
 describe('spawnExplosion', () => {
-  it('spawns flash + debris particles and smoke billow puffs', () => {
+  it('spawns flash + ring + ember + debris particles and smoke billow puffs', () => {
     const s = setup();
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
-    // Particles pool: 1 flash + debris count (smoke now goes to puff pool)
-    const expectedParticles = 1 + explosionProfile.debris.count;
+    const shockwaves = createShockwaves(4, 8);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    // Particles pool: 1 flash + 2 rings (as Flash) + 20 embers (as Flash) + debris.count
+    const expectedParticles = 1 + 2 + 20 + explosionProfile.debris.count;
     expect(s.particles.count).toBeGreaterThanOrEqual(expectedParticles);
     // Puff pool: smoke billow count
     expect(s.puffs.count).toBeGreaterThanOrEqual(explosionProfile.smokeBillow.count);
@@ -60,7 +73,8 @@ describe('spawnExplosion', () => {
 
   it('flash particle has the configured size and color', () => {
     const s = setup();
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    const shockwaves = createShockwaves(4, 8);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
 
     let flashIdx = -1;
     for (let i = 0; i < s.particles.capacity; i++) {
@@ -80,28 +94,34 @@ describe('spawnExplosion', () => {
 
   it('damages an entity inside the damage radius', () => {
     const s = setup();
+    const shockwaves = createShockwaves(4, 8);
     const id = placeEntity(s, 3, 0, { hp: 200 });
     const hpBefore = s.e.hp[id]!;
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    driveShockwaves(shockwaves, s);
     expect(s.e.hp[id]!).toBeLessThan(hpBefore);
   });
 
   it('does not damage an entity outside the damage radius', () => {
     const s = setup();
+    const shockwaves = createShockwaves(4, 8);
     // 10 m > 6 m radius; AABB query may include it, but the circle test rejects.
     const id = placeEntity(s, 10, 0, { hp: 200 });
     const hpBefore = s.e.hp[id]!;
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    driveShockwaves(shockwaves, s);
     expect(s.e.hp[id]!).toBe(hpBefore);
   });
 
   it('damage falls off with distance', () => {
     const s = setup();
-    const near = placeEntity(s, 1, 0, { hp: 200 });
-    const far = placeEntity(s, 5, 0, { hp: 200 });
+    const shockwaves = createShockwaves(4, 8);
+    const near = placeEntity(s, 0.5, 0, { hp: 200 });
+    const far = placeEntity(s, 3, 0, { hp: 200 });
     const nearBefore = s.e.hp[near]!;
     const farBefore = s.e.hp[far]!;
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    driveShockwaves(shockwaves, s);
     const nearLoss = nearBefore - s.e.hp[near]!;
     const farLoss = farBefore - s.e.hp[far]!;
     expect(nearLoss).toBeGreaterThan(farLoss);
@@ -110,12 +130,14 @@ describe('spawnExplosion', () => {
 
   it('respects excludeTeam: friendly survives, enemy in same blast takes damage', () => {
     const s = setup();
+    const shockwaves = createShockwaves(4, 8);
     const friendly = placeEntity(s, 2, 0, { team: 0, hp: 200 });
     const enemy = placeEntity(s, 0, 2, { team: 1, hp: 200 });
     const friendlyBefore = s.e.hp[friendly]!;
     const enemyBefore = s.e.hp[enemy]!;
 
-    spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, 0, undefined, s.debris, -1);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, 0, undefined, s.debris, -1);
+    driveShockwaves(shockwaves, s);
 
     expect(s.e.hp[friendly]!).toBe(friendlyBefore);
     expect(s.e.hp[enemy]!).toBeLessThan(enemyBefore);
@@ -123,13 +145,27 @@ describe('spawnExplosion', () => {
 
   it('ignores dead entities inside the radius without error', () => {
     const s = setup();
+    const shockwaves = createShockwaves(4, 8);
     const id = placeEntity(s, 2, 0, { hp: 200, alive: false });
     const hpBefore = s.e.hp[id]!;
     const stateBefore = s.e.state[id]!;
-    expect(() =>
-      spawnExplosion(s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1),
-    ).not.toThrow();
+    expect(() => {
+      spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+      driveShockwaves(shockwaves, s);
+    }).not.toThrow();
     expect(s.e.hp[id]!).toBe(hpBefore);
     expect(s.e.state[id]!).toBe(stateBefore);
+  });
+
+  it('allocates a shockwave record that resolves within ~50ms', () => {
+    const s = setup();
+    const shockwaves = createShockwaves(4, 8);
+    expect(shockwaves.count).toBe(0);
+    spawnExplosion(shockwaves, s.e, s.grid, s.puffs, s.particles, s.rng, 0, 0, explosionProfile, undefined, undefined, s.debris, -1);
+    expect(shockwaves.count).toBe(1);
+    for (let i = 0; i < 10; i++) {
+      updateShockwaves(shockwaves, s.e, s.grid, s.particles, s.rng, undefined, s.debris, 1 / 60);
+    }
+    expect(shockwaves.count).toBe(0);
   });
 });

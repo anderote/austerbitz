@@ -100,6 +100,7 @@ export interface Entities {
 
   // State-machine transients
   recoilT: Float32Array;    // countdown for visual recoil offset
+  recoilTotal: Float32Array; // total recoil animation duration (per-weapon, for normalization)
   recoilPeakX: Float32Array; // peak render-only recoil displacement x
   recoilPeakY: Float32Array; // peak render-only recoil displacement y
   stateT: Float32Array;     // generic time-remaining-in-state timer
@@ -187,6 +188,7 @@ export function createEntities(capacity: number): Entities {
     kills: new Uint16Array(capacity),
     damageDealt: new Uint32Array(capacity),
     recoilT: new Float32Array(capacity),
+    recoilTotal: new Float32Array(capacity),
     recoilPeakX: new Float32Array(capacity),
     recoilPeakY: new Float32Array(capacity),
     stateT: new Float32Array(capacity),
@@ -247,6 +249,7 @@ export function allocEntity(e: Entities): number {
   e.kills[id] = 0;
   e.damageDealt[id] = 0;
   e.recoilT[id] = 0;
+  e.recoilTotal[id] = 0;
   e.recoilPeakX[id] = 0;
   e.recoilPeakY[id] = 0;
   e.stateT[id] = 0;
