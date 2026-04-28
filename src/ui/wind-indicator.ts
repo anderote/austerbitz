@@ -1,6 +1,6 @@
 export interface WindIndicator {
-  /** `wind` is the current global wind value (m/s, signed). Positive = E. */
-  update(wind: number): void;
+  /** Global wind acceleration vector (m/s²). +x = E, +y = S (screen). */
+  update(windX: number, windY: number): void;
 }
 
 export function createWindIndicator(root: HTMLElement): WindIndicator {
@@ -28,11 +28,12 @@ export function createWindIndicator(root: HTMLElement): WindIndicator {
   const speedLabel = el.querySelector('.speed') as HTMLDivElement;
 
   return {
-    update(wind: number) {
-      // Wind is currently x-axis only (E+/W−). Rotate 0° → arrow points east.
-      const deg = wind >= 0 ? 0 : 180;
+    update(windX: number, windY: number) {
+      const mag = Math.hypot(windX, windY);
+      // CSS rotate is clockwise from east; atan2(y, x) with screen +y = south matches.
+      const deg = mag > 1e-4 ? (Math.atan2(windY, windX) * 180) / Math.PI : 0;
       arrowWrap.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
-      speedLabel.textContent = `${Math.abs(wind).toFixed(1)} m/s`;
+      speedLabel.textContent = `${mag.toFixed(1)} m/s`;
     },
   };
 }

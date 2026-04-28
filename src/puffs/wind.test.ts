@@ -15,7 +15,7 @@ describe('applyWindToPuffs', () => {
     p.profileIdx[big] = CANNON_SMOKE_INDEX;
     p.velX[big] = 0; p.size[big] = 2.0;
     p.lifeMax[big] = 1; p.life[big] = 0.1;
-    applyWindToPuffs(p, 1.0, 1.0);
+    applyWindToPuffs(p, 1.0, 0, 1.0);
     expect(Math.abs(p.velX[big]!)).toBeGreaterThan(Math.abs(p.velX[small]!));
   });
 
@@ -25,15 +25,25 @@ describe('applyWindToPuffs', () => {
     p.size[fresh] = 1.0; p.lifeMax[fresh] = 1; p.life[fresh] = 1.0;  // age 0
     const aged = allocPuff(p);
     p.size[aged] = 1.0; p.lifeMax[aged] = 1; p.life[aged] = 0.05;   // age 0.95
-    applyWindToPuffs(p, 1.0, 1.0);
+    applyWindToPuffs(p, 1.0, 0, 1.0);
     expect(Math.abs(p.velX[aged]!)).toBeGreaterThan(Math.abs(p.velX[fresh]!) * 5);
   });
 
   it('zero acceleration is a no-op', () => {
     const p = createPuffs(2);
     const i = allocPuff(p);
-    p.velX[i] = 5; p.size[i] = 1; p.lifeMax[i] = 1; p.life[i] = 0.5;
-    applyWindToPuffs(p, 0, 1);
+    p.velX[i] = 5; p.velY[i] = 7; p.size[i] = 1; p.lifeMax[i] = 1; p.life[i] = 0.5;
+    applyWindToPuffs(p, 0, 0, 1);
     expect(p.velX[i]).toBe(5);
+    expect(p.velY[i]).toBe(7);
+  });
+
+  it('y-axis acceleration pushes velY', () => {
+    const p = createPuffs(2);
+    const i = allocPuff(p);
+    p.velX[i] = 0; p.velY[i] = 0; p.size[i] = 1; p.lifeMax[i] = 1; p.life[i] = 0.1;
+    applyWindToPuffs(p, 0, 1.0, 1.0);
+    expect(p.velY[i]!).toBeGreaterThan(0);
+    expect(p.velX[i]!).toBe(0);
   });
 });

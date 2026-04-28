@@ -71,6 +71,21 @@ export function applyHit(
   const effArmor = effectiveArmor(e, id, kind.baseStats.armor);
   const effDmg = Math.max(1, dmg - effArmor);
 
+  // Attacker-validity guard — computed once and reused for damage credit
+  // (every hit) and kill / XP credit (lethal only).
+  const attackerValid =
+    attackerId !== -1 &&
+    e.alive[attackerId] === 1 &&
+    !isDead(e, attackerId) &&
+    e.team[attackerId] !== e.team[id];
+
+  // Damage credit fires on every hit, lethal or not (saturates at 0xffffffff).
+  if (attackerValid) {
+    const cur = e.damageDealt[attackerId]!;
+    const next = cur + effDmg;
+    e.damageDealt[attackerId] = next > 0xffffffff ? 0xffffffff : next;
+  }
+
   // hp is Uint16Array; clamp to 0 to avoid underflow.
   const hpNow = e.hp[id]!;
   const lethal = effDmg >= hpNow;
@@ -93,13 +108,9 @@ export function applyHit(
     }
     spawnBlood(particles, px, py, impMag, rng, impX, impY);
 
-    // XP credit — guarded against ownerless / friendly fire / dead attacker.
-    if (
-      attackerId !== -1 &&
-      e.alive[attackerId] === 1 &&
-      !isDead(e, attackerId) &&
-      e.team[attackerId] !== e.team[id]
-    ) {
+    // Kill + XP credit — same guard as damage credit, additionally requires lethal.
+    if (attackerValid) {
+      if (e.kills[attackerId]! < 0xffff) e.kills[attackerId] = e.kills[attackerId]! + 1;
       if (e.xp[attackerId]! < 0xffff) e.xp[attackerId] = e.xp[attackerId]! + 1;
       if (promote(e, attackerId)) {
         emitPromotionSparkle(particles, e.posX[attackerId]!, e.posY[attackerId]!, rng);

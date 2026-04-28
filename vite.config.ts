@@ -114,6 +114,23 @@ function offsetsApiPlugin(): Plugin {
           return;
         }
 
+        if (method === 'POST' && url.startsWith('/api/kit/')) {
+          try {
+            const kitId = decodeURIComponent(url.slice('/api/kit/'.length));
+            if (!/^[a-zA-Z0-9_-]+$/.test(kitId)) {
+              throw new Error('Invalid kitId');
+            }
+            const body = await readJsonBody(req);
+            const target = resolve(PROJECT_ROOT, 'public/components/kits/' + kitId + '.json');
+            await writeFile(target, JSON.stringify(body, null, 2) + '\n', 'utf8');
+            sendJson(res, 200, { ok: true });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 400, { ok: false, error: message });
+          }
+          return;
+        }
+
         if (method === 'POST' && url === '/api/regiments') {
           try {
             const body = await readJsonBody(req);

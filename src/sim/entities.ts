@@ -51,6 +51,10 @@ export interface Entities {
   rank: Uint8Array;     // 0..4 (Recruit, Veteran, Sergeant, SgtMajor, Captain)
   xp: Uint16Array;      // kills toward next promotion; saturates at 65535
 
+  // Lifetime stats (per-battle, per-entity)
+  kills: Uint16Array;        // confirmed kills credited; saturates at 65535
+  damageDealt: Uint32Array;  // accumulated effective damage dealt; saturates at 0xffffffff
+
   // State-machine transients
   recoilT: Float32Array;    // countdown for visual recoil offset
   recoilPeakX: Float32Array; // peak render-only recoil displacement x
@@ -65,6 +69,13 @@ export interface Entities {
   kindId: Uint16Array;
   team: Uint8Array;
   formationId: Int32Array;  // -1 if none
+
+  // Identity (per-instance bio)
+  firstNameIdx: Uint16Array; // index into theme's first-name pool
+  lastNameIdx: Uint16Array;  // index into theme's last-name pool
+  hometownIdx: Uint16Array;  // index into theme's hometown pool
+  themeId: Uint8Array;       // numeric id of the name-bank theme this unit was rolled from
+  ageYears: Uint8Array;      // clamped to [16, 55] at spawn
 
   // Per-entity body cache (populated at spawn from unit kind).
   bodyRadius: Float32Array;
@@ -108,6 +119,8 @@ export function createEntities(capacity: number): Entities {
     targetId: new Int32Array(capacity).fill(-1),
     rank: new Uint8Array(capacity),
     xp: new Uint16Array(capacity),
+    kills: new Uint16Array(capacity),
+    damageDealt: new Uint32Array(capacity),
     recoilT: new Float32Array(capacity),
     recoilPeakX: new Float32Array(capacity),
     recoilPeakY: new Float32Array(capacity),
@@ -119,6 +132,11 @@ export function createEntities(capacity: number): Entities {
     kindId: new Uint16Array(capacity),
     team: new Uint8Array(capacity),
     formationId: new Int32Array(capacity).fill(-1),
+    firstNameIdx: new Uint16Array(capacity),
+    lastNameIdx: new Uint16Array(capacity),
+    hometownIdx: new Uint16Array(capacity),
+    themeId: new Uint8Array(capacity),
+    ageYears: new Uint8Array(capacity),
     bodyRadius: new Float32Array(capacity),
     massKg: new Float32Array(capacity),
     pose: new Uint8Array(capacity),
@@ -153,6 +171,8 @@ export function allocEntity(e: Entities): number {
   e.targetId[id] = -1;
   e.rank[id] = 0;
   e.xp[id] = 0;
+  e.kills[id] = 0;
+  e.damageDealt[id] = 0;
   e.recoilT[id] = 0;
   e.recoilPeakX[id] = 0;
   e.recoilPeakY[id] = 0;
@@ -164,6 +184,11 @@ export function allocEntity(e: Entities): number {
   e.kindId[id] = 0;
   e.team[id] = 0;
   e.formationId[id] = -1;
+  e.firstNameIdx[id] = 0;
+  e.lastNameIdx[id] = 0;
+  e.hometownIdx[id] = 0;
+  e.themeId[id] = 0;
+  e.ageYears[id] = 0;
   e.bodyRadius[id] = 0;
   e.massKg[id] = 0;
   e.pose[id] = 0;

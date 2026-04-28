@@ -145,37 +145,51 @@ function renderKindEntry(g: KindAggregate): HTMLDivElement {
   }
   card.appendChild(grid);
 
-  if (g.count === 1 && g.soloRank !== undefined && g.soloXp !== undefined) {
-    card.appendChild(renderSoloRankRow(g.soloRank, g.soloXp));
-  } else {
-    const rankRow = renderRankMix(g.rankCounts);
-    if (rankRow) card.appendChild(rankRow);
-  }
+  const badge = renderRankBadge(g);
+  if (badge) card.appendChild(badge);
   return card;
 }
 
-function renderSoloRankRow(rank: number, xp: number): HTMLDivElement {
-  const div = document.createElement('div');
-  div.className = 'stats-card-rankmix';
-  const name = RANK_NAMES[rank]!;
-  const xpLabel = rank >= MAX_RANK ? '—' : `${xp} / ${RANK_THRESHOLDS[rank]!}`;
-  div.textContent = `Rank: ${name}  ·  XP ${xpLabel}`;
-  return div;
+function renderRankBadge(g: KindAggregate): HTMLDivElement | null {
+  if (g.count === 1 && g.soloRank !== undefined && g.soloXp !== undefined) {
+    if (g.soloRank === 0) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'stats-card-rank-badge';
+    wrap.appendChild(rankIcon(g.soloRank));
+    const xpLabel = g.soloRank >= MAX_RANK ? '—' : `${g.soloXp} / ${RANK_THRESHOLDS[g.soloRank]!}`;
+    const xp = document.createElement('span');
+    xp.className = 'stats-card-rank-xp';
+    xp.textContent = xpLabel;
+    wrap.appendChild(xp);
+    wrap.title = `${RANK_NAMES[g.soloRank]!} · XP ${xpLabel}`;
+    return wrap;
+  }
+  let advanced = 0;
+  for (let r = 1; r < g.rankCounts.length; r++) advanced += g.rankCounts[r]!;
+  if (advanced === 0) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'stats-card-rank-badge';
+  const titleParts: string[] = [];
+  for (let r = g.rankCounts.length - 1; r >= 1; r--) {
+    const c = g.rankCounts[r]!;
+    if (c === 0) continue;
+    const cell = document.createElement('span');
+    cell.className = 'stats-card-rank-cell';
+    cell.appendChild(rankIcon(r));
+    const num = document.createElement('span');
+    num.className = 'stats-card-rank-count';
+    num.textContent = String(c);
+    cell.appendChild(num);
+    wrap.appendChild(cell);
+    titleParts.push(`${c} ${RANK_NAMES[r]!}`);
+  }
+  wrap.title = titleParts.join(' · ');
+  return wrap;
 }
 
-function renderRankMix(rankCounts: number[]): HTMLDivElement | null {
-  // Hide if everyone is Recruit (no advanced ranks at all).
-  let advanced = 0;
-  for (let r = 1; r < rankCounts.length; r++) advanced += rankCounts[r]!;
-  if (advanced === 0) return null;
-
-  const tags = ['Rec', 'Vet', 'Sgt', 'SgtMaj', 'Cpt'];
-  const parts: string[] = [];
-  for (let r = 0; r < rankCounts.length; r++) {
-    if (rankCounts[r]! > 0) parts.push(`${rankCounts[r]} ${tags[r]}`);
-  }
-  const div = document.createElement('div');
-  div.className = 'stats-card-rankmix';
-  div.textContent = `Rank: ${parts.join(' · ')}`;
-  return div;
+function rankIcon(rank: number): HTMLSpanElement {
+  const icon = document.createElement('span');
+  icon.className = 'stats-card-rank-icon';
+  icon.style.backgroundPosition = `${-(rank - 1) * 16}px 0`;
+  return icon;
 }

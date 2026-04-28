@@ -69,8 +69,22 @@
       .layer-item.selected {
         background: #2563eb; color: #ffffff; border-color: #1d4ed8;
       }
-      .layer-name { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; }
+      .layer-name { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; flex: 1; }
       .layer-offset { font-size: 11px; opacity: 0.85; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+      .layer-reorder { display: flex; gap: 2px; margin-right: 6px; }
+      .layer-reorder button {
+        font: inherit; font-size: 10px; line-height: 1;
+        width: 18px; height: 18px; padding: 0;
+        border: 1px solid rgba(55, 65, 81, 0.3); border-radius: 3px;
+        background: #ffffff; color: #1f2937; cursor: pointer;
+      }
+      .layer-reorder button:disabled { opacity: 0.35; cursor: not-allowed; }
+      .layer-item.selected .layer-reorder button {
+        background: rgba(255,255,255,0.15); color: #ffffff; border-color: rgba(255,255,255,0.4);
+      }
+      .layer-item.selected .layer-reorder button:hover:not(:disabled) {
+        background: rgba(255,255,255,0.3);
+      }
       .offset-controls {
         margin-top: 14px; padding-top: 14px;
         border-top: 1px solid rgba(55, 65, 81, 0.15);
@@ -329,7 +343,7 @@
 
     <div class='layout'>
       <div class='panel'>
-        <h2>Layers (bottom &rarr; top)</h2>
+        <h2>Layers (top &rarr; bottom of stack)</h2>
         <div class='layers' id='layers'></div>
         <div class='offset-controls'>
           <div class='offset-row'><span>dx</span><span id='dx-value'>0</span></div>
@@ -493,6 +507,7 @@
         layerCanvasCache: new Map(), // key: poseId|facing|id|version -> HTMLCanvasElement
         regiments: [],
         regiment: null,
+        kitDirty: false,
       };
 
       // Per-pose, per-regiment recolored atlas data-URL cache.
@@ -746,6 +761,53 @@
         return getIdleLayers(facing);
       }
 
+      // Returns the underlying mutable array that getCurrentLayers reads from,
+      // so reorders persist into state.kit (and then to disk via saveKit).
+      function getCurrentLayersMut() {
+        if (!state.kit) return null;
+        const poseId = state.poseId;
+        const facing = state.facing;
+        if (poseId === 'idle') {
+          const fc = state.kit.facings && state.kit.facings[facing];
+          return fc && Array.isArray(fc.layers) ? fc.layers : null;
+        }
+        const poseDef = state.kit.poses && state.kit.poses[poseId];
+        if (poseDef && Array.isArray(poseDef[facing])) return poseDef[facing];
+        // No pose override: fall back to mutating idle (matches what's rendered).
+        const fc = state.kit.facings && state.kit.facings[facing];
+        return fc && Array.isArray(fc.layers) ? fc.layers : null;
+      }
+
+      function moveLayer(componentId, direction) {
+        const arr = getCurrentLayersMut();
+        if (!arr) return;
+        const idx = arr.indexOf(componentId);
+        if (idx < 0) return;
+        // direction: +1 = up in display = later in array (toward top of stack);
+        //           -1 = down in display = earlier in array (toward bottom).
+        const target = idx + direction;
+        if (target < 0 || target >= arr.length) return;
+        arr[idx] = arr[target];
+        arr[target] = componentId;
+        state.kitDirty = true;
+        renderLayersList();
+        redraw();
+        scheduleAutoSave();
+      }
+
+      async function saveKit() {
+        if (!state.kitDirty || !state.kitId || !state.kit) return;
+        const res = await fetch('/api/kit/' + encodeURIComponent(state.kitId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state.kit),
+        });
+        if (!res.ok) throw new Error('Save kit failed: HTTP ' + res.status);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save kit failed');
+        state.kitDirty = false;
+      }
+
       function buildFacingButtons() {
         for (const f of FACINGS) {
           const btn = document.createElement('button');
@@ -803,11 +865,30 @@
 
       function renderLayersList() {
         // Display top-to-bottom: topmost (drawn last) first, bottom (drawn first) last.
-        const layers = [...getCurrentLayers()].reverse();
+        const arr = getCurrentLayers();
+        const reorderable = !!getCurrentLayersMut();
+        const display = [...arr].reverse();
         layersEl.innerHTML = '';
-        for (const id of layers) {
+        display.forEach((id, displayIdx) => {
+          const arrIdx = arr.length - 1 - displayIdx; // position in underlying array
           const item = document.createElement('div');
           item.className = 'layer-item' + (id === state.selectedLayerId ? ' selected' : '');
+          const reorder = document.createElement('span');
+          reorder.className = 'layer-reorder';
+          const upBtn = document.createElement('button');
+          upBtn.type = 'button';
+          upBtn.title = 'Move up (toward top of stack)';
+          upBtn.textContent = '▲';
+          upBtn.disabled = !reorderable || arrIdx === arr.length - 1;
+          upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveLayer(id, +1); });
+          const downBtn = document.createElement('button');
+          downBtn.type = 'button';
+          downBtn.title = 'Move down (toward bottom of stack)';
+          downBtn.textContent = '▼';
+          downBtn.disabled = !reorderable || arrIdx === 0;
+          downBtn.addEventListener('click', (e) => { e.stopPropagation(); moveLayer(id, -1); });
+          reorder.appendChild(upBtn);
+          reorder.appendChild(downBtn);
           const name = document.createElement('span');
           name.className = 'layer-name';
           name.textContent = id;
@@ -815,6 +896,7 @@
           const offsetTag = document.createElement('span');
           offsetTag.className = 'layer-offset';
           offsetTag.textContent = (off[0] || off[1]) ? '[' + off[0] + ',' + off[1] + ']' : '';
+          item.appendChild(reorder);
           item.appendChild(name);
           item.appendChild(offsetTag);
           item.addEventListener('click', () => {
@@ -823,7 +905,7 @@
             renderOffsetReadout();
           });
           layersEl.appendChild(item);
-        }
+        });
       }
 
       function renderOffsetReadout() {
@@ -1278,7 +1360,7 @@
         setAutoStatus('saving', 'saving');
         _autoInFlight = (async function () {
           try {
-            await Promise.all([saveOffsets(), savePixelEdits()]);
+            await Promise.all([saveOffsets(), savePixelEdits(), saveKit()]);
             await rebuildAtlas();
             state.cacheBust = Date.now();
             state.imageCache.clear();

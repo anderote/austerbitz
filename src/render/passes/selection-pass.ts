@@ -627,6 +627,7 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       const candidates: number[] = [];
       for (const id of world.orderQueue.keys()) {
         if (e.alive[id] !== 1) continue;
+        if (isDead(e, id)) continue;
         if (sel.ids.has(id)) continue;
         if (e.team[id] !== PLAYER_TEAM) continue;
         const q = world.orderQueue.get(id)!;
@@ -672,7 +673,9 @@ export function createSelectionPass(gl: WebGL2RenderingContext, capacity: number
       // Full-opacity chain(s) for the active selection.
       const liveSelected: number[] = [];
       for (const id of sel.ids) {
-        if (e.alive[id] === 1) liveSelected.push(id);
+        if (e.alive[id] !== 1) continue;
+        if (isDead(e, id)) continue;
+        liveSelected.push(id);
       }
       const selectedChains: number[][] = [];
       if (liveSelected.length > 1) {

@@ -6,7 +6,6 @@ import { createSelectionPass } from './passes/selection-pass';
 import { createParticlePass } from './passes/particle-pass';
 import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
-import { createRankPass } from './passes/rank-pass';
 import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
 import { createPuffPass } from './passes/puff-pass';
 import type { World } from '../sim/world';
@@ -66,7 +65,6 @@ export function createRenderer(
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
   const healthBarPass = createHealthBarPass(gl, capacity);
-  const rankPass = createRankPass(gl, capacity, '/sprites/rank-icons.png');
 
   return {
     bloodStain,
@@ -86,7 +84,6 @@ export function createRenderer(
       }
       selectionPass.drawDiscs(world, cam, sel, drag);
       sprites.draw(world, cam);
-      rankPass.draw(world, cam);
       projectilesPass.draw(projectiles, cam);
       // Puffs first (under), sparks after (over).
       puffsPass.draw(puffs, cam);

@@ -5,5 +5,5 @@ import { applyWindToPuffs } from '../puffs/wind';
  *  Sparks (flash, blood, debris) are not wind-affected, matching the prior
  *  behavior. */
 export function applyWind(puffs: Puffs, accelX: number, dt: number): void {
-  applyWindToPuffs(puffs, accelX, dt);
+  applyWindToPuffs(puffs, accelX, 0, dt);
 }

@@ -16,6 +16,7 @@ import { tickProjectiles } from './sim/systems/projectile-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
 import { marchSystem } from './sim/systems/march-system';
+import { assignIdentity } from './sim/spawn-identity';
 import type { System } from './sim/world';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
@@ -116,6 +117,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
   world.entities.restPosY[id] = y;
   world.entities.kindId[id] = getUnitKindIndex(kindId);
   world.entities.team[id] = team;
+  assignIdentity(world.entities, id, team, world.rng);
   world.entities.facing[id] = facing;
   world.entities.restFacing[id] = facing;
   world.entities.facingIntentX[id] = Math.cos((facing * Math.PI) / 4);
@@ -227,11 +229,12 @@ function spawnArmy(plan: ArmyPlan): void {
   }
 }
 
-// Two parallel lines per side, 50m apart along the facing axis.
+// Three parallel lines per side, 50m apart along the facing axis.
 // Each line is 2000 line-infantry, 8 ranks deep, split into five 50-file regiments.
 const lineRegiments: RegimentPlan[] = [
   { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8 },
   { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8, backOffset: 50 },
+  { kindId: 'line-infantry', files: 50, ranks: 8, count: 5, gap: 8, backOffset: 100 },
 ];
 
 const friendlyArmy: ArmyPlan = {
@@ -297,9 +300,9 @@ function frame(t: number) {
   tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
   updatePuffs(puffs, dt);
   tickWind(windState, simElapsed, world.rng);
-  const currentWind = windAt(windState, simElapsed);
-  applyWindToPuffs(puffs, currentWind, dt);
-  windIndicator.update(currentWind);
+  const wind = windAt(windState, simElapsed);
+  applyWindToPuffs(puffs, wind.x, wind.y, dt);
+  windIndicator.update(wind.x, wind.y);
   coalesceStep(puffs, dt, world.rng, getProfileByIndex);
   updateParticles(particles, dt, world.bloodSplats);
   // Drain sim-queued blood splats into the GPU stain pass.

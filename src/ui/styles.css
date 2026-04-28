@@ -38,6 +38,37 @@
   text-align: center;
 }
 
+#ui-root .selection-panel .selection-summary {
+  white-space: nowrap;
+}
+
+#ui-root .selection-panel .selection-identity {
+  margin-top: 6px;
+  padding: 6px 8px 5px;
+  border-top: 1px solid var(--ui-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  line-height: 1.25;
+}
+
+#ui-root .selection-panel .selection-identity-header {
+  color: var(--ui-accent);
+  font-weight: bold;
+}
+
+#ui-root .selection-panel .selection-identity-hometown {
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+#ui-root .selection-panel .selection-identity-stats {
+  font-size: 11px;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+}
+
 #ui-root .build-menu {
   position: absolute;
   top: 80px;
@@ -98,10 +129,12 @@
 
 #ui-root .scale-bar {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 196px;
+  left: 8px;
+  width: 182px;
   color: #fff;
   text-shadow: 0 0 3px #000, 0 0 3px #000;
+  text-align: center;
 }
 
 #ui-root .minimap {
@@ -124,6 +157,7 @@
   height: 2px;
   background: #fff;
   position: relative;
+  margin: 0 auto;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
 }
 
@@ -149,9 +183,9 @@
 
 #ui-root .wind-indicator {
   position: absolute;
-  bottom: 50px;
-  right: 8px;
-  width: 64px;
+  bottom: 222px;
+  left: 8px;
+  width: 182px;
   color: #fff;
   text-shadow: 0 0 3px #000, 0 0 3px #000;
   font-size: 11px;
@@ -257,6 +291,44 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
+}
+
+#ui-root .stats-card-rank-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+#ui-root .stats-card-rank-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  background-image: url('/sprites/rank-icons.png');
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#ui-root .stats-card-rank-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+#ui-root .stats-card-rank-count {
+  font-size: 10px;
+  color: #cbd5e1;
+}
+
+#ui-root .stats-card-rank-xp {
+  font-size: 10px;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
 }
 
 #ui-root .stats-card-histogram {
