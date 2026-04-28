@@ -105,14 +105,6 @@
       button.primary:hover { background: #1d4ed8; }
       button.facing-btn { min-width: 44px; }
       button.facing-btn.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
-      /* Depressed/active state for the Mirror button when flipX is true on
-         the current (pose, facing). Inset shadow + filled background mirrors
-         the visual idiom of a held-down toggle. */
-      button.toggle-on {
-        background: #1d4ed8; color: #ffffff; border-color: #1e3a8a;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
-      }
-      button.toggle-on:hover { background: #1d4ed8; }
       .stage {
         background: #ffffff; padding: 16px;
         border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px;
@@ -320,6 +312,8 @@
 
       .mode-tab { padding: 6px 14px; background: transparent; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font: inherit; }
       .mode-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+      .toggle-on { background: #2563eb !important; color: #fff !important; border-color: #1d4ed8 !important; }
+      button:disabled { opacity: 0.4; cursor: not-allowed; }
     </style>
   </head>
   <body>
@@ -413,30 +407,6 @@
           <button id='reset-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Reset weapon</button>
         </div>
         <div id='weapon-banner' style='display:none;margin-bottom:8px;padding:6px 10px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;'></div>
-        <div id='weapon-source-controls' style='display:none;margin-bottom:8px;padding:6px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:4px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;display:flex;gap:12px;align-items:center;flex-wrap:wrap;'>
-          <span>Weapon source for facing <strong id='weapon-source-facing-label'>—</strong>:</span>
-          <label>src
-            <select id='weapon-source-src' style='font:inherit;margin-left:4px;'>
-              <option value='self'>self (own PNG)</option>
-              <option value='N'>N</option>
-              <option value='NE'>NE</option>
-              <option value='E'>E</option>
-              <option value='SE'>SE</option>
-              <option value='S'>S</option>
-              <option value='SW'>SW</option>
-              <option value='W'>W</option>
-              <option value='NW'>NW</option>
-            </select>
-          </label>
-          <label>transform
-            <select id='weapon-source-transform' style='font:inherit;margin-left:4px;'>
-              <option value='none'>none</option>
-              <option value='flipX'>flipX</option>
-              <option value='flipY'>flipY</option>
-              <option value='rot180'>rot180</option>
-            </select>
-          </label>
-        </div>
         <div class='stage-body'>
           <div>
             <div class='canvas-wrap'>
@@ -618,61 +588,18 @@
         };
       }
 
-      // Like resolveWeaponFacing but honors a per-pose override stored at
-      // kit.poses[poseId][facing].weapon.{src,transform}. Falls back to global.
-      function resolveWeaponFacingForPose(weapon, poseId, facing) {
-        if (!weapon) return null;
-        const override = readWeaponPoseSourceOverride(poseId, facing);
-        if (override) {
-          if (override.src === 'self') {
-            return { spriteKey: weapon.layerPrefix + '-' + facingLong(facing), transform: 'none' };
-          }
-          return {
-            spriteKey: weapon.layerPrefix + '-' + facingLong(override.src),
-            transform: override.transform || 'none',
-          };
-        }
-        return resolveWeaponFacing(weapon, facing);
-      }
-
-      // Read kit.poses[poseId][facing].weapon.{src, transform} (per-pose override).
-      // Returns null when no override is authored. Source-of-truth lives in
-      // state.weaponXform[kitId][poseId][facing] alongside x/y/rot/flipX after
-      // hydration; that's what setWeaponPoseSourceOverride mutates.
-      function readWeaponPoseSourceOverride(poseId, facing) {
-        const kitMap = state.weaponXform[state.kitId];
-        if (!kitMap) return null;
-        const poseMap = kitMap[poseId];
-        if (!poseMap) return null;
-        const v = poseMap[facing];
-        if (!v || typeof v !== 'object') return null;
-        if (typeof v.src !== 'string') return null;
-        return { src: v.src, transform: v.transform || 'none' };
-      }
-
-      // Apply the facing-share transform to a per-pose (x, y, rot, flipX).
-      // flipX inheritance: flipX facing-share XORs flipX with true; flipY/rot180
-      // pass it through unchanged.
+      // Apply the facing-share transform to a per-pose (x, y, rot).
+      // Mirrors src/render/poses/resolver.ts.
       function applyFacingTransformXform(base, transform) {
-        const baseFlip = base.flipX === true;
-        let out;
         switch (transform) {
           case 'flipX':
-            out = { x: -base.x, y:  base.y, rot: -base.rot };
-            if (!baseFlip) out.flipX = true;
-            return out;
+            return { x: -base.x, y:  base.y, rot: -base.rot };
           case 'flipY':
-            out = { x:  base.x, y: -base.y, rot: -base.rot };
-            if (baseFlip) out.flipX = true;
-            return out;
+            return { x:  base.x, y: -base.y, rot: -base.rot };
           case 'rot180':
-            out = { x: -base.x, y: -base.y, rot:  base.rot };
-            if (baseFlip) out.flipX = true;
-            return out;
+            return { x: -base.x, y: -base.y, rot:  base.rot };
           default:
-            out = { x:  base.x, y:  base.y, rot:  base.rot };
-            if (baseFlip) out.flipX = true;
-            return out;
+            return { x:  base.x, y:  base.y, rot:  base.rot };
         }
       }
 
@@ -685,9 +612,7 @@
         const normalized = normalizePoseFacingEntry(facingEntry);
         if (!normalized.weapon) return null;
         const w = normalized.weapon;
-        const out = { x: +w.x || 0, y: +w.y || 0, rot: +w.rot || 0 };
-        if (w.flipX === true) out.flipX = true;
-        return out;
+        return { x: +w.x || 0, y: +w.y || 0, rot: +w.rot || 0 };
       }
 
       function resolveWeaponPoseTransform(poses, pose, facing, weapon) {
@@ -953,10 +878,9 @@
         return state.weaponXform[state.kitId];
       }
 
-      // Authored (raw) per-pose weapon transform for (pose, facing); null if none.
-      // Carries the per-pose source override (`src`/`transform`) so callers like
-      // saveCurrentAsVariant preserve which weapon-pose PNG the user assigned
-      // via the click-to-assign picker.
+      // Authored (raw) per-pose weapon transform for (pose, facing); null if
+      // none. Carries optional `flipX`/`src`/`transform` so callers preserve
+      // the per-pose source override authored via the click-to-assign picker.
       function readWeaponXformAuthored(poseId, facing) {
         const kit = state.weaponXform[state.kitId];
         if (!kit) return null;
@@ -968,11 +892,21 @@
         if (v.flipX === true) out.flipX = true;
         if (typeof v.src === 'string') {
           out.src = v.src;
-          if (v.src !== 'self' && typeof v.transform === 'string') {
-            out.transform = v.transform;
-          }
+          if (v.src !== 'self' && typeof v.transform === 'string') out.transform = v.transform;
         }
         return out;
+      }
+
+      // Read just the per-pose source override (`src`/`transform`) for primary,
+      // independent of x/y/rot. Returns null when no override is authored.
+      function readWeaponPoseSourceOverride(poseId, facing) {
+        const kit = state.weaponXform[state.kitId];
+        if (!kit) return null;
+        const pose = kit[poseId];
+        if (!pose) return null;
+        const v = pose[facing];
+        if (!v || typeof v.src !== 'string') return null;
+        return { src: v.src, transform: v.transform || 'none' };
       }
 
       // Resolved per-pose weapon transform: authored override, else mirror-source
@@ -992,9 +926,8 @@
 
       // Set per-(pose, facing) weapon transform. `flipX` is optional — pass
       // undefined to preserve any existing value, or true/false to set it.
-      // Preserves any per-pose weapon source override (`src`/`transform`)
-      // authored via the click-to-assign weapon-pose picker, so nudging /
-      // rotating / dragging the weapon doesn't reset its pose source.
+      // Preserves any per-pose source override (`src`/`transform`) on the
+      // existing entry so nudging/rotating doesn't reset the assigned source.
       function setWeaponXform(poseId, facing, x, y, rot, flipX) {
         const kit = getKitWeaponXform();
         if (!kit[poseId]) kit[poseId] = {};
@@ -1004,11 +937,33 @@
         if (effFlip) next.flipX = true;
         if (typeof cur.src === 'string') {
           next.src = cur.src;
-          if (cur.src !== 'self' && typeof cur.transform === 'string') {
-            next.transform = cur.transform;
-          }
+          if (cur.src !== 'self' && typeof cur.transform === 'string') next.transform = cur.transform;
         }
         kit[poseId][facing] = next;
+      }
+
+      // Set the per-pose source override on the primary entry. `src=null`
+      // clears the override (falls back to global kit.weapon.facings[F]).
+      function setWeaponPoseSourceOverride(poseId, facing, src, transform) {
+        const kit = getKitWeaponXform();
+        if (!kit[poseId]) kit[poseId] = {};
+        const cur = kit[poseId][facing] || { x: 0, y: 0, rot: 0 };
+        const next = { x: cur.x | 0, y: cur.y | 0, rot: +cur.rot || 0 };
+        if (cur.flipX === true) next.flipX = true;
+        if (src) {
+          next.src = src;
+          if (src !== 'self') next.transform = transform || 'none';
+        }
+        kit[poseId][facing] = next;
+        state.kitDirty = true;
+        state.layerCanvasCache.clear();
+        recoloredAtlasCache.clear();
+        renderWeaponPoseGrid();
+        redraw().catch(function (err) {
+          showToast('Redraw failed: ' + (err.message || err), { error: true });
+        });
+        redrawFacingGrid();
+        scheduleKitAutoSave();
       }
 
       // --- Active edit target (primary slot or selected variant) ---
@@ -1056,8 +1011,9 @@
         return resolveWeaponXformLive(state.poseId, state.facing);
       }
 
-      // Write x/y/rot/flipX to the active target. Preserves any per-pose source
-      // override (`src`/`transform`) — same convention as setWeaponXform.
+      // Write x/y/rot/flipX to the active target. `flipX` is optional —
+      // undefined preserves any existing value. Any per-pose source override
+      // (`src`/`transform`) on the active target is preserved.
       function setActiveWeaponXform(x, y, rot, flipX) {
         const v = getActiveVariantRef();
         if (v) {
@@ -1072,7 +1028,9 @@
         setWeaponXform(state.poseId, state.facing, x, y, rot, flipX);
       }
 
-      // Set src/transform on the active target. Pass src=null to clear.
+      // Set the per-pose source override on the active target. `src=null`
+      // clears the override (variants fall back to default behavior; primary
+      // falls back to global kit.weapon.facings[F]).
       function setActiveWeaponSrcOverride(src, transform) {
         const v = getActiveVariantRef();
         if (v) {
@@ -1146,13 +1104,13 @@
             if (!poses[poseId]) poses[poseId] = {};
             const existing = poses[poseId][f] || {};
             existing.weaponVariants = fe.weaponVariants.map(function (v) {
-              const out = { x: v.x | 0, y: v.y | 0, rot: +v.rot || 0 };
-              if (v.flipX === true) out.flipX = true;
+              const o = { x: v.x | 0, y: v.y | 0, rot: +v.rot || 0 };
+              if (v.flipX === true) o.flipX = true;
               if (typeof v.src === 'string') {
-                out.src = v.src;
-                if (v.src !== 'self') out.transform = v.transform || 'none';
+                o.src = v.src;
+                if (v.src !== 'self') o.transform = v.transform || 'none';
               }
-              return out;
+              return o;
             });
             poses[poseId][f] = existing;
           }
@@ -1369,7 +1327,7 @@
 
       // Live-grid refresh: render a per-cell composite + redraw mirror badges.
       // Replaces the old static atlas-thumbnail flow. Each cell's <canvas> is
-      // updated to reflect the current weapon (x, y, rot, flipX) edits.
+      // updated to reflect the current weapon (x, y, rot) edits.
       async function refreshFacingGridArtwork() {
         await redrawFacingGrid();
         renderMirrorBadges();
@@ -1437,67 +1395,24 @@
 
       function renderWeaponUi() {
         const banner = document.getElementById('weapon-banner');
-        const sourceCtl = document.getElementById('weapon-source-controls');
         const resetBtnEl = document.getElementById('reset-weapon-btn');
         const rot90BtnEl = document.getElementById('rot90-weapon-btn');
         const flipxBtnEl = document.getElementById('flipx-weapon-btn');
-        // Body pose with weapon = show all three weapon buttons; weapon-author
-        // pose or unarmed kit = hide.
+        // Body pose with weapon = show weapon buttons; weapon-author pose or
+        // unarmed kit = hide.
         const showWeaponBtns = state.poseId !== WEAPON_POSE_ID && kitHasWeapon() && state.weaponActive;
         const display = showWeaponBtns ? '' : 'none';
         if (resetBtnEl) resetBtnEl.style.display = display;
         if (rot90BtnEl) rot90BtnEl.style.display = display;
         if (flipxBtnEl) flipxBtnEl.style.display = display;
-        // Toggle Mirror's depressed state to reflect current (pose, facing) flipX.
+        // Reflect the active edit target's flipX on the Mirror button.
         if (flipxBtnEl) {
           const cur = (state.poseId !== WEAPON_POSE_ID && kitHasWeapon())
             ? resolveActiveWeaponLive()
             : null;
-          const on = !!(cur && cur.flipX === true);
-          flipxBtnEl.classList.toggle('toggle-on', on);
-        }
-        // Weapon-pose-view: show editable source/transform dropdowns.
-        const showSourceCtl = state.poseId === WEAPON_POSE_ID && kitHasWeapon();
-        if (sourceCtl) sourceCtl.style.display = showSourceCtl ? 'flex' : 'none';
-        if (showSourceCtl) {
-          const e = state.kit.weapon.facings[state.facing] || { src: 'self' };
-          const label = document.getElementById('weapon-source-facing-label');
-          if (label) label.textContent = state.facing;
-          const srcSel = document.getElementById('weapon-source-src');
-          const xfSel = document.getElementById('weapon-source-transform');
-          if (srcSel) srcSel.value = e.src || 'self';
-          if (xfSel) xfSel.value = e.src === 'self' ? 'none' : (e.transform || 'none');
-          if (xfSel) xfSel.disabled = (e.src || 'self') === 'self';
+          flipxBtnEl.classList.toggle('toggle-on', !!(cur && cur.flipX === true));
         }
         if (banner) banner.style.display = 'none';
-      }
-
-      // Set or clear the per-pose source override for (poseId, facing).
-      // Pass src=null to clear (fall back to global kit.weapon.facings[F]).
-      function setWeaponPoseSourceOverride(poseId, facing, src, transform) {
-        const kit = getKitWeaponXform();
-        if (!kit[poseId]) kit[poseId] = {};
-        const cur = kit[poseId][facing] || { x: 0, y: 0, rot: 0 };
-        const next = {
-          x: cur.x | 0,
-          y: cur.y | 0,
-          rot: +cur.rot || 0,
-        };
-        if (cur.flipX === true) next.flipX = true;
-        if (src) {
-          next.src = src;
-          if (src !== 'self') next.transform = transform || 'none';
-        }
-        kit[poseId][facing] = next;
-        state.kitDirty = true;
-        state.layerCanvasCache.clear();
-        recoloredAtlasCache.clear();
-        renderWeaponPoseGrid();
-        redraw().catch(function (err) {
-          showToast('Redraw failed: ' + (err.message || err), { error: true });
-        });
-        redrawFacingGrid();
-        scheduleAutoSave();
       }
 
       function setWeaponFacingSource(facing, src, transform) {
@@ -1608,7 +1523,7 @@
             'Layer: weapon (' + targetLabel + ')',
             'pose: ' + state.poseId,
             'facing: ' + state.facing,
-            'xform: (' + x.x + ',' + x.y + ',' + x.rot + 'deg)',
+            'xform: (' + x.x + ',' + x.y + ',' + x.rot + 'deg' + (x.flipX ? ' flipX' : '') + ')',
           ];
           if (typeof x.src === 'string' && x.src !== 'self') {
             parts.push('← ' + x.src + ' ' + (x.transform || 'none'));
@@ -1887,12 +1802,9 @@
       }
 
       // Draw a base canvas onto a destination ctx with the named facing transform
-      // applied (texture-space mirror/rotate). The destination ctx is left in its
-      // original transform on return. Source canvas is assumed to be CELL_W×CELL_H.
-      // `flipX` (optional) is the per-pose horizontal mirror, applied to the
-      // AUTHORED sprite BEFORE the facing-share transform so the user mirrors
-      // the sprite as they see it; the facing-share transform then maps it
-      // through to the derived facing.
+      // applied (texture-space mirror/rotate), then optionally a per-pose flipX
+      // (innermost — applied closest to the source). Destination ctx is left in
+      // its original transform on return. Source canvas is assumed CELL_W×CELL_H.
       function drawWithFacingTransform(destCtx, srcCanvas, transform, dx, dy, rotDeg, flipX) {
         destCtx.save();
         destCtx.imageSmoothingEnabled = false;
@@ -1902,11 +1814,6 @@
         const cy = CELL_H / 2 + dy;
         destCtx.translate(cx, cy);
         if (rotDeg) destCtx.rotate((rotDeg * Math.PI) / 180);
-        // Apply facing-share transform first (outermost in matrix terms ⇒ last
-        // applied to source coords), then the per-pose flipX (innermost ⇒
-        // first applied to source coords). Composed by canvas: the LATER call
-        // is applied closer to the source draw, so we set facing-share first
-        // and flipX after to get "flipX-then-facing" on the source.
         switch (transform) {
           case 'flipX': destCtx.scale(-1, 1); break;
           case 'flipY': destCtx.scale(1, -1); break;
@@ -1936,16 +1843,28 @@
       // coords (we model that as a tiny canvas with the same transform pipeline).
       async function compositeWeaponOverlay(destCtx, poseId, facing) {
         if (!kitHasWeapon()) return null;
-        const resolved = resolveWeaponFacingForPose(state.kit.weapon, poseId, facing);
-        if (!resolved) return null;
-        // Sample the base sprite layer canvas (key = registered sprite id, e.g.
-        // "musket-brown-bess-north"). Use poseId = WEAPON_POSE_ID + the SOURCE
-        // facing so edits authored on the source (in weapon view) appear here.
-        // For per-pose overrides, the source facing comes from the override.
+        // Per-pose source override (if any) wins over the global facings map,
+        // so the editor preview matches the runtime when the user has assigned
+        // a different weapon source for this (pose, facing) via the picker.
         const override = readWeaponPoseSourceOverride(poseId, facing);
-        const srcFacing = override
-          ? (override.src === 'self' ? facing : override.src)
-          : sourceFacingFor(facing);
+        let resolved;
+        let srcFacing;
+        if (override) {
+          if (override.src === 'self') {
+            resolved = { spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(facing), transform: 'none' };
+            srcFacing = facing;
+          } else {
+            resolved = {
+              spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(override.src),
+              transform: override.transform || 'none',
+            };
+            srcFacing = override.src;
+          }
+        } else {
+          resolved = resolveWeaponFacing(state.kit.weapon, facing);
+          if (!resolved) return null;
+          srcFacing = sourceFacingFor(facing);
+        }
         const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
         if (!baseCanvas) return null;
         const xform = resolveWeaponXformLive(poseId, facing);
@@ -1985,9 +1904,8 @@
 
       // Variant of compositeWeaponOverlay that paints a passed-in `variant`
       // (`{x, y, rot, flipX?, src?, transform?}`) instead of reading the live
-      // per-(pose, facing) authoring. Used by the variant-thumbnail UI so each
-      // saved variant previews its own weapon source/transform/offset, even
-      // when the primary slot is currently authored differently.
+      // per-(pose, facing) authoring. Honors per-pose source overrides on the
+      // variant so the thumbnail mirrors what the runtime will draw.
       async function compositeVariantWeaponOverlay(destCtx, poseId, facing, variant) {
         if (!kitHasWeapon()) return null;
         let resolved;
@@ -2004,12 +1922,9 @@
             srcFacing = variant.src;
           }
         } else {
-          resolved = resolveWeaponFacingForPose(state.kit.weapon, poseId, facing);
+          resolved = resolveWeaponFacing(state.kit.weapon, facing);
           if (!resolved) return null;
-          const override = readWeaponPoseSourceOverride(poseId, facing);
-          srcFacing = override
-            ? (override.src === 'self' ? facing : override.src)
-            : sourceFacingFor(facing);
+          srcFacing = sourceFacingFor(facing);
         }
         const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
         if (!baseCanvas) return null;
@@ -2065,8 +1980,8 @@
       }
 
       // Compose the body + (optional) weapon overlay for a given (poseId,
-      // facing) into a fresh CELL_W×CELL_H canvas. Returns { canvas, weaponXform }
-      // where weaponXform is the resolved (x,y,rot,flipX) used (or null).
+      // facing) into a fresh CELL_W×CELL_H canvas. Returns { canvas, weaponResult }
+      // where weaponResult is { resolved, xform } used (or null).
       // `weaponOverride`, when provided, paints that variant instead of the
       // live primary slot — used by the main preview when a variant is selected
       // for editing, and by variant thumbnails.
@@ -2092,7 +2007,7 @@
           if (resolved) {
             const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, sourceFacingFor(facing), resolved.spriteKey);
             if (baseCanvas) {
-              drawWithFacingTransform(offCtx, baseCanvas, resolved.transform, 0, 0, 0, false);
+              drawWithFacingTransform(offCtx, baseCanvas, resolved.transform, 0, 0, 0);
             }
           }
         } else {
@@ -2197,10 +2112,10 @@
         return Array.isArray(fe.weaponVariants) ? fe.weaponVariants : [];
       }
 
-      // Snapshot the current per-pose-per-facing weapon authoring (x, y, rot,
-      // flipX, src, transform) and append it to weaponVariants on this entry.
-      // Reads from the active target — when a variant is selected, this clones
-      // it; otherwise it duplicates the primary slot.
+      // Snapshot the current per-pose-per-facing weapon authoring (x, y, rot)
+      // and append it to weaponVariants on this entry. Reads from the active
+      // target — when a variant is selected, this clones it; otherwise it
+      // duplicates the primary slot.
       function saveCurrentAsVariant() {
         if (!kitHasWeapon() || state.poseId === WEAPON_POSE_ID) return;
         const target = state.facing;
@@ -2217,7 +2132,7 @@
         entry.weaponVariants.push(v);
         state.kitDirty = true;
         renderWeaponPoseGrid();
-        scheduleAutoSave();
+        scheduleKitAutoSave();
         showToast('Saved variant #' + (entry.weaponVariants.length - 1) + ' for ' + target);
       }
 
@@ -2243,9 +2158,8 @@
 
       // Render the weapon-only 3x3 grid below the main facing grid. Each cell
       // shows the resolved weapon for (currentPose, facing), reflecting both
-      // global kit.weapon.facings[F] and any per-pose override on
-      // kit.poses[poseId][facing].weapon.{src,transform}. Hidden in the
-      // synthetic weapon-author pose view.
+      // the global kit.weapon.facings[F] and any per-pose override authored on
+      // the active edit target (primary slot or selected variant).
       function renderWeaponPoseGrid() {
         const wrap = document.getElementById('weapon-pose-grid');
         if (!wrap) return;
@@ -2254,16 +2168,12 @@
         const variantsSection = document.getElementById('wpose-variants-section');
         if (variantsSection) variantsSection.style.display = visible ? '' : 'none';
         if (!visible) return;
-        // Highlight the cell matching the weapon-pose-grid's own selection
-        // (decoupled from state.facing — the body view stays put).
-        // Highlight the cell matching the current weapon source for state.facing
-        // (the body's facing). When there's a per-pose src override, that wins;
-        // otherwise the active cell is just state.facing itself (default = self).
-        // When a variant is selected, mirror its src/transform instead of
-        // primary's so the picker reflects what the user is editing.
-        const variantForOverride = getActiveVariantRef();
-        const override = (variantForOverride && typeof variantForOverride.src === 'string')
-          ? { src: variantForOverride.src, transform: variantForOverride.transform || 'none' }
+        // Highlight the cell matching the current weapon source. When a variant
+        // is selected, mirror its src/transform so the picker reflects what the
+        // user is editing; otherwise read primary's per-pose override.
+        const variantOv = getActiveVariantRef();
+        const override = (variantOv && typeof variantOv.src === 'string')
+          ? { src: variantOv.src, transform: variantOv.transform || 'none' }
           : readWeaponPoseSourceOverride(state.poseId, state.facing);
         const activeCell = override
           ? (override.src === 'self' ? state.facing : override.src)
@@ -2274,9 +2184,8 @@
         });
         const label = document.getElementById('wpose-facing-label');
         if (label) label.textContent = state.facing;
-        // Transform buttons: highlight the active one; disable all when there's
-        // no non-self override (transforms are only meaningful when the weapon
-        // pulls from a different facing's source PNG).
+        // Transform buttons: highlight the active one; disable when the source
+        // is `self` (or unset) — transforms only apply to non-self overrides.
         const xfActive = override && override.src !== 'self' ? (override.transform || 'none') : 'none';
         const xfDisabled = !override || override.src === 'self';
         wrap.querySelectorAll('.wpose-xf-btn').forEach(function (btn) {
@@ -2381,11 +2290,8 @@
           buildCard({
             variant: v,
             isActive: selectedIdx === i,
-            label: '#' + i + (v.flipX ? '·flipX' : '') + (v.src ? '·' + v.src : ''),
-            title: '#' + i + ' (' + (v.x|0) + ',' + (v.y|0) + ',' + (+v.rot|0) + '°'
-              + (v.flipX ? ' flipX' : '')
-              + (v.src ? ' ← ' + v.src + (v.src !== 'self' ? ' ' + (v.transform || 'none') : '') : '')
-              + ') — click to edit',
+            label: '#' + i,
+            title: '#' + i + ' (' + (v.x|0) + ',' + (v.y|0) + ',' + (+v.rot|0) + '°) — click to edit',
             onClick: function () { selectVariant(i); },
             onDelete: function () { deleteVariant(poseId, facing, i); },
           });
@@ -2518,7 +2424,7 @@
 
       function resetSelected() {
         if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
-          // Reset clears the rotation, offset AND the flipX mirror.
+          // Reset clears the rotation, offset, AND the flipX mirror.
           setActiveWeaponXform(0, 0, 0, false);
           afterActiveWeaponEdit();
           return;
@@ -2646,11 +2552,8 @@
       }
 
       // Inverse-map an atlas-pixel coord (cx, cy) to base-sprite local coord,
-      // un-applying per-pose (x, y, rot, flipX) and the facing transform.
-      // Returns null if the result lands outside the base sprite. flipX is the
-      // per-pose horizontal mirror; it sits CLOSER to the source than the
-      // facing transform in the forward pipeline (see drawWithFacingTransform),
-      // so it un-applies LAST when going from atlas → source.
+      // un-applying per-pose (x, y, rot) and the facing transform.
+      // Returns null if the result lands outside the base sprite.
       function atlasToBaseSprite(cx, cy, xform, transform) {
         // Translate so weapon's drawn centre (CELL_W/2 + dx, CELL_H/2 + dy) is origin.
         let lx = cx - (CELL_W / 2 + xform.x);
@@ -2663,15 +2566,13 @@
           const ry = lx * s + ly * c;
           lx = rx; ly = ry;
         }
-        // Un-apply facing transform first (outer in forward pipeline).
+        // Un-apply facing transform.
         switch (transform) {
           case 'flipX': lx = -lx; break;
           case 'flipY': ly = -ly; break;
           case 'rot180': lx = -lx; ly = -ly; break;
           default: break;
         }
-        // Then un-apply per-pose flipX (innermost in forward pipeline).
-        if (xform.flipX === true) lx = -lx;
         // Translate back so origin is top-left of base sprite.
         const bx = Math.floor(lx + CELL_W / 2);
         const by = Math.floor(ly + CELL_H / 2);
@@ -2684,23 +2585,31 @@
       // through the same transform pipeline used for rendering.
       async function pointHitsWeapon(cx, cy) {
         if (!kitHasWeapon() || state.poseId === WEAPON_POSE_ID) return false;
+        // Active edit target may carry a per-pose source override; honor it for
+        // hit-testing so click-to-drag works on a variant-positioned weapon.
         const variant = getActiveVariantRef();
+        const xform = variant ? variantToXform(variant) : resolveWeaponXformLive(state.poseId, state.facing);
+        const override = (variant && typeof variant.src === 'string')
+          ? { src: variant.src, transform: variant.transform || 'none' }
+          : readWeaponPoseSourceOverride(state.poseId, state.facing);
         let resolved;
         let srcFacing;
-        if (variant && typeof variant.src === 'string') {
-          if (variant.src === 'self') {
+        if (override) {
+          if (override.src === 'self') {
             resolved = { spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(state.facing), transform: 'none' };
             srcFacing = state.facing;
           } else {
-            resolved = { spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(variant.src), transform: variant.transform || 'none' };
-            srcFacing = variant.src;
+            resolved = {
+              spriteKey: state.kit.weapon.layerPrefix + '-' + facingLong(override.src),
+              transform: override.transform || 'none',
+            };
+            srcFacing = override.src;
           }
         } else {
           resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
           if (!resolved) return false;
           srcFacing = sourceFacingFor(state.facing);
         }
-        const xform = variant ? variantToXform(variant) : resolveWeaponXformLive(state.poseId, state.facing);
         const local = atlasToBaseSprite(cx, cy, xform, resolved.transform);
         if (!local) return false;
         const base = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
@@ -3202,7 +3111,9 @@
               if (norm.weapon.flipX === true) v.flipX = true;
               if (typeof norm.weapon.src === 'string') {
                 v.src = norm.weapon.src;
-                if (norm.weapon.src !== 'self') v.transform = norm.weapon.transform || 'none';
+                if (norm.weapon.src !== 'self' && typeof norm.weapon.transform === 'string') {
+                  v.transform = norm.weapon.transform;
+                }
               }
               kitMap[poseId][facing] = v;
             }
@@ -3362,8 +3273,7 @@
               afterActiveWeaponEdit();
             });
           }
-          // Mirror button: toggles per-(pose, facing) flipX. Visual state on
-          // the button reflects the current value (depressed when flipX=true).
+          // Mirror button: toggles per-target flipX for the active weapon.
           const flipxBtn = document.getElementById('flipx-weapon-btn');
           if (flipxBtn) {
             flipxBtn.addEventListener('click', function () {
@@ -3393,24 +3303,11 @@
               showToast('Switch unit failed: ' + (err.message || err), { error: true });
             });
           });
-          const wsrcEl = document.getElementById('weapon-source-src');
-          const wxfEl = document.getElementById('weapon-source-transform');
-          if (wsrcEl) wsrcEl.addEventListener('change', function () {
-            const cur = state.kit.weapon.facings[state.facing] || { src: 'self' };
-            const xform = wxfEl ? wxfEl.value : (cur.transform || 'none');
-            setWeaponFacingSource(state.facing, wsrcEl.value, xform);
-          });
-          if (wxfEl) wxfEl.addEventListener('change', function () {
-            const cur = state.kit.weapon.facings[state.facing] || { src: 'self' };
-            if (cur.src === 'self') return;
-            setWeaponFacingSource(state.facing, cur.src, wxfEl.value);
-          });
-          // Per-pose weapon orientation override (3x3 grid + src/transform dropdowns).
-          // Clicking a cell ASSIGNS that cell's facing as the weapon source for
-          // the body's current facing (state.facing) — the composite immediately
-          // shows the new weapon. Body view stays put.
-          // Clicking the cell that matches state.facing clears the override (so
-          // the global kit.weapon.facings[F] takes over again).
+          const wposeSaveBtn = document.getElementById('wpose-save-variant');
+          if (wposeSaveBtn) wposeSaveBtn.addEventListener('click', saveCurrentAsVariant);
+          // Per-pose weapon source picker: clicking a cell assigns that
+          // facing's weapon PNG as the source for the active edit target;
+          // clicking the cell that matches state.facing clears the override.
           const wposeGrid = document.getElementById('weapon-pose-facing-grid');
           if (wposeGrid) {
             wposeGrid.querySelectorAll('.facing-cell').forEach(function (cell) {
@@ -3424,8 +3321,8 @@
               });
             });
           }
-          // Transform buttons: only meaningful when there's a non-self
-          // per-pose src override; clicking sets that override's transform.
+          // Transform buttons: only meaningful with a non-self override; sets
+          // the override's transform on the active edit target.
           document.querySelectorAll('.wpose-xf-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
               const cur = readActiveWeaponAuthored() || resolveActiveWeaponLive();
@@ -3433,8 +3330,6 @@
               setActiveWeaponSrcOverride(cur.src, btn.dataset.xf);
             });
           });
-          const wposeSaveBtn = document.getElementById('wpose-save-variant');
-          if (wposeSaveBtn) wposeSaveBtn.addEventListener('click', saveCurrentAsVariant);
           poseSelectEl.addEventListener('change', function (ev) {
             switchPose(ev.target.value).catch(function (err) {
               showToast('Switch pose failed: ' + (err.message || err), { error: true });
