@@ -138,8 +138,8 @@
           "shako-standard-east"
         ],
         "weapon": {
-          "x": 0,
-          "y": -1,
+          "x": 3,
+          "y": 3,
           "rot": 0
         }
       },
@@ -151,8 +151,8 @@
           "shako-standard-west"
         ],
         "weapon": {
-          "x": 0,
-          "y": -1,
+          "x": -3,
+          "y": 3,
           "rot": 0
         }
       },
@@ -190,8 +190,8 @@
           "shako-standard-southeast"
         ],
         "weapon": {
-          "x": 0,
-          "y": -1,
+          "x": 2,
+          "y": 1,
           "rot": 0
         }
       },
@@ -662,6 +662,49 @@
           "x": 0,
           "y": 2,
           "rot": 0
+        }
+      }
+    },
+    "idle": {
+      "W": {
+        "layers": [],
+        "weapon": {
+          "x": -4,
+          "y": 3,
+          "rot": 0
+        }
+      },
+      "S": {
+        "layers": [],
+        "weapon": {
+          "x": -3,
+          "y": 3,
+          "rot": 0
+        }
+      },
+      "SE": {
+        "layers": [],
+        "weapon": {
+          "x": 3,
+          "y": 3,
+          "rot": 0
+        }
+      },
+      "E": {
+        "layers": [],
+        "weapon": {
+          "x": 3,
+          "y": 3,
+          "rot": 0
+        }
+      },
+      "N": {
+        "layers": [],
+        "weapon": {
+          "x": 7,
+          "y": -2,
+          "rot": 0,
+          "flipX": true
         }
       }
     }

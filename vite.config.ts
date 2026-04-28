@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
-import { resolve } from 'node:path';
-import { writeFile, readFile, readdir } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+import { writeFile, readFile, readdir, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 
 const PROJECT_ROOT = __dirname;
@@ -31,6 +31,31 @@ function sendJson(
   res.end(JSON.stringify(body));
 }
 
+async function maxMtimeUnder(dir: string): Promise<number> {
+  let max = 0;
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = (await readdir(dir, { withFileTypes: true })) as unknown as import('node:fs').Dirent[];
+  } catch {
+    return 0;
+  }
+  for (const ent of entries) {
+    const full = join(dir, ent.name);
+    if (ent.isDirectory()) {
+      const sub = await maxMtimeUnder(full);
+      if (sub > max) max = sub;
+    } else if (ent.isFile() && ent.name.toLowerCase().endsWith('.png')) {
+      try {
+        const s = await stat(full);
+        if (s.mtimeMs > max) max = s.mtimeMs;
+      } catch {
+        // ignore unreadable files
+      }
+    }
+  }
+  return max;
+}
+
 function offsetsApiPlugin(): Plugin {
   return {
     name: 'austerbitz-poses-offsets-api',
@@ -38,6 +63,21 @@ function offsetsApiPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
         const method = req.method ?? '';
+
+        // GET /api/atlas-mtime — most-recent mtime of any sprite PNG under
+        // public/sprites/. Used by the live-reload poller in dev mode to skip
+        // a full atlas refetch when nothing has changed.
+        if (method === 'GET' && url === '/api/atlas-mtime') {
+          try {
+            const spritesDir = resolve(PROJECT_ROOT, 'public/sprites');
+            const m = await maxMtimeUnder(spritesDir);
+            sendJson(res, 200, { mtime: m > 0 ? new Date(m).toISOString() : null });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            sendJson(res, 500, { ok: false, error: message });
+          }
+          return;
+        }
 
         if (method === 'GET' && url === '/api/kits') {
           try {
@@ -160,7 +200,17 @@ function offsetsApiPlugin(): Plugin {
                   } else if (!existing || typeof existing !== 'object') {
                     existing = { layers: [] };
                   }
-                  existing.weapon = fe.weapon;
+                  // Sanitize the weapon block: only persist known fields
+                  // (x, y, rot, flipX). Drop flipX when it isn't true so JSON
+                  // stays minimal.
+                  const w = fe.weapon as Record<string, unknown>;
+                  const cleaned: { x: number; y: number; rot: number; flipX?: true } = {
+                    x: typeof w.x === 'number' ? (w.x | 0) : 0,
+                    y: typeof w.y === 'number' ? (w.y | 0) : 0,
+                    rot: typeof w.rot === 'number' ? +w.rot : 0,
+                  };
+                  if (w.flipX === true) cleaned.flipX = true;
+                  existing.weapon = cleaned;
                   parsed.poses[poseId][facing] = existing;
                 }
               }

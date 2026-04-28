@@ -31,6 +31,9 @@ import { applyWind } from './wind';
 import { createLabUi, type ActionHandlers, type GridToggle, type TimeScaleState, type WindState } from './lab-ui';
 import { loadPoseAtlas } from '../render/poses/atlas';
 import { loadKits } from '../render/poses/kit-loader';
+import { startLiveReload } from '../render/poses/live-reload';
+import { composeCombinedAtlas } from '../render/poses/combined-atlas';
+import { generateCombinedAtlas, COMBINED_SHEET_W, COMBINED_SHEET_H } from '../render/sprite-atlas';
 
 const CAPACITY = 256;
 const PARTICLE_CAPACITY = 50_000;
@@ -52,6 +55,28 @@ const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   LAB_MAP_SIZE, LAB_MAP_SIZE, poseAtlas, kits,
 );
+
+// Dev-mode live-reload (see src/main.ts for rationale).
+startLiveReload({
+  kits,
+  onAtlasChanged: async () => {
+    try {
+      const fresh = await loadPoseAtlas(gl);
+      const procedural = {
+        pixels: generateCombinedAtlas(),
+        width: COMBINED_SHEET_W,
+        height: COMBINED_SHEET_H,
+      };
+      const combined = composeCombinedAtlas(procedural, fresh);
+      const copy = new Uint8ClampedArray(combined.pixels.byteLength);
+      copy.set(combined.pixels);
+      const data = new ImageData(copy, combined.width, combined.height);
+      renderer.replaceSpriteAtlas(data);
+    } catch (err) {
+      console.warn('[lab] atlas live-reload failed:', err);
+    }
+  },
+});
 const camera = createCamera();
 const input = createInputManager(canvas);
 const selection = createSelection();

@@ -43,6 +43,11 @@ export interface Renderer {
   ): void;
   resize(): void;
   bloodStain: BloodStainPass;
+  /**
+   * Swap the sprite-pass atlas texture mid-session. Used by the dev-mode
+   * live-reload watcher; production builds never call this.
+   */
+  replaceSpriteAtlas(image: ImageBitmap | ImageData | HTMLCanvasElement): void;
 }
 
 export function createRenderer(
@@ -72,6 +77,9 @@ export function createRenderer(
     bloodStain,
     resize() {
       resizeToDisplay(gl, canvas);
+    },
+    replaceSpriteAtlas(image) {
+      sprites.replaceAtlasTexture(image);
     },
     render(world, projectiles, puffs, particlePool, cam, sel, drag, formation, opts) {
       // Bake any queued blood splats into the persistent stain texture before

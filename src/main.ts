@@ -43,6 +43,9 @@ import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
 import { loadPoseAtlas } from './render/poses/atlas';
 import { loadKits } from './render/poses/kit-loader';
+import { startLiveReload } from './render/poses/live-reload';
+import { composeCombinedAtlas } from './render/poses/combined-atlas';
+import { generateCombinedAtlas, COMBINED_SHEET_W, COMBINED_SHEET_H } from './render/sprite-atlas';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
@@ -64,6 +67,42 @@ const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   map.size.w, map.size.h, poseAtlas, kits,
 );
+
+// Dev-mode live-reload: poll kit JSONs for per-(pose, facing) weapon edits
+// (so the running game reflects editor changes without a page reload), and
+// poll the atlas mtime for sprite-PNG changes (so a rebuild swaps the GL
+// texture in place). No-op in production.
+startLiveReload({
+  kits,
+  onKitsChanged: () => {
+    // Per-pose weapon transforms are read fresh each frame from `kits` —
+    // the in-place mutation is enough to flow through. (Top-level weapon
+    // block mirror-source changes would need a UV-cache rebuild; the
+    // editor's two new buttons + drag don't touch that block, so we skip
+    // the heavier work here.)
+  },
+  onAtlasChanged: async () => {
+    try {
+      const fresh = await loadPoseAtlas(gl);
+      const procedural = {
+        pixels: generateCombinedAtlas(),
+        width: COMBINED_SHEET_W,
+        height: COMBINED_SHEET_H,
+      };
+      const combined = composeCombinedAtlas(procedural, fresh);
+      // Wrap the raw RGBA buffer as ImageData so it's a valid TexImageSource.
+      // Copy the bytes into a fresh Uint8ClampedArray-backed ArrayBuffer; the
+      // existing buffer may be typed as SharedArrayBuffer-compatible, which
+      // ImageData's constructor doesn't accept.
+      const copy = new Uint8ClampedArray(combined.pixels.byteLength);
+      copy.set(combined.pixels);
+      const data = new ImageData(copy, combined.width, combined.height);
+      renderer.replaceSpriteAtlas(data);
+    } catch (err) {
+      console.warn('[main] atlas live-reload failed:', err);
+    }
+  },
+});
 const camera = createCamera();
 const input = createInputManager(canvas);
 const selection = createSelection();

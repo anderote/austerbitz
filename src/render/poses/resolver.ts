@@ -75,11 +75,18 @@ export interface WeaponBlock {
   facings: Record<Facing, WeaponFacingEntry>;
 }
 
-/** Per-pose weapon attachment offset + rotation (degrees). */
+/** Per-pose weapon attachment offset + rotation (degrees) + optional mirror. */
 export interface WeaponPoseTransform {
   x: number;
   y: number;
   rot: number;
+  /**
+   * Per-pose horizontal mirror of the *authored* sprite, applied BEFORE the
+   * facing-share transform. Defaults to `false` and is omitted from JSON in
+   * that case to keep diffs small. Lets the editor flip the weapon for one
+   * (pose, facing) without re-authoring the source PNG.
+   */
+  flipX?: boolean;
 }
 
 /** Normalized shape for `kit.poses[pose][facing]`. */
@@ -133,19 +140,34 @@ export function resolveWeaponFacing(
  * - `flipY`: mirror about the horizontal axis → negate `y` and `rot`.
  * - `rot180`: rotate 180° → negate both `x` and `y`; `rot` is unchanged
  *   (since rotating a rotation by 180° wraps to the same effective heading).
+ *
+ * `flipX` inheritance: when the facing-share transform is itself `flipX`,
+ * the source's `flipX` flag XORs against `true` (so a flipped source becomes
+ * un-flipped when the derived facing already mirrors it; an un-flipped source
+ * becomes flipped). For `flipY` and `rot180`, `flipX` propagates unchanged
+ * (those transforms don't mirror the X axis on their own).
  */
 function applyFacingTransform(
   base: WeaponPoseTransform,
   transform: WeaponFacingTransform,
 ): WeaponPoseTransform {
+  const baseFlip = base.flipX === true;
   switch (transform) {
     case 'flipX':
-      return { x: -base.x, y: base.y, rot: -base.rot };
+      return withFlipX({ x: -base.x, y: base.y, rot: -base.rot }, !baseFlip);
     case 'flipY':
-      return { x: base.x, y: -base.y, rot: -base.rot };
+      return withFlipX({ x: base.x, y: -base.y, rot: -base.rot }, baseFlip);
     case 'rot180':
-      return { x: -base.x, y: -base.y, rot: base.rot };
+      return withFlipX({ x: -base.x, y: -base.y, rot: base.rot }, baseFlip);
   }
+}
+
+/**
+ * Helper: attach `flipX: true` to a `WeaponPoseTransform`, omit when false.
+ * Keeps the JSON shape minimal (no `flipX: false` keys cluttering kit files).
+ */
+function withFlipX(t: WeaponPoseTransform, flipX: boolean): WeaponPoseTransform {
+  return flipX ? { ...t, flipX: true } : t;
 }
 
 /** Read `poses[pose][facing].weapon` if present, else null. */
@@ -160,7 +182,11 @@ function readPoseWeapon(
   const facingEntry = poseEntry[facing];
   if (!facingEntry) return null;
   const normalized = normalizePoseFacingEntry(facingEntry);
-  return normalized.weapon ?? null;
+  if (!normalized.weapon) return null;
+  // Normalize: only include flipX when explicitly true so equality checks /
+  // JSON output stay clean.
+  const w = normalized.weapon;
+  return w.flipX === true ? { ...w, flipX: true } : { x: w.x, y: w.y, rot: w.rot };
 }
 
 /**

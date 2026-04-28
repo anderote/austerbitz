@@ -91,6 +91,14 @@
       button.primary:hover { background: #1d4ed8; }
       button.facing-btn { min-width: 44px; }
       button.facing-btn.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
+      /* Depressed/active state for the Mirror button when flipX is true on
+         the current (pose, facing). Inset shadow + filled background mirrors
+         the visual idiom of a held-down toggle. */
+      button.toggle-on {
+        background: #1d4ed8; color: #ffffff; border-color: #1e3a8a;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+      }
+      button.toggle-on:hover { background: #1d4ed8; }
       .stage {
         background: #ffffff; padding: 16px;
         border: 1px solid rgba(55, 65, 81, 0.2); border-radius: 8px;
@@ -206,8 +214,6 @@
       .facing-cell {
         position: relative;
         width: 96px; height: 108px;
-        background-size: 288px 324px; /* native 96x108 atlas at 3x */
-        background-repeat: no-repeat;
         image-rendering: pixelated;
         border: 2px solid rgba(55, 65, 81, 0.15);
         border-radius: 4px;
@@ -215,13 +221,21 @@
         cursor: pointer;
         transition: border-color 0.1s, transform 0.1s;
         padding: 0;
+        overflow: hidden;
       }
       .facing-cell:hover {
         border-color: #94a3b8;
         background-color: #f9fafb;
-        background-size: 288px 324px;
       }
       .facing-cell.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+      /* Live preview canvas inside each grid cell. Pixelated scaling, no
+         smoothing — same look as the atlas-derived backgrounds it replaces. */
+      .facing-cell canvas.facing-preview {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
       .facing-cell .label {
         position: absolute; top: 2px; left: 4px;
         font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
@@ -247,18 +261,6 @@
         background: #22c55e; pointer-events: none;
         box-shadow: 0 0 0 1px rgba(255,255,255,0.6);
       }
-
-      /* Background-position offsets per facing (3x scale of native atlas).
-       * Atlas physical layout: NW [0,0], W [0,1], SW [0,2], S [1,1], N [1,2],
-       * NE [2,0], E [2,1], SE [2,2]. Empty cell at atlas [1,0]. */
-      .facing-cell[data-facing="NW"] { background-position: 0 0; }
-      .facing-cell[data-facing="N"]  { background-position: -96px -216px; }
-      .facing-cell[data-facing="NE"] { background-position: -192px 0; }
-      .facing-cell[data-facing="W"]  { background-position: 0 -108px; }
-      .facing-cell[data-facing="S"]  { background-position: -96px -108px; }
-      .facing-cell[data-facing="E"]  { background-position: -192px -108px; }
-      .facing-cell[data-facing="SW"] { background-position: 0 -216px; }
-      .facing-cell[data-facing="SE"] { background-position: -192px -216px; }
 
       /* Hide the old horizontal facings bar — replaced by the grid. */
       .facings { display: none; }
@@ -378,6 +380,8 @@
         <div class='stage-header'>
           <span class='stage-title' id='stage-title'>Composite</span>
           <span class='selected-info' id='selected-info'>Selected: &mdash;</span>
+          <button id='rot90-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Rotate 90&deg;</button>
+          <button id='flipx-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Mirror</button>
           <button id='reset-weapon-btn' style='display:none;font-size:11px;padding:4px 8px;'>Reset weapon</button>
         </div>
         <div id='weapon-banner' style='display:none;margin-bottom:8px;padding:6px 10px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:4px;font-size:12px;font-family:JetBrains Mono,ui-monospace,Menlo,monospace;'></div>
@@ -391,15 +395,15 @@
             <div class='keys-help'><kbd>Left-click</kbd> paints with the selected color, <kbd>Right-click</kbd> erases. Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> to nudge selected layer by 1 px.</div>
           </div>
           <div class='facing-grid' id='facing-grid'>
-            <button class='facing-cell' data-facing='NW' type='button'><span class='label'>NW</span></button>
-            <button class='facing-cell' data-facing='N' type='button'><span class='label'>N</span></button>
-            <button class='facing-cell' data-facing='NE' type='button'><span class='label'>NE</span></button>
-            <button class='facing-cell' data-facing='W' type='button'><span class='label'>W</span></button>
+            <button class='facing-cell' data-facing='NW' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>NW</span></button>
+            <button class='facing-cell' data-facing='N' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>N</span></button>
+            <button class='facing-cell' data-facing='NE' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>NE</span></button>
+            <button class='facing-cell' data-facing='W' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>W</span></button>
             <div class='facing-cell-empty'></div>
-            <button class='facing-cell' data-facing='E' type='button'><span class='label'>E</span></button>
-            <button class='facing-cell' data-facing='SW' type='button'><span class='label'>SW</span></button>
-            <button class='facing-cell' data-facing='S' type='button'><span class='label'>S</span></button>
-            <button class='facing-cell' data-facing='SE' type='button'><span class='label'>SE</span></button>
+            <button class='facing-cell' data-facing='E' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>E</span></button>
+            <button class='facing-cell' data-facing='SW' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SW</span></button>
+            <button class='facing-cell' data-facing='S' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>S</span></button>
+            <button class='facing-cell' data-facing='SE' type='button'><canvas class='facing-preview' width='96' height='108'></canvas><span class='label'>SE</span></button>
           </div>
         </div>
       </div>
@@ -466,12 +470,29 @@
         };
       }
 
+      // Apply the facing-share transform to a per-pose (x, y, rot, flipX).
+      // flipX inheritance: flipX facing-share XORs flipX with true; flipY/rot180
+      // pass it through unchanged.
       function applyFacingTransformXform(base, transform) {
+        const baseFlip = base.flipX === true;
+        let out;
         switch (transform) {
-          case 'flipX':  return { x: -base.x, y:  base.y, rot: -base.rot };
-          case 'flipY':  return { x:  base.x, y: -base.y, rot: -base.rot };
-          case 'rot180': return { x: -base.x, y: -base.y, rot:  base.rot };
-          default:       return { x:  base.x, y:  base.y, rot:  base.rot };
+          case 'flipX':
+            out = { x: -base.x, y:  base.y, rot: -base.rot };
+            if (!baseFlip) out.flipX = true;
+            return out;
+          case 'flipY':
+            out = { x:  base.x, y: -base.y, rot: -base.rot };
+            if (baseFlip) out.flipX = true;
+            return out;
+          case 'rot180':
+            out = { x: -base.x, y: -base.y, rot:  base.rot };
+            if (baseFlip) out.flipX = true;
+            return out;
+          default:
+            out = { x:  base.x, y:  base.y, rot:  base.rot };
+            if (baseFlip) out.flipX = true;
+            return out;
         }
       }
 
@@ -482,7 +503,11 @@
         const facingEntry = poseEntry[facing];
         if (!facingEntry) return null;
         const normalized = normalizePoseFacingEntry(facingEntry);
-        return normalized.weapon ? { x: +normalized.weapon.x || 0, y: +normalized.weapon.y || 0, rot: +normalized.weapon.rot || 0 } : null;
+        if (!normalized.weapon) return null;
+        const w = normalized.weapon;
+        const out = { x: +w.x || 0, y: +w.y || 0, rot: +w.rot || 0 };
+        if (w.flipX === true) out.flipX = true;
+        return out;
       }
 
       function resolveWeaponPoseTransform(poses, pose, facing, weapon) {
@@ -510,6 +535,22 @@
 
       // Palette mirrored from scripts/redraw-components.mjs PAL.
       const PAL = {
+        // ── Regiment-MARKER colors. These hex values are detected by
+        // recolorImageData (channel-dominance match) and remapped to the
+        // active regiment's slot color. Paint with these to author pixels
+        // that follow the regiment palette (instead of staying literal).
+        // Family rule: magenta = primary (coat), cyan = secondary
+        // (belts/trousers), yellow = tertiary (shako/gaiter/boot).
+        'primary hi':     '#FF80FF',
+        'primary mid':    '#FF00FF',
+        'primary shade':  '#A000A0',
+        'primary deep':   '#500050',
+        'secondary hi':   '#80FFFF',
+        'secondary mid':  '#00FFFF',
+        'secondary shade':'#00A0A0',
+        'tertiary hi':    '#A0A000',
+        'tertiary deep':  '#505000',
+        // ── Literal colors (do NOT recolor with regiment).
         red: '#C6373B',
         pink: '#E36A6A',
         maroon: '#8E1F25',
@@ -725,7 +766,9 @@
         if (!pose) return null;
         const v = pose[facing];
         if (!v) return null;
-        return { x: +v.x || 0, y: +v.y || 0, rot: +v.rot || 0 };
+        const out = { x: +v.x || 0, y: +v.y || 0, rot: +v.rot || 0 };
+        if (v.flipX === true) out.flipX = true;
+        return out;
       }
 
       // Resolved per-pose weapon transform: authored override, else mirror-source
@@ -743,10 +786,16 @@
         return { x: 0, y: 0, rot: 0 };
       }
 
-      function setWeaponXform(poseId, facing, x, y, rot) {
+      // Set per-(pose, facing) weapon transform. `flipX` is optional — pass
+      // undefined to preserve any existing value, or true/false to set it.
+      function setWeaponXform(poseId, facing, x, y, rot, flipX) {
         const kit = getKitWeaponXform();
         if (!kit[poseId]) kit[poseId] = {};
-        kit[poseId][facing] = { x: x | 0, y: y | 0, rot: +rot || 0 };
+        const cur = kit[poseId][facing] || {};
+        const next = { x: x | 0, y: y | 0, rot: +rot || 0 };
+        const effFlip = flipX === undefined ? (cur.flipX === true) : (flipX === true);
+        if (effFlip) next.flipX = true;
+        kit[poseId][facing] = next;
       }
 
       // Build the autosave body: only the (pose × facing) tuples we have
@@ -761,7 +810,9 @@
           for (const f of Object.keys(facingMap)) {
             const v = facingMap[f];
             if (!v) continue;
-            out[f] = { weapon: { x: v.x | 0, y: v.y | 0, rot: +v.rot || 0 } };
+            const w = { x: v.x | 0, y: v.y | 0, rot: +v.rot || 0 };
+            if (v.flipX === true) w.flipX = true;
+            out[f] = { weapon: w };
           }
           if (Object.keys(out).length > 0) poses[poseId] = out;
         }
@@ -918,11 +969,11 @@
         refreshFacingGridArtwork();
       }
 
+      // Live-grid refresh: render a per-cell composite + redraw mirror badges.
+      // Replaces the old static atlas-thumbnail flow. Each cell's <canvas> is
+      // updated to reflect the current weapon (x, y, rot, flipX) edits.
       async function refreshFacingGridArtwork() {
-        const url = await getRecoloredPoseAtlasUrl(state.poseId);
-        document.querySelectorAll('.facing-grid .facing-cell').forEach(function (cell) {
-          cell.style.backgroundImage = "url('" + url + "')";
-        });
+        await redrawFacingGrid();
         renderMirrorBadges();
       }
 
@@ -987,10 +1038,22 @@
       function renderWeaponUi() {
         const banner = document.getElementById('weapon-banner');
         const resetBtnEl = document.getElementById('reset-weapon-btn');
-        // Reset-weapon button is only visible when a body pose with a weapon is selected.
-        if (resetBtnEl) {
-          resetBtnEl.style.display =
-            (state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) ? '' : 'none';
+        const rot90BtnEl = document.getElementById('rot90-weapon-btn');
+        const flipxBtnEl = document.getElementById('flipx-weapon-btn');
+        // Body pose with weapon = show all three weapon buttons; weapon-author
+        // pose or unarmed kit = hide.
+        const showWeaponBtns = state.poseId !== WEAPON_POSE_ID && kitHasWeapon() && state.weaponActive;
+        const display = showWeaponBtns ? '' : 'none';
+        if (resetBtnEl) resetBtnEl.style.display = display;
+        if (rot90BtnEl) rot90BtnEl.style.display = display;
+        if (flipxBtnEl) flipxBtnEl.style.display = display;
+        // Toggle Mirror's depressed state to reflect current (pose, facing) flipX.
+        if (flipxBtnEl) {
+          const cur = (state.poseId !== WEAPON_POSE_ID && kitHasWeapon())
+            ? resolveWeaponXformLive(state.poseId, state.facing)
+            : null;
+          const on = !!(cur && cur.flipX === true);
+          flipxBtnEl.classList.toggle('toggle-on', on);
         }
         if (!banner) return;
         // Weapon-pose-view + derived facing → show banner directing user to source.
@@ -1033,6 +1096,7 @@
             state.selectedLayerId = 'weapon';
             renderLayersList();
             renderOffsetReadout();
+            renderWeaponUi();
             redraw();
           });
           layersEl.appendChild(item);
@@ -1056,6 +1120,7 @@
             state.selectedLayerId = id;
             renderLayersList();
             renderOffsetReadout();
+            renderWeaponUi();
             redraw();
           });
           layersEl.appendChild(item);
@@ -1263,20 +1328,15 @@
       }
 
       async function buildLayerCanvas(poseId, facing, id, img) {
-        // Draw the source PNG into a 1x canvas, then apply pixel edits in array order.
+        // Draw source PNG, apply pixel edits, THEN run regiment recolor over
+        // the whole canvas so painted marker pixels (magenta/cyan/yellow)
+        // recolor identically to source-PNG marker pixels.
         const layerCanvas = document.createElement('canvas');
         layerCanvas.width = CELL_W;
         layerCanvas.height = CELL_H;
         const lctx = layerCanvas.getContext('2d');
         lctx.imageSmoothingEnabled = false;
         lctx.drawImage(img, 0, 0);
-        // Recolor pass: classify marker pixels and remap to active regiment palette.
-        // Runs BEFORE pixel-edits so that user-painted overrides remain literal.
-        if (state.regiment) {
-          const imgData = lctx.getImageData(0, 0, CELL_W, CELL_H);
-          recolorImageData(imgData, state.regiment);
-          lctx.putImageData(imgData, 0, 0);
-        }
         const edits = getLayerEdits(poseId, facing, id);
         if (edits && edits.length > 0) {
           for (const edit of edits) {
@@ -1291,6 +1351,11 @@
               lctx.fillRect(x, y, 1, 1);
             }
           }
+        }
+        if (state.regiment) {
+          const imgData = lctx.getImageData(0, 0, CELL_W, CELL_H);
+          recolorImageData(imgData, state.regiment);
+          lctx.putImageData(imgData, 0, 0);
         }
         return layerCanvas;
       }
@@ -1317,7 +1382,11 @@
       // Draw a base canvas onto a destination ctx with the named facing transform
       // applied (texture-space mirror/rotate). The destination ctx is left in its
       // original transform on return. Source canvas is assumed to be CELL_W×CELL_H.
-      function drawWithFacingTransform(destCtx, srcCanvas, transform, dx, dy, rotDeg) {
+      // `flipX` (optional) is the per-pose horizontal mirror, applied to the
+      // AUTHORED sprite BEFORE the facing-share transform so the user mirrors
+      // the sprite as they see it; the facing-share transform then maps it
+      // through to the derived facing.
+      function drawWithFacingTransform(destCtx, srcCanvas, transform, dx, dy, rotDeg, flipX) {
         destCtx.save();
         destCtx.imageSmoothingEnabled = false;
         // Translate to the sprite's centre for pose rotation; then apply the
@@ -1326,14 +1395,18 @@
         const cy = CELL_H / 2 + dy;
         destCtx.translate(cx, cy);
         if (rotDeg) destCtx.rotate((rotDeg * Math.PI) / 180);
-        // Apply facing transform (around centre). For each transform we end up
-        // drawing the sprite with its centre at (0,0).
+        // Apply facing-share transform first (outermost in matrix terms ⇒ last
+        // applied to source coords), then the per-pose flipX (innermost ⇒
+        // first applied to source coords). Composed by canvas: the LATER call
+        // is applied closer to the source draw, so we set facing-share first
+        // and flipX after to get "flipX-then-facing" on the source.
         switch (transform) {
           case 'flipX': destCtx.scale(-1, 1); break;
           case 'flipY': destCtx.scale(1, -1); break;
           case 'rot180': destCtx.rotate(Math.PI); break;
           default: break;
         }
+        if (flipX === true) destCtx.scale(-1, 1);
         destCtx.drawImage(srcCanvas, -CELL_W / 2, -CELL_H / 2);
         destCtx.restore();
       }
@@ -1365,8 +1438,8 @@
         const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, srcFacing, resolved.spriteKey);
         if (!baseCanvas) return null;
         const xform = resolveWeaponXformLive(poseId, facing);
-        // First lay down the base sprite with facing+pose transform.
-        drawWithFacingTransform(destCtx, baseCanvas, resolved.transform, xform.x, xform.y, xform.rot);
+        // First lay down the base sprite with facing+pose transform + per-pose flipX.
+        drawWithFacingTransform(destCtx, baseCanvas, resolved.transform, xform.x, xform.y, xform.rot, xform.flipX === true);
         // Then composite per-pose-per-facing overlay (componentKey = "weapon").
         // These pixels are in BASE-SPRITE LOCAL COORDS, so we paint them onto a
         // tiny 1x1 canvas array? No — paint them into a separate base-sized
@@ -1389,7 +1462,12 @@
               octx.fillRect(x, y, 1, 1);
             }
           }
-          drawWithFacingTransform(destCtx, overlay, resolved.transform, xform.x, xform.y, xform.rot);
+          if (state.regiment) {
+            const od = octx.getImageData(0, 0, CELL_W, CELL_H);
+            recolorImageData(od, state.regiment);
+            octx.putImageData(od, 0, 0);
+          }
+          drawWithFacingTransform(destCtx, overlay, resolved.transform, xform.x, xform.y, xform.rot, xform.flipX === true);
         }
         return { resolved, xform };
       }
@@ -1398,8 +1476,36 @@
       // hit-testing mouse clicks for weapon drag.
       let _lastWeaponBoundsAtlas = null;
 
-      async function redraw() {
-        const layers = getCurrentLayers();
+      // Layer list for an arbitrary (poseId, facing). Mirrors getCurrentLayers
+      // but parameterized — the main `redraw()` reads state, so does its own
+      // layer pick; the grid cells need to ask for OTHER facings/poses too.
+      function getLayersFor(poseId, facing) {
+        if (!state.kit) return [];
+        if (poseId === WEAPON_POSE_ID) {
+          if (!kitHasWeapon()) return [];
+          const r = resolveWeaponFacing(state.kit.weapon, facing);
+          return r ? [r.spriteKey] : [];
+        }
+        if (poseId === 'idle') {
+          const facingConfig = state.kit.facings && state.kit.facings[facing];
+          if (!facingConfig || !Array.isArray(facingConfig.layers)) return [];
+          return facingConfig.layers;
+        }
+        const poseDef = state.kit.poses && state.kit.poses[poseId];
+        if (poseDef && poseDef[facing]) {
+          const norm = normalizePoseFacingEntry(poseDef[facing]);
+          if (Array.isArray(norm.layers) && norm.layers.length > 0) return norm.layers;
+        }
+        // Pose has no override for this facing — fall back to idle layers.
+        const facingConfig = state.kit.facings && state.kit.facings[facing];
+        if (!facingConfig || !Array.isArray(facingConfig.layers)) return [];
+        return facingConfig.layers;
+      }
+
+      // Compose the body + (optional) weapon overlay for a given (poseId,
+      // facing) into a fresh CELL_W×CELL_H canvas. Returns { canvas, weaponXform }
+      // where weaponXform is the resolved (x,y,rot,flipX) used (or null).
+      async function composeBase(poseId, facing) {
         const off = document.createElement('canvas');
         off.width = CELL_W;
         off.height = CELL_H;
@@ -1407,24 +1513,20 @@
         offCtx.imageSmoothingEnabled = false;
         offCtx.clearRect(0, 0, CELL_W, CELL_H);
 
-        // Weapon-pose-view: draw only the resolved base sprite, with facing
-        // transform applied (derived facings show the mirrored/rotated source).
-        if (state.poseId === WEAPON_POSE_ID && kitHasWeapon()) {
-          const resolved = resolveWeaponFacing(state.kit.weapon, state.facing);
+        if (poseId === WEAPON_POSE_ID && kitHasWeapon()) {
+          const resolved = resolveWeaponFacing(state.kit.weapon, facing);
           if (resolved) {
-            // Look up the base canvas using the SOURCE facing so derived facings
-            // pick up edits authored on the source (mirrored at draw time).
-            const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, sourceFacingFor(state.facing), resolved.spriteKey);
+            const baseCanvas = await getCachedLayerCanvas(WEAPON_POSE_ID, sourceFacingFor(facing), resolved.spriteKey);
             if (baseCanvas) {
-              drawWithFacingTransform(offCtx, baseCanvas, resolved.transform, 0, 0, 0);
+              drawWithFacingTransform(offCtx, baseCanvas, resolved.transform, 0, 0, 0, false);
             }
           }
         } else {
+          const layers = getLayersFor(poseId, facing);
           for (const id of layers) {
-            const layerCanvas = await getCachedLayerCanvas(state.poseId, state.facing, id);
+            const layerCanvas = await getCachedLayerCanvas(poseId, facing, id);
             if (!layerCanvas) continue;
-            const [dx, dy] = getOffset(state.poseId, state.facing, id);
-            // Apply offset by drawing through a clip-sized canvas (matches build script).
+            const [dx, dy] = getOffset(poseId, facing, id);
             const shifted = document.createElement('canvas');
             shifted.width = CELL_W;
             shifted.height = CELL_H;
@@ -1435,34 +1537,46 @@
           }
         }
 
-        // Body-pose: composite the weapon on top.
+        let weaponResult = null;
+        if (poseId !== WEAPON_POSE_ID && kitHasWeapon()) {
+          weaponResult = await compositeWeaponOverlay(offCtx, poseId, facing);
+        }
+        return { canvas: off, weaponResult };
+      }
+
+      // Fill an output canvas (any size) with the (poseId, facing) composite
+      // scaled to fit. Used by both the main preview and each grid cell.
+      async function composeFacingPreview(targetCanvas, poseId, facing) {
+        const { canvas: off } = await composeBase(poseId, facing);
+        const ctx = targetCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+        ctx.drawImage(off, 0, 0, targetCanvas.width, targetCanvas.height);
+      }
+
+      async function redraw() {
+        const { canvas: off, weaponResult } = await composeBase(state.poseId, state.facing);
+
+        // Body-pose: cache weapon bounds for hit-testing.
         _lastWeaponBoundsAtlas = null;
-        if (state.poseId !== WEAPON_POSE_ID && kitHasWeapon()) {
-          const result = await compositeWeaponOverlay(offCtx, state.poseId, state.facing);
-          if (result) {
-            const { xform } = result;
-            // Bounds (atlas-pixel) for hit-testing — use full sprite box centred
-            // at (CELL_W/2 + xform.x, CELL_H/2 + xform.y), padded a touch for
-            // rotation. v1: use AABB of the original box, ignoring rotation.
-            const cx = CELL_W / 2 + xform.x;
-            const cy = CELL_H / 2 + xform.y;
-            // Generous diagonal pad for any rotation.
-            const halfDiag = Math.ceil(Math.sqrt(CELL_W * CELL_W + CELL_H * CELL_H) / 2);
-            _lastWeaponBoundsAtlas = {
-              x0: Math.floor(cx - halfDiag),
-              y0: Math.floor(cy - halfDiag),
-              x1: Math.ceil(cx + halfDiag),
-              y1: Math.ceil(cy + halfDiag),
-              cx, cy,
-            };
-          }
+        if (weaponResult) {
+          const { xform } = weaponResult;
+          const cx = CELL_W / 2 + xform.x;
+          const cy = CELL_H / 2 + xform.y;
+          const halfDiag = Math.ceil(Math.sqrt(CELL_W * CELL_W + CELL_H * CELL_H) / 2);
+          _lastWeaponBoundsAtlas = {
+            x0: Math.floor(cx - halfDiag),
+            y0: Math.floor(cy - halfDiag),
+            x1: Math.ceil(cx + halfDiag),
+            y1: Math.ceil(cy + halfDiag),
+            cx, cy,
+          };
         }
 
         previewCtx.imageSmoothingEnabled = false;
         previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
         previewCtx.drawImage(off, 0, 0, previewCanvas.width, previewCanvas.height);
 
-        // Faint outline highlighting weapon bounds when weapon is active.
         if (state.weaponActive && _lastWeaponBoundsAtlas) {
           const b = _lastWeaponBoundsAtlas;
           previewCtx.save();
@@ -1477,15 +1591,36 @@
         }
       }
 
+      // Re-render every facing-grid cell as a live composite for the current
+      // pose. Cheap: 8 small canvases at 32×36 src, scaled to the cell box.
+      // Coalesced via _gridRedrawPending so consecutive callers don't pile up.
+      let _gridRedrawPending = false;
+      async function redrawFacingGrid() {
+        if (_gridRedrawPending) return;
+        _gridRedrawPending = true;
+        try {
+          const cells = document.querySelectorAll('.facing-grid .facing-cell');
+          await Promise.all(Array.from(cells).map(async function (cell) {
+            const f = cell.dataset.facing;
+            const canvas = cell.querySelector('canvas.facing-preview');
+            if (!canvas) return;
+            await composeFacingPreview(canvas, state.poseId, f);
+          }));
+        } finally {
+          _gridRedrawPending = false;
+        }
+      }
+
       function nudge(ddx, ddy) {
         if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
           // Use authored value if any (else current resolved live value) so
           // arrow nudges are stable even on unauthored derived facings.
           const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
-          setWeaponXform(state.poseId, state.facing, cur.x + ddx, cur.y + ddy, cur.rot);
+          setWeaponXform(state.poseId, state.facing, cur.x + ddx, cur.y + ddy, cur.rot, cur.flipX === true);
           renderLayersList();
           renderOffsetReadout();
           redraw();
+          redrawFacingGrid();
           scheduleKitAutoSave();
           return;
         }
@@ -1495,6 +1630,7 @@
         renderLayersList();
         renderOffsetReadout();
         redraw();
+        redrawFacingGrid();
         scheduleAutoSave();
       }
 
@@ -1502,10 +1638,11 @@
         if (!(state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID)) return;
         const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
         const nextRot = wrapAngleDeg(cur.rot + deltaDeg);
-        setWeaponXform(state.poseId, state.facing, cur.x, cur.y, nextRot);
+        setWeaponXform(state.poseId, state.facing, cur.x, cur.y, nextRot, cur.flipX === true);
         renderLayersList();
         renderOffsetReadout();
         redraw();
+        redrawFacingGrid();
         scheduleKitAutoSave();
       }
 
@@ -1528,7 +1665,8 @@
 
       function resetSelected() {
         if (state.weaponActive && kitHasWeapon() && state.poseId !== WEAPON_POSE_ID) {
-          setWeaponXform(state.poseId, state.facing, 0, 0, 0);
+          // Reset clears the rotation, offset AND the flipX mirror.
+          setWeaponXform(state.poseId, state.facing, 0, 0, 0, false);
           renderLayersList();
           renderOffsetReadout();
           redraw();
@@ -1642,8 +1780,11 @@
       }
 
       // Inverse-map an atlas-pixel coord (cx, cy) to base-sprite local coord,
-      // un-applying per-pose (x, y, rot) and the facing transform. Returns null
-      // if the result lands outside the base sprite.
+      // un-applying per-pose (x, y, rot, flipX) and the facing transform.
+      // Returns null if the result lands outside the base sprite. flipX is the
+      // per-pose horizontal mirror; it sits CLOSER to the source than the
+      // facing transform in the forward pipeline (see drawWithFacingTransform),
+      // so it un-applies LAST when going from atlas → source.
       function atlasToBaseSprite(cx, cy, xform, transform) {
         // Translate so weapon's drawn centre (CELL_W/2 + dx, CELL_H/2 + dy) is origin.
         let lx = cx - (CELL_W / 2 + xform.x);
@@ -1656,13 +1797,15 @@
           const ry = lx * s + ly * c;
           lx = rx; ly = ry;
         }
-        // Un-apply facing transform.
+        // Un-apply facing transform first (outer in forward pipeline).
         switch (transform) {
           case 'flipX': lx = -lx; break;
           case 'flipY': ly = -ly; break;
           case 'rot180': lx = -lx; ly = -ly; break;
           default: break;
         }
+        // Then un-apply per-pose flipX (innermost in forward pipeline).
+        if (xform.flipX === true) lx = -lx;
         // Translate back so origin is top-left of base sprite.
         const bx = Math.floor(lx + CELL_W / 2);
         const by = Math.floor(ly + CELL_H / 2);
@@ -1728,14 +1871,16 @@
             state.selectedLayerId = 'weapon';
             const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
             // Seed authored value if it was previously inherited so dragging is stable.
-            setWeaponXform(state.poseId, state.facing, cur.x, cur.y, cur.rot);
+            setWeaponXform(state.poseId, state.facing, cur.x, cur.y, cur.rot, cur.flipX === true);
             state.weaponDrag = {
               startCx: cx, startCy: cy,
               startX: cur.x, startY: cur.y,
               rot: cur.rot,
+              flipX: cur.flipX === true,
             };
             renderLayersList();
             renderOffsetReadout();
+            renderWeaponUi();
             redraw();
             return;
           }
@@ -1750,6 +1895,7 @@
             }
             renderLayersList();
             renderOffsetReadout();
+            renderWeaponUi();
             redraw();
           }
         }
@@ -1780,6 +1926,7 @@
         const color = event.button === 2 ? 'clear' : state.activeColor;
         appendPixelEdit(state.poseId, state.facing, componentKey, { x: paintCx, y: paintCy, color });
         redraw();
+        redrawFacingGrid();
         scheduleAutoSave();
       }
 
@@ -1789,15 +1936,17 @@
         const drag = state.weaponDrag;
         const nx = drag.startX + (cx - drag.startCx);
         const ny = drag.startY + (cy - drag.startCy);
-        setWeaponXform(state.poseId, state.facing, nx, ny, drag.rot);
+        setWeaponXform(state.poseId, state.facing, nx, ny, drag.rot, drag.flipX === true);
         renderLayersList();
         renderOffsetReadout();
         redraw();
+        redrawFacingGrid();
       }
 
       function onCanvasMouseUp() {
         if (state.weaponDrag) {
           state.weaponDrag = null;
+          redrawFacingGrid();
           scheduleKitAutoSave();
         }
       }
@@ -1844,6 +1993,7 @@
         const popped = popPixelEdit(state.poseId, state.facing, key);
         if (popped) {
           redraw();
+          redrawFacingGrid();
           scheduleAutoSave();
         } else {
           showToast('Nothing to undo');
@@ -2004,7 +2154,9 @@
         if (!strip) return;
         strip.innerHTML = '';
         const kitMeta = state.kits.find(function (k) { return k.id === state.kitId; });
-        const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses : ['idle'];
+        const poses = (kitMeta && Array.isArray(kitMeta.poses)) ? kitMeta.poses.slice() : ['idle'];
+        // Append the synthetic weapon-authoring pose for kits that have a weapon block.
+        if (kitHasWeapon() && !poses.includes(WEAPON_POSE_ID)) poses.push(WEAPON_POSE_ID);
         for (const pid of poses) {
           const btn = document.createElement('button');
           btn.className = 'pose-strip-btn' + (pid === state.poseId ? ' active' : '');
@@ -2061,11 +2213,13 @@
           for (const [facing, raw] of Object.entries(facingMap)) {
             const norm = normalizePoseFacingEntry(raw);
             if (norm.weapon && typeof norm.weapon === 'object') {
-              kitMap[poseId][facing] = {
+              const v = {
                 x: +norm.weapon.x || 0,
                 y: +norm.weapon.y || 0,
                 rot: +norm.weapon.rot || 0,
               };
+              if (norm.weapon.flipX === true) v.flipX = true;
+              kitMap[poseId][facing] = v;
             }
           }
         }
@@ -2174,6 +2328,10 @@
           buildPalette();
           await detectCellSizeFromKit();
           switchFacing('S');
+          // Initial grid composite — switchFacing only redraws the main
+          // preview; force a grid pass after cell-size detection has settled
+          // so cells reflect the kit's current weapon offsets.
+          redrawFacingGrid();
 
           window.addEventListener('keydown', onKey);
           resetBtn.addEventListener('click', resetSelected);
@@ -2182,10 +2340,43 @@
           if (resetWeaponBtn) {
             resetWeaponBtn.addEventListener('click', function () {
               if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
-              setWeaponXform(state.poseId, state.facing, 0, 0, 0);
+              setWeaponXform(state.poseId, state.facing, 0, 0, 0, false);
               renderLayersList();
               renderOffsetReadout();
               redraw();
+              redrawFacingGrid();
+              scheduleKitAutoSave();
+            });
+          }
+          // Rotate 90° button: snaps current weapon rot += 90° and persists.
+          // Visible only when weapon is the active layer on a body pose.
+          const rot90Btn = document.getElementById('rot90-weapon-btn');
+          if (rot90Btn) {
+            rot90Btn.addEventListener('click', function () {
+              if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
+              const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+              setWeaponXform(state.poseId, state.facing, cur.x, cur.y, wrapAngleDeg(cur.rot + 90), cur.flipX === true);
+              renderLayersList();
+              renderOffsetReadout();
+              redraw();
+              redrawFacingGrid();
+              scheduleKitAutoSave();
+            });
+          }
+          // Mirror button: toggles per-(pose, facing) flipX. Visual state on
+          // the button reflects the current value (depressed when flipX=true).
+          const flipxBtn = document.getElementById('flipx-weapon-btn');
+          if (flipxBtn) {
+            flipxBtn.addEventListener('click', function () {
+              if (state.poseId === WEAPON_POSE_ID || !kitHasWeapon()) return;
+              const cur = readWeaponXformAuthored(state.poseId, state.facing) || resolveWeaponXformLive(state.poseId, state.facing);
+              const nextFlip = !(cur.flipX === true);
+              setWeaponXform(state.poseId, state.facing, cur.x, cur.y, cur.rot, nextFlip);
+              renderLayersList();
+              renderOffsetReadout();
+              redraw();
+              redrawFacingGrid();
+              renderWeaponUi();
               scheduleKitAutoSave();
             });
           }

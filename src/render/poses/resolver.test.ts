@@ -182,10 +182,13 @@ describe('resolveWeaponPoseTransform', () => {
         NW: { layers: [], weapon: { x: 5, y: 6, rot: 30 } },
       },
     };
+    // Per spec: a flipX facing-share with an unflipped source yields flipX:true
+    // on the derived facing (XOR true).
     expect(resolveWeaponPoseTransform(poses, 'present', 'NE', MUSKET_BLOCK)).toEqual({
       x: -5,
       y: 6,
       rot: -30,
+      flipX: true,
     });
   });
 
@@ -208,10 +211,12 @@ describe('resolveWeaponPoseTransform', () => {
         W: { layers: [], weapon: { x: 2, y: -1, rot: -10 } },
       },
     };
+    // Per spec: flipX facing-share + unflipped source → flipX:true.
     expect(resolveWeaponPoseTransform(poses, 'hit', 'E', MUSKET_BLOCK)).toEqual({
       x: -2,
       y: -1,
       rot: 10,
+      flipX: true,
     });
   });
 
@@ -274,6 +279,107 @@ describe('resolveWeaponPoseTransform', () => {
       x: 0,
       y: 0,
       rot: 0,
+    });
+  });
+
+  // ----- flipX-related inheritance tests -----
+
+  it('returns authored flipX on the queried facing', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        N: { layers: [], weapon: { x: 1, y: 2, rot: 3, flipX: true } },
+      },
+    };
+    expect(resolveWeaponPoseTransform(poses, 'fire', 'N', MUSKET_BLOCK)).toEqual({
+      x: 1,
+      y: 2,
+      rot: 3,
+      flipX: true,
+    });
+  });
+
+  it('omits flipX when stored value is false (or undefined) on direct read', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        N: { layers: [], weapon: { x: 1, y: 2, rot: 3 } },
+      },
+    };
+    const out = resolveWeaponPoseTransform(poses, 'fire', 'N', MUSKET_BLOCK);
+    expect(out.flipX).toBeUndefined();
+    expect(out).toEqual({ x: 1, y: 2, rot: 3 });
+  });
+
+  it('inherits flipX through flipY mirror unchanged (S from N): flipped stays flipped', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        N: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
+      },
+    };
+    const out = resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK);
+    expect(out.flipX).toBe(true);
+  });
+
+  it('inherits flipX through flipY mirror unchanged (S from N): unflipped stays unflipped', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        N: { layers: [], weapon: { x: 0, y: 0, rot: 0 } },
+      },
+    };
+    const out = resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK);
+    expect(out.flipX).toBeUndefined();
+  });
+
+  it('inherits flipX through rot180 mirror unchanged (SE from NW)', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        NW: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
+      },
+    };
+    const out = resolveWeaponPoseTransform(poses, 'fire', 'SE', MUSKET_BLOCK);
+    expect(out.flipX).toBe(true);
+  });
+
+  it('XORs flipX through flipX mirror (NE from NW): flipped source becomes unflipped', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        NW: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
+      },
+    };
+    const out = resolveWeaponPoseTransform(poses, 'fire', 'NE', MUSKET_BLOCK);
+    expect(out.flipX).toBeUndefined();
+  });
+
+  it('XORs flipX through flipX mirror (NE from NW): unflipped source becomes flipped', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        NW: { layers: [], weapon: { x: 0, y: 0, rot: 0 } },
+      },
+    };
+    const out = resolveWeaponPoseTransform(poses, 'fire', 'NE', MUSKET_BLOCK);
+    expect(out.flipX).toBe(true);
+  });
+
+  it('XORs flipX through flipX mirror (E from W) consistently', () => {
+    const flippedW: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: { W: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } } },
+    };
+    expect(resolveWeaponPoseTransform(flippedW, 'fire', 'E', MUSKET_BLOCK).flipX).toBeUndefined();
+    const unflippedW: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: { W: { layers: [], weapon: { x: 0, y: 0, rot: 0 } } },
+    };
+    expect(resolveWeaponPoseTransform(unflippedW, 'fire', 'E', MUSKET_BLOCK).flipX).toBe(true);
+  });
+
+  it('authored flipX on the derived facing wins over inheritance', () => {
+    const poses: Record<string, Record<string, PoseFacingEntry>> = {
+      fire: {
+        N: { layers: [], weapon: { x: 0, y: 0, rot: 0, flipX: true } },
+        // S authored without flipX even though N has it — explicit wins.
+        S: { layers: [], weapon: { x: 9, y: 9, rot: 9 } },
+      },
+    };
+    expect(resolveWeaponPoseTransform(poses, 'fire', 'S', MUSKET_BLOCK)).toEqual({
+      x: 9, y: 9, rot: 9,
     });
   });
 });

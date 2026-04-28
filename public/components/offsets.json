@@ -62,5 +62,15 @@
         ]
       }
     }
+  },
+  "line-infantry": {
+    "idle": {
+      "SE": {
+        "body-southeast-base": [
+          -1,
+          0
+        ]
+      }
+    }
   }
 }

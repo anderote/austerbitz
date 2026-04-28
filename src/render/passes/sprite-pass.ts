@@ -32,6 +32,16 @@ const sortByY = (a: number, b: number) => sortPosY![a]! - sortPosY![b]!;
 
 export interface SpritePass {
   draw(world: World, cam: Camera): void;
+  /**
+   * Swap the GL atlas texture mid-session. Called by the dev-mode live-reload
+   * watcher when sprite PNGs on disk change. The new image must already have
+   * been decoded (e.g. via `createImageBitmap`); we just upload it to the
+   * existing texture object so all UV bookkeeping stays valid.
+   *
+   * If the image dimensions change vs. the original atlas, this triggers a
+   * full `texImage2D` call (otherwise `texSubImage2D` is used).
+   */
+  replaceAtlasTexture(image: ImageBitmap | ImageData | HTMLCanvasElement): void;
 }
 
 interface FactionPalette {
@@ -203,6 +213,10 @@ export function createSpritePass(
     combined.pixels,
     { wrap: gl.CLAMP_TO_EDGE },
   );
+  // Track current texture dimensions so `replaceAtlasTexture` can decide
+  // between `texSubImage2D` (same size) and `texImage2D` (resize).
+  let atlasW = sheetW;
+  let atlasH = sheetH;
 
   // Cell UV rect for a procedural kind. `col`/`row` are local to that kind's
   // 3x3 region; we add the region's pixel offset before normalizing against
@@ -453,10 +467,21 @@ export function createSpritePass(
               scratchWeaponColor[wn * 4 + 2] = 1;
               scratchWeaponColor[wn * 4 + 3] = 1;
               scratchWeaponPattern[wn] = 0;
-              scratchWeaponUv[wn * 4 + 0] = wuv[0];
-              scratchWeaponUv[wn * 4 + 1] = wuv[1];
-              scratchWeaponUv[wn * 4 + 2] = wuv[2];
-              scratchWeaponUv[wn * 4 + 3] = wuv[3];
+              // Apply per-pose flipX by inverting the U axis on the prepacked
+              // UV rect: shift origin to the right edge then negate uSize.
+              // Composes correctly even with the facing-share's pre-baked U
+              // sign — flipping a negative U just flips it back to positive.
+              if (offset.flipX === true) {
+                scratchWeaponUv[wn * 4 + 0] = wuv[0] + wuv[2];
+                scratchWeaponUv[wn * 4 + 1] = wuv[1];
+                scratchWeaponUv[wn * 4 + 2] = -wuv[2];
+                scratchWeaponUv[wn * 4 + 3] = wuv[3];
+              } else {
+                scratchWeaponUv[wn * 4 + 0] = wuv[0];
+                scratchWeaponUv[wn * 4 + 1] = wuv[1];
+                scratchWeaponUv[wn * 4 + 2] = wuv[2];
+                scratchWeaponUv[wn * 4 + 3] = wuv[3];
+              }
               scratchWeaponPrimary[wn * 3 + 0] = scratchPrimary[k * 3 + 0]!;
               scratchWeaponPrimary[wn * 3 + 1] = scratchPrimary[k * 3 + 1]!;
               scratchWeaponPrimary[wn * 3 + 2] = scratchPrimary[k * 3 + 2]!;
@@ -536,6 +561,26 @@ export function createSpritePass(
       gl.disable(gl.BLEND);
 
       gl.bindVertexArray(null);
+    },
+    replaceAtlasTexture(image) {
+      // Width/height inference: ImageBitmap exposes width/height directly;
+      // ImageData and HTMLCanvasElement do too. Cast through `any` to keep
+      // the union flexible without exhaustive type-narrowing here.
+      const imgW = (image as { width: number }).width;
+      const imgH = (image as { height: number }).height;
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, atlas);
+      // Force PMA-off / no flip — match the original `createTextureRGBA`
+      // upload path so PNG alpha + texel layout stay consistent.
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      if (imgW === atlasW && imgH === atlasH) {
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, image as TexImageSource);
+      } else {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image as TexImageSource);
+        atlasW = imgW;
+        atlasH = imgH;
+      }
     },
   };
 }

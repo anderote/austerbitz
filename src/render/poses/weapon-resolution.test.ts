@@ -218,9 +218,12 @@ describe('end-to-end weapon resolution (kit + atlas)', () => {
     expect(resolved.spriteKey).toBe('musket-brown-bess-NW');
     expect(resolved.transform).toBe('flipX');
 
-    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot).
+    // Fire/NW = (x=1, y=-1, rot=5); NE = flipX(NW) → (-x, y, -rot). Per the
+    // updated flipX-inheritance rule, derivation through `flipX` XORs the
+    // source's flipX flag with `true`; NW has no authored flipX, so NE's
+    // inherited flipX is `true`.
     const offset = resolveWeaponPoseTransform(kitPoses, 'fire', 'NE', MUSKET_BLOCK);
-    expect(offset).toEqual({ x: -1, y: -1, rot: -5 });
+    expect(offset).toEqual({ x: -1, y: -1, rot: -5, flipX: true });
   });
 
   it('derived SE facing during fire inherits NW via rot180 (both x and y negate, rot unchanged)', () => {
