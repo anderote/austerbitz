@@ -448,9 +448,41 @@ export function createSpritePass(
           scratchUv[k * 4 + 1] = uv[1];
           scratchUv[k * 4 + 2] = uv[2];
           scratchUv[k * 4 + 3] = uv[3];
+          // Dot mode: bodyRot is irrelevant — keep the quad axis-aligned.
+          scratchRot[k] = 0;
         } else {
           const sprW = kind.spriteSize?.w ?? kind.placeholderSize.w;
           const sprH = kind.spriteSize?.h ?? kind.placeholderSize.h;
+          // Body tilt for the falling-over death animation. Eased over the
+          // 0.5s Dying state (stateT counts down 0.5 → 0), then held at the
+          // final tilt forever in Dead. bodyRot is 0 for everything else.
+          const stateForRot = e.state[i]!;
+          let bodyRotNow = 0;
+          if (stateForRot === EntityState.Dying) {
+            const DYING_DURATION = 0.5;
+            const progress = 1 - Math.max(0, e.stateT[i]!) / DYING_DURATION;
+            // Smoothstep so the fall accelerates toward the end (looks more
+            // natural than linear — more weight to the impact).
+            const eased = progress * progress * (3 - 2 * progress);
+            bodyRotNow = e.bodyRot[i]! * eased;
+          } else if (stateForRot === EntityState.Dead) {
+            bodyRotNow = e.bodyRot[i]!;
+          }
+          // Pivot rotation at the feet (bottom of the sprite, where the
+          // character touches the ground) instead of at the sprite center,
+          // so the body falls sideways like a person rather than spinning
+          // around its belt. Derivation: feet are world-fixed at
+          // (cx, cy + h/2); to keep that point invariant under rotation θ
+          // applied around the new center, the new center must be
+          // footPoint + R(θ) * (0, -h/2). That simplifies to a shift of
+          // (sin θ * h/2, (1 - cos θ) * h/2) from the original center.
+          if (bodyRotNow !== 0) {
+            const halfH = sprH / 2;
+            const sinT = Math.sin(bodyRotNow);
+            const cosT = Math.cos(bodyRotNow);
+            scratchPos[k * 2 + 0] += sinT * halfH;
+            scratchPos[k * 2 + 1] += halfH * (1 - cosT);
+          }
           scratchSize[k * 2 + 0] = sprW;
           scratchSize[k * 2 + 1] = sprH;
           scratchColor[k * 4 + 0] = kind.placeholderColor[0] / 255;
@@ -600,9 +632,9 @@ export function createSpritePass(
               else wn++;
             }
           }
+          // Body rotation: bodyRotNow is set above (zero outside Dying/Dead).
+          scratchRot[k] = bodyRotNow;
         }
-        // Bodies always render axis-aligned.
-        scratchRot[k] = 0;
       }
 
       gl.useProgram(prog);

@@ -87,6 +87,10 @@ export interface Entities {
   pose: Uint8Array;         // Pose enum (0..9)
   poseT: Float32Array;      // seconds since pose entry
   clipIndex: Uint8Array;    // selected variant (0..255)
+  // Body sprite rotation in radians (signed). Used by sprite-pass to tilt the
+  // body during the Dying state and hold the final tilt during Dead. Set by
+  // death-drops-system at the moment of death; zero for everything else.
+  bodyRot: Float32Array;
 
   // Death-drop bookkeeping: 1 once this entity has dropped its weapon
   // (death-drops-system sets it; ensures we drop exactly once per death).
@@ -148,6 +152,7 @@ export function createEntities(capacity: number): Entities {
     pose: new Uint8Array(capacity),
     poseT: new Float32Array(capacity),
     clipIndex: new Uint8Array(capacity),
+    bodyRot: new Float32Array(capacity),
     weaponDropped: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
@@ -201,6 +206,7 @@ export function allocEntity(e: Entities): number {
   e.pose[id] = 0;
   e.poseT[id] = 0;
   e.clipIndex[id] = 0;
+  e.bodyRot[id] = 0;
   e.weaponDropped[id] = 0;
   return id;
 }

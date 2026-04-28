@@ -154,16 +154,23 @@ export function tickStates(
         break;
     }
 
-    const vx = e.velX[i]!;
-    const vy = e.velY[i]!;
-    const speedSq = vx * vx + vy * vy;
-    const desired = poseFor(e.state[i] as EntityState, speedSq);
-    if (e.pose[i] !== desired) {
-      e.pose[i] = desired;
-      e.poseT[i] = 0;
-      e.clipIndex[i] = pickClip(i, tick, 256) & 0xff;
-    } else {
-      e.poseT[i] = e.poseT[i]! + dt;
+    // Death-drops-system owns the corpse pose: at the moment of death it
+    // freezes the body in a random LIVE pose (for infantry) or sets dying for
+    // others, and we want that to stick. Skip the desired-pose recompute for
+    // Dying/Dead so it doesn't get overwritten back to Pose.dying/Pose.dead.
+    const stateNow = e.state[i] as EntityState;
+    if (stateNow !== EntityState.Dying && stateNow !== EntityState.Dead) {
+      const vx = e.velX[i]!;
+      const vy = e.velY[i]!;
+      const speedSq = vx * vx + vy * vy;
+      const desired = poseFor(stateNow, speedSq);
+      if (e.pose[i] !== desired) {
+        e.pose[i] = desired;
+        e.poseT[i] = 0;
+        e.clipIndex[i] = pickClip(i, tick, 256) & 0xff;
+      } else {
+        e.poseT[i] = e.poseT[i]! + dt;
+      }
     }
   }
 }
