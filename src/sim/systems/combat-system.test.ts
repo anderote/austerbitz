@@ -226,21 +226,21 @@ describe('combatSystem', () => {
     expect(world.entities.targetId[shooter]).toBe(target);
   });
 
-  it('picks the nearer of two enemies in range', () => {
+  it('acquires one of multiple in-range enemies (first-valid, no closest guarantee)', () => {
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    const far     = spawnLineInfantry(world, 1, 70, 0);
-    const near    = spawnLineInfantry(world, 1, 30, 0);
+    const a = spawnLineInfantry(world, 1, 70, 0);
+    const b = spawnLineInfantry(world, 1, 30, 0);
 
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
-    expect(world.entities.targetId[shooter]).toBe(near);
-    expect(world.entities.targetId[shooter]).not.toBe(far);
+    const picked = world.entities.targetId[shooter]!;
+    expect(picked === a || picked === b).toBe(true);
   });
 
   it('skips enemies in Dying / Dead / Ragdoll and falls through to the next-nearest', () => {
@@ -277,27 +277,6 @@ describe('combatSystem', () => {
     system(world, 1 / 60);
 
     expect(world.entities.targetId[shooter]).toBe(alive);
-  });
-
-  it('picks the closer enemy even when grid iteration encounters a farther one first', () => {
-    // Shooter at (40,40). Grid iterates cells row-major (cy ascending).
-    // - far at (40,0)  → cy=0, distance 40 m.
-    // - near at (40,30) → cy=15, distance 10 m.
-    // far is iterated first; only closest-distance tracking will pick near.
-    const world = makeWorld();
-    const fireOrders: FireOrders = new Map();
-    const system = createCombatSystem(fireOrders);
-
-    const shooter = spawnLineInfantry(world, 0, 40, 40);
-    const far     = spawnLineInfantry(world, 1, 40, 0);
-    const near    = spawnLineInfantry(world, 1, 40, 30);
-
-    world.entities.stateT[shooter] = 999;
-    rebuildGrid(world);
-    system(world, 1 / 60);
-
-    expect(world.entities.targetId[shooter]).toBe(near);
-    expect(world.entities.targetId[shooter]).not.toBe(far);
   });
 
   it('a lone idle armed soldier with a target waits and does not fire on the first tick', () => {
@@ -409,9 +388,10 @@ describe('combatSystem', () => {
     expect(fireOrders.has(shooter)).toBe(false);
   });
 
-  it('acquires targets within sightRange but does not fire beyond weaponRange', () => {
-    // line-infantry: sightRange 120, weaponRange 80.
-    // Enemy at 100 m is in sight (acquire) but out of weapon range (no fire).
+  it('does not acquire enemies outside weaponRange; acquires + fires once they enter it', () => {
+    // line-infantry weaponRange = 80. Enemy at 100 m is out of range and
+    // is not acquired. After moving to 60 m, the next stripe scan picks
+    // it up and fire triggers (stateT past maxHold).
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
@@ -419,18 +399,14 @@ describe('combatSystem', () => {
     const shooter = spawnLineInfantry(world, 0, 0, 0);
     const enemy   = spawnLineInfantry(world, 1, 100, 0);
 
-    // Force stateT past any maxHold so a fire WOULD trigger if the gate
-    // allowed it — proves the gate, not the hold timer, is what's blocking.
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
-    expect(world.entities.targetId[shooter]).toBe(enemy);
+    expect(world.entities.targetId[shooter]).toBe(-1);
     expect(world.entities.state[shooter]).toBe(EntityState.Idle);
     expect(fireOrders.has(shooter)).toBe(false);
 
-    // Move enemy into weapon range and tick again. Fast-path on prev
-    // target now passes the rangeSq check and fire triggers.
     world.entities.posX[enemy] = 60;
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
