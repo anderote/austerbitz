@@ -1,5 +1,6 @@
 import { allocEntity, freeEntity, EntityState, type Entities } from '../sim/entities';
 import { getUnitKindIndex, getUnitKind } from '../data/units';
+import { spawnCrewForGun } from '../sim/crew';
 
 export const CANNON_X = 30;
 export const CANNON_Y_CENTER = 100;
@@ -61,6 +62,7 @@ export function spawnCannons(entities: Entities, team: number): number[] {
       // Cannons are effectively invulnerable in this sandbox.
       entities.hp[id] = 1000;
       ids.push(id);
+      spawnCrewForGun(entities, id);
     }
   }
   return ids;

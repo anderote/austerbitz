@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { unitKinds, getUnitKind, getUnitKindIndex } from './index';
 
 describe('unit kind registry', () => {
-  it('exposes the three MVP-1 unit kinds', () => {
+  it('exposes the registered unit kinds', () => {
     expect(unitKinds.map(k => k.id).sort()).toEqual(
-      ['cannon-12', 'cuirassier', 'line-infantry'],
+      ['cannon-12', 'cuirassier', 'gun-crew', 'line-infantry'],
     );
   });
 

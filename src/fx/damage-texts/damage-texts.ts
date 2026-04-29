@@ -41,6 +41,8 @@ export interface DamageTexts {
   lifeMax: Float32Array;
   /** Damage value, clamped to [1, 999]. Uint16 leaves headroom for future tiers. */
   value: Uint16Array;
+  /** 1 = critical hit (renders larger + yellow); 0 = normal. */
+  crit: Uint8Array;
 }
 
 export function createDamageTexts(capacity: number): DamageTexts {
@@ -57,6 +59,7 @@ export function createDamageTexts(capacity: number): DamageTexts {
     life: new Float32Array(capacity),
     lifeMax: new Float32Array(capacity),
     value: new Uint16Array(capacity),
+    crit: new Uint8Array(capacity),
   };
 }
 
@@ -72,6 +75,7 @@ export function spawnDamageText(
   x: number,
   y: number,
   value: number,
+  crit: 0 | 1 = 0,
 ): number {
   const cap = d.capacity;
   let i = d.cursor;
@@ -97,6 +101,7 @@ export function spawnDamageText(
           ? DAMAGE_TEXT_MAX_VALUE
           : Math.floor(value);
       d.value[i] = clamped;
+      d.crit[i] = crit;
       return i;
     }
     i = i + 1 === cap ? 0 : i + 1;

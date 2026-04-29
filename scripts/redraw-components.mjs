@@ -15,7 +15,9 @@
 //   24-25 trousers (split legs)
 //   26-27 gaiters (brass buttons row 26)
 //   28    boots
-//   29-30 ground shadow (semi-alpha)
+//
+// Shadows are drawn separately by the runtime shadow-projection shader, so no
+// shadow rows are baked into these component sprites.
 //
 // Musket runs DIAGONAL across the body (port arms): stock at lower-left
 // (3,22) -> (4,21) -> lock at (5,20) -> barrel rises across chest to
@@ -53,7 +55,6 @@ const H = 36;
 // dominance and remap to the active regiment's slot color, scaled by a brightness
 // factor (mid -> 1.0x, hi -> ~1.25x, shade -> ~0.62x, deep -> ~0.31x).
 const PAL = {
-  shadow: '#000000',
   skinHi: '#F0CDA0',
   skinShade: '#C49072',
   skinDeep: '#A87651',
@@ -119,13 +120,6 @@ function save(p, relPath) {
 }
 
 // --- SOUTH ---
-
-function drawShadowSouth() {
-  const p = makeSprite();
-  row(p, 30, 12, 19, PAL.shadow, 110);
-  row(p, 29, 13, 18, PAL.shadow, 70);
-  save(p, 'shadow/south/default.png');
-}
 
 function drawBodySouth() {
   const p = makeSprite();
@@ -223,8 +217,8 @@ function drawMusketSouth() {
 
 // --- SOUTH FIRING POSES ---
 //
-// Pose layout reference (S, 16x36). All pose-invariant layers (shadow, body,
-// trousers, shako) are unchanged; only the coat (sleeves) and musket move.
+// Pose layout reference (S, 16x36). All pose-invariant layers (body, trousers,
+// shako) are unchanged; only the coat (sleeves) and musket move.
 //
 //   make-ready: musket vertical at body centerline (x=8), both hands up.
 //     - right sleeve diagonally up to forestock grip near (7,15)
@@ -502,7 +496,6 @@ function drawBloodSouthDying() {
 
 function drawSouth() {
   console.log('Drawing S facing components:');
-  drawShadowSouth();
   drawBodySouth();
   drawTrousersSouth();
   drawCoatSouth();

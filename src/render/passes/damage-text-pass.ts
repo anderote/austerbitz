@@ -11,6 +11,8 @@ const GLYPH_W_WORLD = 0.3;
 const GLYPH_H_WORLD = 0.4;
 /** Per-digit horizontal stride (no kerning — equal to glyph width). */
 const DIGIT_STRIDE_WORLD = GLYPH_W_WORLD;
+/** Crit text scale multiplier — applied to size and digit spacing. */
+const CRIT_SCALE = 1.4;
 
 export interface DamageTextInstances {
   /** [x, y] per digit instance. */
@@ -19,6 +21,8 @@ export interface DamageTextInstances {
   digit: Float32Array;
   /** [0..1] alpha per instance. */
   alpha: Float32Array;
+  /** 0 or 1 per instance — VS scales size, FS picks color. */
+  crit: Float32Array;
   count: number;
   capacity: number;
 }
@@ -28,6 +32,7 @@ export function createDamageTextInstances(capacity: number): DamageTextInstances
     pos: new Float32Array(capacity * 2),
     digit: new Float32Array(capacity),
     alpha: new Float32Array(capacity),
+    crit: new Float32Array(capacity),
     count: 0,
     capacity,
   };
@@ -67,15 +72,18 @@ export function computeDamageTextInstances(
     const cy = d.posY[i]!;
     const lifeFrac = d.life[i]! / d.lifeMax[i]!;
     const a = Math.max(0, Math.min(1, lifeFrac / 0.3));
+    const isCrit = d.crit[i]! === 1;
+    const stride = isCrit ? DIGIT_STRIDE_WORLD * CRIT_SCALE : DIGIT_STRIDE_WORLD;
     for (let dIdx = 0; dIdx < nd; dIdx++) {
       // Most-significant digit first, leftmost slot.
       const placeDiv = Math.pow(10, nd - 1 - dIdx);
       const digit = Math.floor(v / placeDiv) % 10;
-      const xOff = (dIdx - (nd - 1) * 0.5) * DIGIT_STRIDE_WORLD;
+      const xOff = (dIdx - (nd - 1) * 0.5) * stride;
       out.pos[n * 2 + 0] = cx + xOff;
       out.pos[n * 2 + 1] = cy;
       out.digit[n] = digit;
       out.alpha[n] = a;
+      out.crit[n] = isCrit ? 1 : 0;
       n++;
     }
   }
@@ -133,6 +141,13 @@ export function createDamageTextPass(
   gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 0, 0);
   gl.vertexAttribDivisor(3, 1);
 
+  // Per-instance: crit flag (float, 0 or 1).
+  const critBuf = createBuffer(gl, gl.ARRAY_BUFFER, null, gl.DYNAMIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, instanceCap * 4, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(4);
+  gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(4, 1);
+
   gl.bindVertexArray(null);
 
   const instances = createDamageTextInstances(instanceCap);
@@ -152,6 +167,8 @@ export function createDamageTextPass(
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, instances.digit.subarray(0, n));
       gl.bindBuffer(gl.ARRAY_BUFFER, alphaBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, instances.alpha.subarray(0, n));
+      gl.bindBuffer(gl.ARRAY_BUFFER, critBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, instances.crit.subarray(0, n));
 
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
       gl.uniform2f(u.u_glyphSize, GLYPH_W_WORLD, GLYPH_H_WORLD);

@@ -16,7 +16,9 @@
 //   24-25 trousers (split legs)
 //   26-27 gaiters (brass buttons row 26)
 //   28    boots
-//   29-30 ground shadow (semi-alpha)
+//
+// Shadows are drawn separately by the runtime shadow-projection shader, so no
+// shadow rows are baked into these component sprites.
 //
 // Musket runs VERTICAL on viewer's right (x=12) -- mirror of S which had it at x=3.
 // From behind, the soldier's right shoulder is on viewer's right, so the musket sits
@@ -41,7 +43,6 @@ const W = 32;
 const H = 36;
 
 const PAL = {
-  shadow: '#000000',
   skinHi: '#F0CDA0',
   skinShade: '#C49072',
   skinDeep: '#A87651',
@@ -108,13 +109,6 @@ function save(p, relPath) {
 }
 
 // --- NORTH ---
-
-function drawShadowNorth() {
-  const p = makeSprite();
-  row(p, 30, 12, 19, PAL.shadow, 110);
-  row(p, 29, 13, 18, PAL.shadow, 70);
-  save(p, 'shadow/north/default.png');
-}
 
 function drawBodyNorth() {
   const p = makeSprite();
@@ -504,7 +498,6 @@ function drawBloodNorthDying() {
 
 function drawNorth() {
   console.log('Drawing N facing components:');
-  drawShadowNorth();
   drawBodyNorth();
   drawTrousersNorth();
   drawCoatNorth();

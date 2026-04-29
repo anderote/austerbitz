@@ -17,7 +17,9 @@
 //   y=12..18  rider torso, cuirass
 //   y=19..23  saddle / horse withers / horse back
 //   y=24..28  horse legs
-//   y=29..30  ground shadow
+//
+// Shadows are projected procedurally at runtime, so no shadow pixels are
+// baked into these component sprites.
 
 import { PNG } from 'pngjs';
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
@@ -41,7 +43,6 @@ const H = 36;
 // Literal art colors (bay coat, steel, leather) pass through unchanged.
 // =====================================================================
 const PAL = {
-  shadow: '#000000',
   // Bay horse coat
   coatHi: '#A56B3A',
   coatMid: '#8A4F26',
@@ -129,15 +130,8 @@ const DIRS = [
 // HORSE — IDLE (8 facings). Reuses the original Phase-1 art.
 // =====================================================================
 
-function drawShadow(p, x0, x1) {
-  row(p, 30, x0, x1, PAL.shadow, 110);
-  row(p, 29, x0 + 1, x1 - 1, PAL.shadow, 70);
-}
-
 function drawHorseSouthAt(p, legPhase = 0) {
   // legPhase: 0 = neutral, 1 = left forward, 2 = neutral, 3 = right forward.
-  drawShadow(p, 11, 20);
-
   // Ears
   set(p, 13, 13, PAL.coatShade);
   set(p, 18, 13, PAL.coatShade);
@@ -212,7 +206,6 @@ function drawHorseSouthAt(p, legPhase = 0) {
 }
 
 function drawHorseNorthAt(p, legPhase = 0) {
-  drawShadow(p, 11, 20);
   // Rump
   row(p, 13, 14, 17, PAL.coatShade);
   row(p, 14, 13, 18, PAL.coatMid);
@@ -265,7 +258,6 @@ function drawHorseNorthAt(p, legPhase = 0) {
 }
 
 function drawHorseEastAt(p, legPhase = 0) {
-  drawShadow(p, 5, 27);
   // Head right
   set(p, 24, 13, PAL.coatShade);
   set(p, 25, 13, PAL.coatShade);
@@ -334,7 +326,6 @@ function drawHorseEastAt(p, legPhase = 0) {
 }
 
 function drawHorseWestAt(p, legPhase = 0) {
-  drawShadow(p, 5, 27);
   // Head left
   set(p, 6, 13, PAL.coatShade);
   set(p, 7, 13, PAL.coatShade);
@@ -400,7 +391,6 @@ function drawHorseWestAt(p, legPhase = 0) {
 }
 
 function drawHorseSoutheastAt(p, legPhase = 0) {
-  drawShadow(p, 8, 24);
   // Head lower-right
   set(p, 22, 14, PAL.coatShade); set(p, 23, 14, PAL.coatShade);
   row(p, 15, 21, 24, PAL.coatMid);
@@ -435,7 +425,6 @@ function drawHorseSoutheastAt(p, legPhase = 0) {
 }
 
 function drawHorseSouthwestAt(p, legPhase = 0) {
-  drawShadow(p, 7, 23);
   set(p, 8, 14, PAL.coatShade); set(p, 9, 14, PAL.coatShade);
   row(p, 15, 7, 10, PAL.coatMid);
   set(p, 9, 16, PAL.black);
@@ -465,7 +454,6 @@ function drawHorseSouthwestAt(p, legPhase = 0) {
 }
 
 function drawHorseNortheastAt(p, legPhase = 0) {
-  drawShadow(p, 8, 24);
   // Rump bulk upper-right with tail
   row(p, 15, 18, 22, PAL.coatShade);
   row(p, 16, 16, 23, PAL.coatMid);
@@ -500,7 +488,6 @@ function drawHorseNortheastAt(p, legPhase = 0) {
 }
 
 function drawHorseNorthwestAt(p, legPhase = 0) {
-  drawShadow(p, 7, 23);
   row(p, 15, 9, 13, PAL.coatShade);
   row(p, 16, 8, 15, PAL.coatMid);
   set(p, 8, 16, PAL.coatShade);

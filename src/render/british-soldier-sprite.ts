@@ -60,7 +60,6 @@ const PALETTE_BASE: Record<string, [number, number, number, number]> = {
   'm': [86, 56, 36, 255],     // wood: musket stock
   'M': [56, 36, 22, 255],     // dark wood: musket butt
   'g': [180, 188, 200, 255],  // steel: bayonet, barrel
-  's': [60, 56, 52, 110],     // ground shadow (semi-transparent)
   'W': [255, 255, 255, 255],  // tint sample cell
 };
 
@@ -90,7 +89,7 @@ const POSE_FRONT = [
   '.m..SPPPS..', // 14 turnbacks (secondary corners)
   '.M...SSS...', // 15 breeches
   '.M...T.T...', // 16 gaiters
-  '.....sss...', // 17 shadow
+  '...........', // 17 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_FRONT_DIAG = [
@@ -111,7 +110,7 @@ const POSE_FRONT_DIAG = [
   '.m..SPPPSP.', // 14 turnbacks
   '.M...SSS...', // 15 breeches
   '.M...T.T...', // 16 gaiters
-  '.....sss...', // 17 shadow
+  '...........', // 17 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_SIDE = [
@@ -132,7 +131,7 @@ const POSE_SIDE = [
   '.m....SPS..', // 14 coat tail
   '.M....SSS..', // 15 breeches
   '.M....T.T..', // 16 gaiters (one foot forward)
-  '......sss..', // 17 shadow
+  '...........', // 17 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_BACK = [
@@ -153,7 +152,7 @@ const POSE_BACK = [
   '..SPPPS..M.', // 14 coat tails
   '...SSS.....', // 15 breeches
   '...T.T.....', // 16 gaiters
-  '...sss.....', // 17 shadow
+  '...........', // 17 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_BACK_DIAG = [
@@ -174,7 +173,7 @@ const POSE_BACK_DIAG = [
   '.SPPPS...M.', // 14 coat tails
   '..SSS......', // 15 breeches
   '..T.T......', // 16 gaiters
-  '..sss......', // 17 shadow
+  '...........', // 17 (shadows drawn separately by the runtime projection pass)
 ];
 
 const TINT_CELL = Array.from({ length: SOLDIER_CELL_H }, () => 'W'.repeat(SOLDIER_CELL_W));

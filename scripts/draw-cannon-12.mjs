@@ -22,7 +22,6 @@ const PALETTE = {
   'm': [120, 84, 50, 255],
   'M': [78, 52, 30, 255],
   'w': [180, 188, 200, 255],
-  's': [60, 56, 52, 110],
   'W': [255, 255, 255, 255],
   'P': [180, 40, 50, 255],   // British red — carriage trim
   'S': [50, 60, 140, 255],   // British blue — wheel rims / barrel furniture
@@ -42,7 +41,7 @@ const POSE_FRONT = [
   '.kSwkwS...SwkwSk.',
   '.kSwkwS...SwkwSk.',
   '..kkSSk...kSSkk..',
-  '..ssssssssssss...',
+  '.................',
 ];
 
 const POSE_FRONT_DIAG = [
@@ -59,7 +58,7 @@ const POSE_FRONT_DIAG = [
   '.kSwkwS.SwkwSk...',
   '.kSwkwS.SwkwSk...',
   '..kkSSk.kSSkk....',
-  '..ssssssssssss...',
+  '.................',
 ];
 
 const POSE_SIDE = [
@@ -76,7 +75,7 @@ const POSE_SIDE = [
   '...kSwkkkwSk.....',
   '...kSwwwwwSk.....',
   '....kkSSSkk......',
-  '....sssssss......',
+  '.................',
 ];
 
 const POSE_BACK = [
@@ -93,7 +92,7 @@ const POSE_BACK = [
   '.kSwkwS...SwkwSk.',
   '.kSwkwS...SwkwSk.',
   '..kkSSk...kSSkk..',
-  '..ssssssssssss...',
+  '.................',
 ];
 
 const POSE_BACK_DIAG = [
@@ -110,7 +109,7 @@ const POSE_BACK_DIAG = [
   '.kSwkwS.SwkwSk...',
   '.kSwkwS.SwkwSk...',
   '..kkSSk.kSSkk....',
-  '..ssssssssssss...',
+  '.................',
 ];
 
 const CELL_W = 17;

@@ -16,7 +16,9 @@
 //   24-25 trousers (split legs)
 //   26-27 gaiters (brass buttons row 26)
 //   28    boots
-//   29-30 ground shadow
+//
+// Shadows are drawn separately by the runtime shadow-projection shader, so no
+// shadow rows are baked into these component sprites.
 //
 // Backpack: 4w x 4h tan block over the upper torso, shifted 1 px toward
 // the camera-far side (NE: shifted right; NW: shifted left). White strap
@@ -44,7 +46,6 @@ const W = 32;
 const H = 36;
 
 const PAL = {
-  shadow: '#000000',
   skinHi: '#F0CDA0',
   skinShade: '#C49072',
   skinDeep: '#A87651',
@@ -123,13 +124,6 @@ function mirrorHorizontal(src) {
 }
 
 // --- NORTHEAST (3/4 back, soldier rotated right; viewer sees soldier's right side on camera-LEFT) ---
-
-function drawShadowNE() {
-  const p = makeSprite();
-  row(p, 30, 12, 19, PAL.shadow, 110);
-  row(p, 29, 13, 18, PAL.shadow, 70);
-  save(p, 'shadow/northeast/default.png');
-}
 
 function drawBodyNE() {
   // Back-of-head: hair pixels (musketStock dark brown) across rows 15-16, x=15..17.
@@ -237,13 +231,6 @@ function drawMusketNE() {
 }
 
 // --- NORTHWEST (mirror of NE around x=7.5; x' = 15 - x) ---
-
-function drawShadowNW() {
-  const p = makeSprite();
-  row(p, 30, 12, 19, PAL.shadow, 110);
-  row(p, 29, 13, 18, PAL.shadow, 70);
-  save(p, 'shadow/northwest/default.png');
-}
 
 function drawBodyNW() {
   const p = makeSprite();
@@ -593,7 +580,6 @@ function drawBloodNortheastDying() {
 
 function drawNE() {
   console.log('Drawing NE facing components:');
-  drawShadowNE();
   drawBodyNE();
   drawTrousersNE();
   drawCoatNE();
@@ -638,7 +624,6 @@ function drawNE() {
 
 function drawNW(neFireSprites) {
   console.log('Drawing NW facing components:');
-  drawShadowNW();
   drawBodyNW();
   drawTrousersNW();
   drawCoatNW();

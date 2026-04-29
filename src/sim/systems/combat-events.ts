@@ -106,6 +106,7 @@ export function applyHit(
   debris: Debris,
   attackerId: number,
   damageTexts?: DamageTexts,
+  crit: 0 | 1 = 0,
 ): void {
   if (e.alive[id] === 0) return;
   if (isDead(e, id)) return;
@@ -121,7 +122,7 @@ export function applyHit(
     const px0 = e.posX[id]!;
     const py0 = e.posY[id]!;
     const above = py0 - unitKind.placeholderSize.h * 0.5 - 0.3;
-    spawnDamageText(damageTexts, px0, above, effDmg);
+    spawnDamageText(damageTexts, px0, above, effDmg, crit);
   }
 
   // Attacker-validity guard — computed once and reused for damage credit

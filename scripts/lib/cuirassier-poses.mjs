@@ -4,8 +4,9 @@
 //   - src/sprite-gen/cuirassier-poses.test.ts (shape/palette validation)
 //
 // Style reference: src/render/cuirassier-sprite.ts. Anchor: bottom-center of
-// the cell aligns with the unit's ground position (so the lowest non-shadow
-// row should be the hooves, with `s` shadow pixels at the very bottom).
+// the cell aligns with the unit's ground position; the lowest drawn row is
+// the hooves. Shadows are projected procedurally at runtime, so no shadow
+// pixels are baked into these frames.
 
 export const CELL_W = 32;
 export const CELL_H = 24;
@@ -28,7 +29,6 @@ export const PALETTE = {
   'g': [180, 188, 200, 255],
   'm': [60, 40, 26, 255],
   'w': [236, 232, 222, 255],
-  's': [60, 56, 52, 110],
   'P': [180, 40, 50, 255],
   'S': [50, 60, 140, 255],
 };
@@ -93,9 +93,8 @@ export function mirrorFrame(frame) {
 
 // ---------------------------------------------------------------------------
 // Idle frames (1 per source direction). Hand-authored 32x24 silhouettes.
-// Anchor: hooves on rows 21-22, ground shadow `s` on row 23, plume tops near
-// rows 1-2. Style matches src/render/cuirassier-sprite.ts but at 2x horizontal
-// and ~1.2x vertical scale.
+// Anchor: hooves on rows 21-22, plume tops near rows 1-2. Row 23 is left
+// blank — shadows are projected procedurally at runtime.
 // ---------------------------------------------------------------------------
 
 const IDLE_S = [
@@ -122,7 +121,7 @@ const IDLE_S = [
   '........h...hh..hh...h..........', // 20
   '........k...kk..kk...k..........', // 21 hooves
   '........k...kk..kk...k..........', // 22 hooves
-  '.......sssssssssssssssss........', // 23 ground shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const IDLE_N = [
@@ -149,7 +148,7 @@ const IDLE_N = [
   '........H...HH..HH...H..........', // 20
   '........k...kk..kk...k..........', // 21 hooves
   '........k...kk..kk...k..........', // 22 hooves
-  '.......sssssssssssssssss........', // 23 ground shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const IDLE_E = [
@@ -176,7 +175,7 @@ const IDLE_E = [
   '..h.....hhh.....hhh.............', // 20
   '..h.....hhh.....hhh.............', // 21
   '..k.....kkk.....kkk.............', // 22 hooves
-  '.sssssssssssssssssssss..........', // 23 ground shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const IDLE_SE = [
@@ -203,7 +202,7 @@ const IDLE_SE = [
   '........h...hh..hh...hh.........', // 20
   '........k...kk..kk...kk.........', // 21 hooves
   '........k...kk..kk...kk.........', // 22 hooves
-  '.......ssssssssssssssssss.......', // 23 ground shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const IDLE_NE = [
@@ -230,7 +229,7 @@ const IDLE_NE = [
   '........H...HH..HH...HH.........', // 20
   '........k...kk..kk...kk.........', // 21 hooves
   '........k...kk..kk...kk.........', // 22 hooves
-  '.......ssssssssssssssssss.......', // 23 ground shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // ---------------------------------------------------------------------------
@@ -269,7 +268,7 @@ const WALK_E_1 = [
   '..h.....hhh.....hhh.............', // 20
   '..h.....hhh.....hhh.............', // 21
   '........kkk.....kkk.............', // 22 rear-single hoof lifted off ground
-  '.sssssssssssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: lift rear pair (cols 8-10). Saddle at idle row.
@@ -297,7 +296,7 @@ const WALK_E_2 = [
   '..h.....hhh.....hhh.............', // 20
   '..h.....hhh.....hhh.............', // 21
   '..k.............kkk.............', // 22 rear-pair hooves lifted
-  '.sssssssssssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: lift front pair (cols 16-18). Saddle bobs UP.
@@ -325,7 +324,7 @@ const WALK_E_3 = [
   '..h.....hhh.....hhh.............', // 20
   '..h.....hhh.....hhh.............', // 21
   '..k.....kkk.....................', // 22 front-pair hooves lifted
-  '.sssssssssssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- N facing (back view) --------------------------------------------------
@@ -357,7 +356,7 @@ const WALK_N_1 = [
   '........H...HH..HH...H..........', // 20
   '............kk..kk...k..........', // 21 left-outer hoof lifted
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: lift right-inner leg (cols 16-17). Saddle at idle.
@@ -385,7 +384,7 @@ const WALK_N_2 = [
   '........H...HH..HH...H..........', // 20
   '........k...kk......k...........', // 21 right-inner hooves lifted
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: lift right-outer leg (col 21). Saddle bobs UP.
@@ -413,7 +412,7 @@ const WALK_N_3 = [
   '........H...HH..HH...H..........', // 20
   '........k...kk..kk..............', // 21 right-outer hoof lifted
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- S facing (front view) -------------------------------------------------
@@ -445,7 +444,7 @@ const WALK_S_1 = [
   '........h...hh..hh...h..........', // 20
   '............kk..kk...k..........', // 21 left-outer hoof lifted
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: lift right-inner strip (cols 16-17). Saddle at idle.
@@ -473,7 +472,7 @@ const WALK_S_2 = [
   '........h...hh..hh...h..........', // 20
   '........k...kk......k...........', // 21 right-inner hoof lifted
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: lift right-outer strip (col 21). Saddle bobs UP.
@@ -501,7 +500,7 @@ const WALK_S_3 = [
   '........h...hh..hh...h..........', // 20
   '........k...kk..kk..............', // 21 right-outer hoof lifted
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- SE facing (3/4 front-right) -------------------------------------------
@@ -532,7 +531,7 @@ const WALK_SE_1 = [
   '........h...hh..hh...hh.........', // 20
   '............kk..kk...kk.........', // 21 left-outer hoof lifted
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const WALK_SE_2 = [
@@ -559,7 +558,7 @@ const WALK_SE_2 = [
   '........h...hh..hh...hh.........', // 20
   '........k...kk......kk..........', // 21 right-inner hoof lifted
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const WALK_SE_3 = [
@@ -586,7 +585,7 @@ const WALK_SE_3 = [
   '........h...hh..hh...hh.........', // 20
   '........k...kk..kk..............', // 21 right-outer hoof lifted
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- NE facing (3/4 back-right) --------------------------------------------
@@ -617,7 +616,7 @@ const WALK_NE_1 = [
   '........H...HH..HH...HH.........', // 20
   '............kk..kk...kk.........', // 21 left-outer hoof lifted
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const WALK_NE_2 = [
@@ -644,7 +643,7 @@ const WALK_NE_2 = [
   '........H...HH..HH...HH.........', // 20
   '........k...kk......kk..........', // 21 right-inner hoof lifted
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 const WALK_NE_3 = [
@@ -671,7 +670,7 @@ const WALK_NE_3 = [
   '........H...HH..HH...HH.........', // 20
   '........k...kk..kk..............', // 21 right-outer hoof lifted
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // ---------------------------------------------------------------------------
@@ -715,7 +714,7 @@ const RUN_E_0 = [
   '....h...hhh...hhh...............', // 20 legs bunched (cols 4, 8-10, 14-16)
   '....h...hhh...hhh...............', // 21
   '....k...kkk...kkk...............', // 22 hooves bunched
-  '.....sssssssssssss..............', // 23 short shadow under bunched legs
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 1: push-off. Rear hooves still planted, fronts lifting forward.
@@ -744,7 +743,7 @@ const RUN_E_1 = [
   '..h.....hhh.....................', // 20 fronts off ground
   '..h.....hhh.....................', // 21 rears planted, fronts up
   '..k.....kkk.....................', // 22 only rear hooves on ground
-  '.sssssssssssssss................', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: extended-suspension. ALL FOUR hooves off ground. Body lifted
@@ -774,7 +773,7 @@ const RUN_E_2 = [
   'hh.................hhh..........', // 20 all 4 legs off ground
   '................................', // 21 nothing on ground
   '................................', // 22 NO hooves on row 22 (suspension)
-  '...sssssssss....................', // 23 short faint shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: front-landing. Fronts touch ground (extended forward), rears
@@ -803,7 +802,7 @@ const RUN_E_3 = [
   'hh.................hhh..........', // 20
   '...................hhh..........', // 21 fronts coming down
   '...................kkk..........', // 22 only fronts touching ground
-  '...........sssssssssssss........', // 23 shadow under fronts
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 4: rolling-contact. Fronts planted, rears swinging forward to
@@ -832,7 +831,7 @@ const RUN_E_4 = [
   '......hhh.........hhh...........', // 20
   '..................hhh...........', // 21 fronts still planted
   '..................kkk...........', // 22 only fronts on ground
-  '..........sssssssssss...........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 5: re-gather. Hinds landing close to fronts. Similar to frame 0
@@ -861,7 +860,7 @@ const RUN_E_5 = [
   '.....h...hhh...hhh..............', // 20 leg cluster +1 col fwd vs frame 0
   '.....h...hhh...hhh..............', // 21
   '.....k...kkk...kkk..............', // 22
-  '......sssssssssssss.............', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- N facing (back view, gallop) -----------------------------------------
@@ -895,7 +894,7 @@ const RUN_N_0 = [
   '.........H..HH..HH..H...........', // 20
   '.........H..HH..HH..H...........', // 21
   '.........k..kk..kk..k...........', // 22 hooves bunched closer
-  '........sssssssssssss...........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 1: push-off. Rear hooves planted, outer legs starting to lift
@@ -924,7 +923,7 @@ const RUN_N_1 = [
   '........H...HH..HH...H..........', // 20
   '............kk..kk..............', // 21
   '........k...kk..kk...k..........', // 22 only inner pairs + outers planted
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: extended-suspension. ALL hooves OFF row 22. Saddle row 8
@@ -953,7 +952,7 @@ const RUN_N_2 = [
   '................................', // 20 nothing here
   '................................', // 21 hooves off ground
   '................................', // 22 NO hooves (suspended)
-  '........sssssss.................', // 23 short shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: front-landing. Inner legs (representing fronts) touch down,
@@ -982,7 +981,7 @@ const RUN_N_3 = [
   '............HH..HH..............', // 20
   '............HH..HH..............', // 21
   '............kk..kk..............', // 22 only inner pairs touching
-  '...........ssssssss.............', // 23 shadow under inners
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 4: rolling-contact. Inners planted, outers swinging forward
@@ -1011,7 +1010,7 @@ const RUN_N_4 = [
   '............HH..HH..............', // 20
   '............HH..HH..............', // 21
   '..........k.kk..kk.k............', // 22 outers landing close + inners planted
-  '.........ssssssssssss...........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 5: re-gather. Similar to 0 but legs slightly more separated
@@ -1040,7 +1039,7 @@ const RUN_N_5 = [
   '........H...HH..HH...H..........', // 20
   '........H...HH..HH...H..........', // 21
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- S facing (front view, gallop) ----------------------------------------
@@ -1072,7 +1071,7 @@ const RUN_S_0 = [
   '.........h..hh..hh..h...........', // 20
   '.........h..hh..hh..h...........', // 21
   '.........k..kk..kk..k...........', // 22 hooves bunched
-  '........sssssssssssss...........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 1: push-off. Outer strips lift, inners planted. Saddle row 9.
@@ -1100,7 +1099,7 @@ const RUN_S_1 = [
   '........h...hh..hh...h..........', // 20
   '............hh..hh..............', // 21
   '........k...kk..kk...k..........', // 22 outers planted, inners up
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: extended-suspension. Body comes toward viewer (saddle UP by
@@ -1129,7 +1128,7 @@ const RUN_S_2 = [
   '................................', // 20
   '................................', // 21
   '................................', // 22 NO hooves (suspended)
-  '........sssssss.................', // 23 short shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: front-landing. Inner strips (representing fronts) touch down.
@@ -1158,7 +1157,7 @@ const RUN_S_3 = [
   '............hh..hh..............', // 20
   '............hh..hh..............', // 21
   '............kk..kk..............', // 22 only inner hooves planted
-  '...........ssssssss.............', // 23 shadow under inners
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 4: rolling-contact. Outers swinging in to land. Saddle row 10.
@@ -1186,7 +1185,7 @@ const RUN_S_4 = [
   '............hh..hh..............', // 20
   '............hh..hh..............', // 21
   '..........k.kk..kk.k............', // 22 outers landing close + inners planted
-  '.........ssssssssssss...........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 5: re-gather. Like frame 0 but slightly more spread = forward lean.
@@ -1214,7 +1213,7 @@ const RUN_S_5 = [
   '........h...hh..hh...h..........', // 20
   '........h...hh..hh...h..........', // 21
   '........k...kk..kk...k..........', // 22
-  '.......sssssssssssssssss........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- SE facing (3/4 front-right, gallop) ----------------------------------
@@ -1246,7 +1245,7 @@ const RUN_SE_0 = [
   '.........h..hh..hh..hh..........', // 20
   '.........h..hh..hh..hh..........', // 21
   '.........k..kk..kk..kk..........', // 22 hooves bunched
-  '........ssssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 1: push-off. Saddle row 9. Outer strips lift.
@@ -1274,7 +1273,7 @@ const RUN_SE_1 = [
   '........h...hh..hh...hh.........', // 20
   '............hh..hh...hh.........', // 21
   '........k...kk..kk...kk.........', // 22 left-outer hoof up
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: extended-suspension. ALL hooves off. Saddle UP by 2 rows.
@@ -1303,7 +1302,7 @@ const RUN_SE_2 = [
   '................................', // 20
   '................................', // 21
   '................................', // 22 NO hooves (suspended)
-  '........sssssss.................', // 23 short shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: front-landing. Sabre tip continues. Saddle row 9.
@@ -1331,7 +1330,7 @@ const RUN_SE_3 = [
   '............hh..hh..............', // 20
   '............hh..hh..............', // 21
   '............kk..kk..............', // 22 only inners planted
-  '...........ssssssss.............', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 4: rolling-contact. Outers swinging in. Saddle row 10.
@@ -1359,7 +1358,7 @@ const RUN_SE_4 = [
   '............hh..hh..............', // 20
   '............hh..hh..............', // 21
   '..........k.kk..kk.kk...........', // 22
-  '.........sssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 5: re-gather. Slight forward lean.
@@ -1387,7 +1386,7 @@ const RUN_SE_5 = [
   '........h...hh..hh...hh.........', // 20
   '........h...hh..hh...hh.........', // 21
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // --- NE facing (3/4 back-right, gallop) -----------------------------------
@@ -1418,7 +1417,7 @@ const RUN_NE_0 = [
   '.........H..HH..HH..HH..........', // 20
   '.........H..HH..HH..HH..........', // 21
   '.........k..kk..kk..kk..........', // 22 hooves bunched
-  '........ssssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 1: push-off. Saddle row 9. Left-outer strip lifted.
@@ -1446,7 +1445,7 @@ const RUN_NE_1 = [
   '........H...HH..HH...HH.........', // 20
   '............HH..HH...HH.........', // 21
   '........k...kk..kk...kk.........', // 22 left-outer hoof up
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 2: extended-suspension. ALL hooves off. Saddle UP by 2 rows.
@@ -1474,7 +1473,7 @@ const RUN_NE_2 = [
   '................................', // 20
   '................................', // 21
   '................................', // 22 NO hooves (suspended)
-  '........sssssss.................', // 23 short shadow
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 3: front-landing. Saddle row 9. Inner pairs only.
@@ -1502,7 +1501,7 @@ const RUN_NE_3 = [
   '............HH..HH..............', // 20
   '............HH..HH..............', // 21
   '............kk..kk..............', // 22 only inners planted
-  '...........ssssssss.............', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 4: rolling-contact. Outers swinging in. Saddle row 10.
@@ -1530,7 +1529,7 @@ const RUN_NE_4 = [
   '............HH..HH..............', // 20
   '............HH..HH..............', // 21
   '..........k.kk..kk.kk...........', // 22
-  '.........sssssssssssss..........', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 // Frame 5: re-gather. Slight forward lean.
@@ -1558,7 +1557,7 @@ const RUN_NE_5 = [
   '........H...HH..HH...HH.........', // 20
   '........H...HH..HH...HH.........', // 21
   '........k...kk..kk...kk.........', // 22
-  '.......ssssssssssssssssss.......', // 23
+  '................................', // 23 (shadow drawn separately)
 ];
 
 export const POSES = {

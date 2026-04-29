@@ -10,6 +10,7 @@ import type { Particles } from '../particles/particles';
 import type { Puffs } from '../puffs/puffs';
 import type { Rng } from '../util/rng';
 import { RECOIL_T } from './fire-resolver';
+import { rollDamage } from './damage-roll';
 import { pushSfxRequest, type SfxRequests } from './sfx-requests';
 
 function applyMuzzleFxAndRecoil(
@@ -64,16 +65,24 @@ export function fireCannonSolid(
   const elev = elevationDeg * Math.PI / 180;
   const vh = muz * Math.cos(elev);
   const vv = muz * Math.sin(elev);
+  const solidRoll = rollDamage(
+    cannon12Solid.projectile.damage,
+    cannon12Solid.projectile.damageVarianceFrac ?? 0,
+    cannon12Solid.projectile.critChance ?? 0,
+    cannon12Solid.projectile.critMul ?? 1.5,
+    rng,
+  );
   spawnSolidShot(
     projectiles,
     tip.x, tip.y, cannon12Solid.projectile.launchHeight ?? 0,
     vh * tip.dirX, vh * tip.dirY, vv,
     entities.team[cannonId]!,
-    cannon12Solid.projectile.damage,
+    solidRoll.damage,
     cannon12Solid.projectile.mass,
     cannon12Solid.projectile.maxLife,
     cannon12Solid.projectile.ricochetCount ?? 0,
     cannonId,
+    solidRoll.crit ? 1 : 0,
   );
   applyMuzzleFxAndRecoil(
     entities, particles, puffs, rng, cannonId,
@@ -97,16 +106,24 @@ export function fireCannonShell(
   const elev = elevationDeg * Math.PI / 180;
   const vh = muz * Math.cos(elev);
   const vv = muz * Math.sin(elev);
+  const shellRoll = rollDamage(
+    cannon12Shell.projectile.damage,
+    cannon12Shell.projectile.damageVarianceFrac ?? 0,
+    cannon12Shell.projectile.critChance ?? 0,
+    cannon12Shell.projectile.critMul ?? 1.5,
+    rng,
+  );
   spawnShell(
     projectiles,
     tip.x, tip.y, cannon12Shell.projectile.launchHeight ?? 0,
     vh * tip.dirX, vh * tip.dirY, vv,
     entities.team[cannonId]!,
-    cannon12Shell.projectile.damage,
+    shellRoll.damage,
     cannon12Shell.projectile.mass,
     cannon12Shell.projectile.maxLife,
     cannon12Shell.projectile.fuse ?? 1.5,
     cannonId,
+    shellRoll.crit ? 1 : 0,
   );
   applyMuzzleFxAndRecoil(
     entities, particles, puffs, rng, cannonId,

@@ -30,9 +30,17 @@ describe('spawnCanister', () => {
     const p = createProjectiles(64);
     const rng = createRng(5);
     spawnCanister(p, 0, 0, 1, 0, 0, cannon12Canister, -1, rng);
+    // Per-ball damage rolls in ±25%; rare crit can multiply by 1.75. Bound
+    // the assertion at the worst case [base*(1-var), base*(1+var)*critMul].
+    const varFrac = cannon12Canister.ballDamageVarianceFrac ?? 0;
+    const critMul = cannon12Canister.ballCritMul ?? 1;
+    // Damage is Math.round(base * mul) so add 1 for rounding-up headroom.
+    const lo = Math.floor(cannon12Canister.ballDamage * (1 - varFrac)) - 1;
+    const hi = Math.ceil(cannon12Canister.ballDamage * (1 + varFrac) * critMul) + 1;
     for (let i = 0; i < p.capacity; i++) {
       if (!p.alive[i]) continue;
-      expect(p.damage[i]).toBeCloseTo(cannon12Canister.ballDamage, 4);
+      expect(p.damage[i]).toBeGreaterThanOrEqual(lo);
+      expect(p.damage[i]).toBeLessThanOrEqual(hi);
       expect(p.mass[i]).toBeCloseTo(cannon12Canister.ballMass, 4);
     }
   });

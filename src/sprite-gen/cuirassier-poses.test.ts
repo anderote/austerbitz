@@ -21,7 +21,7 @@ describe('cuirassier-poses helpers', () => {
   });
 
   it('palette has every expected glyph and all colors are 4-byte', () => {
-    const expected = ['.', 'k', 'h', 'H', 'f', 'F', 'g', 'm', 'w', 's', 'P', 'S'];
+    const expected = ['.', 'k', 'h', 'H', 'f', 'F', 'g', 'm', 'w', 'P', 'S'];
     for (const ch of expected) {
       expect(PALETTE[ch]).toBeDefined();
       const rgba = PALETTE[ch];
@@ -97,10 +97,10 @@ describe('cuirassier-poses idle', () => {
     }
   });
 
-  it('idle frames have ground shadow on the bottom row', () => {
+  it('idle frames leave the bottom row blank for the runtime shadow projection', () => {
     for (const dir of SOURCE_DIRS) {
       const lastRow = POSES.idle[dir][0][CELL_H - 1];
-      expect(lastRow).toMatch(/s/);
+      expect(lastRow).toBe('.'.repeat(CELL_W));
     }
   });
 });

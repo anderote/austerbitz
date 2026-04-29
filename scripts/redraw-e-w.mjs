@@ -22,7 +22,9 @@
 //   24-25 trousers
 //   26-27 gaiters
 //   28    boots
-//   29-30 ground shadow
+//
+// Shadows are drawn separately by the runtime shadow-projection shader, so no
+// shadow rows are baked into these component sprites.
 
 import { PNG } from 'pngjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -42,7 +44,6 @@ const W = 32;
 const H = 36;
 
 const PAL = {
-  shadow: '#000000',
   skinHi: '#F0CDA0',
   skinShade: '#C49072',
   skinDeep: '#A87651',
@@ -133,14 +134,6 @@ function mirrorHorizontal(src) {
 }
 
 // --- EAST (soldier facing camera-right) ---
-
-function drawShadowEast() {
-  const p = makeSprite();
-  // Slightly narrower than S, since profile silhouette is narrower.
-  row(p, 30, 13, 18, PAL.shadow, 110);
-  row(p, 29, 14, 17, PAL.shadow, 70);
-  return p;
-}
 
 function drawBodyEast() {
   const p = makeSprite();
@@ -478,8 +471,6 @@ function drawBloodEastDying() {
 
 function drawAll() {
   console.log('Drawing E facing components:');
-  const eShadow = drawShadowEast();
-  save(eShadow, 'shadow/east/default.png');
   const eBody = drawBodyEast();
   save(eBody, 'anatomy/body/east/base.png');
   const eTrousers = drawTrousersEast();
@@ -521,7 +512,6 @@ function drawAll() {
   save(eBloodDying, 'fx/blood/east/dying.png');
 
   console.log('Drawing W facing components (mirrored from E):');
-  save(mirrorHorizontal(eShadow), 'shadow/west/default.png');
   save(mirrorHorizontal(eBody), 'anatomy/body/west/base.png');
   // W trousers: mirror handles legs correctly. E legs at x=8..9 mirror to
   // W legs at x=6..7 (2 wide, profile leg on viewer's left). Row 28 is

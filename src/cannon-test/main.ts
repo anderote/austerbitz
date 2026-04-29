@@ -29,6 +29,7 @@ import { updateShockwaves } from '../sim/systems/shockwave-system';
 import { tickDebris } from '../sim/systems/debris-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
 import { createDeathDropsSystem } from '../sim/systems/death-drops-system';
+import { tickCrew } from '../sim/crew';
 import { isDead, freeEntity } from '../sim/entities';
 import { clearSfxRequests } from '../sim/sfx-requests';
 import { initSfx, playSfx } from '../audio/sfx';
@@ -206,6 +207,7 @@ async function start(): Promise<void> {
       rebuildGrid(world);
       movementSystem(world, dt);
       facingSystem(world, dt);
+      tickCrew(world.entities);
       combatSystem(world, dt);
       tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
       tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests, damageTexts);

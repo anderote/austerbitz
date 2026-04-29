@@ -16,7 +16,9 @@
 //   24-25 trousers split legs
 //   26-27 gaiters with brass buttons row 26
 //   28    boots
-//   29-30 ground shadow
+//
+// Shadows are drawn separately by the runtime shadow-projection shader, so no
+// shadow rows are baked into these component sprites.
 //
 // SE: 3/4 turned to soldier's left (= viewer's right). Body still mostly
 // front-facing, rotated ~45 deg toward camera-right. Face shifts +1 px right.
@@ -46,7 +48,6 @@ const W = 32;
 const H = 36;
 
 const PAL = {
-  shadow: '#000000',
   skinHi: '#F0CDA0',
   skinShade: '#C49072',
   skinDeep: '#A87651',
@@ -123,15 +124,6 @@ function mirror(src) {
 }
 
 // --- SE drawers (return sprite so SW can mirror) ---
-
-function drawShadowSE() {
-  const p = makeSprite();
-  // Slight asymmetry: shadow extends a touch farther on viewer-right
-  // (the camera-near side as the figure rotates).
-  row(p, 30, 12, 20, PAL.shadow, 110);
-  row(p, 29, 13, 19, PAL.shadow, 70);
-  return p;
-}
 
 function drawBodySE() {
   const p = makeSprite();
@@ -478,8 +470,6 @@ function drawBloodSEDying() {
 
 function drawSE() {
   console.log('Drawing SE facing components:');
-  const shadow = drawShadowSE();
-  save(shadow, 'shadow/southeast/default.png');
   const body = drawBodySE();
   save(body, 'anatomy/body/southeast/base.png');
   const trousers = drawTrousersSE();
@@ -520,7 +510,7 @@ function drawSE() {
   const bloodDying = drawBloodSEDying();
   save(bloodDying, 'fx/blood/southeast/dying.png');
   return {
-    shadow, body, trousers, coat, shako, musket, coatFire, musketFire,
+    body, trousers, coat, shako, musket, coatFire, musketFire,
     coatMR, musketMR, coatHit, musketHit, bloodHit,
     bodyDying, shakoDying, coatDying, trousersDying, musketDying, bloodDying,
   };
@@ -538,7 +528,6 @@ function clearPixel(p, x, y) {
 
 function drawSW(seSprites) {
   console.log('Drawing SW facing components (mirror of SE):');
-  save(mirror(seSprites.shadow), 'shadow/southwest/default.png');
   save(mirror(seSprites.body), 'anatomy/body/southwest/base.png');
   // Trousers: mirror handles the leg block correctly. SE legs at x=8..11
   // mirror to SW legs at x=4..7 (4 wide, shifted 1 left for SW lean). Row 28

@@ -44,7 +44,6 @@ const PALETTE_BASE: Record<string, [number, number, number, number]> = {
   'm': [120, 84, 50, 255],    // carriage timber
   'M': [78, 52, 30, 255],     // carriage shadow
   'w': [180, 188, 200, 255],  // iron tyre / spokes
-  's': [60, 56, 52, 110],     // ground shadow
   'W': [255, 255, 255, 255],  // tint sample cell
 };
 
@@ -70,7 +69,7 @@ const POSE_FRONT = [
   '.kSwkwS...SwkwSk.', // 10 wheels + hub
   '.kSwkwS...SwkwSk.', // 11 wheels + hub thickened
   '..kkSSk...kSSkk..', // 12 wheels bottom
-  '..ssssssssssss...', // 13 ground shadow
+  '.................', // 13 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_FRONT_DIAG = [
@@ -87,7 +86,7 @@ const POSE_FRONT_DIAG = [
   '.kSwkwS.SwkwSk...', // 10
   '.kSwkwS.SwkwSk...', // 11 hub thickened
   '..kkSSk.kSSkk....', // 12
-  '..ssssssssssss...', // 13
+  '.................', // 13 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_SIDE = [
@@ -104,7 +103,7 @@ const POSE_SIDE = [
   '...kSwkkkwSk.....', // 10 wheel + thicker hub
   '...kSwwwwwSk.....', // 11 wheel
   '....kkSSSkk......', // 12 wheel bottom
-  '....sssssss......', // 13 ground shadow
+  '.................', // 13 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_BACK = [
@@ -121,7 +120,7 @@ const POSE_BACK = [
   '.kSwkwS...SwkwSk.', // 10
   '.kSwkwS...SwkwSk.', // 11 hub thickened
   '..kkSSk...kSSkk..', // 12
-  '..ssssssssssss...', // 13 ground shadow
+  '.................', // 13 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_BACK_DIAG = [
@@ -138,7 +137,7 @@ const POSE_BACK_DIAG = [
   '.kSwkwS.SwkwSk...', // 10
   '.kSwkwS.SwkwSk...', // 11 hub thickened
   '..kkSSk.kSSkk....', // 12
-  '..ssssssssssss...', // 13
+  '.................', // 13 (shadows drawn separately by the runtime projection pass)
 ];
 
 const TINT_CELL = Array.from({ length: CANNON_CELL_H }, () =>

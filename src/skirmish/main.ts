@@ -9,7 +9,7 @@ import { createCamera } from '../render/camera';
 import { createInputManager } from '../input/input-manager';
 import { createCameraControls } from '../input/camera-controls';
 import { createWorld, tickWorld, type System } from '../sim/world';
-import { freeEntity, type Entities } from '../sim/entities';
+import { freeEntity } from '../sim/entities';
 import { ordersSystem } from '../sim/systems/orders-system';
 import { movementSystem } from '../sim/systems/movement-system';
 import { collisionSystem } from '../sim/systems/collision-system';
@@ -29,14 +29,14 @@ import {
   createDragRect,
   createFormationDrag,
   createControlGroups,
-  type Selection,
 } from '../input/selection';
 import { createSelectionController } from '../input/selection-controller';
 import '../ui/styles.css';
 import { createOverlay } from '../ui/overlay';
 import { createSelectionPanel } from '../ui/selection-panel';
 import { createStatsCard } from '../ui/stats-card';
-import { createFormationControlsPanel, type StanceSummary } from '../ui/formation-controls-panel';
+import { createFormationControlsPanel } from '../ui/formation-controls-panel';
+import { computeStanceSummary } from '../input/stance-summary';
 import { createGroupBadges } from '../ui/group-badges';
 import { createPlacementInfo } from '../ui/placement-info';
 import { createMovePreview } from '../ui/move-preview';
@@ -280,18 +280,6 @@ async function start(): Promise<void> {
     if (e.repeat) return;
     if (e.key === 'r' || e.key === 'R') resetScene();
   });
-
-  function computeStanceSummary(sel: Selection, e: Entities): StanceSummary {
-    if (sel.ids.size === 0) return { kind: 'none' };
-    let first: number | undefined;
-    for (const id of sel.ids) {
-      if (e.alive[id] !== 1) continue;
-      if (first === undefined) { first = e.stance[id]!; continue; }
-      if (e.stance[id]! !== first) return { kind: 'mixed' };
-    }
-    if (first === undefined) return { kind: 'none' };
-    return { kind: 'uniform', stance: first };
-  }
 
   let lastT = performance.now();
   let smoothedFps = 60;

@@ -24,7 +24,6 @@ const PALETTE = {
   'g': [180, 188, 200, 255],
   'm': [60, 40, 26, 255],
   'w': [236, 232, 222, 255],
-  's': [60, 56, 52, 110],
   'W': [255, 255, 255, 255],
   'P': [180, 40, 50, 255],   // British red coat
   'S': [50, 60, 140, 255],   // British blue facings
@@ -50,7 +49,7 @@ const POSE_FRONT = [
   '..h..h.h..h....',
   '..k..k.k..k....',
   '..k..k.k..k....',
-  '..sssssssss....',
+  '...............',
 ];
 
 const POSE_FRONT_DIAG = [
@@ -73,7 +72,7 @@ const POSE_FRONT_DIAG = [
   '..h..h.h..hh...',
   '..k..k.k..kk...',
   '..k..k.k..kk...',
-  '..ssssssssss...',
+  '...............',
 ];
 
 const POSE_SIDE = [
@@ -119,7 +118,7 @@ const POSE_BACK = [
   '..H..H.H..H....',
   '..k..k.k..k....',
   '..k..k.k..k....',
-  '..sssssssss....',
+  '...............',
 ];
 
 const POSE_BACK_DIAG = [
@@ -142,7 +141,7 @@ const POSE_BACK_DIAG = [
   '..H..H.H..HH...',
   '..k..k.k..kk...',
   '..k..k.k..kk...',
-  '..ssssssssss...',
+  '...............',
 ];
 
 const CELL_W = 15;

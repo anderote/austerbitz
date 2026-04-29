@@ -13,7 +13,8 @@ import type { Rng } from '../util/rng';
 import { barrelTip } from '../fx/barrel';
 import { solveCannonLaunch } from '../fx/ballistics';
 import { getUnitKindByIndex } from '../data/units';
-import { effectiveAccuracy, effectiveDamage } from './veterancy';
+import { effectiveAccuracy, effectiveCritChance, effectiveDamage } from './veterancy';
+import { rollDamage } from './damage-roll';
 
 /**
  * Total duration of the visual recoil animation in seconds. The render-side
@@ -73,20 +74,26 @@ export function resolveFire(
     }
 
     const baseDmg = effectiveDamage(e, id, kind.baseStats.weaponDamage);
-    const varFrac = weapon.projectile.damageVarianceFrac ?? 0;
-    const varMul = varFrac > 0 ? 1 + (rng.next() - 0.5) * 2 * varFrac : 1;
-    const rolledDmg = Math.max(1, Math.round(baseDmg * varMul));
+    const critChance = effectiveCritChance(e, id, weapon.projectile.critChance ?? 0);
+    const roll = rollDamage(
+      baseDmg,
+      weapon.projectile.damageVarianceFrac ?? 0,
+      critChance,
+      weapon.projectile.critMul ?? 1.5,
+      rng,
+    );
 
     spawnMusketBall(
       projectiles,
       tip.x, tip.y,
       dirX, dirY,
       team,
-      rolledDmg,
+      roll.damage,
       weapon.projectile.muzzleVelocity,
       weapon.projectile.mass,
       weapon.projectile.maxLife,
       id,
+      roll.crit ? 1 : 0,
     );
 
     if (weapon.muzzle) {
@@ -125,17 +132,28 @@ export function resolveFire(
     );
     if (launch === null) return false;
 
+    const cannonBaseDmg = effectiveDamage(e, id, kind.baseStats.weaponDamage);
+    const cannonCritChance = effectiveCritChance(e, id, weapon.projectile.critChance ?? 0);
+    const cannonRoll = rollDamage(
+      cannonBaseDmg,
+      weapon.projectile.damageVarianceFrac ?? 0,
+      cannonCritChance,
+      weapon.projectile.critMul ?? 1.5,
+      rng,
+    );
+
     if (weapon.kind === 'solid-shot') {
       spawnSolidShot(
         projectiles,
         tip.x, tip.y, launchHeight,
         launch.vx, launch.vy, launch.vz,
         team,
-        effectiveDamage(e, id, kind.baseStats.weaponDamage),
+        cannonRoll.damage,
         weapon.projectile.mass,
         weapon.projectile.maxLife,
         weapon.projectile.ricochetCount ?? 0,
         id,
+        cannonRoll.crit ? 1 : 0,
       );
     } else {
       spawnShell(
@@ -143,11 +161,12 @@ export function resolveFire(
         tip.x, tip.y, launchHeight,
         launch.vx, launch.vy, launch.vz,
         team,
-        effectiveDamage(e, id, kind.baseStats.weaponDamage),
+        cannonRoll.damage,
         weapon.projectile.mass,
         weapon.projectile.maxLife,
         weapon.projectile.fuse ?? 1.5,
         id,
+        cannonRoll.crit ? 1 : 0,
       );
     }
 

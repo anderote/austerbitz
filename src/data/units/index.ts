@@ -2,8 +2,9 @@ import type { UnitKind } from '../types';
 import { lineInfantry } from './line-infantry';
 import { cuirassier } from './cuirassier';
 import { cannon12 } from './cannon-12';
+import { gunCrew } from './gun-crew';
 
-export const unitKinds: readonly UnitKind[] = [lineInfantry, cuirassier, cannon12];
+export const unitKinds: readonly UnitKind[] = [lineInfantry, cuirassier, cannon12, gunCrew];
 
 const idToIndex = new Map<string, number>();
 unitKinds.forEach((k, i) => idToIndex.set(k.id, i));

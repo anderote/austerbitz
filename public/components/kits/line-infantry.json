@@ -511,7 +511,6 @@
     "hit": {
       "S": {
         "layers": [
-          "shadow-south",
           "body-south-base",
           "trousers-south",
           "coat-line-south-hit",
@@ -530,7 +529,6 @@
       },
       "N": {
         "layers": [
-          "shadow-north",
           "body-north-base",
           "trousers-north",
           "coat-line-north-hit",
@@ -548,7 +546,6 @@
       },
       "E": {
         "layers": [
-          "shadow-east",
           "body-east-base",
           "trousers-east",
           "coat-line-east-hit",
@@ -567,7 +564,6 @@
       },
       "W": {
         "layers": [
-          "shadow-west",
           "body-west-base",
           "trousers-west",
           "coat-line-west-hit",
@@ -585,7 +581,6 @@
       },
       "NE": {
         "layers": [
-          "shadow-northeast",
           "body-northeast-base",
           "trousers-northeast",
           "coat-line-northeast-hit",
@@ -604,7 +599,6 @@
       },
       "NW": {
         "layers": [
-          "shadow-northwest",
           "body-northwest-base",
           "trousers-northwest",
           "coat-line-northwest-hit",
@@ -622,7 +616,6 @@
       },
       "SE": {
         "layers": [
-          "shadow-southeast",
           "body-southeast-base",
           "trousers-southeast",
           "coat-line-southeast-hit",
@@ -641,7 +634,6 @@
       },
       "SW": {
         "layers": [
-          "shadow-southwest",
           "body-southwest-base",
           "trousers-southwest",
           "coat-line-southwest-hit",
@@ -662,7 +654,6 @@
     "dying": {
       "S": {
         "layers": [
-          "shadow-south",
           "body-south-dying",
           "trousers-south-dying",
           "coat-line-south-dying",
@@ -681,7 +672,6 @@
       },
       "N": {
         "layers": [
-          "shadow-north",
           "body-north-dying",
           "trousers-north-dying",
           "coat-line-north-dying",
@@ -699,7 +689,6 @@
       },
       "E": {
         "layers": [
-          "shadow-east",
           "body-east-dying",
           "trousers-east-dying",
           "coat-line-east-dying",
@@ -718,7 +707,6 @@
       },
       "W": {
         "layers": [
-          "shadow-west",
           "body-west-dying",
           "trousers-west-dying",
           "coat-line-west-dying",
@@ -736,7 +724,6 @@
       },
       "NE": {
         "layers": [
-          "shadow-northeast",
           "body-northeast-dying",
           "trousers-northeast-dying",
           "coat-line-northeast-dying",
@@ -755,7 +742,6 @@
       },
       "NW": {
         "layers": [
-          "shadow-northwest",
           "body-northwest-dying",
           "trousers-northwest-dying",
           "coat-line-northwest-dying",
@@ -773,7 +759,6 @@
       },
       "SE": {
         "layers": [
-          "shadow-southeast",
           "body-southeast-dying",
           "trousers-southeast-dying",
           "coat-line-southeast-dying",
@@ -792,7 +777,6 @@
       },
       "SW": {
         "layers": [
-          "shadow-southwest",
           "body-southwest-dying",
           "trousers-southwest-dying",
           "coat-line-southwest-dying",

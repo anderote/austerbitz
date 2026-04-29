@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createEntities, allocEntity, freeEntity, isAlive, isDead, EntityState, FireStance, FORMATION_RANK_UNKNOWN } from './entities';
+import { getUnitKind, getUnitKindIndex } from '../data/units';
 
 describe('Entities SoA', () => {
   it('allocates entities with monotonically increasing ids until capacity', () => {
@@ -276,5 +277,13 @@ describe('isDead', () => {
     expect(isDead(e, id)).toBe(true);
     e.state[id] = EntityState.Dead;
     expect(isDead(e, id)).toBe(true);
+  });
+});
+
+describe('gun-crew unit kind', () => {
+  it('is registered and resolvable', () => {
+    const k = getUnitKind('gun-crew');
+    expect(k.id).toBe('gun-crew');
+    expect(getUnitKindIndex('gun-crew')).toBeGreaterThanOrEqual(0);
   });
 });

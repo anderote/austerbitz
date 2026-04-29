@@ -32,7 +32,6 @@ const PALETTE = {
   'm': [86, 56, 36, 255],    // wood (musket stock)
   'M': [56, 36, 22, 255],    // dark wood (musket butt)
   'g': [180, 188, 200, 255], // steel (bayonet, barrel)
-  's': [60, 56, 52, 110],    // ground shadow (semi-transparent)
   'W': [255, 255, 255, 255], // tint sample cell
   'P': [180, 40, 50, 255],   // PRIMARY — British red coat (markers in runtime)
   'S': [240, 230, 210, 255], // SECONDARY — British cream belts/pants (markers in runtime)
@@ -61,7 +60,7 @@ const POSE_FRONT = [
   '.m..SPPPS..', // 14 turnbacks (secondary corners)
   '.M...SSS...', // 15 breeches
   '.M...T.T...', // 16 gaiters
-  '.....sss...', // 17 shadow
+  '...........', // 17 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_FRONT_DIAG = [
@@ -82,7 +81,7 @@ const POSE_FRONT_DIAG = [
   '.m..SPPPSP.',
   '.M...SSS...',
   '.M...T.T...',
-  '.....sss...',
+  '...........',
 ];
 
 const POSE_SIDE = [
@@ -103,7 +102,7 @@ const POSE_SIDE = [
   '.m....SPS..',
   '.M....SSS..',
   '.M....T.T..',
-  '......sss..',
+  '...........',
 ];
 
 const POSE_BACK = [
@@ -124,7 +123,7 @@ const POSE_BACK = [
   '..SPPPS..M.',
   '...SSS.....',
   '...T.T.....',
-  '...sss.....',
+  '...........',
 ];
 
 const POSE_BACK_DIAG = [
@@ -145,7 +144,7 @@ const POSE_BACK_DIAG = [
   '.SPPPS...M.',
   '..SSS......',
   '..T.T......',
-  '..sss......',
+  '...........',
 ];
 
 const CELL_W = 11;

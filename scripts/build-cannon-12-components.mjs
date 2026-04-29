@@ -7,13 +7,13 @@
 //   trail   — wooden carriage trail with red trim (primary marker)
 //   wheels  — two wheels with steel-blue rims (secondary marker)
 //   barrel  — bronze barrel (literal warm brass, no marker)
-//   crew    — 4-figure line-infantry crew around the gun (regiment recolor)
 //
 // Pose-specific layers:
 //   muzzle-flash-<dir>-fire    — yellow/white burst at muzzle (fire pose)
 //   smoke-<dir>-fire           — grey-white smoke puff (fire pose)
 //   handspike-<dir>-reload     — wood pole leaning on trail (make-ready pose)
-//   crew-<dir>-<variant>       — idle / fire / reload crew variants
+//
+// Crew is no longer drawn here — crew are independent entities (see src/sim/crew.ts).
 //
 // Layout convention (32w x 36h): bottom-anchored. Carriage rests on rows
 // 24..30 (ground at row 30). Barrel sits above the wheels around rows 18..24.
@@ -39,7 +39,6 @@ const H = 36;
 //   tertiary  — yellow  (#ffff00 family)  — crew shakos / gaiters
 // Literal art colors (bronze, wood, skin) pass through unchanged.
 const PAL = {
-  shadow: '#000000',
   // Carriage timber (literal warm brown)
   woodHi: '#9C6B40',
   woodMid: '#704A28',
@@ -207,9 +206,6 @@ function drawWheelsFrontBack() {
   // Wheels splayed at x=8 (left) and x=24 (right), y=27.
   drawWheelDisc(p, 8, 27);
   drawWheelDisc(p, 24, 27);
-  // Ground shadow under each wheel
-  row(p, 32, 4, 12, PAL.shadow, 110);
-  row(p, 32, 20, 28, PAL.shadow, 110);
   return p;
 }
 
@@ -218,8 +214,6 @@ function drawWheelsSide(_mirror = false) {
   const p = makeSprite();
   // Foreground wheel centered at (16, 26).
   drawWheelDisc(p, 16, 26);
-  // Ground shadow under wheel
-  row(p, 32, 11, 21, PAL.shadow, 120);
   return p;
 }
 
@@ -230,11 +224,9 @@ function drawWheels34(muzzleAngle /* 'right' | 'left' */) {
     // Near wheel on right (slightly closer/larger), far wheel on left.
     drawWheelDisc(p, 21, 27);
     drawWheelDisc(p, 11, 25);
-    row(p, 32, 7, 25, PAL.shadow, 100);
   } else {
     drawWheelDisc(p, 11, 27);
     drawWheelDisc(p, 21, 25);
-    row(p, 32, 7, 25, PAL.shadow, 100);
   }
   return p;
 }
@@ -957,203 +949,6 @@ function drawHandspike34(muzzleCorner) {
 }
 
 // =====================================================================
-// CREW — 4 line-infantry figures around the gun. Regiment-recolored via
-// primary (coat), secondary (belts/breeches), tertiary (shako/gaiters).
-// Each figure is 5 wide x 7 tall.
-// =====================================================================
-
-function drawCrewFigure(p, x, y, variant) {
-  // Variant pixel offsets:
-  // 'idle'   — symmetric standing.
-  // 'fire'   — top two rows shifted +1 px in x (lean back).
-  // 'reload' — same as idle pose silhouette unless it's the rammer (drawn separately).
-  const topShift = variant === 'fire' ? 1 : 0;
-
-  // Row 0 (head outline / shako top): . k k k .
-  set(p, x + 1 + topShift, y + 0, PAL.outline);
-  set(p, x + 2 + topShift, y + 0, PAL.outline);
-  set(p, x + 3 + topShift, y + 0, PAL.outline);
-
-  // Row 1 (shako body, tertiary): . T T T .
-  set(p, x + 1 + topShift, y + 1, PAL.tertiaryMid);
-  set(p, x + 2 + topShift, y + 1, PAL.tertiaryHi);
-  set(p, x + 3 + topShift, y + 1, PAL.tertiaryShade);
-
-  // Row 2 (face): . f F f .
-  set(p, x + 1, y + 2, PAL.skin);
-  set(p, x + 2, y + 2, PAL.skinShadow);
-  set(p, x + 3, y + 2, PAL.skin);
-
-  // Row 3 (coat with cross-belts): S P S P S
-  set(p, x + 0, y + 3, PAL.secondaryMid);
-  set(p, x + 1, y + 3, PAL.primaryMid);
-  set(p, x + 2, y + 3, PAL.secondaryHi);
-  set(p, x + 3, y + 3, PAL.primaryMid);
-  set(p, x + 4, y + 3, PAL.secondaryMid);
-
-  // Row 4 (coat): . P P P .
-  set(p, x + 1, y + 4, PAL.primaryShade);
-  set(p, x + 2, y + 4, PAL.primaryMid);
-  set(p, x + 3, y + 4, PAL.primaryShade);
-
-  // Row 5 (breeches): . S S S .
-  set(p, x + 1, y + 5, PAL.secondaryShade);
-  set(p, x + 2, y + 5, PAL.secondaryMid);
-  set(p, x + 3, y + 5, PAL.secondaryShade);
-
-  // Row 6 (gaiters/boots): . T . T .
-  set(p, x + 1, y + 6, PAL.tertiaryShade);
-  set(p, x + 3, y + 6, PAL.tertiaryShade);
-}
-
-// Add a small held tool to a figure at (x, y). `tool` is one of:
-//   'rammer'  — a vertical rammer rod extending up from the figure's hand
-//   'sponge'  — small bucket (woodShade square) at hand
-//   'lanyard' — short pull cord (1-px line)
-//   'cartridge' — small woodMid square (cartridge box)
-function drawCrewTool(p, x, y, tool) {
-  if (tool === 'rammer') {
-    // Vertical wood rod above figure's right hand.
-    for (let dy = -3; dy <= 1; dy++) {
-      set(p, x + 4, y + 3 + dy, PAL.woodMid);
-    }
-    set(p, x + 4, y - 1, PAL.outline);
-  } else if (tool === 'sponge') {
-    // Small bucket at left hand.
-    set(p, x - 1, y + 4, PAL.woodShade);
-    set(p, x - 1, y + 5, PAL.woodMid);
-  } else if (tool === 'lanyard') {
-    // Short cord trailing from the gunner's hand.
-    set(p, x + 5, y + 4, PAL.woodShade);
-    set(p, x + 6, y + 4, PAL.woodShade);
-  } else if (tool === 'cartridge') {
-    // Small cartridge held against torso.
-    set(p, x - 1, y + 3, PAL.woodMid);
-    set(p, x - 1, y + 4, PAL.woodShade);
-  }
-}
-
-// Helper: draw a crew figure with an optional tool. `role` selects the tool.
-function drawCrewMember(p, x, y, variant, role) {
-  drawCrewFigure(p, x, y, variant);
-  if (variant === 'reload') {
-    if (role === 'rammer') drawCrewTool(p, x, y, 'rammer');
-    else if (role === 'sponger') drawCrewTool(p, x, y, 'sponge');
-    else if (role === 'gunner') drawCrewTool(p, x, y, 'lanyard');
-    else if (role === 'powder') drawCrewTool(p, x, y, 'cartridge');
-  } else if (variant === 'idle') {
-    // light tool hint for non-idle visual interest
-    if (role === 'sponger') drawCrewTool(p, x, y, 'sponge');
-    else if (role === 'powder') drawCrewTool(p, x, y, 'cartridge');
-  } else if (variant === 'fire') {
-    if (role === 'gunner') drawCrewTool(p, x, y, 'lanyard');
-  }
-}
-
-// 8 facing-specific drawers. Each draws 4 crew figures positioned for
-// that facing. Crew figures are 5x7. They sit clear of the muzzle.
-
-// SOUTH (muzzle pointing toward viewer, S). Crew above the breech (y=8..15).
-function drawCrewSouth(variant) {
-  const p = makeSprite();
-  // 4 crew above the breech (north portion of cell), spread x≈4..28.
-  drawCrewMember(p, 4, 9, variant, 'gunner');
-  drawCrewMember(p, 11, 8, variant, 'sponger');
-  drawCrewMember(p, 18, 8, variant, 'rammer');
-  drawCrewMember(p, 25, 9, variant, 'powder');
-  return p;
-}
-
-// NORTH (muzzle pointing away). Crew below the breech (south portion).
-function drawCrewNorth(variant) {
-  const p = makeSprite();
-  drawCrewMember(p, 4, 23, variant, 'gunner');
-  drawCrewMember(p, 11, 24, variant, 'sponger');
-  drawCrewMember(p, 18, 24, variant, 'rammer');
-  drawCrewMember(p, 25, 23, variant, 'powder');
-  return p;
-}
-
-// EAST (muzzle right). Rammer between muzzle and right edge (above the muzzle line),
-// sponger above muzzle, gunner at trail-end (left), powder-monkey lower-left.
-function drawCrewEast(variant) {
-  const p = makeSprite();
-  // Gunner at trail-end (far left, near spade)
-  drawCrewMember(p, 1, 15, variant, 'gunner');
-  // Powder monkey lower-left
-  drawCrewMember(p, 6, 9, variant, 'powder');
-  // Sponger above the muzzle (clear of barrel) — y ~ 12, x ~ 22
-  drawCrewMember(p, 19, 10, variant, 'sponger');
-  // Rammer between muzzle (x=29) and right edge — y ~ 15, x near right edge
-  drawCrewMember(p, 26, 15, variant, 'rammer');
-  return p;
-}
-
-// WEST (mirror of east).
-function drawCrewWest(variant) {
-  const p = makeSprite();
-  // Gunner at trail-end (far right, near spade)
-  drawCrewMember(p, 26, 15, variant, 'gunner');
-  // Powder monkey lower-right
-  drawCrewMember(p, 21, 9, variant, 'powder');
-  // Sponger above the muzzle area
-  drawCrewMember(p, 8, 10, variant, 'sponger');
-  // Rammer near left edge (muzzle side)
-  drawCrewMember(p, 1, 15, variant, 'rammer');
-  return p;
-}
-
-// NORTHEAST (muzzle to NE). Two crew flanking trail diagonal-rear (SW corner),
-// two flanking wheels diagonal-front (NE side).
-function drawCrewNortheast(variant) {
-  const p = makeSprite();
-  // Trail-rear flank (SW corner): gunner + powder
-  drawCrewMember(p, 2, 22, variant, 'gunner');
-  drawCrewMember(p, 7, 26, variant, 'powder');
-  // Wheel-front flank (NE side): rammer + sponger
-  drawCrewMember(p, 22, 9, variant, 'sponger');
-  drawCrewMember(p, 26, 14, variant, 'rammer');
-  return p;
-}
-
-// NORTHWEST (mirror of NE).
-function drawCrewNorthwest(variant) {
-  const p = makeSprite();
-  // Trail-rear flank (SE corner)
-  drawCrewMember(p, 25, 22, variant, 'gunner');
-  drawCrewMember(p, 20, 26, variant, 'powder');
-  // Wheel-front flank (NW side)
-  drawCrewMember(p, 5, 9, variant, 'sponger');
-  drawCrewMember(p, 1, 14, variant, 'rammer');
-  return p;
-}
-
-// SOUTHEAST (muzzle to SE). Trail extends NW. Two crew flanking trail-rear (NW corner),
-// two flanking wheels (SE side).
-function drawCrewSoutheast(variant) {
-  const p = makeSprite();
-  // Trail-rear flank (NW corner)
-  drawCrewMember(p, 2, 7, variant, 'gunner');
-  drawCrewMember(p, 7, 13, variant, 'powder');
-  // Wheel-front flank (SE side near muzzle corner)
-  drawCrewMember(p, 22, 17, variant, 'sponger');
-  drawCrewMember(p, 26, 22, variant, 'rammer');
-  return p;
-}
-
-// SOUTHWEST (mirror).
-function drawCrewSouthwest(variant) {
-  const p = makeSprite();
-  // Trail-rear flank (NE corner)
-  drawCrewMember(p, 25, 7, variant, 'gunner');
-  drawCrewMember(p, 20, 13, variant, 'powder');
-  // Wheel-front flank (SW side)
-  drawCrewMember(p, 5, 17, variant, 'sponger');
-  drawCrewMember(p, 1, 22, variant, 'rammer');
-  return p;
-}
-
-// =====================================================================
 // FACING MAP & FILE EMISSION
 // =====================================================================
 
@@ -1172,19 +967,6 @@ const DIRS = [
 function fsFor(kit) {
   return DIRS.find((d) => d.kit === kit).fs;
 }
-
-const CREW_VARIANTS = ['idle', 'fire', 'reload'];
-
-const CREW_DRAWERS = {
-  north: drawCrewNorth,
-  northeast: drawCrewNortheast,
-  east: drawCrewEast,
-  southeast: drawCrewSoutheast,
-  south: drawCrewSouth,
-  southwest: drawCrewSouthwest,
-  west: drawCrewWest,
-  northwest: drawCrewNorthwest,
-};
 
 // Emit wheels for each facing.
 function emitAllWheels() {
@@ -1258,15 +1040,6 @@ function emitAllHandspikes() {
   save(drawHandspike34('NW'), 'tools/cannon12-handspike-northwest-reload.png');
 }
 
-function emitAllCrew() {
-  for (const { fs } of DIRS) {
-    const drawer = CREW_DRAWERS[fs];
-    for (const variant of CREW_VARIANTS) {
-      save(drawer(variant), `crew/cannon12-crew-${fs}-${variant}.png`);
-    }
-  }
-}
-
 // =====================================================================
 // REGISTRY (public/components/index.json) update — append cannon entries
 // only if absent. Idempotent.
@@ -1329,17 +1102,6 @@ function registryEntries() {
       pivot: [16, 32],
       notes: '12-pdr cannon handspike, make-ready pose only.',
     });
-    for (const variant of CREW_VARIANTS) {
-      entries.push({
-        id: `cannon12-crew-${fs}-${variant}`,
-        type: 'crew',
-        category: 'crew-line',
-        facings: [kit],
-        path: `crew/cannon12-crew-${fs}-${variant}.png`,
-        pivot: [16, 32],
-        notes: '12-pdr cannon line-infantry crew (procedural).',
-      });
-    }
   }
   return entries;
 }
@@ -1382,8 +1144,6 @@ console.log('  Smoke (fire pose):');
 emitAllSmokes();
 console.log('  Handspikes (make-ready pose):');
 emitAllHandspikes();
-console.log('  Crew (line infantry, 8 facings x 3 variants):');
-emitAllCrew();
 console.log('Updating component registry:');
 updateRegistry();
 console.log('Done.');

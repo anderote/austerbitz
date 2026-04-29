@@ -293,7 +293,7 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!, damageTexts);
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!, damageTexts, p.crit[i] as 0 | 1);
 
         if (kind === ProjectileKind.Musket) {
           freeProjectile(p, i);

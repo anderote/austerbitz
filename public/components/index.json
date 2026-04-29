@@ -77,16 +77,6 @@
       "notes": "Brown Bess musket in idle pose."
     },
     {
-      "id": "shadow-north",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "N"
-      ],
-      "path": "shadow/north/default.png",
-      "notes": "Ground shadow strip."
-    },
-    {
       "id": "body-northeast-base",
       "type": "anatomy",
       "category": "body",
@@ -161,16 +151,6 @@
       ],
       "path": "weapon/musket/northeast/idle.png",
       "notes": "Brown Bess musket in idle pose."
-    },
-    {
-      "id": "shadow-northeast",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "NE"
-      ],
-      "path": "shadow/northeast/default.png",
-      "notes": "Ground shadow strip."
     },
     {
       "id": "body-east-base",
@@ -249,16 +229,6 @@
       "notes": "Brown Bess musket in idle pose."
     },
     {
-      "id": "shadow-east",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "E"
-      ],
-      "path": "shadow/east/default.png",
-      "notes": "Ground shadow strip."
-    },
-    {
       "id": "body-southeast-base",
       "type": "anatomy",
       "category": "body",
@@ -335,16 +305,6 @@
       "notes": "Brown Bess musket in idle pose."
     },
     {
-      "id": "shadow-southeast",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "SE"
-      ],
-      "path": "shadow/southeast/default.png",
-      "notes": "Ground shadow strip."
-    },
-    {
       "id": "body-south-base",
       "type": "anatomy",
       "category": "body",
@@ -419,16 +379,6 @@
       ],
       "path": "weapon/musket/south/idle.png",
       "notes": "Brown Bess musket in idle pose."
-    },
-    {
-      "id": "shadow-south",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "S"
-      ],
-      "path": "shadow/south/default.png",
-      "notes": "Ground shadow strip."
     },
     {
       "id": "coat-line-south-make-ready",
@@ -567,16 +517,6 @@
       "notes": "Brown Bess musket in idle pose."
     },
     {
-      "id": "shadow-southwest",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "SW"
-      ],
-      "path": "shadow/southwest/default.png",
-      "notes": "Ground shadow strip."
-    },
-    {
       "id": "body-west-base",
       "type": "anatomy",
       "category": "body",
@@ -653,16 +593,6 @@
       "notes": "Brown Bess musket in idle pose."
     },
     {
-      "id": "shadow-west",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "W"
-      ],
-      "path": "shadow/west/default.png",
-      "notes": "Ground shadow strip."
-    },
-    {
       "id": "body-northwest-base",
       "type": "anatomy",
       "category": "body",
@@ -737,16 +667,6 @@
       ],
       "path": "weapon/musket/northwest/idle.png",
       "notes": "Brown Bess musket in idle pose."
-    },
-    {
-      "id": "shadow-northwest",
-      "type": "fx",
-      "category": "shadow",
-      "facings": [
-        "NW"
-      ],
-      "path": "shadow/northwest/default.png",
-      "notes": "Ground shadow strip."
     },
     {
       "id": "coat-line-east-present",
@@ -5001,342 +4921,6 @@
         "NW"
       ],
       "path": "uniform/lower/trousers/northwest-run-4.png"
-    },
-    {
-      "id": "cannon12-crew-north-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "N"
-      ],
-      "path": "crew/cannon12-crew-north-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-north-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "N"
-      ],
-      "path": "crew/cannon12-crew-north-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-north-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "N"
-      ],
-      "path": "crew/cannon12-crew-north-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-northeast-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "NE"
-      ],
-      "path": "crew/cannon12-crew-northeast-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-northeast-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "NE"
-      ],
-      "path": "crew/cannon12-crew-northeast-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-northeast-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "NE"
-      ],
-      "path": "crew/cannon12-crew-northeast-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-east-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "E"
-      ],
-      "path": "crew/cannon12-crew-east-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-east-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "E"
-      ],
-      "path": "crew/cannon12-crew-east-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-east-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "E"
-      ],
-      "path": "crew/cannon12-crew-east-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-southeast-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "SE"
-      ],
-      "path": "crew/cannon12-crew-southeast-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-southeast-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "SE"
-      ],
-      "path": "crew/cannon12-crew-southeast-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-southeast-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "SE"
-      ],
-      "path": "crew/cannon12-crew-southeast-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-south-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "S"
-      ],
-      "path": "crew/cannon12-crew-south-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-south-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "S"
-      ],
-      "path": "crew/cannon12-crew-south-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-south-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "S"
-      ],
-      "path": "crew/cannon12-crew-south-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-southwest-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "SW"
-      ],
-      "path": "crew/cannon12-crew-southwest-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-southwest-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "SW"
-      ],
-      "path": "crew/cannon12-crew-southwest-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-southwest-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "SW"
-      ],
-      "path": "crew/cannon12-crew-southwest-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-west-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "W"
-      ],
-      "path": "crew/cannon12-crew-west-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-west-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "W"
-      ],
-      "path": "crew/cannon12-crew-west-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-west-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "W"
-      ],
-      "path": "crew/cannon12-crew-west-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-northwest-idle",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "NW"
-      ],
-      "path": "crew/cannon12-crew-northwest-idle.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-northwest-fire",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "NW"
-      ],
-      "path": "crew/cannon12-crew-northwest-fire.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
-    },
-    {
-      "id": "cannon12-crew-northwest-reload",
-      "type": "crew",
-      "category": "crew-line",
-      "facings": [
-        "NW"
-      ],
-      "path": "crew/cannon12-crew-northwest-reload.png",
-      "pivot": [
-        16,
-        32
-      ],
-      "notes": "12-pdr cannon line-infantry crew (procedural)."
     }
   ]
 }

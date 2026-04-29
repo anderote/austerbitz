@@ -38,6 +38,12 @@ export interface CanisterProfile {
   muzzleSpeed: number;
   speedJitter: number;       // ±fraction of muzzleSpeed
   ballDamage: number;
+  /** Per-ball ±fraction variance, uniform. Omit / 0 = deterministic. */
+  ballDamageVarianceFrac?: number;
+  /** Per-ball 0..1 crit chance. Omit / 0 = none. */
+  ballCritChance?: number;
+  /** Per-ball crit multiplier. Default 1.5. */
+  ballCritMul?: number;
   ballMass: number;
   ballMaxLife: number;
   muzzleSmokeProfile: PuffProfile;
@@ -59,6 +65,10 @@ export interface WeaponProfile {
      * roll in [0.67·damage, 1.33·damage]. Omit / 0 = deterministic.
      */
     damageVarianceFrac?: number;
+    /** 0..1 chance per shot to trigger a critical hit. Omit / 0 = none. */
+    critChance?: number;
+    /** Damage multiplier on crit. Default 1.5. */
+    critMul?: number;
     accuracySpreadRad?: number; // optional aim cone
     maxLife: number;            // s
     /** For arcing shots only. */

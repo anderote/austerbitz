@@ -1,5 +1,6 @@
 import type { CanisterProfile } from '../data/weapons/types';
 import { gaussian, type Rng } from '../util/rng';
+import { rollDamage } from './damage-roll';
 
 export const ProjectileKind = {
   Musket:    0,
@@ -28,6 +29,7 @@ export interface Projectiles {
   mass: Float32Array;            // for impulse on hit
   ricochets: Uint8Array;         // remaining bounces (solid-shot)
   fuseT: Float32Array;           // shell fuse countdown (else unused)
+  crit: Uint8Array;              // 1 = was rolled as a critical hit at fire time
 
   // Free-list
   freeListHead: number;
@@ -59,6 +61,7 @@ export function createProjectiles(capacity: number): Projectiles {
     mass: new Float32Array(capacity),
     ricochets: new Uint8Array(capacity),
     fuseT: new Float32Array(capacity),
+    crit: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -82,6 +85,7 @@ export function allocProjectile(p: Projectiles): number {
   p.mass[id] = 0;
   p.ricochets[id] = 0;
   p.fuseT[id] = 0;
+  p.crit[id] = 0;
   return id;
 }
 
@@ -103,6 +107,7 @@ export function spawnMusketBall(
   mass: number,
   maxLife: number,
   ownerId: number,
+  crit: 0 | 1 = 0,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -122,6 +127,7 @@ export function spawnMusketBall(
   p.ricochets[id] = 0;
   p.fuseT[id] = 0;
   p.ownerId[id] = ownerId;
+  p.crit[id] = crit;
   return id;
 }
 
@@ -135,6 +141,7 @@ export function spawnSolidShot(
   maxLife: number,
   ricochets: number,
   ownerId: number,
+  crit: 0 | 1 = 0,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -154,6 +161,7 @@ export function spawnSolidShot(
   p.ricochets[id] = ricochets;
   p.fuseT[id] = 0;
   p.ownerId[id] = ownerId;
+  p.crit[id] = crit;
   return id;
 }
 
@@ -167,6 +175,7 @@ export function spawnShell(
   maxLife: number,
   fuseT: number,
   ownerId: number,
+  crit: 0 | 1 = 0,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -186,6 +195,7 @@ export function spawnShell(
   p.ricochets[id] = 0;
   p.fuseT[id] = fuseT;
   p.ownerId[id] = ownerId;
+  p.crit[id] = crit;
   return id;
 }
 
@@ -208,15 +218,23 @@ export function spawnCanister(
     const j = gaussian(rng) * sigma;
     const a = baseAngle + j;
     const sp = profile.muzzleSpeed * (1 + (rng.next() * 2 - 1) * profile.speedJitter);
+    const roll = rollDamage(
+      profile.ballDamage,
+      profile.ballDamageVarianceFrac ?? 0,
+      profile.ballCritChance ?? 0,
+      profile.ballCritMul ?? 1.5,
+      rng,
+    );
     spawnMusketBall(
       p, ox, oy,
       Math.cos(a), Math.sin(a),
       team,
-      profile.ballDamage,
+      roll.damage,
       sp,
       profile.ballMass,
       profile.ballMaxLife,
       ownerId,
+      roll.crit ? 1 : 0,
     );
   }
 }

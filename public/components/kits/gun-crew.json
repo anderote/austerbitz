@@ -1,0 +1,146 @@
+{
+  "id": "gun-crew",
+  "label": "Gun Crew",
+  "facings": {
+    "N": {
+      "cell": [1, 2],
+      "layers": [
+        "body-north-base",
+        "trousers-north",
+        "coat-line-north",
+        "shako-standard-north"
+      ]
+    },
+    "NE": {
+      "cell": [2, 0],
+      "layers": [
+        "body-northeast-base",
+        "trousers-northeast",
+        "coat-line-northeast",
+        "shako-standard-northeast"
+      ]
+    },
+    "E": {
+      "cell": [2, 1],
+      "layers": [
+        "body-east-base",
+        "trousers-east",
+        "coat-line-east",
+        "shako-standard-east"
+      ]
+    },
+    "SE": {
+      "cell": [2, 2],
+      "layers": [
+        "body-southeast-base",
+        "trousers-southeast",
+        "coat-line-southeast",
+        "shako-standard-southeast"
+      ]
+    },
+    "S": {
+      "cell": [1, 1],
+      "layers": [
+        "body-south-base",
+        "trousers-south",
+        "coat-line-south",
+        "shako-standard-south"
+      ]
+    },
+    "SW": {
+      "cell": [0, 2],
+      "layers": [
+        "body-southwest-base",
+        "trousers-southwest",
+        "coat-line-southwest",
+        "shako-standard-southwest"
+      ]
+    },
+    "W": {
+      "cell": [0, 1],
+      "layers": [
+        "body-west-base",
+        "trousers-west",
+        "coat-line-west",
+        "shako-standard-west"
+      ]
+    },
+    "NW": {
+      "cell": [0, 0],
+      "layers": [
+        "body-northwest-base",
+        "trousers-northwest",
+        "coat-line-northwest",
+        "shako-standard-northwest"
+      ]
+    }
+  },
+  "poses": {
+    "idle": {
+      "N": {
+        "layers": [
+          "body-north-base",
+          "trousers-north",
+          "coat-line-north",
+          "shako-standard-north"
+        ]
+      },
+      "NE": {
+        "layers": [
+          "body-northeast-base",
+          "trousers-northeast",
+          "coat-line-northeast",
+          "shako-standard-northeast"
+        ]
+      },
+      "E": {
+        "layers": [
+          "body-east-base",
+          "trousers-east",
+          "coat-line-east",
+          "shako-standard-east"
+        ]
+      },
+      "SE": {
+        "layers": [
+          "body-southeast-base",
+          "trousers-southeast",
+          "coat-line-southeast",
+          "shako-standard-southeast"
+        ]
+      },
+      "S": {
+        "layers": [
+          "body-south-base",
+          "trousers-south",
+          "coat-line-south",
+          "shako-standard-south"
+        ]
+      },
+      "SW": {
+        "layers": [
+          "body-southwest-base",
+          "trousers-southwest",
+          "coat-line-southwest",
+          "shako-standard-southwest"
+        ]
+      },
+      "W": {
+        "layers": [
+          "body-west-base",
+          "trousers-west",
+          "coat-line-west",
+          "shako-standard-west"
+        ]
+      },
+      "NW": {
+        "layers": [
+          "body-northwest-base",
+          "trousers-northwest",
+          "coat-line-northwest",
+          "shako-standard-northwest"
+        ]
+      }
+    }
+  }
+}

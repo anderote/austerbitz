@@ -46,7 +46,6 @@ const PALETTE_BASE: Record<string, [number, number, number, number]> = {
   'g': [180, 188, 200, 255],  // steel: sabre, helmet
   'm': [60, 40, 26, 255],     // saddle leather
   'w': [236, 232, 222, 255],  // belts / breeches / blanket
-  's': [60, 56, 52, 110],     // ground shadow
   'W': [255, 255, 255, 255],  // tint sample cell
 };
 
@@ -75,7 +74,7 @@ const POSE_FRONT = [
   '..h..h.h..h....', // 16
   '..k..k.k..k....', // 17 hooves
   '..k..k.k..k....', // 18
-  '..sssssssss....', // 19 ground shadow
+  '...............', // 19 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_FRONT_DIAG = [
@@ -98,7 +97,7 @@ const POSE_FRONT_DIAG = [
   '..h..h.h..hh...', // 16
   '..k..k.k..kk...', // 17 hooves
   '..k..k.k..kk...', // 18
-  '..ssssssssss...', // 19 ground shadow
+  '...............', // 19 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_SIDE = [
@@ -144,7 +143,7 @@ const POSE_BACK = [
   '..H..H.H..H....', // 16
   '..k..k.k..k....', // 17 hooves
   '..k..k.k..k....', // 18
-  '..sssssssss....', // 19 ground shadow
+  '...............', // 19 (shadows drawn separately by the runtime projection pass)
 ];
 
 const POSE_BACK_DIAG = [
@@ -167,7 +166,7 @@ const POSE_BACK_DIAG = [
   '..H..H.H..HH...', // 16
   '..k..k.k..kk...', // 17 hooves
   '..k..k.k..kk...', // 18
-  '..ssssssssss...', // 19 ground shadow
+  '...............', // 19 (shadows drawn separately by the runtime projection pass)
 ];
 
 const TINT_CELL = Array.from({ length: CUIRASSIER_CELL_H }, () =>
