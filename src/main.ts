@@ -18,6 +18,8 @@ import { tickDebris } from './sim/systems/debris-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
 import { createDeathDropsSystem } from './sim/systems/death-drops-system';
+import { setKitGibTable } from './sim/systems/combat-events';
+import { buildKitGibTable } from './sim/kit-gib-table';
 import { marchSystem } from './sim/systems/march-system';
 import { assignIdentity } from './sim/spawn-identity';
 import type { System } from './sim/world';
@@ -75,10 +77,12 @@ try {
 }
 const debrisAtlas = await loadDebrisAtlas(gl);
 const kits = await loadKits();
+const kitGibTable = buildKitGibTable(kits);
+setKitGibTable(kitGibTable);
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   map.size.w, map.size.h, poseAtlas, kits,
-  debrisAtlas, undefined, map,
+  debrisAtlas, undefined, map, kitGibTable,
 );
 
 // Dev-mode live-reload: poll kit JSONs for per-(pose, facing) weapon edits
@@ -195,7 +199,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 100;     // metres between the two armies' front ranks
+const BATTLE_GAP = 75;      // metres between the two armies' front ranks
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 

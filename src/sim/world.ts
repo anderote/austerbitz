@@ -1,5 +1,10 @@
 import { createEntities, type Entities } from './entities';
 import { createGrid, gridRebuild, type Grid } from './spatial/grid';
+import {
+  createTeamOccupancy,
+  rebuildTeamOccupancy,
+  type TeamOccupancy,
+} from './spatial/team-occupancy';
 import { createRng, type Rng } from '../util/rng';
 import { createBloodSplats, type BloodSplats } from './blood-splats';
 import { createCraterSplats, type CraterSplats } from './crater-splats';
@@ -32,6 +37,8 @@ export interface World {
   cfg: WorldConfig;
   entities: Entities;
   grid: Grid;
+  /** Coarse per-team occupancy grid — gates expensive fine grid queries. */
+  teamOccupancy: TeamOccupancy;
   rng: Rng;
   tickCount: number;
   simTime: number;
@@ -68,10 +75,19 @@ export function createWorld(cfg: WorldConfig): World {
     cellSize,
     capacity: cfg.capacity,
   });
+  // numTeams: 4 caps the coarse occupancy at the current max number of teams
+  // we ever scan. Bump this if the game ever uses more.
+  const teamOccupancy = createTeamOccupancy({
+    numTeams: 4,
+    cellSize: 32,
+    minX: 0, minY: 0,
+    maxX: cfg.mapSize, maxY: cfg.mapSize,
+  });
   return {
     cfg,
     entities: createEntities(cfg.capacity),
     grid,
+    teamOccupancy,
     rng: createRng(cfg.seed),
     tickCount: 0,
     simTime: 0,
@@ -96,10 +112,20 @@ export function createWorld(cfg: WorldConfig): World {
 export function rebuildGrid(world: World): void {
   const e = world.entities;
   gridRebuild(world.grid, e.aliveIds, e.count, e.posX, e.posY);
+  // Coarse per-team occupancy is a sibling spatial structure; rebuild it
+  // alongside the fine grid so callers (incl. tests that bypass tickWorld)
+  // always see a consistent broadphase pair.
+  rebuildTeamOccupancy(world.teamOccupancy, e.aliveIds, e.count, e.posX, e.posY, e.team);
 }
 
 export function tickWorld(world: World, dt: number): void {
-  profiler.time('sim/gridRebuild', () => rebuildGrid(world));
+  const e = world.entities;
+  profiler.time('sim/gridRebuild', () =>
+    gridRebuild(world.grid, e.aliveIds, e.count, e.posX, e.posY),
+  );
+  profiler.time('sim/teamOccupancyRebuild', () =>
+    rebuildTeamOccupancy(world.teamOccupancy, e.aliveIds, e.count, e.posX, e.posY, e.team),
+  );
   for (const sys of world.systems) {
     const label = `sim/${sys.name || 'anon'}`;
     profiler.begin(label);

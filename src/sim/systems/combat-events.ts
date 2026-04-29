@@ -6,7 +6,18 @@ import type { Rng } from '../../util/rng';
 import type { BloodSplats } from '../blood-splats';
 import type { Debris } from '../debris';
 import { spawnGibs } from './debris-emit';
+import { EMPTY_KIT_GIB_TABLE, type KitGibTable } from '../kit-gib-table';
 import { effectiveArmor, promote } from '../veterancy';
+
+/**
+ * Module-level pointer to the per-kit gib lookup. Built once at world bootstrap
+ * (after kits load) and used by `applyHit` to spawn kit-aware debris without
+ * having to thread the table through every call site.
+ */
+let kitGibTable: KitGibTable = EMPTY_KIT_GIB_TABLE;
+export function setKitGibTable(table: KitGibTable): void {
+  kitGibTable = table;
+}
 
 /** Impulse magnitude (N·s) at or above which a kill ragdolls instead of falling in place. */
 export const KILL_RAGDOLL_THRESHOLD = 8000;
@@ -109,7 +120,10 @@ export function applyHit(
       enterDying(e, id);
     }
     spawnBlood(particles, px, py, impMag, rng, impX, impY);
-    spawnGibs(debris, rng, kind, px, py, impX, impY, e.team[id]!);
+    spawnGibs(
+      debris, rng, kind, px, py, impX, impY,
+      e.team[id]!, true, e.kindId[id]!, e.facing[id]!, kitGibTable,
+    );
 
     // Kill + XP credit — same guard as damage credit, additionally requires lethal.
     if (attackerValid) {
@@ -130,5 +144,8 @@ export function applyHit(
   spawnBlood(particles, px, py, impMag * 0.4, rng, impX, impY);
   // Non-lethal musket hits get a small chance of a severed limb — internally
   // gated by MUSKET_NONLETHAL_GIB_CHANCE; other hit kinds short-circuit.
-  spawnGibs(debris, rng, kind, px, py, impX, impY, e.team[id]!, false);
+  spawnGibs(
+    debris, rng, kind, px, py, impX, impY,
+    e.team[id]!, false, e.kindId[id]!, e.facing[id]!, kitGibTable,
+  );
 }

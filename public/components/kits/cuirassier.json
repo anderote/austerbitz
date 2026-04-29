@@ -1195,5 +1195,6 @@
   },
   "weapon": {
     "layerPrefix": "saber"
-  }
+  },
+  "gibTint": [200, 180, 150]
 }

@@ -24,10 +24,12 @@ import { PLAYER_TEAM } from '../sim/player';
 import type { PoseAtlas } from './poses/atlas';
 import type { KitConfig } from './poses/kit-loader';
 import type { DebrisAtlas } from './debris-atlas';
+import type { KitGibTable } from '../sim/kit-gib-table';
 import { createCameraShake, kickShake, advanceShake, currentOffset } from './camera-shake';
 import { clearShakeRequests } from '../sim/shake-requests';
 import { clearCraterSplats } from '../sim/crater-splats';
 import { createRng } from '../util/rng';
+import { profiler } from '../dev/profiler';
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
@@ -87,6 +89,7 @@ export function createRenderer(
   debrisAtlas: DebrisAtlas | null = null,
   debrisCapacity = 8192,
   map: WorldMap | null = null,
+  kitGibTable: KitGibTable | null = null,
 ): Renderer {
   const terrain = createTerrainPass(gl);
   const bloodStain = createBloodStainPass(gl, worldW, worldH);
@@ -108,7 +111,17 @@ export function createRenderer(
   const puffsPass = createPuffPass(gl, puffCapacity);
   const projectilesPass = createProjectilePass(gl, projectileCapacity * 2);
     // *2 because cannonballs contribute both a shadow AND a ball instance
-  const debrisPass = debrisAtlas ? createDebrisPass(gl, debrisCapacity) : null;
+  const debrisPass = debrisAtlas
+    ? createDebrisPass(
+        gl,
+        debrisCapacity,
+        sprites.getAtlas(),
+        kits,
+        kitGibTable,
+        sprites.getWeaponUvByPrefix(),
+        sprites.getHeadUvByPrefix(),
+      )
+    : null;
   const grassTuftsPass: GrassTuftsPass | null = map ? createGrassTuftsPass(gl, map) : null;
   const treesPass: TreesPass | null = map ? createTreesPass(gl, map) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
@@ -155,9 +168,12 @@ export function createRenderer(
 
       // Bake any queued blood splats into the persistent stain texture before
       // terrain samples it.
+      profiler.begin('render/blood-flush');
       bloodStain.flush();
+      profiler.end('render/blood-flush');
 
       // Bake any queued crater splats into the persistent stain texture.
+      profiler.begin('render/crater-flush');
       for (let i = 0; i < world.craterSplats.count; i++) {
         craterStain.splat(
           world.craterSplats.posX[i]!,
@@ -168,34 +184,47 @@ export function createRenderer(
       }
       clearCraterSplats(world.craterSplats);
       craterStain.flush();
+      profiler.end('render/crater-flush');
 
       gl.clearColor(0, 0, 0, 1);
       gl.depthMask(true);                                       // allow depth clear
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.depthMask(false);
-      terrain.draw(cam);
-      if (grassTuftsPass) grassTuftsPass.draw(cam);
+      profiler.begin('render/terrain'); terrain.draw(cam); profiler.end('render/terrain');
+      if (grassTuftsPass) { profiler.begin('render/grass'); grassTuftsPass.draw(cam); profiler.end('render/grass'); }
       if (opts.showMovePreview) {
+        profiler.begin('render/team-range');
         selectionPass.drawTeamRange(world, cam, sel, PLAYER_TEAM);
+        profiler.end('render/team-range');
       }
-      selectionPass.drawDiscs(world, cam, sel, drag);
-      droppedItems.draw(world, cam);
-      sprites.draw(world, cam);
-      if (treesPass) treesPass.draw(cam);
+      profiler.begin('render/sel-discs'); selectionPass.drawDiscs(world, cam, sel, drag); profiler.end('render/sel-discs');
+      profiler.begin('render/dropped-items'); droppedItems.draw(world, cam); profiler.end('render/dropped-items');
+      profiler.begin('render/sprites'); sprites.draw(world, cam); profiler.end('render/sprites');
+      if (treesPass) { profiler.begin('render/trees'); treesPass.draw(cam); profiler.end('render/trees'); }
       // Gib chunks: drawn after bodies (so they overlay the soldier they came
       // from) but before projectiles/puffs/particles (which are above-soldier
       // FX). Health bars are still on top.
       if (debrisPass && debrisAtlas) {
+        profiler.begin('render/debris');
         debrisPass.draw(world.debris, debrisAtlas, cam, GIB_WORLD_UNITS_PER_PIXEL);
+        profiler.end('render/debris');
       }
-      projectilesPass.draw(projectiles, cam);
+      profiler.begin('render/projectiles'); projectilesPass.draw(projectiles, cam); profiler.end('render/projectiles');
       // Puffs first (under), sparks after (over).
-      puffsPass.draw(puffs, cam);
-      particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK);
-      ringPass.draw(particlePool, cam);
-      selectionPass.draw(world, cam, sel, drag, formation);
-      if (opts.showMovePreview) selectionPass.drawMovePreview(world, cam, sel);
-      if (opts.showHealthBars) healthBarPass.draw(world, cam);
+      profiler.begin('render/puffs'); puffsPass.draw(puffs, cam); profiler.end('render/puffs');
+      profiler.begin('render/particles'); particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK); profiler.end('render/particles');
+      profiler.begin('render/rings'); ringPass.draw(particlePool, cam); profiler.end('render/rings');
+      profiler.begin('render/selection'); selectionPass.draw(world, cam, sel, drag, formation); profiler.end('render/selection');
+      if (opts.showMovePreview) {
+        profiler.begin('render/move-preview');
+        selectionPass.drawMovePreview(world, cam, sel);
+        profiler.end('render/move-preview');
+      }
+      if (opts.showHealthBars) {
+        profiler.begin('render/health-bars');
+        healthBarPass.draw(world, cam);
+        profiler.end('render/health-bars');
+      }
 
       // Revert the per-frame jitter so the persistent camera state is unshaken.
       cam.center.x -= off.x;

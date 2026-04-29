@@ -226,21 +226,20 @@ describe('combatSystem', () => {
     expect(world.entities.targetId[shooter]).toBe(target);
   });
 
-  it('acquires one of multiple in-range enemies (first-valid, no closest guarantee)', () => {
+  it('acquires the closest of multiple in-range enemies', () => {
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    const a = spawnLineInfantry(world, 1, 70, 0);
-    const b = spawnLineInfantry(world, 1, 30, 0);
+    spawnLineInfantry(world, 1, 70, 0);
+    const near = spawnLineInfantry(world, 1, 30, 0);
 
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
-    const picked = world.entities.targetId[shooter]!;
-    expect(picked === a || picked === b).toBe(true);
+    expect(world.entities.targetId[shooter]).toBe(near);
   });
 
   it('skips enemies in Dying / Dead / Ragdoll and falls through to the next-nearest', () => {

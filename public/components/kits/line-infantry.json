@@ -1447,6 +1447,7 @@
   "weapon": {
     "layerPrefix": "musket-brown-bess"
   },
+  "gibTint": [240, 230, 210],
   "head": {
     "layerPrefix": "shako-standard",
     "facings": {

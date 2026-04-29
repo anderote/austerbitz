@@ -2,9 +2,11 @@ import type { System } from '../world';
 import { triggerFire, type FireOrders } from './state-system';
 import { EntityState, FireStance } from '../entities';
 import { gridQueryRect } from '../spatial/grid';
+import { hasHostileNear } from '../spatial/team-occupancy';
 import { getUnitKindByIndex } from '../../data/units';
 import { hasRecentFire, hasRecentFireAnyRank } from '../fire-signal';
 import { inferFormationRank } from '../formation-rank';
+import { profiler } from '../../dev/profiler';
 
 // Block firing while marching at full speed, but allow the formation
 // "settle drift" (orders-system sends parked/idle units back to their rest
@@ -72,11 +74,13 @@ export function createCombatSystem(fireOrders: FireOrders): System {
       // Refresh formationRank on this entity's stripe tick. Cheap: a single
       // grid query at restPos. Decoupled from target acquisition.
       if ((tick + id) % SCAN_PERIOD === 0) {
+        profiler.begin('combat/rankScan');
         e.formationRank[id] = inferFormationRank(
           e, grid, id,
           kind.baseStats.formationSpacing.x,
           kind.baseStats.formationSpacing.y,
         );
+        profiler.end('combat/rankScan');
       }
 
       const range = kind.baseStats.weaponRange;
@@ -87,9 +91,9 @@ export function createCombatSystem(fireOrders: FireOrders): System {
 
       // Step 1: acquire a valid target. Fast-path on prev target if still
       // alive + in weapon range; otherwise scan-throttled grid query at
-      // weaponRange and take the first valid opposing-team entity. Distance
-      // is checked against rangeSq because the grid rect overscans the
-      // inscribed circle by ~21% at the corners.
+      // weaponRange and pick the closest valid opposing-team entity by
+      // squared distance. Distance is checked against rangeSq because the
+      // grid rect overscans the inscribed circle by ~21% at the corners.
       let targetId = -1;
       const prev = e.targetId[id]!;
       if (prev !== -1 && e.alive[prev] === 1 && e.team[prev] !== team) {
@@ -108,12 +112,18 @@ export function createCombatSystem(fireOrders: FireOrders): System {
       }
       if (targetId === -1) {
         if ((tick + id) % SCAN_PERIOD !== 0) continue;
+        profiler.begin('combat/coarseGate');
+        const anyHostile = hasHostileNear(world.teamOccupancy, team, px, py, range);
+        profiler.end('combat/coarseGate');
+        if (!anyHostile) continue;
+        profiler.begin('combat/acquireScan');
         const count = gridQueryRect(
           grid,
           px - range, py - range,
           px + range, py + range,
           candidateBuf,
         );
+        let bestDistSq = rangeSq;
         for (let k = 0; k < count; k++) {
           const cid = candidateBuf[k]!;
           if (e.alive[cid] === 0) continue;
@@ -126,12 +136,14 @@ export function createCombatSystem(fireOrders: FireOrders): System {
           ) continue;
           const dx = e.posX[cid]! - px;
           const dy = e.posY[cid]! - py;
-          if (dx * dx + dy * dy > rangeSq) continue;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > bestDistSq) continue;
+          bestDistSq = d2;
           targetId = cid;
-          e.targetId[id] = cid;
-          break;
         }
+        profiler.end('combat/acquireScan');
         if (targetId === -1) continue;
+        e.targetId[id] = targetId;
       }
 
       const tx = e.posX[targetId]!;

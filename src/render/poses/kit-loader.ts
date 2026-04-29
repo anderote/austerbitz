@@ -18,6 +18,14 @@ export interface KitConfig {
    * (one source PNG per facing, no palette) — distinct from the weapon path.
    */
   head?: HeadBlock;
+  /**
+   * Per-kit identity colour for cheap kit-aware debris. Multiplied into the
+   * generic limb chunks (legs/arms) at debris-pass draw time so a peasant's
+   * legs read differently from a line-infantry leg even though both reuse the
+   * same generic 8x8 sprite. Combined with the team's regiment tint so the
+   * faction is also visible. RGB 0..255, omitted = neutral white (no tint).
+   */
+  gibTint?: [number, number, number];
 }
 
 /** Texture-space transform applied when re-using a head facing's sprite. */
