@@ -4,8 +4,17 @@ import { renderCellInto } from './cell-render';
 import { mountUnitPicker, type UnitPickerKit } from './unit-picker';
 import { mountPoseStrip, type PoseStripPose } from './pose-strip';
 import { mountVariantsStrip } from './variants-strip';
-import { loadPixelEdits, lookupEdits, type PixelEditsTree, type PixelEdit } from './pixel-edits-overlay';
+import {
+  applyEditsToContext,
+  loadPixelEdits,
+  lookupEdits,
+  setPixel,
+  type PixelEditsTree,
+  type PixelEdit,
+} from './pixel-edits-overlay';
+import { loadImage } from './image-cache';
 import { mountPaintTool } from './paint-tool';
+import { mountPaintPalette } from './paint-palette';
 
 // Component registry types ----------------------------------------------------
 type ComponentEntry = {
@@ -151,6 +160,24 @@ let selectedVariantIdx = 0;
 let variantsStrip: ReturnType<typeof mountVariantsStrip> | null = null;
 // Paint tool handle (initialized in main(), used by initEvents() handlers).
 let paintTool: ReturnType<typeof mountPaintTool> | null = null;
+// Paint palette handle (initialized in main()).
+let paintPalette: ReturnType<typeof mountPaintPalette> | null = null;
+
+// Per-row preview canvases. Both are displayed at 248×278 to match the 3×3
+// grid box outer dimensions; the facing preview is 32×36 native, the weapon
+// source preview is 32×32 native (slight vertical stretch is acceptable).
+const facingPreviewCanvas = document.getElementById('facing-preview-canvas') as HTMLCanvasElement;
+const facingPreviewCtx = facingPreviewCanvas.getContext('2d', { alpha: true });
+if (facingPreviewCtx) facingPreviewCtx.imageSmoothingEnabled = false;
+
+const weaponPreviewCanvas = document.getElementById('weapon-source-preview-canvas') as HTMLCanvasElement;
+const weaponPreviewCtx = weaponPreviewCanvas.getContext('2d', { alpha: true });
+if (weaponPreviewCtx) weaponPreviewCtx.imageSmoothingEnabled = false;
+
+// Composite preview — view-only big canvas showing body + weapon together.
+const compositePreviewCanvas = document.getElementById('composite-preview-canvas') as HTMLCanvasElement;
+const compositePreviewCtx = compositePreviewCanvas.getContext('2d', { alpha: true });
+if (compositePreviewCtx) compositePreviewCtx.imageSmoothingEnabled = false;
 
 // In-memory mirror of pixel-edits.json (loaded in main()).
 let pixelEdits: PixelEditsTree = {};
@@ -444,6 +471,101 @@ async function renderCenterCell(
   drawVariantBadge(cellCtx, variantCount);
 }
 
+async function renderFacingPreview(token: number): Promise<void> {
+  if (!facingPreviewCtx) return;
+  facingPreviewCtx.clearRect(0, 0, facingPreviewCanvas.width, facingPreviewCanvas.height);
+
+  const layers = layersForFacing(currentFacing);
+  const layerIds = layers.map((entry) => entry.id);
+
+  if (token !== renderToken) return;
+
+  // Body-only: weapon overlay omitted on purpose — the composite column shows
+  // the merged preview, and this surface is the paintable body view.
+  await renderCellInto(facingPreviewCtx, {
+    layerIds,
+    components: componentsById,
+    componentBaseUrl: COMPONENT_BASE_URL,
+    regiment: currentRegiment,
+    weapon: undefined,
+    layerEdits: (componentId) =>
+      currentKitId
+        ? lookupEdits(pixelEdits, currentKitId, currentPose, currentFacing, componentId)
+        : [],
+  });
+}
+
+async function renderCompositePreview(token: number): Promise<void> {
+  if (!compositePreviewCtx) return;
+  compositePreviewCtx.clearRect(0, 0, compositePreviewCanvas.width, compositePreviewCanvas.height);
+
+  const layers = layersForFacing(currentFacing);
+  const layerIds = layers.map((entry) => entry.id);
+
+  const kit = currentKitId ? kitsById.get(currentKitId) : null;
+  const layerPrefix = kit?.weapon?.layerPrefix;
+
+  const variants = currentKitId
+    ? kitsById.get(currentKitId)?.poses?.[currentPose]?.[currentFacing]
+    : null;
+  let orientation: WeaponOrientation | undefined;
+  if (variants && !Array.isArray(variants)) {
+    const list = (variants as { weapons?: WeaponOrientation[] }).weapons;
+    if (list && list.length > 0) {
+      orientation = list[Math.min(selectedVariantIdx, list.length - 1)];
+    }
+  }
+
+  if (token !== renderToken) return;
+
+  await renderCellInto(compositePreviewCtx, {
+    layerIds,
+    components: componentsById,
+    componentBaseUrl: COMPONENT_BASE_URL,
+    regiment: currentRegiment,
+    weapon: layerPrefix && orientation ? { layerPrefix, orientation } : undefined,
+    layerEdits: (componentId) =>
+      currentKitId
+        ? lookupEdits(pixelEdits, currentKitId, currentPose, currentFacing, componentId)
+        : [],
+  });
+}
+
+async function renderWeaponSourcePreview(token: number): Promise<void> {
+  if (!weaponPreviewCtx) return;
+  weaponPreviewCtx.clearRect(0, 0, weaponPreviewCanvas.width, weaponPreviewCanvas.height);
+
+  const v = getSelectedVariant();
+  if (!v || !currentKitId) return;
+  const kit = kitsById.get(currentKitId);
+  const layerPrefix = kit?.weapon?.layerPrefix;
+  if (!layerPrefix) return;
+  const componentId = `${layerPrefix}-${facingToSuffix(v.src)}`;
+  const componentEntry = componentsById.get(componentId);
+  if (!componentEntry) return;
+  const weaponUrl = `${COMPONENT_BASE_URL}${componentEntry.path}`;
+
+  if (token !== renderToken) return;
+
+  // Raw weapon PNG draw at native size, no offset / no transform — the user is
+  // editing the underlying source PNG.
+  try {
+    const img = await loadImage(weaponUrl);
+    if (token !== renderToken) return;
+    weaponPreviewCtx.drawImage(img, 0, 0);
+
+    // Apply any existing pixel-edits for this weapon component, sampled from
+    // the (currentPose, currentFacing) entry — they're broadcast to all
+    // (pose, facing) using this src, so any one is representative.
+    const edits = lookupEdits(pixelEdits, currentKitId, currentPose, currentFacing, componentId);
+    if (edits.length > 0) {
+      applyEditsToContext(weaponPreviewCtx, edits);
+    }
+  } catch (err) {
+    console.warn('[weapon-source-preview]', err);
+  }
+}
+
 async function renderPreview() {
   const token = ++renderToken;
 
@@ -452,6 +574,10 @@ async function renderPreview() {
   await Promise.all(
     gridCells.map(({ facing, ctx: cellCtx }) => renderCenterCell(facing, cellCtx, token)),
   );
+
+  await renderFacingPreview(token);
+  await renderWeaponSourcePreview(token);
+  await renderCompositePreview(token);
 
   for (const { facing, cell } of gridCells) {
     cell.classList.toggle('active', facing === currentFacing);
@@ -608,6 +734,153 @@ function refreshPaintLayers(): void {
   paintTool.setActiveLayers(layerIds);
 }
 
+/**
+ * Write a single pixel into the weapon source PNG identified by `componentId`,
+ * broadcast to every `(pose, facing)` in the active kit whose `weapons[]`
+ * entries reference the same `src`. Erase mode writes the literal `"clear"`.
+ *
+ * Data is duplicated across (pose, facing) keys — the build pipeline reads
+ * pixel-edits per (kit, pose, facing, componentId), so this is the cheapest
+ * way to "edit the source PNG" without a build-pipeline change.
+ */
+function paintWeaponSourcePixel(
+  kitId: string,
+  src: string,
+  componentId: string,
+  x: number,
+  y: number,
+  modeOverride?: 'brush' | 'erase',
+): void {
+  if (!paintTool) return;
+  const mode = modeOverride ?? paintTool.state.mode;
+  const color = mode === 'erase' ? 'clear' : paintTool.state.color;
+  const kit = kitsById.get(kitId);
+  if (!kit) return;
+  const poses = kit.poses ?? {};
+  let wrote = false;
+  for (const [poseName, perFacing] of Object.entries(poses)) {
+    if (!perFacing || typeof perFacing !== 'object') continue;
+    for (const [facing, entry] of Object.entries(perFacing)) {
+      if (!entry || Array.isArray(entry)) continue;
+      const variants = (entry as { weapons?: Array<{ src?: string }> }).weapons;
+      if (!variants) continue;
+      const matches = variants.some((w) => w?.src === src);
+      if (!matches) continue;
+      setPixel(pixelEdits, kitId, poseName, facing, componentId, { x, y, color });
+      wrote = true;
+    }
+  }
+  if (wrote) void renderPreview();
+}
+
+interface PaintSurface {
+  canvas: HTMLCanvasElement;
+  indicator: HTMLDivElement;
+  /** Native pixel coords → write the pixel. */
+  apply(x: number, y: number, mode: 'brush' | 'erase'): void;
+  /** Optional guard — if it returns false, mousedown/move are no-ops (e.g. nothing selected). */
+  ready(): boolean;
+}
+
+function eventToPixel(canvas: HTMLCanvasElement, ev: PointerEvent): { x: number; y: number } | null {
+  const rect = canvas.getBoundingClientRect();
+  const cssX = ev.clientX - rect.left;
+  const cssY = ev.clientY - rect.top;
+  if (cssX < 0 || cssY < 0 || cssX >= rect.width || cssY >= rect.height) return null;
+  const x = Math.floor((cssX / rect.width) * canvas.width);
+  const y = Math.floor((cssY / rect.height) * canvas.height);
+  if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+  return { x, y };
+}
+
+function showIndicator(
+  canvas: HTMLCanvasElement,
+  indicator: HTMLDivElement,
+  x: number,
+  y: number,
+  activeMode?: 'brush' | 'erase' | null,
+): void {
+  const rect = canvas.getBoundingClientRect();
+  const cellW = rect.width / canvas.width;
+  const cellH = rect.height / canvas.height;
+  indicator.style.width = `${cellW}px`;
+  indicator.style.height = `${cellH}px`;
+  indicator.style.transform = `translate(${x * cellW}px, ${y * cellH}px)`;
+  const mode = activeMode ?? paintTool?.state.mode ?? 'brush';
+  if (mode === 'brush') {
+    indicator.style.background = paintTool?.state.color ?? '#ff0000';
+  } else {
+    indicator.style.background = 'transparent';
+  }
+  indicator.hidden = false;
+}
+
+function bindPaintSurface(surface: PaintSurface): void {
+  const { canvas, indicator } = surface;
+
+  // Suppress context menu so right-click can be used as erase.
+  canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  let activePointerId: number | null = null;
+  let activeMode: 'brush' | 'erase' | null = null;
+  let stroke: Set<string> | null = null;
+
+  function paintAtPixel(x: number, y: number): void {
+    if (!activeMode) return;
+    const key = `${x},${y}`;
+    if (stroke && stroke.has(key)) return;
+    if (stroke) stroke.add(key);
+    surface.apply(x, y, activeMode);
+  }
+
+  canvas.addEventListener('pointerdown', (ev) => {
+    if (!surface.ready()) return;
+    if (ev.button !== 0 && ev.button !== 2) return;
+    activeMode = ev.button === 2 ? 'erase' : 'brush';
+    activePointerId = ev.pointerId;
+    stroke = new Set();
+    canvas.setPointerCapture(ev.pointerId);
+    const px = eventToPixel(canvas, ev);
+    if (px) {
+      showIndicator(canvas, indicator, px.x, px.y, activeMode);
+      paintAtPixel(px.x, px.y);
+    }
+    ev.preventDefault();
+  });
+
+  canvas.addEventListener('pointermove', (ev) => {
+    const px = eventToPixel(canvas, ev);
+    if (!px) {
+      if (activePointerId === null) indicator.hidden = true;
+      return;
+    }
+    showIndicator(canvas, indicator, px.x, px.y, activeMode);
+    if (activePointerId === ev.pointerId) {
+      paintAtPixel(px.x, px.y);
+    }
+  });
+
+  function endStroke(ev: PointerEvent): void {
+    if (activePointerId === ev.pointerId) {
+      try { canvas.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
+      activePointerId = null;
+      activeMode = null;
+      stroke = null;
+    }
+  }
+
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+  canvas.addEventListener('pointerleave', (ev) => {
+    if (activePointerId === null) {
+      indicator.hidden = true;
+    }
+    // Don't end stroke on leave — pointer capture keeps moves flowing if user drags out then back in.
+    // pointerup outside still fires because of capture.
+    void ev;
+  });
+}
+
 async function saveKitToServer(kit: KitConfig): Promise<void> {
   // Vite exposes import.meta.env.DEV at build time.
   const isDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV ?? false;
@@ -761,6 +1034,7 @@ function initEvents() {
         poseStrip?.refresh();
         refreshVariantsStrip();
         refreshPaintLayers();
+        paintPalette?.setRegiment(currentRegiment);
       }
     });
   }
@@ -772,22 +1046,7 @@ function initEvents() {
   });
 
   for (const { facing, cell } of gridCells) {
-    cell.addEventListener('click', (ev) => {
-      if (paintTool?.isEnabled() && facing === currentFacing) {
-        // Paint mode: compute the pixel under the cursor and write it.
-        const cellCanvas = cell.querySelector<HTMLCanvasElement>('canvas');
-        if (!cellCanvas) return;
-        const rect = cellCanvas.getBoundingClientRect();
-        const cssX = ev.clientX - rect.left;
-        const cssY = ev.clientY - rect.top;
-        const x = Math.floor((cssX / rect.width) * cellCanvas.width);
-        const y = Math.floor((cssY / rect.height) * cellCanvas.height);
-        if (currentKitId) {
-          paintTool.paintAt(currentKitId, currentPose, currentFacing, x, y);
-        }
-        return;
-      }
-
+    cell.addEventListener('click', () => {
       setFacing(facing);
       selectedVariantIdx = 0;
       if (currentKitId) {
@@ -801,6 +1060,37 @@ function initEvents() {
       void renderPreview();
     });
   }
+
+  const facingPixelHover = document.getElementById('facing-pixel-hover') as HTMLDivElement;
+  const weaponPixelHover = document.getElementById('weapon-pixel-hover') as HTMLDivElement;
+
+  bindPaintSurface({
+    canvas: facingPreviewCanvas,
+    indicator: facingPixelHover,
+    ready: () => Boolean(currentKitId),
+    apply: (x, y, mode) => {
+      if (!currentKitId || !paintTool) return;
+      paintTool.paintAt(currentKitId, currentPose, currentFacing, x, y, mode);
+    },
+  });
+
+  bindPaintSurface({
+    canvas: weaponPreviewCanvas,
+    indicator: weaponPixelHover,
+    ready: () => {
+      const v = getSelectedVariant();
+      return Boolean(currentKitId && v);
+    },
+    apply: (x, y, mode) => {
+      const v = getSelectedVariant();
+      if (!currentKitId || !v || !paintTool) return;
+      const kit = kitsById.get(currentKitId);
+      const layerPrefix = kit?.weapon?.layerPrefix;
+      if (!layerPrefix) return;
+      const componentId = `${layerPrefix}-${facingToSuffix(v.src)}`;
+      paintWeaponSourcePixel(currentKitId, v.src, componentId, x, y, mode);
+    },
+  });
 
   // Source-grid clicks: rebind the selected variant to a new source facing.
   for (const { facing, cell } of sourceGridCells) {
@@ -979,6 +1269,7 @@ async function main() {
       poseStrip?.setActivePose(currentPose);
       refreshVariantsStrip();
       refreshPaintLayers();
+      paintPalette?.setRegiment(currentRegiment);
     },
   });
   unitPicker.setKits(buildPickerKits());
@@ -1036,6 +1327,16 @@ async function main() {
     showToast,
   });
   refreshPaintLayers();
+
+  paintPalette = mountPaintPalette({
+    onPick: (hex) => {
+      // Sync the custom color picker AND the paint tool's state.
+      const colorInput = document.getElementById('paint-color-input') as HTMLInputElement | null;
+      if (colorInput) colorInput.value = hex;
+      if (paintTool) paintTool.state.color = hex;
+    },
+  });
+  paintPalette.setRegiment(currentRegiment);
 
   initEvents();
   updateEditStrip();

@@ -9,8 +9,16 @@
       body {
         margin: 0;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #0f1115;
-        color: #f3f4f6;
+        background: #f6f3ec;
+        color: #1f1d1a;
+      }
+      h2 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b6452;
+        font-weight: 600;
       }
       main {
         display: grid;
@@ -20,11 +28,21 @@
         gap: 12px;
       }
 
+      .labeled-panel {
+        background: #ffffff;
+        border: 1px solid #d8d3c5;
+        border-radius: 6px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
       /* --- TOP ROW --- */
       .top-row {
         display: grid;
         grid-template-columns: auto 1fr;
-        gap: 16px;
+        gap: 12px;
         align-items: stretch;
       }
       .unit-thumb {
@@ -33,13 +51,13 @@
         align-items: center;
         gap: 4px;
         padding: 8px;
-        background: rgba(21, 24, 30, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #ffffff;
+        border: 1px solid #d8d3c5;
         border-radius: 6px;
         cursor: pointer;
         color: inherit;
       }
-      .unit-thumb:hover { border-color: rgba(147, 197, 253, 0.55); }
+      .unit-thumb:hover { border-color: #7a8eb5; }
       .unit-thumb canvas {
         width: 96px;
         height: 108px;
@@ -51,16 +69,12 @@
         font-size: 11px;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        color: #9ca3af;
+        color: #6b6452;
       }
       .pose-strip {
         display: flex;
         gap: 8px;
         overflow-x: auto;
-        padding: 8px;
-        background: rgba(21, 24, 30, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 6px;
       }
       .pose-strip-cell {
         display: flex;
@@ -68,14 +82,14 @@
         align-items: center;
         gap: 4px;
         padding: 6px 8px;
-        background: rgba(12, 15, 20, 0.6);
-        border: 2px solid rgba(255, 255, 255, 0.08);
+        background: #f0ece1;
+        border: 2px solid #d8d3c5;
         border-radius: 4px;
         cursor: pointer;
         color: inherit;
       }
-      .pose-strip-cell:hover { border-color: rgba(147, 197, 253, 0.55); }
-      .pose-strip-cell.active { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+      .pose-strip-cell:hover { border-color: #7a8eb5; }
+      .pose-strip-cell.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
       .pose-strip-cell canvas {
         width: 64px;
         height: 72px;
@@ -86,110 +100,275 @@
       .pose-strip-cell .pose-label {
         font-size: 10px;
         font-family: ui-monospace, Menlo, monospace;
-        color: #d1d5db;
+        color: #3f3a31;
       }
+
+      /* --- TOP ROW: weapon source panel --- */
+      .weapon-source-panel { min-width: 180px; }
+      #weapon-source-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 90px);
+        gap: 4px;
+      }
+      .weapon-source-cell {
+        position: relative; width: 80px; height: 90px; padding: 0;
+        background: #cbd5e1; border: 2px solid #d8d3c5;
+        border-radius: 4px; cursor: pointer; overflow: hidden;
+      }
+      .weapon-source-cell:hover { border-color: #7a8eb5; }
+      .weapon-source-cell.active { border-color: #16a34a; box-shadow: 0 0 0 1px #16a34a; }
+      .weapon-source-cell.disabled { opacity: 0.35; cursor: not-allowed; }
+      .weapon-source-cell canvas {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        image-rendering: pixelated; pointer-events: none;
+      }
+      .weapon-source-cell .label {
+        position: absolute; top: 1px; left: 2px;
+        font-size: 8px; font-family: ui-monospace, Menlo, monospace;
+        color: #1f1d1a; background: rgba(255, 255, 255, 0.75);
+        padding: 0 2px; border-radius: 2px; pointer-events: none;
+      }
+      .weapon-source-cell-empty { width: 80px; height: 90px; }
 
       /* --- POPOVER --- */
       .popover-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 50;
+        position: fixed; inset: 0;
+        background: rgba(31, 29, 26, 0.32);
+        display: flex; align-items: center; justify-content: center; z-index: 50;
       }
       .popover-backdrop[hidden] { display: none; }
       .unit-picker {
-        background: #15181e;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 6px;
-        padding: 16px;
-        max-width: 80vw;
-        max-height: 80vh;
-        overflow: auto;
+        background: #ffffff; border: 1px solid #d8d3c5; border-radius: 6px;
+        padding: 16px; max-width: 80vw; max-height: 80vh; overflow: auto;
       }
-      .unit-picker h2 {
-        margin: 0 0 12px;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #9ca3af;
-      }
+      .unit-picker h2 { color: #6b6452; }
       .unit-picker-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 12px;
       }
       .unit-picker-cell {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        padding: 8px;
-        background: rgba(12, 15, 20, 0.6);
-        border: 2px solid rgba(255, 255, 255, 0.08);
-        border-radius: 4px;
-        cursor: pointer;
-        color: inherit;
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
+        padding: 8px; background: #f0ece1; border: 2px solid #d8d3c5;
+        border-radius: 4px; cursor: pointer; color: inherit;
       }
-      .unit-picker-cell:hover { border-color: rgba(147, 197, 253, 0.55); }
-      .unit-picker-cell.active { border-color: #3b82f6; }
+      .unit-picker-cell:hover { border-color: #7a8eb5; }
+      .unit-picker-cell.active { border-color: #2563eb; }
       .unit-picker-cell canvas {
-        width: 96px;
-        height: 108px;
-        image-rendering: pixelated;
-        background: #cbd5e1;
-        border-radius: 2px;
+        width: 96px; height: 108px;
+        image-rendering: pixelated; background: #cbd5e1; border-radius: 2px;
       }
       .unit-picker-cell .unit-label {
-        font-size: 11px;
-        font-family: ui-monospace, Menlo, monospace;
-        color: #d1d5db;
+        font-size: 11px; font-family: ui-monospace, Menlo, monospace; color: #3f3a31;
       }
 
-      /* --- MIDDLE: facing grid --- */
-      section.preview {
+      /* --- MIDDLE ROW --- */
+      .middle-row {
+        display: grid;
+        grid-template-columns: 1fr auto 240px;
+        gap: 12px;
+        align-items: start;
+      }
+      .editing-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+      .combined-panel { padding: 10px 12px; }
+      .combined-row {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .combined-preview-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: center;
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .combined-preview-label {
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #978f7c;
+      }
+      .preview-wrap {
+        position: relative;
+        background: #cbd5e1;
+        border-radius: 4px;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 16px;
+        cursor: crosshair;
+        overflow: hidden;
       }
+      .pixel-hover {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        box-sizing: border-box;
+        border: 1px solid rgba(220, 38, 38, 0.95);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+        /* width / height / transform set inline by JS */
+      }
+      .pixel-hover[hidden] { display: none; }
+      .preview-wrap.small {
+        width: auto;
+        height: 278px;
+      }
+      .preview-wrap.composite {
+        width: 320px;
+        height: 360px;
+        cursor: default;
+      }
+      #facing-preview-canvas {
+        height: 100%;
+        width: auto;
+        aspect-ratio: 32 / 36;
+        image-rendering: pixelated;
+        background: transparent;
+        display: block;
+      }
+      #weapon-source-preview-canvas {
+        height: 100%;
+        width: auto;
+        aspect-ratio: 1 / 1;
+        image-rendering: pixelated;
+        background: transparent;
+        display: block;
+      }
+      #composite-preview-canvas {
+        width: 320px;
+        height: 360px;
+        image-rendering: pixelated;
+        background: transparent;
+        display: block;
+      }
+      .composite-column {
+        align-self: start;
+      }
+      .paint-tools-panel {
+        background: #ffffff;
+        border: 1px solid #d8d3c5;
+        border-radius: 6px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        font-size: 12px;
+      }
+      .palette-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .palette-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .palette-row-label {
+        font-size: 10px;
+        color: #6b6452;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .palette-row-label em {
+        font-style: normal;
+        color: #978f7c;
+        text-transform: none;
+        letter-spacing: 0;
+        margin-left: 4px;
+      }
+      .palette-row-swatches {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .palette-swatch {
+        width: 28px; height: 28px;
+        border: 2px solid #d8d3c5;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 0;
+      }
+      .palette-swatch:hover { border-color: #7a8eb5; }
+      .palette-swatch.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+      .palette-materials-heading {
+        margin: 8px 0 6px;
+      }
+      .paint-color-row, .paint-layer-row {
+        display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #6b6452;
+      }
+      .paint-mode-row { display: flex; gap: 12px; font-size: 12px; }
+      .paint-mode-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+      .paint-tools-panel select, .paint-tools-panel input[type="color"] {
+        background: #ffffff;
+        border: 1px solid #d8d3c5;
+        color: inherit;
+        padding: 4px;
+        border-radius: 4px;
+      }
+      .paint-tools-panel button {
+        padding: 6px 8px;
+        background: #16a34a;
+        border: 1px solid #15803d;
+        color: #ffffff;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .paint-tools-panel button:hover { background: #15803d; }
+
+      .facing-picker-panel { min-width: 0; }
       .facing-grid {
         display: grid;
         grid-template-columns: repeat(3, 96px);
         grid-template-rows: repeat(3, 108px);
         gap: 6px;
       }
+      .facing-grid.small {
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 90px);
+        gap: 4px;
+      }
       .facing-cell {
         position: relative;
-        width: 96px;
-        height: 108px;
+        width: 96px; height: 108px;
         padding: 0;
         background: #cbd5e1;
-        border: 2px solid rgba(255, 255, 255, 0.08);
+        border: 2px solid #d8d3c5;
         border-radius: 4px;
         cursor: pointer;
         overflow: hidden;
       }
-      .facing-cell:hover { border-color: rgba(147, 197, 253, 0.55); }
-      .facing-cell.active { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
-      .facing-cell.target { border-color: #f59e0b; box-shadow: 0 0 0 1px #f59e0b; }
-      .facing-cell.active.target { border-color: #f59e0b; box-shadow: 0 0 0 1px #f59e0b, 0 0 0 3px rgba(59, 130, 246, 0.55); }
+      .facing-grid.small .facing-cell {
+        width: 80px; height: 90px;
+      }
+      .facing-cell:hover { border-color: #7a8eb5; }
+      .facing-cell.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
       .facing-cell canvas {
         position: absolute; inset: 0; width: 100%; height: 100%;
         image-rendering: pixelated; pointer-events: none;
       }
       .facing-cell .label {
-        position: absolute; top: 3px; left: 5px;
-        font-size: 10px; font-family: ui-monospace, Menlo, monospace;
-        color: rgba(243, 244, 246, 0.85);
-        background: rgba(12, 15, 20, 0.65);
-        padding: 1px 4px; border-radius: 2px; pointer-events: none;
+        position: absolute; top: 2px; left: 3px;
+        font-size: 9px; font-family: ui-monospace, Menlo, monospace;
+        color: #1f1d1a; background: rgba(255, 255, 255, 0.75);
+        padding: 0 3px; border-radius: 2px; pointer-events: none;
       }
+      .facing-grid.small .facing-cell .label { font-size: 8px; padding: 0 2px; }
       .facing-cell-empty { width: 96px; height: 108px; }
+      .facing-grid.small .facing-cell-empty { width: 80px; height: 90px; }
 
-      /* --- BOTTOM: variants strip + weapon edit pane --- */
+      /* --- BOTTOM --- */
       .bottom-row {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -200,145 +379,95 @@
         display: flex;
         gap: 8px;
         overflow-x: auto;
-        padding: 8px;
-        background: rgba(21, 24, 30, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 6px;
       }
       .variant-cell {
         position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
         padding: 6px;
-        background: rgba(12, 15, 20, 0.6);
-        border: 2px solid rgba(255, 255, 255, 0.08);
+        background: #f0ece1;
+        border: 2px solid #d8d3c5;
         border-radius: 4px;
         cursor: pointer;
         color: inherit;
       }
-      .variant-cell:hover { border-color: rgba(147, 197, 253, 0.55); }
-      .variant-cell.active { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+      .variant-cell:hover { border-color: #7a8eb5; }
+      .variant-cell.active { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
       .variant-cell canvas {
-        width: 64px;
-        height: 72px;
-        image-rendering: pixelated;
-        background: #cbd5e1;
-        border-radius: 2px;
+        width: 64px; height: 72px;
+        image-rendering: pixelated; background: #cbd5e1; border-radius: 2px;
       }
       .variant-cell .variant-idx {
-        font-size: 10px;
-        font-family: ui-monospace, Menlo, monospace;
-        color: #9ca3af;
+        font-size: 10px; font-family: ui-monospace, Menlo, monospace; color: #6b6452;
       }
       .variant-cell.add-new {
         border-style: dashed;
         font-size: 24px;
-        color: #6b7280;
+        color: #978f7c;
         align-items: center;
         justify-content: center;
         min-width: 76px;
       }
-      .weapon-edit-pane {
-        min-width: 200px;
-      }
-      #weapon-source-panel {
-        padding: 12px;
-        background: rgba(21, 24, 30, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 6px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      #weapon-source-panel h2 {
-        margin: 0 0 4px;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #9ca3af;
-      }
-      #weapon-source-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 40px);
-        grid-template-rows: repeat(3, 40px);
-        gap: 4px;
-      }
-      .weapon-source-cell {
-        position: relative; width: 40px; height: 40px; padding: 0;
-        background: #cbd5e1; border: 2px solid rgba(255, 255, 255, 0.08);
-        border-radius: 4px; cursor: pointer; overflow: hidden;
-      }
-      .weapon-source-cell:hover { border-color: rgba(147, 197, 253, 0.55); }
-      .weapon-source-cell.active { border-color: #34d399; box-shadow: 0 0 0 1px #34d399; }
-      .weapon-source-cell.disabled { opacity: 0.35; cursor: not-allowed; }
-      .weapon-source-cell canvas {
-        position: absolute; inset: 0; width: 100%; height: 100%;
-        image-rendering: pixelated; pointer-events: none;
-      }
-      .weapon-source-cell .label {
-        position: absolute; top: 1px; left: 2px;
-        font-size: 8px; font-family: ui-monospace, Menlo, monospace;
-        color: rgba(243, 244, 246, 0.85); background: rgba(12, 15, 20, 0.65);
-        padding: 0 2px; border-radius: 2px; pointer-events: none;
-      }
-      .weapon-source-cell-empty { width: 40px; height: 40px; }
 
+      .weapon-edit-panel { min-width: 200px; }
       #weapon-edit-strip {
         display: flex; flex-direction: column; gap: 8px; font-size: 12px;
       }
       #weapon-edit-thumb {
-        width: 40px; height: 40px; background: #cbd5e1;
-        border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 4px;
+        width: 40px; height: 40px;
+        background: #cbd5e1;
+        border: 1px solid #d8d3c5;
+        border-radius: 4px;
         image-rendering: pixelated;
       }
       #weapon-edit-stats {
         font-family: ui-monospace, Menlo, monospace;
-        font-size: 11px; color: #d1d5db; line-height: 1.5;
+        font-size: 11px; color: #3f3a31; line-height: 1.5;
       }
-      #weapon-edit-stats .stat-key { color: #6b7280; }
+      #weapon-edit-stats .stat-key { color: #978f7c; }
       #weapon-edit-strip .button-row {
         display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
       }
       #weapon-edit-strip button {
-        padding: 6px 8px; background: rgba(56, 76, 110, 0.45);
-        border: 1px solid rgba(113, 153, 204, 0.6); color: inherit;
-        border-radius: 4px; cursor: pointer; font-size: 12px;
+        padding: 6px 8px;
+        background: #f0ece1;
+        border: 1px solid #b8b1a0;
+        color: inherit;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
       }
-      #weapon-edit-strip button:hover { background: rgba(73, 104, 150, 0.55); }
+      #weapon-edit-strip button:hover { background: #e6e0d0; }
       #weapon-edit-strip button:disabled { opacity: 0.45; cursor: not-allowed; }
       #weapon-edit-strip button.primary {
-        background: rgba(34, 197, 94, 0.32); border-color: rgba(74, 222, 128, 0.7);
+        background: #16a34a;
+        border-color: #15803d;
+        color: #ffffff;
       }
-      #weapon-edit-strip button.primary:hover { background: rgba(34, 197, 94, 0.45); }
-      #weapon-edit-help { font-size: 10px; color: #6b7280; line-height: 1.4; }
+      #weapon-edit-strip button.primary:hover { background: #15803d; }
+      #weapon-edit-help { font-size: 10px; color: #978f7c; line-height: 1.4; }
 
-      /* --- INFO CARD --- */
       .info-card {
         padding: 8px 12px;
-        background: rgba(17, 24, 39, 0.85);
-        border: 1px solid rgba(59, 130, 246, 0.4);
+        background: #ffffff;
+        border: 1px solid #b8c4dc;
         border-radius: 4px;
         font-size: 11px;
         font-family: ui-monospace, Menlo, monospace;
         line-height: 1.4;
+        color: #3f3a31;
       }
-      .info-card strong { color: #93c5fd; font-weight: 600; }
+      .info-card strong { color: #2563eb; font-weight: 600; }
 
-      /* --- ADVANCED DRAWER --- */
       .advanced-drawer {
-        background: rgba(21, 24, 30, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #ffffff;
+        border: 1px solid #d8d3c5;
         border-radius: 6px;
         padding: 8px 12px;
       }
       .advanced-drawer summary {
-        cursor: pointer;
-        font-size: 12px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #9ca3af;
+        cursor: pointer; font-size: 11px;
+        letter-spacing: 0.08em; text-transform: uppercase;
+        color: #6b6452;
       }
       .advanced-body {
         display: grid;
@@ -348,82 +477,40 @@
       }
       .advanced-body label {
         display: flex; flex-direction: column; gap: 4px;
-        font-size: 11px; color: #9ca3af;
+        font-size: 11px; color: #6b6452;
       }
       .advanced-body select, .advanced-body button {
         padding: 6px 8px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid #d8d3c5;
         border-radius: 4px;
-        background: rgba(12, 15, 20, 0.9);
+        background: #ffffff;
         color: inherit;
         font-size: 12px;
       }
       .advanced-body button.reset {
-        background: rgba(56, 76, 110, 0.45);
-        border-color: rgba(113, 153, 204, 0.6);
+        background: #f0ece1;
+        border-color: #b8b1a0;
         cursor: pointer;
       }
       #component-groups { grid-column: 1 / -1; max-height: 300px; overflow-y: auto; font-size: 12px; }
       #component-groups label { display: flex; gap: 6px; align-items: center; padding: 2px 0; cursor: pointer; }
-      #component-groups h2 { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af; margin: 8px 0 4px; }
+      #component-groups h2 { margin: 8px 0 4px; }
 
-      /* --- TOAST --- */
       #toast {
         position: fixed; bottom: 16px; right: 16px;
-        padding: 10px 14px; background: rgba(12, 15, 20, 0.95);
-        border: 1px solid rgba(147, 197, 253, 0.6); border-radius: 4px;
-        font-size: 12px; opacity: 0; transform: translateY(8px);
+        padding: 10px 14px;
+        background: #ffffff;
+        border: 1px solid #b8c4dc;
+        border-radius: 4px;
+        font-size: 12px; color: #1f1d1a;
+        box-shadow: 0 4px 12px rgba(31, 29, 26, 0.12);
+        opacity: 0; transform: translateY(8px);
         transition: opacity 160ms ease, transform 160ms ease;
         pointer-events: none; z-index: 100;
       }
       #toast.show { opacity: 1; transform: translateY(0); }
-      #toast.error { border-color: rgba(248, 113, 113, 0.7); }
-      #toast.success { border-color: rgba(74, 222, 128, 0.7); }
-
-      /* --- PAINT TOOLBAR --- */
-      #paint-toolbar {
-        margin-top: 12px;
-        padding: 12px;
-        background: rgba(21, 24, 30, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 6px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        font-size: 12px;
-      }
-      #paint-toolbar[hidden] { display: none; }
-      #paint-toolbar h2 {
-        margin: 0;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #9ca3af;
-      }
-      #paint-toolbar .paint-mode-row { display: flex; gap: 12px; }
-      #paint-toolbar label { display: flex; align-items: center; gap: 6px; }
-      #paint-toolbar select, #paint-toolbar input[type="color"] {
-        background: rgba(12, 15, 20, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: inherit;
-        padding: 4px;
-        border-radius: 4px;
-      }
-      #paint-toolbar button {
-        padding: 6px 8px;
-        background: rgba(34, 197, 94, 0.32);
-        border: 1px solid rgba(74, 222, 128, 0.7);
-        color: inherit;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-      }
-      #paint-toolbar button:hover { background: rgba(34, 197, 94, 0.45); }
-      #btn-paint-toggle.primary {
-        background: rgba(34, 197, 94, 0.32);
-        border-color: rgba(74, 222, 128, 0.7);
-      }
-      .facing-cell.paint-mode { cursor: crosshair; }
+      #toast.error { border-color: #dc2626; }
+      #toast.success { border-color: #16a34a; }
     </style>
   </head>
   <body>
@@ -434,10 +521,13 @@
           <canvas id="unit-thumb-canvas" width="32" height="36"></canvas>
           <span class="unit-thumb-label" id="unit-thumb-label">—</span>
         </button>
-        <div class="pose-strip" id="pose-strip"></div>
+        <div class="labeled-panel">
+          <h2>Poses</h2>
+          <div class="pose-strip" id="pose-strip"></div>
+        </div>
       </section>
 
-      <!-- UNIT PICKER POPOVER (hidden by default) -->
+      <!-- UNIT PICKER POPOVER -->
       <div class="popover-backdrop" id="unit-picker-backdrop" hidden>
         <div class="unit-picker" id="unit-picker">
           <h2>Select Unit</h2>
@@ -445,81 +535,130 @@
         </div>
       </div>
 
-      <!-- MIDDLE: 3x3 facing grid -->
-      <section class="preview">
-        <div class="facing-grid" id="facing-grid">
-          <button class="facing-cell" type="button" data-facing="NW"><canvas width="32" height="36"></canvas><span class="label">NW</span></button>
-          <button class="facing-cell" type="button" data-facing="N"><canvas width="32" height="36"></canvas><span class="label">N</span></button>
-          <button class="facing-cell" type="button" data-facing="NE"><canvas width="32" height="36"></canvas><span class="label">NE</span></button>
-          <button class="facing-cell" type="button" data-facing="W"><canvas width="32" height="36"></canvas><span class="label">W</span></button>
-          <div class="facing-cell-empty"></div>
-          <button class="facing-cell" type="button" data-facing="E"><canvas width="32" height="36"></canvas><span class="label">E</span></button>
-          <button class="facing-cell" type="button" data-facing="SW"><canvas width="32" height="36"></canvas><span class="label">SW</span></button>
-          <button class="facing-cell" type="button" data-facing="S"><canvas width="32" height="36"></canvas><span class="label">S</span></button>
-          <button class="facing-cell" type="button" data-facing="SE"><canvas width="32" height="36"></canvas><span class="label">SE</span></button>
+      <!-- MIDDLE ROW: editing grid (facing/weapon source + per-row preview) | composite | palette -->
+      <section class="middle-row">
+        <div class="editing-grid">
+          <div class="labeled-panel combined-panel">
+            <h2>Facing</h2>
+            <div class="combined-row">
+              <div class="facing-grid small" id="facing-picker-grid">
+                <button class="facing-cell" type="button" data-facing="NW"><canvas width="32" height="36"></canvas><span class="label">NW</span></button>
+                <button class="facing-cell" type="button" data-facing="N"><canvas width="32" height="36"></canvas><span class="label">N</span></button>
+                <button class="facing-cell" type="button" data-facing="NE"><canvas width="32" height="36"></canvas><span class="label">NE</span></button>
+                <button class="facing-cell" type="button" data-facing="W"><canvas width="32" height="36"></canvas><span class="label">W</span></button>
+                <div class="facing-cell-empty"></div>
+                <button class="facing-cell" type="button" data-facing="E"><canvas width="32" height="36"></canvas><span class="label">E</span></button>
+                <button class="facing-cell" type="button" data-facing="SW"><canvas width="32" height="36"></canvas><span class="label">SW</span></button>
+                <button class="facing-cell" type="button" data-facing="S"><canvas width="32" height="36"></canvas><span class="label">S</span></button>
+                <button class="facing-cell" type="button" data-facing="SE"><canvas width="32" height="36"></canvas><span class="label">SE</span></button>
+              </div>
+              <div class="combined-preview-wrap">
+                <span class="combined-preview-label">Selected</span>
+                <div class="preview-wrap small">
+                  <canvas id="facing-preview-canvas" width="32" height="36"></canvas>
+                  <div class="pixel-hover" id="facing-pixel-hover" hidden></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="labeled-panel combined-panel">
+            <h2>Weapon Source</h2>
+            <div class="combined-row">
+              <div id="weapon-source-grid">
+                <button class="weapon-source-cell" type="button" data-facing="NW"><canvas width="32" height="32"></canvas><span class="label">NW</span></button>
+                <button class="weapon-source-cell" type="button" data-facing="N"><canvas width="32" height="32"></canvas><span class="label">N</span></button>
+                <button class="weapon-source-cell" type="button" data-facing="NE"><canvas width="32" height="32"></canvas><span class="label">NE</span></button>
+                <button class="weapon-source-cell" type="button" data-facing="W"><canvas width="32" height="32"></canvas><span class="label">W</span></button>
+                <div class="weapon-source-cell-empty"></div>
+                <button class="weapon-source-cell" type="button" data-facing="E"><canvas width="32" height="32"></canvas><span class="label">E</span></button>
+                <button class="weapon-source-cell" type="button" data-facing="SW"><canvas width="32" height="32"></canvas><span class="label">SW</span></button>
+                <button class="weapon-source-cell" type="button" data-facing="S"><canvas width="32" height="32"></canvas><span class="label">S</span></button>
+                <button class="weapon-source-cell" type="button" data-facing="SE"><canvas width="32" height="32"></canvas><span class="label">SE</span></button>
+              </div>
+              <div class="combined-preview-wrap">
+                <span class="combined-preview-label">Selected</span>
+                <div class="preview-wrap small">
+                  <canvas id="weapon-source-preview-canvas" width="32" height="32"></canvas>
+                  <div class="pixel-hover" id="weapon-pixel-hover" hidden></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="labeled-panel composite-column">
+          <h2>Composite</h2>
+          <div class="preview-wrap composite">
+            <canvas id="composite-preview-canvas" width="32" height="36"></canvas>
+          </div>
+        </div>
+
+        <div class="paint-tools-panel" id="paint-tools-panel">
+          <h2>Palette</h2>
+          <div class="palette-rows">
+            <div class="palette-row" id="palette-row-primary">
+              <span class="palette-row-label">Primary <em>(coat)</em></span>
+              <div class="palette-row-swatches"></div>
+            </div>
+            <div class="palette-row" id="palette-row-secondary">
+              <span class="palette-row-label">Secondary <em>(trousers)</em></span>
+              <div class="palette-row-swatches"></div>
+            </div>
+            <div class="palette-row" id="palette-row-tertiary">
+              <span class="palette-row-label">Tertiary <em>(hats / boots)</em></span>
+              <div class="palette-row-swatches"></div>
+            </div>
+          </div>
+          <h2 class="palette-materials-heading">Materials</h2>
+          <div class="palette-rows" id="palette-materials"></div>
+          <label class="paint-color-row">
+            Custom
+            <input type="color" id="paint-color-input" value="#cc3333">
+          </label>
+          <div class="paint-mode-row">
+            <label><input type="radio" name="paint-mode" value="brush" checked> Brush</label>
+            <label><input type="radio" name="paint-mode" value="erase"> Erase</label>
+          </div>
+          <label class="paint-layer-row">
+            Layer
+            <select id="paint-layer-select"></select>
+          </label>
+          <button id="btn-save-edits" class="primary" type="button">Save Edits</button>
         </div>
       </section>
 
       <!-- BOTTOM: variants strip + weapon edit strip -->
       <section class="bottom-row">
-        <div class="variants-strip" id="variants-strip"></div>
-        <div class="weapon-edit-pane">
-          <div id="weapon-source-panel">
-            <h2>Weapon Source</h2>
-            <div id="weapon-source-grid">
-              <button class="weapon-source-cell" type="button" data-facing="NW"><canvas width="32" height="32"></canvas><span class="label">NW</span></button>
-              <button class="weapon-source-cell" type="button" data-facing="N"><canvas width="32" height="32"></canvas><span class="label">N</span></button>
-              <button class="weapon-source-cell" type="button" data-facing="NE"><canvas width="32" height="32"></canvas><span class="label">NE</span></button>
-              <button class="weapon-source-cell" type="button" data-facing="W"><canvas width="32" height="32"></canvas><span class="label">W</span></button>
-              <div class="weapon-source-cell-empty"></div>
-              <button class="weapon-source-cell" type="button" data-facing="E"><canvas width="32" height="32"></canvas><span class="label">E</span></button>
-              <button class="weapon-source-cell" type="button" data-facing="SW"><canvas width="32" height="32"></canvas><span class="label">SW</span></button>
-              <button class="weapon-source-cell" type="button" data-facing="S"><canvas width="32" height="32"></canvas><span class="label">S</span></button>
-              <button class="weapon-source-cell" type="button" data-facing="SE"><canvas width="32" height="32"></canvas><span class="label">SE</span></button>
+        <div class="labeled-panel variants-panel">
+          <h2>Variants</h2>
+          <div class="variants-strip" id="variants-strip"></div>
+        </div>
+        <div class="labeled-panel weapon-edit-panel">
+          <h2>Weapon Edit</h2>
+          <div id="weapon-edit-strip">
+            <canvas id="weapon-edit-thumb" width="32" height="32"></canvas>
+            <div id="weapon-edit-stats">
+              <div><span class="stat-key">x:</span> <span id="stat-x">—</span></div>
+              <div><span class="stat-key">y:</span> <span id="stat-y">—</span></div>
+              <div><span class="stat-key">rot:</span> <span id="stat-rot">—</span></div>
+              <div><span class="stat-key">flipX:</span> <span id="stat-flipx">—</span></div>
             </div>
-            <h2>Edit</h2>
-            <div id="weapon-edit-strip">
-              <canvas id="weapon-edit-thumb" width="32" height="32"></canvas>
-              <div id="weapon-edit-stats">
-                <div><span class="stat-key">x:</span> <span id="stat-x">—</span></div>
-                <div><span class="stat-key">y:</span> <span id="stat-y">—</span></div>
-                <div><span class="stat-key">rot:</span> <span id="stat-rot">—</span></div>
-                <div><span class="stat-key">flipX:</span> <span id="stat-flipx">—</span></div>
-              </div>
-              <div class="button-row">
-                <button id="btn-mirror" type="button">Mirror</button>
-                <button id="btn-rotate" type="button">Rotate 90&deg;</button>
-                <button id="btn-save-kit" class="primary" type="button">Save Kit</button>
-                <button id="btn-delete-variant" type="button">Delete</button>
-                <button id="btn-paint-toggle" type="button">🖌 Paint</button>
-              </div>
-              <div id="weapon-edit-help">
-                Arrow keys: nudge 1px &middot; Shift+Arrow: nudge 8px
-              </div>
+            <div class="button-row">
+              <button id="btn-mirror" type="button">Mirror</button>
+              <button id="btn-rotate" type="button">Rotate 90&deg;</button>
+              <button id="btn-save-kit" class="primary" type="button">Save Kit</button>
+              <button id="btn-delete-variant" type="button">Delete</button>
             </div>
-          </div>
-          <div id="paint-toolbar" hidden>
-            <h2>Paint</h2>
-            <div class="paint-mode-row">
-              <label><input type="radio" name="paint-mode" value="brush" checked> Brush</label>
-              <label><input type="radio" name="paint-mode" value="erase"> Erase</label>
+            <div id="weapon-edit-help">
+              Arrow keys: nudge 1px &middot; Shift+Arrow: nudge 8px
             </div>
-            <label class="paint-color-row">
-              Color
-              <input type="color" id="paint-color-input" value="#ff0000">
-            </label>
-            <label class="paint-layer-row">
-              Layer
-              <select id="paint-layer-select"></select>
-            </label>
-            <button id="btn-save-edits" class="primary" type="button">Save Edits</button>
           </div>
         </div>
       </section>
 
       <div class="info-card" id="info-card"></div>
 
-      <!-- ADVANCED DRAWER (collapsible) -->
       <details class="advanced-drawer" id="advanced-drawer">
         <summary>⚙ Advanced</summary>
         <div class="advanced-body">
@@ -540,7 +679,6 @@
           <div id="component-groups"></div>
         </div>
       </details>
-
     </main>
     <div id="toast"></div>
     <script type="module" src="/src/dev/component-preview.ts"></script>

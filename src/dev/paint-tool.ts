@@ -17,41 +17,35 @@ export interface PaintToolOptions {
 
 /**
  * Mounts the paint toolbar UI elements and returns a state handle plus a
- * `paintAt` function the caller wires to canvas clicks.
+ * `paintAt` function the caller wires to canvas clicks. Paint is always-on —
+ * there is no toggle.
  */
 export function mountPaintTool(opts: PaintToolOptions): {
   state: PaintToolState;
   setActiveLayers(layerIds: string[]): void;
   isEnabled(): boolean;
   /** Paint one pixel at the given canvas coords for (kit, pose, facing). */
-  paintAt(kit: string, pose: string, facing: string, x: number, y: number): void;
+  paintAt(
+    kit: string,
+    pose: string,
+    facing: string,
+    x: number,
+    y: number,
+    modeOverride?: 'brush' | 'erase',
+  ): void;
 } {
-  const toolbar = document.getElementById('paint-toolbar') as HTMLDivElement;
-  const toggleBtn = document.getElementById('btn-paint-toggle') as HTMLButtonElement;
   const colorInput = document.getElementById('paint-color-input') as HTMLInputElement;
   const layerSelect = document.getElementById('paint-layer-select') as HTMLSelectElement;
   const saveBtn = document.getElementById('btn-save-edits') as HTMLButtonElement;
   const modeRadios = document.querySelectorAll<HTMLInputElement>('input[name="paint-mode"]');
 
   const state: PaintToolState = {
-    enabled: false,
+    enabled: true,
     mode: 'brush',
     color: colorInput.value,
     activeLayer: null,
   };
 
-  function syncToolbarVisibility(): void {
-    toolbar.hidden = !state.enabled;
-    toggleBtn.classList.toggle('primary', state.enabled);
-    document.querySelectorAll('.facing-cell').forEach((el) => {
-      el.classList.toggle('paint-mode', state.enabled);
-    });
-  }
-
-  toggleBtn.addEventListener('click', () => {
-    state.enabled = !state.enabled;
-    syncToolbarVisibility();
-  });
   colorInput.addEventListener('input', () => {
     state.color = colorInput.value;
   });
@@ -68,8 +62,6 @@ export function mountPaintTool(opts: PaintToolOptions): {
       .then(() => opts.showToast('Pixel edits saved', 'success'))
       .catch((err: Error) => opts.showToast(err.message, 'error'));
   });
-
-  syncToolbarVisibility();
 
   return {
     state,
@@ -89,10 +81,11 @@ export function mountPaintTool(opts: PaintToolOptions): {
         if (state.activeLayer) layerSelect.value = state.activeLayer;
       }
     },
-    isEnabled() { return state.enabled; },
-    paintAt(kit, pose, facing, x, y) {
+    isEnabled() { return true; },
+    paintAt(kit, pose, facing, x, y, modeOverride) {
       if (!state.enabled || !state.activeLayer) return;
-      const color = state.mode === 'erase' ? 'clear' : state.color;
+      const mode = modeOverride ?? state.mode;
+      const color = mode === 'erase' ? 'clear' : state.color;
       setPixel(opts.getTree(), kit, pose, facing, state.activeLayer, { x, y, color });
       opts.onChange();
     },
