@@ -417,6 +417,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        lineBattles: resolve(__dirname, 'line-battles.html'),
+        skirmish: resolve(__dirname, 'skirmish.html'),
         lab: resolve(__dirname, 'lab.html'),
         components: resolve(__dirname, 'components.html'),
         cannonTest: resolve(__dirname, 'cannon-test.html'),

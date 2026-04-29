@@ -14,6 +14,9 @@ const lineInfantryInfo: KitGibInfo = {
   hasHead: true,
   legChunkId: 8,
   armChunkId: 6,
+  armChunkIds: [],
+  legChunkIds: [],
+  miscChunkIds: [],
   gibTint: [240, 230, 210],
 };
 
@@ -24,6 +27,9 @@ const peasantInfo: KitGibInfo = {
   hasHead: false,
   legChunkId: 9,
   armChunkId: 7,
+  armChunkIds: [],
+  legChunkIds: [],
+  miscChunkIds: [],
   gibTint: [255, 255, 255],
 };
 
@@ -44,25 +50,27 @@ function emitChunkIds(plan: ReturnType<typeof planGibSpawn>): number[] {
 }
 
 describe('planGibSpawn', () => {
-  it('cannon kill with kit info produces 1 head + 1 weapon + 2 legs + 2 arms + meat', () => {
+  it('cannon kill with kit info produces 1 kit-head + 1 weapon + variable legs/arms + meat', () => {
     const rng = createRng(1);
     const plan = planGibSpawn(rng, 'cannon', true, lineInfantryInfo);
-    let heads = 0, weapons = 0, legs = 0, arms = 0;
+    let kitHeads = 0, weapons = 0, legs = 0, arms = 0;
     for (const e of plan.emits) {
-      if (e.kind === DebrisKind.KitHead) heads++;
+      if (e.kind === DebrisKind.KitHead) kitHeads++;
       else if (e.kind === DebrisKind.KitWeapon) weapons++;
       else if (e.kind === DebrisKind.GenericChunk && LEG_IDS.has(e.chunkId)) legs++;
       else if (e.kind === DebrisKind.GenericChunk && ARM_IDS.has(e.chunkId)) arms++;
     }
-    expect(heads).toBe(1);
+    expect(kitHeads).toBe(1);
     expect(weapons).toBe(1);
-    expect(legs).toBe(2);
-    expect(arms).toBe(2);
+    expect(legs).toBeGreaterThanOrEqual(1);
+    expect(legs).toBeLessThanOrEqual(3);
+    expect(arms).toBeGreaterThanOrEqual(1);
+    expect(arms).toBeLessThanOrEqual(3);
     expect(plan.bloodBlobs).toBeGreaterThanOrEqual(2);
     expect(plan.bloodBlobs).toBeLessThanOrEqual(4);
   });
 
-  it('cannon kill without kit info falls back to generic head', () => {
+  it('cannon kill without kit info falls back to generic head only', () => {
     const rng = createRng(2);
     const plan = planGibSpawn(rng, 'cannon', true, null);
     const headEmits = plan.emits.filter((e) => e.kind === DebrisKind.KitHead);
@@ -73,12 +81,11 @@ describe('planGibSpawn', () => {
     expect(genericHeads.length).toBe(1);
   });
 
-  it('cannon kill on unarmed kit (peasant): no kit weapon emitted', () => {
+  it('cannon kill on unarmed kit (peasant): no kit weapon emitted, single generic head', () => {
     const rng = createRng(3);
     const plan = planGibSpawn(rng, 'cannon', true, peasantInfo);
     const weapons = plan.emits.filter((e) => e.kind === DebrisKind.KitWeapon);
     expect(weapons.length).toBe(0);
-    // Heads still come out generic when the kit declares no head block.
     const kitHeads = plan.emits.filter((e) => e.kind === DebrisKind.KitHead);
     const generic = plan.emits.filter(
       (e) => e.kind === DebrisKind.GenericChunk && e.chunkId === 0,
@@ -87,10 +94,49 @@ describe('planGibSpawn', () => {
     expect(generic.length).toBe(1);
   });
 
+  it('shako separation: kitted unit gets BOTH a kit-head and a generic skull on full dismemberment', () => {
+    const rng = createRng(31);
+    const plan = planGibSpawn(rng, 'cannon', true, lineInfantryInfo);
+    const kitHeads = plan.emits.filter((e) => e.kind === DebrisKind.KitHead);
+    const genericHeads = plan.emits.filter(
+      (e) => e.kind === DebrisKind.GenericChunk && e.chunkId === 0,
+    );
+    expect(kitHeads.length).toBe(1);
+    expect(genericHeads.length).toBe(1);
+    // Generic skull should carry the kit's gibTint so it reads as the unit's flesh.
+    expect(genericHeads[0]!.tint).toEqual(lineInfantryInfo.gibTint);
+  });
+
   it('explosion behaves like cannon (full dismemberment)', () => {
     const rng = createRng(2);
     const plan = planGibSpawn(rng, 'explosion', true, lineInfantryInfo);
     expect(plan.emits.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('spawn variance: different RNG seeds produce different limb counts', () => {
+    let observedDistinct = 0;
+    let lastArm = -1;
+    let lastLeg = -1;
+    let armsDiffer = false;
+    let legsDiffer = false;
+    for (let i = 0; i < 30; i++) {
+      const rng = createRng(i + 12345);
+      const plan = planGibSpawn(rng, 'cannon', true, lineInfantryInfo);
+      let arms = 0, legs = 0;
+      for (const e of plan.emits) {
+        if (e.kind === DebrisKind.GenericChunk && ARM_IDS.has(e.chunkId)) arms++;
+        if (e.kind === DebrisKind.GenericChunk && LEG_IDS.has(e.chunkId)) legs++;
+      }
+      if (i > 0) {
+        if (arms !== lastArm) armsDiffer = true;
+        if (legs !== lastLeg) legsDiffer = true;
+      }
+      lastArm = arms;
+      lastLeg = legs;
+      observedDistinct++;
+    }
+    expect(observedDistinct).toBeGreaterThan(0);
+    expect(armsDiffer || legsDiffer).toBe(true);
   });
 
   it('legs/arms picked by kit use the kit-specified variant ids', () => {
@@ -204,6 +250,91 @@ describe('planGibSpawn', () => {
     expect(withChunks).toBeLessThan(360);
   });
 
+  it('arm pool: when info has armChunkIds, picks land in that pool', () => {
+    const POOL = [6, 14];
+    const pooledInfo: KitGibInfo = { ...lineInfantryInfo, armChunkIds: POOL };
+    const seen = new Set<number>();
+    for (let i = 0; i < 50; i++) {
+      const rng = createRng(i + 31337);
+      const plan = planGibSpawn(rng, 'cannon', true, pooledInfo);
+      for (const e of plan.emits) {
+        if (e.kind !== DebrisKind.GenericChunk) continue;
+        if (ARM_IDS.has(e.chunkId) || e.chunkId === 14) {
+          seen.add(e.chunkId);
+          expect(POOL.includes(e.chunkId)).toBe(true);
+        }
+      }
+    }
+    // Both pool entries should appear over many trials.
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('leg pool: when info has legChunkIds, picks land in that pool', () => {
+    const POOL = [8, 10];
+    const pooledInfo: KitGibInfo = { ...lineInfantryInfo, legChunkIds: POOL };
+    const seen = new Set<number>();
+    for (let i = 0; i < 50; i++) {
+      const rng = createRng(i + 42424);
+      const plan = planGibSpawn(rng, 'cannon', true, pooledInfo);
+      for (const e of plan.emits) {
+        if (e.kind !== DebrisKind.GenericChunk) continue;
+        if (LEG_IDS.has(e.chunkId) || e.chunkId === 10) {
+          seen.add(e.chunkId);
+          expect(POOL.includes(e.chunkId)).toBe(true);
+        }
+      }
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('arm pool absent: picker falls back to single armChunkId', () => {
+    const rng = createRng(2025);
+    const plan = planGibSpawn(rng, 'cannon', true, lineInfantryInfo);
+    for (const e of plan.emits) {
+      if (e.kind !== DebrisKind.GenericChunk) continue;
+      if (ARM_IDS.has(e.chunkId)) {
+        expect(e.chunkId).toBe(lineInfantryInfo.armChunkId);
+      }
+    }
+  });
+
+  it('full dismemberment: misc pool produces occasional bonus chunks across trials', () => {
+    const MISC = [11, 12, 13, 15];
+    const pooledInfo: KitGibInfo = { ...lineInfantryInfo, miscChunkIds: MISC };
+    let miscEmits = 0;
+    const seen = new Set<number>();
+    const TRIALS = 400;
+    for (let i = 0; i < TRIALS; i++) {
+      const rng = createRng(i + 55555);
+      const plan = planGibSpawn(rng, 'cannon', true, pooledInfo);
+      for (const e of plan.emits) {
+        if (e.kind !== DebrisKind.GenericChunk) continue;
+        if (MISC.includes(e.chunkId)) {
+          miscEmits++;
+          seen.add(e.chunkId);
+        }
+      }
+    }
+    expect(miscEmits).toBeGreaterThan(0);
+    // ~30% of trials should produce a misc emit; loose bounds against drift.
+    expect(miscEmits).toBeGreaterThan(TRIALS * 0.15);
+    expect(miscEmits).toBeLessThan(TRIALS * 0.5);
+    // Multiple distinct misc chunks should appear across trials.
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('full dismemberment: kit without misc pool emits zero misc chunks', () => {
+    const MISC_RANGE = new Set([11, 12, 13, 15]);
+    for (let i = 0; i < 200; i++) {
+      const rng = createRng(i + 66666);
+      const plan = planGibSpawn(rng, 'cannon', true, lineInfantryInfo);
+      for (const e of plan.emits) {
+        if (e.kind !== DebrisKind.GenericChunk) continue;
+        expect(MISC_RANGE.has(e.chunkId)).toBe(false);
+      }
+    }
+  });
+
   it('any spawned chunk references a valid chunkId 0..9', () => {
     for (let i = 0; i < 200; i++) {
       const rng = createRng(i + 5000);
@@ -291,6 +422,66 @@ describe('spawnGibs', () => {
     }
     expect(alive).toBeGreaterThanOrEqual(7);
     expect(totalZ / alive).toBeGreaterThan(5);
+  });
+
+  it('explosion darkens generic-chunk tint vs cannon (charred limbs)', () => {
+    const dCannon = createDebris(64);
+    const dBoom = createDebris(64);
+    spawnGibs(dCannon, createRng(101), 'cannon', 0, 0, 1, 0, 0, true, 0, 0, lineTable);
+    spawnGibs(dBoom, createRng(101), 'explosion', 0, 0, 1, 0, 0, true, 0, 0, lineTable);
+    // Average tint across alive generic chunks.
+    const avg = (d: ReturnType<typeof createDebris>) => {
+      let n = 0, sum = 0;
+      for (let i = 0; i < d.count; i++) {
+        const id = d.aliveIds[i]!;
+        if (d.kind[id] !== DebrisKind.GenericChunk) continue;
+        sum += d.tintR[id]! + d.tintG[id]! + d.tintB[id]!;
+        n++;
+      }
+      return n > 0 ? sum / (n * 3) : 0;
+    };
+    const cannonAvg = avg(dCannon);
+    const boomAvg = avg(dBoom);
+    expect(boomAvg).toBeLessThan(cannonAvg * 0.7);
+  });
+
+  it('musket non-lethal does NOT darken tint (charring is explosion-only)', () => {
+    // Force a chunk to spawn — try many seeds until non-lethal musket coughs one up.
+    const tint = lineInfantryInfo.gibTint;
+    let saw = false;
+    for (let i = 0; i < 500 && !saw; i++) {
+      const d = createDebris(8);
+      spawnGibs(d, createRng(i + 60000), 'musket', 0, 0, 1, 0, 0, false, 0, 0, lineTable);
+      if (d.count === 0) continue;
+      const id = d.aliveIds[0]!;
+      if (d.kind[id] !== DebrisKind.GenericChunk) continue;
+      // Tint is unchanged from the kit gib tint (no charring).
+      expect(d.tintR[id]).toBe(tint[0]);
+      expect(d.tintG[id]).toBe(tint[1]);
+      expect(d.tintB[id]).toBe(tint[2]);
+      saw = true;
+    }
+    expect(saw).toBe(true);
+  });
+
+  it('explosion sets fromExplosion=1 on every spawned gib', () => {
+    const d = createDebris(64);
+    spawnGibs(d, createRng(202), 'explosion', 0, 0, 1, 0, 0, true, 0, 0, lineTable);
+    expect(d.count).toBeGreaterThan(0);
+    for (let i = 0; i < d.count; i++) {
+      const id = d.aliveIds[i]!;
+      expect(d.fromExplosion[id]).toBe(1);
+    }
+  });
+
+  it('cannon (non-explosion) leaves fromExplosion=0', () => {
+    const d = createDebris(64);
+    spawnGibs(d, createRng(203), 'cannon', 0, 0, 1, 0, 0, true, 0, 0, lineTable);
+    expect(d.count).toBeGreaterThan(0);
+    for (let i = 0; i < d.count; i++) {
+      const id = d.aliveIds[i]!;
+      expect(d.fromExplosion[id]).toBe(0);
+    }
   });
 
   it('kit gibs record facing for downstream UV resolution', () => {

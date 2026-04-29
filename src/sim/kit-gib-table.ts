@@ -12,6 +12,15 @@ export interface KitGibInfo {
   legChunkId: number;
   /** Generic-chunk variant id used for arms of this kit's deaths. */
   armChunkId: number;
+  /**
+   * Resolved per-kit chunk pools. When non-empty, the spawn picker selects
+   * uniformly from the pool instead of the kit's single `armChunkId` /
+   * `legChunkId`. Misc is a bonus pool used for occasional flavour drops on
+   * full dismemberment (epaulette, cartridge box, ...).
+   */
+  armChunkIds: number[];
+  legChunkIds: number[];
+  miscChunkIds: number[];
   /** Multiplicative tint (RGB 0..255) applied to legs/arms. White = neutral. */
   gibTint: [number, number, number];
 }
@@ -53,11 +62,38 @@ function pickArmChunkForKit(kitId: string): number {
 }
 
 /**
+ * Map manifest chunk-id strings to their packed numeric index. Built by the
+ * caller from the loaded debris atlas (or an analogous source). Kept as a
+ * lookup map so the table builder can resolve ids without re-reading the JSON.
+ */
+export type ChunkIdLookup = ReadonlyMap<string, number>;
+
+function resolvePool(
+  ids: readonly string[] | undefined,
+  lookup: ChunkIdLookup | undefined,
+): number[] {
+  if (!ids || !lookup) return [];
+  const out: number[] = [];
+  for (const id of ids) {
+    const idx = lookup.get(id);
+    if (idx !== undefined) out.push(idx);
+  }
+  return out;
+}
+
+/**
  * Build the per-kit gib-spawn lookup. Kits without a configured `gibTint` get
  * a neutral white tint (no recolour). Kindexes whose kit is not in the loaded
  * `kits` map get a null entry → sim falls back to plain generic chunks.
+ *
+ * `chunkIdLookup` resolves the per-kit `gibChunks` string ids to manifest
+ * indices. If absent, all per-kit pools are empty and the picker falls back
+ * to the legacy single-id path.
  */
-export function buildKitGibTable(kits: ReadonlyMap<string, KitConfig>): KitGibTable {
+export function buildKitGibTable(
+  kits: ReadonlyMap<string, KitConfig>,
+  chunkIdLookup?: ChunkIdLookup,
+): KitGibTable {
   const byKitIdx: KitGibInfo[] = [];
   const byKindIdx: Array<KitGibInfo | null> = [];
   for (let kindIdx = 0; kindIdx < unitKinds.length; kindIdx++) {
@@ -74,6 +110,9 @@ export function buildKitGibTable(kits: ReadonlyMap<string, KitConfig>): KitGibTa
       hasHead: kit.head != null,
       legChunkId: pickLegChunkForKit(kit.id),
       armChunkId: pickArmChunkForKit(kit.id),
+      armChunkIds: resolvePool(kit.gibChunks?.arm, chunkIdLookup),
+      legChunkIds: resolvePool(kit.gibChunks?.leg, chunkIdLookup),
+      miscChunkIds: resolvePool(kit.gibChunks?.misc, chunkIdLookup),
       gibTint: kit.gibTint ?? [255, 255, 255],
     };
     byKitIdx.push(info);

@@ -5,14 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Austerblitz</title>
     <style>
-      html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
-      #game { position: fixed; inset: 0; display: block; }
-      #ui-root { position: fixed; inset: 0; pointer-events: none; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        color: #fff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        image-rendering: pixelated;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 24px;
+        min-width: 360px;
+      }
+      h1 {
+        margin: 0 0 16px;
+        text-align: center;
+        font-size: 48px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .menu-button {
+        display: block;
+        padding: 24px 32px;
+        border: 2px solid #fff;
+        background: #000;
+        color: #fff;
+        text-decoration: none;
+        text-align: center;
+        font-size: 22px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .menu-button:hover,
+      .menu-button:focus {
+        background: #fff;
+        color: #000;
+        outline: none;
+      }
     </style>
   </head>
   <body>
-    <canvas id="game"></canvas>
-    <div id="ui-root"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <main>
+      <h1>Austerblitz</h1>
+      <a class="menu-button" href="line-battles.html">Line Battles</a>
+      <a class="menu-button" href="skirmish.html">Skirmish Defense</a>
+    </main>
   </body>
 </html>

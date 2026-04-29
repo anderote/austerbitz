@@ -562,6 +562,48 @@ describe('combat-system — rank blocking', () => {
   });
 });
 
+describe('combat pipeline integration — cohesion', () => {
+  it('a fully-cohesive shooter ends up with a shorter reloadT than a lone one', () => {
+    // Same seed in both worlds → same ±20% jitter draw in identical order, so
+    // the only thing differing the reloadT is the cohesion speed multiplier.
+    function reloadAfterFire(cohesion: number): number {
+      const world = createWorld({ seed: 42, capacity: 64, mapSize: 200, cellSize: 2 });
+      const projectiles = createProjectiles(16);
+      const particles = createParticles(2048);
+      const puffs = createPuffs(256);
+      const fireOrders: FireOrders = new Map();
+      const combat = createCombatSystem(fireOrders);
+
+      const shooter = spawnLineInfantry(world, 0, 0, 0);
+      spawnLineInfantry(world, 1, 50, 0);
+
+      const dt = 1 / 60;
+      world.entities.stateT[shooter] = 999;
+      world.entities.cohesion[shooter] = cohesion;
+
+      // Run the pipeline long enough to traverse Aiming → Reloading. The
+      // combat-system rank-scan only runs on the entity's stripe tick, but we
+      // re-pin cohesion every tick so neither cluster geometry nor scan timing
+      // affects the multiplier seen at the firing transition.
+      for (let i = 0; i < 40; i++) {
+        world.entities.cohesion[shooter] = cohesion;
+        rebuildGrid(world);
+        combat(world, dt);
+        tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
+        if (world.entities.state[shooter] === EntityState.Reloading) break;
+      }
+
+      expect(world.entities.state[shooter]).toBe(EntityState.Reloading);
+      return world.entities.reloadT[shooter]!;
+    }
+
+    const lone = reloadAfterFire(0);
+    const cohesive = reloadAfterFire(1);
+    // 1.5× faster reload → cohesive reloadT should be ~lone / 1.5.
+    expect(cohesive).toBeLessThan(lone * 0.9);
+  });
+});
+
 describe('combat pipeline integration', () => {
   it('idle → aiming → reloading transitions and projectile is spawned', () => {
     const world = makeWorld();

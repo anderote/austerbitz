@@ -54,6 +54,10 @@ export interface Debris {
   tintR: Uint8Array;
   tintG: Uint8Array;
   tintB: Uint8Array;
+  /** 1 if this gib was spawned by an explosion — used to emit smoke trails while airborne. */
+  fromExplosion: Uint8Array;
+  /** Per-gib smoke-puff timer accumulator (seconds). */
+  smokeT: Float32Array;
 }
 
 export function createDebris(capacity: number): Debris {
@@ -84,6 +88,8 @@ export function createDebris(capacity: number): Debris {
     tintR: new Uint8Array(capacity),
     tintG: new Uint8Array(capacity),
     tintB: new Uint8Array(capacity),
+    fromExplosion: new Uint8Array(capacity),
+    smokeT: new Float32Array(capacity),
   };
 }
 

@@ -188,7 +188,7 @@ function frame(t: number) {
   tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests);
   updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt);
   tickRagdoll(world.entities, dt);
-  tickDebris(world.debris, dt);
+  tickDebris(world.debris, dt, puffs, world.rng);
   deathDropsSystem(world, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.

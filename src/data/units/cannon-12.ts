@@ -7,6 +7,8 @@ export const cannon12: UnitKind = {
   name: '12-Pounder Cannon',
   placeholderColor: [255, 255, 255],
   placeholderSize: { w: 2.2, h: 2.8 },
+  spriteSize: { w: 3.6, h: 3.6 },
+  footYFromCenter: 1.5,
   spriteCell: { col: 1, row: 1 },
   baseStats: {
     hp: 200,
@@ -15,7 +17,7 @@ export const cannon12: UnitKind = {
     sightRange: 200,
     weaponRange: 600,
     weaponDamage: 80,
-    weaponReload: 30,
+    weaponReload: 20,
     weaponAccuracy: 0.6,
     armor: 2,
     massKg: 1500,

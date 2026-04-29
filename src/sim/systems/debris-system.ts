@@ -9,10 +9,16 @@ import {
   GIB_SETTLE_BOUNCES,
   type Debris,
 } from '../debris';
+import type { Puffs } from '../../puffs/puffs';
+import type { Rng } from '../../util/rng';
+import { emitPuff } from '../../puffs/emit';
+import { CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX } from '../../puffs/profiles/cannonball-trail';
 
 const SETTLE_VZ_EPSILON = 0.5;
+/** Period between smoke-trail puffs while a from-explosion gib is airborne. */
+const SMOKE_TRAIL_PERIOD = 0.08;
 
-export function tickDebris(d: Debris, dt: number): void {
+export function tickDebris(d: Debris, dt: number, puffs?: Puffs, rng?: Rng): void {
   // Iterate from end of packed list so freeDebris's swap-with-last is safe.
   for (let i = d.count - 1; i >= 0; i--) {
     const id = d.aliveIds[i]!;
@@ -23,6 +29,8 @@ export function tickDebris(d: Debris, dt: number): void {
       d.bounces[id]! >= GIB_SETTLE_BOUNCES ||
       (d.z[id] === 0 && Math.abs(d.velZ[id]!) < SETTLE_VZ_EPSILON && Math.hypot(d.velX[id]!, d.velY[id]!) < SETTLE_VZ_EPSILON);
     if (settled) {
+      // Pin to the ground — bounce-count settle can fire mid-arc with z>0.
+      d.z[id] = 0;
       d.velX[id] = 0;
       d.velY[id] = 0;
       d.velZ[id] = 0;
@@ -62,5 +70,15 @@ export function tickDebris(d: Debris, dt: number): void {
     // Spin.
     d.spinDeg[id] = d.spinDeg[id]! + d.spinRate[id]! * dt;
     d.spinRate[id] = d.spinRate[id]! * Math.max(0, 1 - dt * GIB_SPIN_DRAG);
+
+    // Explosion-origin gibs trail smoke wisps while airborne.
+    if (puffs && rng && d.fromExplosion[id] === 1 && d.z[id]! > 0) {
+      let t = d.smokeT[id]! + dt;
+      while (t >= SMOKE_TRAIL_PERIOD) {
+        emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, d.posX[id]!, d.posY[id]!, 0, 0, rng);
+        t -= SMOKE_TRAIL_PERIOD;
+      }
+      d.smokeT[id] = t;
+    }
   }
 }

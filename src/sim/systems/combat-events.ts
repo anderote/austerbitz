@@ -1,4 +1,4 @@
-import { type Entities, EntityState, isDead } from '../entities';
+import { type Entities, EntityState, freeEntity, isDead } from '../entities';
 import { getUnitKindByIndex } from '../../data/units';
 import type { Particles } from '../../particles/particles';
 import { emitPromotionSparkle, spawnBlood } from '../../particles/emitters';
@@ -29,6 +29,29 @@ export type HitKind = 'musket' | 'cannon' | 'melee' | 'charge' | 'explosion';
 const FLINCH_DURATION = 0.3;
 const RAGDOLL_DURATION = 2.0;
 const DYING_DURATION = 0.5;
+
+/**
+ * Despawn a corpse (Dying / Dead / Ragdoll) and emit a full kit-aware
+ * dismemberment burst at its position. Used when an explosion shockwave passes
+ * through an already-down body — the corpse vanishes and is replaced with gibs.
+ */
+export function gibCorpse(
+  e: Entities,
+  rng: Rng,
+  debris: Debris,
+  id: number,
+  impX: number,
+  impY: number,
+): void {
+  if (e.alive[id] === 0) return;
+  const px = e.posX[id]!;
+  const py = e.posY[id]!;
+  spawnGibs(
+    debris, rng, 'explosion', px, py, impX, impY,
+    e.team[id]!, true, e.kindId[id]!, e.facing[id]!, kitGibTable,
+  );
+  freeEntity(e, id);
+}
 
 export function enterFlinch(e: Entities, id: number): void {
   e.state[id] = EntityState.Flinch;

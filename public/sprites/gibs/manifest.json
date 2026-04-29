@@ -9,6 +9,12 @@
     { "id": "arm-uniformed",  "path": "arm-uniformed.png", "partType": "arm",   "mass": "light"  },
     { "id": "arm-bare",       "path": "arm-bare.png",      "partType": "arm",   "mass": "light"  },
     { "id": "leg-trousered",  "path": "leg-trousered.png", "partType": "leg",   "mass": "medium" },
-    { "id": "leg-bare",       "path": "leg-bare.png",      "partType": "leg",   "mass": "medium" }
+    { "id": "leg-bare",       "path": "leg-bare.png",      "partType": "leg",   "mass": "medium" },
+    { "id": "boot",           "path": "boot.png",          "partType": "leg",   "mass": "medium" },
+    { "id": "musket-stock",   "path": "musket-stock.png",  "partType": "misc",  "mass": "medium" },
+    { "id": "cartridge-box",  "path": "cartridge-box.png", "partType": "misc",  "mass": "light"  },
+    { "id": "epaulette",      "path": "epaulette.png",     "partType": "misc",  "mass": "light"  },
+    { "id": "hand",           "path": "hand.png",          "partType": "arm",   "mass": "light"  },
+    { "id": "finger",         "path": "finger.png",        "partType": "misc",  "mass": "light"  }
   ]
 }

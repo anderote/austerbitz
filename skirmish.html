@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Austerblitz — Skirmish Defense</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+      #game { position: fixed; inset: 0; display: block; }
+      #ui-root { position: fixed; inset: 0; pointer-events: none; }
+
+      #ui-root .lab-panel {
+        background: rgba(20, 24, 28, 0.85);
+        border: 1px solid #444;
+        color: #e5e7eb;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        pointer-events: auto;
+      }
+
+      #ui-root .lab-subject {
+        position: absolute;
+        top: 8px; left: 8px;
+        padding: 8px 10px;
+        border-radius: 4px;
+      }
+      #ui-root .lab-subject h3,
+      #ui-root .lab-actions h3 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #80cf80;
+      }
+      #ui-root .lab-subject label { display: block; cursor: pointer; padding: 2px 0; }
+
+      #ui-root .lab-hud {
+        position: absolute;
+        top: 8px; right: 8px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        white-space: pre;
+      }
+
+      #ui-root .lab-actions {
+        position: absolute;
+        top: 160px; right: 8px;
+        width: 180px;
+        padding: 8px;
+        border-radius: 4px;
+        max-height: calc(100vh - 180px);
+        overflow-y: auto;
+      }
+      #ui-root .lab-actions .group { margin-bottom: 8px; }
+      #ui-root .lab-actions .group-label {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #8aa;
+        margin: 4px 0 3px;
+      }
+      #ui-root .lab-actions button {
+        display: block;
+        width: 100%;
+        margin-bottom: 3px;
+        padding: 5px 7px;
+        background: #2c343c;
+        border: 1px solid #444;
+        color: #e5e7eb;
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+      }
+      #ui-root .lab-actions button:hover:not(:disabled) { background: #3a444f; }
+      #ui-root .lab-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+      #ui-root .lab-actions button.toggle-on { background: #3c5a3c; border-color: #5c8c5c; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="ui-root"></div>
+    <script type="module" src="/src/skirmish/main.ts"></script>
+  </body>
+</html>

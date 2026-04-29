@@ -86,6 +86,7 @@ export interface Entities {
   // combat-system stripe tick from `restPos` + `restFacing`.
   stance: Uint8Array;
   formationRank: Uint8Array;
+  cohesion: Float32Array;
   // 1 if currently in Hold and the unit has a loaded shot ready. Lets a
   // stance flip away from Hold release the shot without re-reloading.
   holdLoaded: Uint8Array;
@@ -187,6 +188,7 @@ export function createEntities(capacity: number): Entities {
     canFire: new Uint8Array(capacity),
     stance: new Uint8Array(capacity),
     formationRank: new Uint8Array(capacity),
+    cohesion: new Float32Array(capacity),
     holdLoaded: new Uint8Array(capacity),
     rank: new Uint8Array(capacity),
     xp: new Uint16Array(capacity),
@@ -251,6 +253,7 @@ export function allocEntity(e: Entities): number {
   e.canFire[id] = 1;
   e.stance[id] = FireStance.ByRanks;
   e.formationRank[id] = FORMATION_RANK_UNKNOWN;
+  e.cohesion[id] = 0;
   e.holdLoaded[id] = 0;
   e.rank[id] = 0;
   e.xp[id] = 0;

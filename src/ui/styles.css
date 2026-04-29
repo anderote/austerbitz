@@ -708,3 +708,78 @@
   border: none;
   cursor: pointer;
 }
+
+/* Cannon ammo panel — appears above the selection panel when artillery is selected. */
+#ui-root .cannon-ammo-panel {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+#ui-root .cannon-ammo-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 56px;
+  padding: 6px 4px 4px;
+  border: 1px solid rgba(120, 120, 140, 0.35);
+  border-radius: 4px;
+  background: rgba(20, 24, 28, 0.4);
+  box-sizing: border-box;
+  user-select: none;
+}
+#ui-root .cannon-ammo-slot.active {
+  border-color: #cfe070;
+  background: rgba(80, 110, 40, 0.55);
+  box-shadow: 0 0 0 1px #cfe070 inset;
+}
+#ui-root .cannon-ammo-icon {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  margin-bottom: 4px;
+}
+#ui-root .cannon-ammo-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#ui-root .cannon-ammo-name {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d8d8c8;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+#ui-root .cannon-ammo-slot.active .cannon-ammo-name {
+  color: #f4f4d8;
+}
+#ui-root .cannon-ammo-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  line-height: 1;
+  border: 1px solid rgba(180, 180, 190, 0.35);
+  border-radius: 2px;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+#ui-root .cannon-ammo-slot.active .cannon-ammo-key {
+  color: #fff;
+  border-color: #cfe070;
+}
+#ui-root .cannon-ammo-mixed {
+  align-self: center;
+  margin-left: 4px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #d8c060;
+}

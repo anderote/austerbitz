@@ -6,6 +6,7 @@ import { hasHostileNear } from '../spatial/team-occupancy';
 import { getUnitKindByIndex } from '../../data/units';
 import { hasRecentFire, hasRecentFireAnyRank } from '../fire-signal';
 import { inferFormationRank } from '../formation-rank';
+import { inferCohesion, cohesionSpeedMult } from '../cohesion';
 import { profiler } from '../../dev/profiler';
 
 // Block firing while marching at full speed, but allow the formation
@@ -81,6 +82,7 @@ export function createCombatSystem(fireOrders: FireOrders): System {
           kind.baseStats.formationSpacing.x,
           kind.baseStats.formationSpacing.y,
         );
+        e.cohesion[id] = inferCohesion(e, grid, id);
         profiler.end('combat/rankScan');
       }
 
@@ -182,7 +184,7 @@ export function createCombatSystem(fireOrders: FireOrders): System {
         : hasRecentFire(fireSignal, grid, px, py, team, myRank, tick, VOLLEY_WINDOW_TICKS);
       if (hot) {
         triggerFire(e, fireOrders, id, tx, ty, tun.joinerWindup);
-      } else if (e.stateT[id]! >= maxHoldFor(id, stance)) {
+      } else if (e.stateT[id]! >= maxHoldFor(id, stance) / cohesionSpeedMult(e.cohesion[id]!)) {
         triggerFire(e, fireOrders, id, tx, ty, tun.leaderWindup);
       }
     }

@@ -78,4 +78,38 @@ describe('updateShockwaves', () => {
     expect(entities.hp[friendly]).toBe(50);
     expect(entities.hp[enemy]).toBeLessThan(50);
   });
+
+  it('gibs corpses (Dying / Dead / Ragdoll) into debris and despawns them', () => {
+    const entities = createEntities(8);
+    const grid = createGrid({ minX: 0, minY: 0, maxX: 200, maxY: 200, cellSize: 4, capacity: 8 });
+    const particles = createParticles(64);
+    const debris = createDebris(64);
+    const splats = createBloodSplats(8);
+    const rng = createRng(3);
+    const sw = createShockwaves(1, 8);
+
+    const dyingId = setupEntity(entities, 102, 100, 50);
+    entities.state[dyingId] = EntityState.Dying;
+    const deadId = setupEntity(entities, 103, 100, 50);
+    entities.state[deadId] = EntityState.Dead;
+    const ragdollId = setupEntity(entities, 104, 100, 50);
+    entities.state[ragdollId] = EntityState.Ragdoll;
+    gridRebuild(grid, entities.aliveIds, entities.count, entities.posX, entities.posY);
+
+    const debrisBefore = debris.count;
+
+    const id = allocShockwave(sw);
+    sw.x[id] = 100; sw.y[id] = 100;
+    sw.fullRadius[id] = 6; sw.waveSpeed[id] = 120;
+    sw.damage[id] = 60; sw.impulse[id] = 1000;
+
+    for (let i = 0; i < 8; i++) {
+      updateShockwaves(sw, entities, grid, particles, rng, splats, debris, 1/60);
+    }
+
+    expect(entities.alive[dyingId]).toBe(0);
+    expect(entities.alive[deadId]).toBe(0);
+    expect(entities.alive[ragdollId]).toBe(0);
+    expect(debris.count).toBeGreaterThan(debrisBefore);
+  });
 });

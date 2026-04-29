@@ -15,12 +15,23 @@ import { EMPTY_KIT_GIB_TABLE } from '../kit-gib-table';
 const CHUNK_HEAD          = 0;
 const CHUNK_ARM           = 1; // existing — bare arm with tiny sleeve marker
 const CHUNK_LEG           = 2; // existing — dark trouser/boot
+const CHUNK_TORSO         = 3;
 const CHUNK_HAT           = 4;
 const CHUNK_MEAT_BLOB     = 5;
 const CHUNK_ARM_UNIFORMED = 6; // full sleeve in team color
 const CHUNK_ARM_BARE      = 7; // pure flesh (clean rip-off)
 const CHUNK_LEG_TROUSERED = 8; // cream trousers + dark boot
 const CHUNK_LEG_BARE      = 9; // pure flesh
+
+/** Multiplier applied to GenericChunk tint when hit kind is 'explosion'. */
+const EXPLOSION_CHAR_MUL = 0.5;
+
+function rollLimbCount(rng: Rng, p1: number, p2: number): number {
+  const r = rng.next();
+  if (r < p1) return 1;
+  if (r < p1 + p2) return 2;
+  return 3;
+}
 
 /** Mass classification per chunk for speed/kick scaling. */
 const LIGHT = new Set<number>([
@@ -64,44 +75,81 @@ function pickLegChunkRand(rng: Rng): number {
 }
 
 /**
- * Cheap kit-aware fall-through pick. When a kit is known, every limb of that
- * kit's deaths uses the same authored variant id — the regiment tint provides
- * the visual differentiation across factions, the kit pick provides the
- * differentiation across unit types (peasant vs line-infantry vs cuirassier).
+ * Cheap kit-aware fall-through pick. When the kit declares a multi-id pool
+ * (`armChunkIds` / `legChunkIds`), pick uniformly from it. Otherwise use the
+ * kit's single `armChunkId` / `legChunkId`. Without any kit info, fall back
+ * to the legacy random distribution across the generic variants.
  */
 function pickArmChunkForKit(info: KitGibInfo | null, rng: Rng): number {
   if (!info) return pickArmChunkRand(rng);
+  const pool = info.armChunkIds;
+  if (pool.length > 0) return pool[rng.intRange(0, pool.length)]!;
   return info.armChunkId;
 }
 function pickLegChunkForKit(info: KitGibInfo | null, rng: Rng): number {
   if (!info) return pickLegChunkRand(rng);
+  const pool = info.legChunkIds;
+  if (pool.length > 0) return pool[rng.intRange(0, pool.length)]!;
   return info.legChunkId;
 }
+/**
+ * Pick a misc-pool chunk id, or null if the kit has no misc pool. Used by
+ * `planFullDismemberment` to occasionally throw a flavour chunk (epaulette,
+ * cartridge box, etc.) into a cannon/explosion blast.
+ */
+function pickMiscChunkForKit(info: KitGibInfo | null, rng: Rng): number | null {
+  if (!info) return null;
+  const pool = info.miscChunkIds;
+  if (pool.length === 0) return null;
+  return pool[rng.intRange(0, pool.length)]!;
+}
+
+/** Probability of a bonus misc-pool chunk in a full-dismemberment plan. */
+const MISC_BONUS_CHANCE = 0.30;
 
 /**
- * Lethal cannon/explosion deaths produce the deterministic mix laid out in the
- * design doc: 1 head + 1 weapon (if armed) + 2 legs + 2 arms + 2..3 meat.
- * Generic-chunk fall-through is used when the kit is unknown — same shape, no
- * kit-head / kit-weapon entries.
+ * Lethal cannon/explosion deaths roll a varied limb mix per kill so adjacent
+ * kills don't look identical. Counts are randomized; kit-real head/weapon and
+ * the bonus generic head (for shako separation) are deterministic given the
+ * kit. Generic-chunk fall-through still applies when the kit is unknown.
  */
 function planFullDismemberment(rng: Rng, info: KitGibInfo | null): GibPlan {
   const emits: EmitItem[] = [];
   const tint = info?.gibTint ?? [255, 255, 255];
   if (info && info.hasHead) {
+    // Shako separation: kit-real head AND a generic skull tinted by the kit.
     emits.push({ kind: DebrisKind.KitHead, chunkId: 0 });
+    emits.push({ kind: DebrisKind.GenericChunk, chunkId: CHUNK_HEAD, tint });
   } else {
-    emits.push({ kind: DebrisKind.GenericChunk, chunkId: CHUNK_HEAD });
+    emits.push({ kind: DebrisKind.GenericChunk, chunkId: CHUNK_HEAD, tint });
   }
   if (info && info.hasWeapon) {
     emits.push({ kind: DebrisKind.KitWeapon, chunkId: 0 });
   }
-  for (let i = 0; i < 2; i++) {
-    emits.push({ kind: DebrisKind.GenericChunk, chunkId: pickLegChunkForKit(info, rng), tint });
-  }
-  for (let i = 0; i < 2; i++) {
+  // arms: P(1)=0.20, P(2)=0.55, P(3)=0.25.
+  const armCount = rollLimbCount(rng, 0.20, 0.55);
+  for (let i = 0; i < armCount; i++) {
     emits.push({ kind: DebrisKind.GenericChunk, chunkId: pickArmChunkForKit(info, rng), tint });
   }
-  const bloodBlobs = 2 + rng.intRange(0, 2);
+  // legs: P(1)=0.30, P(2)=0.55, P(3)=0.15.
+  const legCount = rollLimbCount(rng, 0.30, 0.55);
+  for (let i = 0; i < legCount; i++) {
+    emits.push({ kind: DebrisKind.GenericChunk, chunkId: pickLegChunkForKit(info, rng), tint });
+  }
+  if (rng.next() < 0.25) {
+    emits.push({ kind: DebrisKind.GenericChunk, chunkId: CHUNK_TORSO, tint });
+  }
+  if (rng.next() < 0.15) {
+    emits.push({ kind: DebrisKind.GenericChunk, chunkId: CHUNK_HAT, tint });
+  }
+  // Bonus misc — only fires when the kit declares a misc pool.
+  if (rng.next() < MISC_BONUS_CHANCE) {
+    const miscId = pickMiscChunkForKit(info, rng);
+    if (miscId !== null) {
+      emits.push({ kind: DebrisKind.GenericChunk, chunkId: miscId, tint });
+    }
+  }
+  const bloodBlobs = 2 + rng.intRange(0, 3);
   return { emits, bloodBlobs };
 }
 
@@ -205,6 +253,7 @@ export function spawnGibs(
     dirY /= mag;
   }
 
+  const isExplosion = hit === 'explosion';
   const emitOne = (item: EmitItem) => {
     const id = allocDebris(d);
     if (id < 0) return;
@@ -242,15 +291,20 @@ export function spawnGibs(
     d.team[id] = team;
     d.kitIdx[id] = info ? info.kitIdx : 0xff;
     d.facing[id] = facing & 7;
-    if (item.tint) {
-      d.tintR[id] = item.tint[0];
-      d.tintG[id] = item.tint[1];
-      d.tintB[id] = item.tint[2];
-    } else {
-      d.tintR[id] = 255;
-      d.tintG[id] = 255;
-      d.tintB[id] = 255;
+    let tR = item.tint ? item.tint[0] : 255;
+    let tG = item.tint ? item.tint[1] : 255;
+    let tB = item.tint ? item.tint[2] : 255;
+    // Explosion-charred: only generic chunks darken; kit-real heads/weapons keep regiment colors.
+    if (isExplosion && item.kind === DebrisKind.GenericChunk) {
+      tR = Math.round(tR * EXPLOSION_CHAR_MUL);
+      tG = Math.round(tG * EXPLOSION_CHAR_MUL);
+      tB = Math.round(tB * EXPLOSION_CHAR_MUL);
     }
+    d.tintR[id] = tR;
+    d.tintG[id] = tG;
+    d.tintB[id] = tB;
+    d.fromExplosion[id] = isExplosion ? 1 : 0;
+    d.smokeT[id] = 0;
   };
 
   for (const item of plan.emits) emitOne(item);

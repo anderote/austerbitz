@@ -77,7 +77,10 @@ try {
 }
 const debrisAtlas = await loadDebrisAtlas(gl);
 const kits = await loadKits();
-const kitGibTable = buildKitGibTable(kits);
+const chunkIdLookup = debrisAtlas
+  ? new Map(debrisAtlas.chunks.map((c, i) => [c.id, i]))
+  : undefined;
+const kitGibTable = buildKitGibTable(kits, chunkIdLookup);
 setKitGibTable(kitGibTable);
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,

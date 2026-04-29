@@ -207,7 +207,7 @@ async function start(): Promise<void> {
       tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests);
       updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt);
       tickRagdoll(world.entities, dt);
-      tickDebris(world.debris, dt);
+      tickDebris(world.debris, dt, puffs, world.rng);
       deathDropsSystem(world, dt);
 
       tickAmbientClouds(puffs, cloudCfg, dt, world.rng);

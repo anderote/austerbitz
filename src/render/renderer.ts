@@ -248,7 +248,12 @@ export function createRenderer(
           const elev = aim * Math.PI / 180;
           const vh = muz * Math.cos(elev);
           const vv = muz * Math.sin(elev);
-          const tof = (vv + Math.sqrt(vv * vv + 2 * GAME_GRAVITY * launchH)) / GAME_GRAVITY;
+          const tofGround = (vv + Math.sqrt(vv * vv + 2 * GAME_GRAVITY * launchH)) / GAME_GRAVITY;
+          // For shells, end the preview at fuse expiry — that's where the
+          // round actually detonates, not where it would have landed.
+          const tof = ammo === 1 && profile.projectile.fuse !== undefined
+            ? Math.min(tofGround, profile.projectile.fuse)
+            : tofGround;
           const range = vh * tof;
           if (range <= 0) continue;
           for (let s = 0; s + DASH <= range && v + 2 <= MAX_TRAJ_VERTS; s += STEP) {

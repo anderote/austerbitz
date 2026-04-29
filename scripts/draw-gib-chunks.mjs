@@ -83,4 +83,31 @@ write('meat-blob', (p) => {
   for (const [x, y] of pts) set(p, x, y, BLOOD);
 });
 
-console.log('[draw-gib-chunks] done — wrote 6 chunk(s)');
+// arm-uniformed: slim sleeve sliver — uniform-marker red, dark cuff, blood at the cut.
+write('arm-uniformed', (p) => {
+  set(p, 3, 1, BLOOD);
+  for (let y = 2; y <= 5; y++) set(p, 3, y, MARK);
+  set(p, 3, 6, DARK);
+});
+
+// arm-bare: thin flesh sliver — visibly thinner than the uniformed version.
+write('arm-bare', (p) => {
+  set(p, 3, 2, BLOOD);
+  for (let y = 3; y <= 6; y++) set(p, 3, y, SKIN);
+});
+
+// leg-trousered: slim trouser sliver — buff trouser color with dark boot at the bottom.
+write('leg-trousered', (p) => {
+  set(p, 3, 1, BLOOD);
+  for (let y = 2; y <= 5; y++) set(p, 3, y, [0xe8, 0xe2, 0xc8, 0xff]);
+  set(p, 3, 6, DARK);
+  set(p, 3, 7, DARK);
+});
+
+// leg-bare: thin flesh sliver — same slimming treatment as arm-bare.
+write('leg-bare', (p) => {
+  set(p, 3, 2, BLOOD);
+  for (let y = 3; y <= 7; y++) set(p, 3, y, SKIN);
+});
+
+console.log('[draw-gib-chunks] done — wrote 10 chunk(s)');

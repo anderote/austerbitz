@@ -1448,6 +1448,11 @@
     "layerPrefix": "musket-brown-bess"
   },
   "gibTint": [240, 230, 210],
+  "gibChunks": {
+    "arm": ["arm-uniformed", "hand"],
+    "leg": ["leg-trousered", "boot"],
+    "misc": ["musket-stock", "cartridge-box", "epaulette", "finger"]
+  },
   "head": {
     "layerPrefix": "shako-standard",
     "facings": {
