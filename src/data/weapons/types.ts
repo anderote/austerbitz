@@ -54,6 +54,11 @@ export interface WeaponProfile {
     mass: number;               // kg
     muzzleVelocity: number;     // m/s
     damage: number;
+    /**
+     * Per-shot damage variance, uniform ±fraction of `damage`. e.g. 0.33 →
+     * roll in [0.67·damage, 1.33·damage]. Omit / 0 = deterministic.
+     */
+    damageVarianceFrac?: number;
     accuracySpreadRad?: number; // optional aim cone
     maxLife: number;            // s
     /** For arcing shots only. */

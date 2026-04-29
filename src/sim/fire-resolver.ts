@@ -72,12 +72,17 @@ export function resolveFire(
       dirY = ry;
     }
 
+    const baseDmg = effectiveDamage(e, id, kind.baseStats.weaponDamage);
+    const varFrac = weapon.projectile.damageVarianceFrac ?? 0;
+    const varMul = varFrac > 0 ? 1 + (rng.next() - 0.5) * 2 * varFrac : 1;
+    const rolledDmg = Math.max(1, Math.round(baseDmg * varMul));
+
     spawnMusketBall(
       projectiles,
       tip.x, tip.y,
       dirX, dirY,
       team,
-      effectiveDamage(e, id, kind.baseStats.weaponDamage),
+      rolledDmg,
       weapon.projectile.muzzleVelocity,
       weapon.projectile.mass,
       weapon.projectile.maxLife,

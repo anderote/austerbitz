@@ -245,6 +245,16 @@ describe('entities — firing fields', () => {
   });
 });
 
+describe('crew fields', () => {
+  it('initializes parentGunId to -1 and crewRole to 0 on alloc', () => {
+    const e = createEntities(8);
+    const id = allocEntity(e);
+    expect(id).toBe(0);
+    expect(e.parentGunId[id]).toBe(-1);
+    expect(e.crewRole[id]).toBe(0);
+  });
+});
+
 describe('isDead', () => {
   it('returns true only for Dying and Dead', () => {
     const e = createEntities(4);

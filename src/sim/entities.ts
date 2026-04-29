@@ -154,6 +154,12 @@ export interface Entities {
   cannonAmmo: Uint8Array;            // 0=solid 1=shell 2=canister
   manualControlled: Uint8Array;      // 1 when under player manual control (skip auto-fire)
 
+  // Crew → parent-gun link. Set by spawnCrewForGun; -1 for non-crew entities.
+  parentGunId: Int32Array;
+  // Role index 0..3 (sponger / rammer / loader / gunner). Meaningful only when
+  // kindId === 'gun-crew'; zero for everything else.
+  crewRole: Uint8Array;
+
   // Free-list
   freeListHead: number;
   freeListNext: Int32Array;  // -1 = end of list
@@ -223,6 +229,8 @@ export function createEntities(capacity: number): Entities {
     cannonElevationDeg: new Float32Array(capacity).fill(18),
     cannonAmmo: new Uint8Array(capacity),
     manualControlled: new Uint8Array(capacity),
+    parentGunId: new Int32Array(capacity).fill(-1),
+    crewRole: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -288,6 +296,8 @@ export function allocEntity(e: Entities): number {
   e.cannonElevationDeg[id] = 18;
   e.cannonAmmo[id] = 0;
   e.manualControlled[id] = 0;
+  e.parentGunId[id] = -1;
+  e.crewRole[id] = 0;
   return id;
 }
 
