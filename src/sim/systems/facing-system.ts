@@ -44,6 +44,10 @@ export const facingSystem: System = (world, _dt) => {
   const e = world.entities;
   for (let i = 0; i < e.count; i++) {
     const id = e.aliveIds[i]!;
+    // Player-controlled units (manual cannon aim) own their facing directly.
+    // Skip the velocity-driven re-alignment + hysteresis; the input handler
+    // sets facing/facingIntent on every keypress.
+    if (e.manualControlled[id] === 1) continue;
     const vx = e.velX[id]!;
     const vy = e.velY[id]!;
 
