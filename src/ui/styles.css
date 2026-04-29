@@ -412,6 +412,114 @@
 #ui-root .formation-controls .fc-label { color: #9ca3af; }
 #ui-root .formation-controls .fc-val   { text-align: right; }
 
+/* === Unit controls panel — replaces .formation-controls and .cannon-ammo-panel === */
+#ui-root .unit-controls {
+  position: absolute;
+  bottom: 8px;
+  left: 196px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  font-size: 11px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+#ui-root .unit-controls .uc-summary {
+  font-size: 12px;
+  color: #d8d8c8;
+  font-weight: 500;
+  white-space: nowrap;
+}
+#ui-root .unit-controls .unit-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+#ui-root .unit-controls .unit-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 52px;
+  padding: 4px 3px 3px;
+  border: 1px solid rgba(120, 120, 140, 0.35);
+  border-radius: 3px;
+  background: rgba(20, 24, 28, 0.4);
+  box-sizing: border-box;
+  user-select: none;
+}
+#ui-root .unit-controls .unit-slot.active {
+  border-color: #cfe070;
+  background: rgba(80, 110, 40, 0.55);
+  box-shadow: 0 0 0 1px #cfe070 inset;
+}
+#ui-root .unit-controls .unit-slot-icon {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+  margin-bottom: 3px;
+}
+#ui-root .unit-controls .unit-slot-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#ui-root .unit-controls .unit-slot-name {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d8d8c8;
+  line-height: 1.1;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+#ui-root .unit-controls .unit-slot.active .unit-slot-name {
+  color: #f4f4d8;
+}
+#ui-root .unit-controls .unit-slot-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #aaa;
+  line-height: 1;
+  border: 1px solid rgba(180, 180, 190, 0.35);
+  border-radius: 2px;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+#ui-root .unit-controls .unit-slot.active .unit-slot-key {
+  color: #fff;
+  border-color: #cfe070;
+}
+#ui-root .unit-controls .unit-slot-mixed {
+  align-self: center;
+  margin-left: 2px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #d8c060;
+}
+#ui-root .unit-controls .uc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#ui-root .unit-controls .uc-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+}
+#ui-root .unit-controls .uc-key {
+  color: var(--ui-accent);
+  font-weight: bold;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+#ui-root .unit-controls .uc-label { color: #9ca3af; }
+#ui-root .unit-controls .uc-val   { text-align: right; color: #d8d8c8; }
+
 #ui-root .group-badges {
   position: absolute;
   inset: 0;
