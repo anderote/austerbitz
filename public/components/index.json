@@ -4921,6 +4921,454 @@
         "NW"
       ],
       "path": "uniform/lower/trousers/northwest-run-4.png"
+    },
+    {
+      "id": "gun-crew-sponge-north",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "N"
+      ],
+      "path": "tools/gun-crew-sponge-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-north",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "N"
+      ],
+      "path": "tools/gun-crew-rammer-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-north",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "N"
+      ],
+      "path": "tools/gun-crew-cartridge-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-north",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "N"
+      ],
+      "path": "tools/gun-crew-linstock-north.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-northeast",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "NE"
+      ],
+      "path": "tools/gun-crew-sponge-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-northeast",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "NE"
+      ],
+      "path": "tools/gun-crew-rammer-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-northeast",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "NE"
+      ],
+      "path": "tools/gun-crew-cartridge-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-northeast",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "NE"
+      ],
+      "path": "tools/gun-crew-linstock-northeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-east",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "E"
+      ],
+      "path": "tools/gun-crew-sponge-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-east",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "E"
+      ],
+      "path": "tools/gun-crew-rammer-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-east",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "E"
+      ],
+      "path": "tools/gun-crew-cartridge-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-east",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "E"
+      ],
+      "path": "tools/gun-crew-linstock-east.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-southeast",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "SE"
+      ],
+      "path": "tools/gun-crew-sponge-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-southeast",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "SE"
+      ],
+      "path": "tools/gun-crew-rammer-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-southeast",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "SE"
+      ],
+      "path": "tools/gun-crew-cartridge-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-southeast",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "SE"
+      ],
+      "path": "tools/gun-crew-linstock-southeast.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-south",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "S"
+      ],
+      "path": "tools/gun-crew-sponge-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-south",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "S"
+      ],
+      "path": "tools/gun-crew-rammer-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-south",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "S"
+      ],
+      "path": "tools/gun-crew-cartridge-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-south",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "S"
+      ],
+      "path": "tools/gun-crew-linstock-south.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-southwest",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "SW"
+      ],
+      "path": "tools/gun-crew-sponge-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-southwest",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "SW"
+      ],
+      "path": "tools/gun-crew-rammer-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-southwest",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "SW"
+      ],
+      "path": "tools/gun-crew-cartridge-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-southwest",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "SW"
+      ],
+      "path": "tools/gun-crew-linstock-southwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-west",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "W"
+      ],
+      "path": "tools/gun-crew-sponge-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-west",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "W"
+      ],
+      "path": "tools/gun-crew-rammer-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-west",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "W"
+      ],
+      "path": "tools/gun-crew-cartridge-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-west",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "W"
+      ],
+      "path": "tools/gun-crew-linstock-west.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
+    },
+    {
+      "id": "gun-crew-sponge-northwest",
+      "type": "tool",
+      "category": "sponge",
+      "facings": [
+        "NW"
+      ],
+      "path": "tools/gun-crew-sponge-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew sponge, procedural."
+    },
+    {
+      "id": "gun-crew-rammer-northwest",
+      "type": "tool",
+      "category": "rammer",
+      "facings": [
+        "NW"
+      ],
+      "path": "tools/gun-crew-rammer-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew rammer, procedural."
+    },
+    {
+      "id": "gun-crew-cartridge-northwest",
+      "type": "tool",
+      "category": "cartridge",
+      "facings": [
+        "NW"
+      ],
+      "path": "tools/gun-crew-cartridge-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew cartridge, procedural."
+    },
+    {
+      "id": "gun-crew-linstock-northwest",
+      "type": "tool",
+      "category": "linstock",
+      "facings": [
+        "NW"
+      ],
+      "path": "tools/gun-crew-linstock-northwest.png",
+      "pivot": [
+        16,
+        32
+      ],
+      "notes": "Gun crew linstock, procedural."
     }
   ]
 }

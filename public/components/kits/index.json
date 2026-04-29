@@ -2,5 +2,8 @@
   "line-infantry",
   "cuirassier",
   "cannon-12",
-  "gun-crew"
+  "gun-crew-sponger",
+  "gun-crew-rammer",
+  "gun-crew-loader",
+  "gun-crew-gunner"
 ]

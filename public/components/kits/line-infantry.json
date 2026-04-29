@@ -876,87 +876,131 @@
             "rot": 0
           }
         ]
+      },
+      "NE": {
+        "layers": [],
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 7,
+            "y": 2,
+            "rot": 0
+          }
+        ]
       }
     },
     "walking": {
-      "N": [
-        [
-          "body-north-base",
-          "trousers-north-walk-0",
-          "coat-line-north",
-          "shako-standard-north"
+      "N": {
+        "layers": [
+          [
+            "body-north-base",
+            "trousers-north-walk-0",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-walk-1",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-walk-2",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-walk-3",
+            "coat-line-north",
+            "shako-standard-north"
+          ]
         ],
-        [
-          "body-north-base",
-          "trousers-north-walk-1",
-          "coat-line-north",
-          "shako-standard-north"
-        ],
-        [
-          "body-north-base",
-          "trousers-north-walk-2",
-          "coat-line-north",
-          "shako-standard-north"
-        ],
-        [
-          "body-north-base",
-          "trousers-north-walk-3",
-          "coat-line-north",
-          "shako-standard-north"
+        "weapons": [
+          {
+            "src": "N",
+            "x": -8,
+            "y": 1,
+            "rot": 0
+          }
         ]
-      ],
-      "NE": [
-        [
-          "body-northeast-base",
-          "trousers-northeast-walk-0",
-          "coat-line-northeast",
-          "shako-standard-northeast"
+      },
+      "NE": {
+        "layers": [
+          [
+            "body-northeast-base",
+            "trousers-northeast-walk-0",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-walk-1",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-walk-2",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-walk-3",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ]
         ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-walk-1",
-          "coat-line-northeast",
-          "shako-standard-northeast"
-        ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-walk-2",
-          "coat-line-northeast",
-          "shako-standard-northeast"
-        ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-walk-3",
-          "coat-line-northeast",
-          "shako-standard-northeast"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 7,
+            "y": 2,
+            "rot": 0
+          }
         ]
-      ],
-      "E": [
-        [
-          "body-east-base",
-          "trousers-east-walk-0",
-          "coat-line-east",
-          "shako-standard-east"
+      },
+      "E": {
+        "layers": [
+          [
+            "body-east-base",
+            "trousers-east-walk-0",
+            "coat-line-east",
+            "shako-standard-east"
+          ],
+          [
+            "body-east-base",
+            "trousers-east-walk-1",
+            "coat-line-east",
+            "shako-standard-east"
+          ],
+          [
+            "body-east-base",
+            "trousers-east-walk-2",
+            "coat-line-east",
+            "shako-standard-east"
+          ],
+          [
+            "body-east-base",
+            "trousers-east-walk-3",
+            "coat-line-east",
+            "shako-standard-east"
+          ]
         ],
-        [
-          "body-east-base",
-          "trousers-east-walk-1",
-          "coat-line-east",
-          "shako-standard-east"
-        ],
-        [
-          "body-east-base",
-          "trousers-east-walk-2",
-          "coat-line-east",
-          "shako-standard-east"
-        ],
-        [
-          "body-east-base",
-          "trousers-east-walk-3",
-          "coat-line-east",
-          "shako-standard-east"
+        "weapons": [
+          {
+            "src": "W",
+            "transform": "flipX",
+            "x": 2,
+            "y": 6,
+            "rot": 0
+          }
         ]
-      ],
+      },
       "SE": {
         "layers": [
           [
@@ -1104,32 +1148,42 @@
           }
         ]
       },
-      "NW": [
-        [
-          "body-northwest-base",
-          "trousers-northwest-walk-0",
-          "coat-line-northwest",
-          "shako-standard-northwest"
+      "NW": {
+        "layers": [
+          [
+            "body-northwest-base",
+            "trousers-northwest-walk-0",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-walk-1",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-walk-2",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-walk-3",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ]
         ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-walk-1",
-          "coat-line-northwest",
-          "shako-standard-northwest"
-        ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-walk-2",
-          "coat-line-northwest",
-          "shako-standard-northwest"
-        ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-walk-3",
-          "coat-line-northwest",
-          "shako-standard-northwest"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -7,
+            "y": 2,
+            "rot": 0
+          }
         ]
-      ],
+      },
       "bob": {
         "body": [
           0,
@@ -1140,70 +1194,91 @@
       }
     },
     "running": {
-      "N": [
-        [
-          "body-north-base",
-          "trousers-north-run-0",
-          "coat-line-north",
-          "shako-standard-north"
+      "N": {
+        "layers": [
+          [
+            "body-north-base",
+            "trousers-north-run-0",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-run-1",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-run-2",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-run-3",
+            "coat-line-north",
+            "shako-standard-north"
+          ],
+          [
+            "body-north-base",
+            "trousers-north-run-4",
+            "coat-line-north",
+            "shako-standard-north"
+          ]
         ],
-        [
-          "body-north-base",
-          "trousers-north-run-1",
-          "coat-line-north",
-          "shako-standard-north"
-        ],
-        [
-          "body-north-base",
-          "trousers-north-run-2",
-          "coat-line-north",
-          "shako-standard-north"
-        ],
-        [
-          "body-north-base",
-          "trousers-north-run-3",
-          "coat-line-north",
-          "shako-standard-north"
-        ],
-        [
-          "body-north-base",
-          "trousers-north-run-4",
-          "coat-line-north",
-          "shako-standard-north"
+        "weapons": [
+          {
+            "src": "N",
+            "x": -8,
+            "y": 1,
+            "rot": 0
+          }
         ]
-      ],
-      "NE": [
-        [
-          "body-northeast-base",
-          "trousers-northeast-run-0",
-          "coat-line-northeast",
-          "shako-standard-northeast"
+      },
+      "NE": {
+        "layers": [
+          [
+            "body-northeast-base",
+            "trousers-northeast-run-0",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-run-1",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-run-2",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-run-3",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ],
+          [
+            "body-northeast-base",
+            "trousers-northeast-run-4",
+            "coat-line-northeast",
+            "shako-standard-northeast"
+          ]
         ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-run-1",
-          "coat-line-northeast",
-          "shako-standard-northeast"
-        ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-run-2",
-          "coat-line-northeast",
-          "shako-standard-northeast"
-        ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-run-3",
-          "coat-line-northeast",
-          "shako-standard-northeast"
-        ],
-        [
-          "body-northeast-base",
-          "trousers-northeast-run-4",
-          "coat-line-northeast",
-          "shako-standard-northeast"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipX",
+            "x": 7,
+            "y": 2,
+            "rot": 0
+          }
         ]
-      ],
+      },
       "E": {
         "layers": [
           [
@@ -1247,102 +1322,136 @@
           }
         ]
       },
-      "SE": [
-        [
-          "body-southeast-base",
-          "trousers-southeast-run-0",
-          "coat-line-southeast",
-          "shako-standard-southeast"
+      "SE": {
+        "layers": [
+          [
+            "body-southeast-base",
+            "trousers-southeast-run-0",
+            "coat-line-southeast",
+            "shako-standard-southeast"
+          ],
+          [
+            "body-southeast-base",
+            "trousers-southeast-run-1",
+            "coat-line-southeast",
+            "shako-standard-southeast"
+          ],
+          [
+            "body-southeast-base",
+            "trousers-southeast-run-2",
+            "coat-line-southeast",
+            "shako-standard-southeast"
+          ],
+          [
+            "body-southeast-base",
+            "trousers-southeast-run-3",
+            "coat-line-southeast",
+            "shako-standard-southeast"
+          ],
+          [
+            "body-southeast-base",
+            "trousers-southeast-run-4",
+            "coat-line-southeast",
+            "shako-standard-southeast"
+          ]
         ],
-        [
-          "body-southeast-base",
-          "trousers-southeast-run-1",
-          "coat-line-southeast",
-          "shako-standard-southeast"
-        ],
-        [
-          "body-southeast-base",
-          "trousers-southeast-run-2",
-          "coat-line-southeast",
-          "shako-standard-southeast"
-        ],
-        [
-          "body-southeast-base",
-          "trousers-southeast-run-3",
-          "coat-line-southeast",
-          "shako-standard-southeast"
-        ],
-        [
-          "body-southeast-base",
-          "trousers-southeast-run-4",
-          "coat-line-southeast",
-          "shako-standard-southeast"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "rot180",
+            "x": 1,
+            "y": 7,
+            "rot": 0
+          }
         ]
-      ],
-      "S": [
-        [
-          "body-south-base",
-          "trousers-south-run-0",
-          "coat-line-south",
-          "shako-standard-south"
+      },
+      "S": {
+        "layers": [
+          [
+            "body-south-base",
+            "trousers-south-run-0",
+            "coat-line-south",
+            "shako-standard-south"
+          ],
+          [
+            "body-south-base",
+            "trousers-south-run-1",
+            "coat-line-south",
+            "shako-standard-south"
+          ],
+          [
+            "body-south-base",
+            "trousers-south-run-2",
+            "coat-line-south",
+            "shako-standard-south"
+          ],
+          [
+            "body-south-base",
+            "trousers-south-run-3",
+            "coat-line-south",
+            "shako-standard-south"
+          ],
+          [
+            "body-south-base",
+            "trousers-south-run-4",
+            "coat-line-south",
+            "shako-standard-south"
+          ]
         ],
-        [
-          "body-south-base",
-          "trousers-south-run-1",
-          "coat-line-south",
-          "shako-standard-south"
-        ],
-        [
-          "body-south-base",
-          "trousers-south-run-2",
-          "coat-line-south",
-          "shako-standard-south"
-        ],
-        [
-          "body-south-base",
-          "trousers-south-run-3",
-          "coat-line-south",
-          "shako-standard-south"
-        ],
-        [
-          "body-south-base",
-          "trousers-south-run-4",
-          "coat-line-south",
-          "shako-standard-south"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 6,
+            "y": 8,
+            "rot": 0,
+            "flipX": true
+          }
         ]
-      ],
-      "SW": [
-        [
-          "body-southwest-base",
-          "trousers-southwest-run-0",
-          "coat-line-southwest",
-          "shako-standard-southwest"
+      },
+      "SW": {
+        "layers": [
+          [
+            "body-southwest-base",
+            "trousers-southwest-run-0",
+            "coat-line-southwest",
+            "shako-standard-southwest"
+          ],
+          [
+            "body-southwest-base",
+            "trousers-southwest-run-1",
+            "coat-line-southwest",
+            "shako-standard-southwest"
+          ],
+          [
+            "body-southwest-base",
+            "trousers-southwest-run-2",
+            "coat-line-southwest",
+            "shako-standard-southwest"
+          ],
+          [
+            "body-southwest-base",
+            "trousers-southwest-run-3",
+            "coat-line-southwest",
+            "shako-standard-southwest"
+          ],
+          [
+            "body-southwest-base",
+            "trousers-southwest-run-4",
+            "coat-line-southwest",
+            "shako-standard-southwest"
+          ]
         ],
-        [
-          "body-southwest-base",
-          "trousers-southwest-run-1",
-          "coat-line-southwest",
-          "shako-standard-southwest"
-        ],
-        [
-          "body-southwest-base",
-          "trousers-southwest-run-2",
-          "coat-line-southwest",
-          "shako-standard-southwest"
-        ],
-        [
-          "body-southwest-base",
-          "trousers-southwest-run-3",
-          "coat-line-southwest",
-          "shako-standard-southwest"
-        ],
-        [
-          "body-southwest-base",
-          "trousers-southwest-run-4",
-          "coat-line-southwest",
-          "shako-standard-southwest"
+        "weapons": [
+          {
+            "src": "NW",
+            "transform": "flipY",
+            "x": 0,
+            "y": 1,
+            "rot": 0
+          }
         ]
-      ],
+      },
       "W": {
         "layers": [
           [
@@ -1385,38 +1494,48 @@
           }
         ]
       },
-      "NW": [
-        [
-          "body-northwest-base",
-          "trousers-northwest-run-0",
-          "coat-line-northwest",
-          "shako-standard-northwest"
+      "NW": {
+        "layers": [
+          [
+            "body-northwest-base",
+            "trousers-northwest-run-0",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-run-1",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-run-2",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-run-3",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ],
+          [
+            "body-northwest-base",
+            "trousers-northwest-run-4",
+            "coat-line-northwest",
+            "shako-standard-northwest"
+          ]
         ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-run-1",
-          "coat-line-northwest",
-          "shako-standard-northwest"
-        ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-run-2",
-          "coat-line-northwest",
-          "shako-standard-northwest"
-        ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-run-3",
-          "coat-line-northwest",
-          "shako-standard-northwest"
-        ],
-        [
-          "body-northwest-base",
-          "trousers-northwest-run-4",
-          "coat-line-northwest",
-          "shako-standard-northwest"
+        "weapons": [
+          {
+            "src": "NW",
+            "x": -7,
+            "y": 2,
+            "rot": 0
+          }
         ]
-      ],
+      },
       "bob": {
         "body": [
           0,

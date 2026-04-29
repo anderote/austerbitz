@@ -20,7 +20,6 @@ export interface UnitControlsPanel {
 // === Pixel-art glyphs (16×16, [x, y, color]). ============================
 type Pixel = [x: number, y: number, color: string];
 
-// Cannonball — 12-pdr solid shot. (Moved verbatim from cannon-ammo-panel.ts.)
 const SOLID_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   for (let y = 3; y <= 13; y++) {
@@ -37,7 +36,6 @@ const SOLID_PIXELS: Pixel[] = (() => {
   return out;
 })();
 
-// Shell — cannonball with a sparking fuse. (Moved verbatim.)
 const SHELL_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   for (let y = 5; y <= 14; y++) {
@@ -59,7 +57,6 @@ const SHELL_PIXELS: Pixel[] = (() => {
   return out;
 })();
 
-// Canister — brass cylinder showing musket-ball shot. (Moved verbatim.)
 const CANISTER_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   const x0 = 5, x1 = 11;
@@ -88,10 +85,6 @@ const AMMO_LABELS = ['Solid', 'Shell', 'Canister'];
 const AMMO_KEYS = ['Z', 'X', 'C'];
 
 // --- Stance glyphs --------------------------------------------------------
-// Bold symbolic motifs. These are NEW glyphs (no prior asset); the goal is
-// readability at 32×32 display, not historical accuracy.
-
-// Single muzzle puff — a yellow burst centered.
 const FAW_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   for (let y = 5; y <= 10; y++) for (let x = 5; x <= 10; x++) {
@@ -103,7 +96,6 @@ const FAW_PIXELS: Pixel[] = (() => {
   return out;
 })();
 
-// Three aligned puffs in a row — synchronized volley.
 const VOLLEY_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   const centers = [3.5, 7.5, 11.5];
@@ -119,11 +111,9 @@ const VOLLEY_PIXELS: Pixel[] = (() => {
   return out;
 })();
 
-// Two ranks: front-row puffing yellow, back-row dim grey (waiting).
 const BY_RANKS_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   const centers = [3.5, 7.5, 11.5];
-  // Back rank — dim, y≈3.5
   for (const cx of centers) {
     for (let y = 2; y <= 5; y++) for (let x = Math.floor(cx) - 1; x <= Math.ceil(cx) + 1; x++) {
       if (x < 0 || x > 15) continue;
@@ -133,7 +123,6 @@ const BY_RANKS_PIXELS: Pixel[] = (() => {
       out.push([x, y, '#5a5a5a']);
     }
   }
-  // Front rank — bright, y≈11
   for (const cx of centers) {
     for (let y = 9; y <= 13; y++) for (let x = Math.floor(cx) - 2; x <= Math.ceil(cx) + 2; x++) {
       if (x < 0 || x > 15) continue;
@@ -146,7 +135,6 @@ const BY_RANKS_PIXELS: Pixel[] = (() => {
   return out;
 })();
 
-// Hold — a red horizontal bar (stop sign aesthetic) with white edges.
 const HOLD_PIXELS: Pixel[] = (() => {
   const out: Pixel[] = [];
   for (let x = 2; x <= 13; x++) {
@@ -155,7 +143,6 @@ const HOLD_PIXELS: Pixel[] = (() => {
     out.push([x, 8, '#d02020']);
     out.push([x, 9, '#a01010']);
   }
-  // White inner highlight stripe.
   for (let x = 4; x <= 11; x++) out.push([x, 7, '#ffe0e0']);
   return out;
 })();
@@ -171,7 +158,7 @@ function pixelsToSvg(pixels: Pixel[]): string {
   return `<svg viewBox="0 0 16 16" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
 }
 
-// === Slot-strip builder (used for stance and ammo) =======================
+// === Slot-strip builder (icon buttons for stance / ammo) =================
 
 interface StripHandle {
   root: HTMLDivElement;
@@ -219,32 +206,30 @@ function buildSlotStrip(
   };
 }
 
-// === Text-row builder (used for formation rows + universal hotkeys) ======
+// === Compact hotkey chip (general row) ===================================
 
-interface TextRow {
+interface Chip {
   root: HTMLDivElement;
   setVal(text: string): void;
 }
 
-function buildRow(keyText: string, label: string, hasVal: boolean): TextRow {
-  const row = document.createElement('div');
-  row.className = 'uc-row';
-  const k = document.createElement('span'); k.className = 'uc-key'; k.textContent = keyText;
-  const l = document.createElement('span'); l.className = 'uc-label'; l.textContent = label;
-  row.append(k, l);
+function buildChip(keyText: string, label: string, hasVal: boolean): Chip {
+  const chip = document.createElement('div');
+  chip.className = 'uc-chip';
+  const k = document.createElement('span'); k.className = 'uc-chip-key'; k.textContent = keyText;
+  const l = document.createElement('span'); l.className = 'uc-chip-label'; l.textContent = label;
+  chip.append(k, l);
   let val: HTMLSpanElement | null = null;
   if (hasVal) {
-    val = document.createElement('span'); val.className = 'uc-val';
-    row.appendChild(val);
+    val = document.createElement('span'); val.className = 'uc-chip-val';
+    chip.appendChild(val);
   }
   let lastVal = '';
   return {
-    root: row,
+    root: chip,
     setVal(text) {
-      if (!val) return;
-      if (text === lastVal) return;
-      val.textContent = text;
-      lastVal = text;
+      if (!val || text === lastVal) return;
+      val.textContent = text; lastVal = text;
     },
   };
 }
@@ -252,57 +237,40 @@ function buildRow(keyText: string, label: string, hasVal: boolean): TextRow {
 // === Main factory ========================================================
 
 export function createUnitControlsPanel(root: HTMLElement): UnitControlsPanel {
-  const el = panel('unit-controls');
-  el.style.display = 'none';
-  root.appendChild(el);
+  // Custom container — unit-specific buttons (stance OR ammo). Hidden when
+  // the selection has no infantry/artillery.
+  const customEl = panel('unit-controls-custom');
+  customEl.style.display = 'none';
+  root.appendChild(customEl);
 
-  // Header — selection summary line.
-  const summaryEl = document.createElement('div');
-  summaryEl.className = 'uc-summary';
-  el.appendChild(summaryEl);
-
-  // Stance strip (infantry/cavalry).
   const stanceStrip = buildSlotStrip(STANCE_PIXELS, STANCE_LABELS, STANCE_KEYS, 'unit-strip-stance');
   stanceStrip.root.style.display = 'none';
-  el.appendChild(stanceStrip.root);
+  customEl.appendChild(stanceStrip.root);
 
-  // Ammo strip (artillery).
   const ammoStrip = buildSlotStrip(AMMO_PIXELS, AMMO_LABELS, AMMO_KEYS, 'unit-strip-ammo');
   ammoStrip.root.style.display = 'none';
-  el.appendChild(ammoStrip.root);
+  customEl.appendChild(ammoStrip.root);
 
-  // Formation block.
-  const fmBlock = document.createElement('div');
-  fmBlock.className = 'uc-block uc-block-formation';
-  const spacingRow = buildRow('[ ]', 'Spacing', true);
-  const ranksRow = buildRow(', .', 'Ranks', true);
-  fmBlock.append(spacingRow.root, ranksRow.root);
-  el.appendChild(fmBlock);
+  // General container — universal hotkey chips, single horizontal row.
+  const generalEl = panel('unit-controls-general');
+  generalEl.style.display = 'none';
+  root.appendChild(generalEl);
 
-  // Universal-hotkeys block.
-  const uniBlock = document.createElement('div');
-  uniBlock.className = 'uc-block uc-block-universal';
-  const rRow = buildRow('R', 'Attack-move', false);
-  const fRow = buildRow('F', 'Hurry to slot', false);
-  const tRow = buildRow('T', 'Walk / Run', true);
-  const delRow = buildRow('Del', 'Stop', false);
-  const escRow = buildRow('Esc', 'Deselect', false);
-  uniBlock.append(rRow.root, fRow.root, tRow.root, delRow.root, escRow.root);
-  el.appendChild(uniBlock);
-
-  // Cannon-only universal rows (own block so they can hide as a unit).
-  const cannonBlock = document.createElement('div');
-  cannonBlock.className = 'uc-block uc-block-cannon';
-  cannonBlock.style.display = 'none';
-  const spaceRow = buildRow('Space', 'Fire', false);
-  const arrowsLR = buildRow('← →', 'Rotate', false);
-  const arrowsUD = buildRow('↑ ↓', 'Elevate', false);
-  cannonBlock.append(spaceRow.root, arrowsLR.root, arrowsUD.root);
-  el.appendChild(cannonBlock);
+  const spacingChip = buildChip('[ ]', 'Spacing', true);
+  const ranksChip = buildChip(',.', 'Ranks', true);
+  const rChip = buildChip('R', 'Atk-move', false);
+  const fChip = buildChip('F', 'Hurry', false);
+  const tChip = buildChip('T', 'Move', true);
+  const delChip = buildChip('Del', 'Stop', false);
+  const escChip = buildChip('Esc', 'Deselect', false);
+  generalEl.append(
+    spacingChip.root, ranksChip.root, rChip.root, fChip.root,
+    tChip.root, delChip.root, escChip.root,
+  );
 
   // Caches.
-  let lastSummary = '';
   let lastVisible = false;
+  let lastCustomVisible: boolean | undefined = undefined;
   let lastSpacing = -1;
   let lastRanks: number | null | undefined = undefined;
   let lastRunMode: boolean | undefined = undefined;
@@ -312,14 +280,17 @@ export function createUnitControlsPanel(root: HTMLElement): UnitControlsPanel {
   return {
     update(world, sel, params, stance, runMode) {
       if (sel.ids.size === 0) {
-        if (lastVisible) { el.style.display = 'none'; lastVisible = false; }
+        if (lastVisible) {
+          customEl.style.display = 'none';
+          generalEl.style.display = 'none';
+          lastVisible = false;
+          lastCustomVisible = false;
+        }
         return;
       }
-      if (!lastVisible) { el.style.display = ''; lastVisible = true; }
+      if (!lastVisible) { generalEl.style.display = ''; lastVisible = true; }
 
-      // Summary + per-category presence + ammo state.
       const e = world.entities;
-      const counts = new Map<string, number>();
       let hasInfantry = false;
       let hasArtillery = false;
       let ammoSeen = -1;
@@ -327,7 +298,6 @@ export function createUnitControlsPanel(root: HTMLElement): UnitControlsPanel {
       for (const id of sel.ids) {
         if (e.alive[id] !== 1) continue;
         const kind = getUnitKindByIndex(e.kindId[id]!);
-        counts.set(kind.name, (counts.get(kind.name) ?? 0) + 1);
         if (kind.category === 'infantry') hasInfantry = true;
         else if (kind.category === 'artillery') {
           hasArtillery = true;
@@ -336,16 +306,7 @@ export function createUnitControlsPanel(root: HTMLElement): UnitControlsPanel {
           else if (ammoSeen !== a) ammoMixed = true;
         }
       }
-      const summary: string[] = [];
-      for (const [name, n] of counts) summary.push(`${name} × ${n}`);
-      const summaryStr = summary.join('  ·  ');
-      if (summaryStr !== lastSummary) {
-        summaryEl.textContent = summaryStr;
-        lastSummary = summaryStr;
-      }
 
-      // Stance strip visibility + state. Cavalry omitted per design (no
-      // unit-specific section for cavalry today).
       if (hasInfantry !== lastHasInfantry) {
         stanceStrip.root.style.display = hasInfantry ? '' : 'none';
         lastHasInfantry = hasInfantry;
@@ -356,35 +317,35 @@ export function createUnitControlsPanel(root: HTMLElement): UnitControlsPanel {
         else stanceStrip.setActive(-1, false);
       }
 
-      // Ammo strip visibility + state.
       if (hasArtillery !== lastHasArtillery) {
         ammoStrip.root.style.display = hasArtillery ? '' : 'none';
-        cannonBlock.style.display = hasArtillery ? '' : 'none';
         lastHasArtillery = hasArtillery;
       }
       if (hasArtillery) {
         ammoStrip.setActive(ammoMixed ? -1 : ammoSeen, ammoMixed);
       }
 
-      // Formation rows.
+      const customVisible = hasInfantry || hasArtillery;
+      if (customVisible !== lastCustomVisible) {
+        customEl.style.display = customVisible ? '' : 'none';
+        lastCustomVisible = customVisible;
+      }
+
       if (params.spacingIndex !== lastSpacing) {
         const step = SPACING_STEPS[params.spacingIndex]!;
-        spacingRow.setVal(`${step.mult.toFixed(2)}× ${step.label}`);
+        spacingChip.setVal(`${step.mult.toFixed(2)}× ${step.label}`);
         lastSpacing = params.spacingIndex;
       }
       if (params.ranks !== lastRanks) {
-        ranksRow.setVal(params.ranks == null ? 'auto' : String(params.ranks));
+        ranksChip.setVal(params.ranks == null ? 'auto' : String(params.ranks));
         lastRanks = params.ranks;
       }
 
-      // Run/Walk row.
       if (runMode !== lastRunMode) {
-        tRow.setVal(runMode ? 'Run' : 'Walk');
+        tChip.setVal(runMode ? 'Run' : 'Walk');
         lastRunMode = runMode;
       }
 
-      // Reference FireStance to keep tree-shaking honest — the enum drives the
-      // semantic ordering of STANCE_PIXELS even though we don't index by it.
       void FireStance;
     },
   };

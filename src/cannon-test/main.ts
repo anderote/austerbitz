@@ -208,9 +208,9 @@ async function start(): Promise<void> {
       rebuildGrid(world);
       movementSystem(world, dt);
       facingSystem(world, dt);
-      tickCrew(world.entities);
       combatSystem(world, dt);
       tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
+      tickCrew(world.entities);
       tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests, damageTexts);
       updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt, damageTexts);
       tickRagdoll(world.entities, dt);

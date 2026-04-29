@@ -49,6 +49,18 @@ export const ROLE_KIND_ID: Record<CrewRole, string> = {
   [CrewRole.Gunner]:  'gun-crew-gunner',
 };
 
+const ROLE_WINDOWS: Record<CrewRole, { start: number; end: number }> = {
+  [CrewRole.Sponger]: { start: 0.00, end: 0.25 },
+  [CrewRole.Loader]:  { start: 0.25, end: 0.50 },
+  [CrewRole.Rammer]:  { start: 0.50, end: 0.75 },
+  [CrewRole.Gunner]:  { start: 0.75, end: 1.00 },
+};
+
+// Hard-coded to match POSE_CONFIG[Pose.reloading].fps in pose-config.ts.
+// Imported as a literal to keep the sim module independent of the renderer.
+const RELOAD_POSE_FPS = 6;
+const RELOAD_FRAMES = 4;
+
 export interface CrewWorldPose {
   x: number;
   y: number;
@@ -169,5 +181,43 @@ export function tickCrew(entities: Entities): void {
     const theta = pose.facing * (Math.PI / 4);
     entities.facingIntentX[id] = Math.cos(theta);
     entities.facingIntentY[id] = Math.sin(theta);
+  }
+
+  // Pass 3: pose driving. Crew pose is a pure function of parent gun state.
+  // Outside Reloading -> idle. Inside Reloading -> active role plays
+  // reloading pose with poseT clamped to its phase window; inactive roles
+  // play idle.
+  for (let id = 0; id < entities.capacity; id++) {
+    if (entities.alive[id] !== 1) continue;
+    if (!crewKindIdxSet.has(entities.kindId[id]!)) continue;
+    const parent = entities.parentGunId[id]!;
+    if (parent < 0) continue;
+
+    const parentState = entities.state[parent]!;
+    if (parentState !== 4 /* EntityState.Reloading */) {
+      entities.pose[id] = 0; // Pose.idle
+      entities.poseT[id] = 0;
+      continue;
+    }
+
+    const initialT = entities.reloadInitialT[parent]!;
+    if (initialT <= 0) {
+      entities.pose[id] = 0;
+      entities.poseT[id] = 0;
+      continue;
+    }
+    const remainingT = entities.reloadT[parent]!;
+    const fullProgress = Math.max(0, Math.min(1, 1 - remainingT / initialT));
+
+    const role = entities.crewRole[id]! as CrewRole;
+    const win = ROLE_WINDOWS[role];
+    if (fullProgress < win.start || fullProgress >= win.end) {
+      entities.pose[id] = 0;
+      entities.poseT[id] = 0;
+      continue;
+    }
+    const roleProgress = (fullProgress - win.start) / (win.end - win.start);
+    entities.pose[id] = 5; // Pose.reloading
+    entities.poseT[id] = roleProgress * RELOAD_FRAMES / RELOAD_POSE_FPS;
   }
 }

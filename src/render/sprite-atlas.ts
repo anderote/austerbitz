@@ -38,6 +38,11 @@ import {
   CANNON_FRONT_CELL,
   CANNON_POSE_CELLS,
 } from './cannon-12-sprite';
+import {
+  RAMROD_SHEET_W,
+  RAMROD_SHEET_H,
+  generateRamrodSheet,
+} from './ramrod-sprite';
 
 export interface KindAtlasMeta {
   cellW: number;
@@ -54,13 +59,23 @@ export const COMBINED_SHEET_W = Math.max(
   SOLDIER_SHEET_W,
   CUIRASSIER_SHEET_W,
   CANNON_SHEET_W,
+  RAMROD_SHEET_W,
 );
 export const COMBINED_SHEET_H =
-  SOLDIER_SHEET_H + CUIRASSIER_SHEET_H + CANNON_SHEET_H;
+  SOLDIER_SHEET_H + CUIRASSIER_SHEET_H + CANNON_SHEET_H + RAMROD_SHEET_H;
 
 const SOLDIER_Y = 0;
 const CUIRASSIER_Y = SOLDIER_SHEET_H;
 const CANNON_Y = SOLDIER_SHEET_H + CUIRASSIER_SHEET_H;
+const RAMROD_Y = SOLDIER_SHEET_H + CUIRASSIER_SHEET_H + CANNON_SHEET_H;
+
+/** Pixel rect of the ramrod column in the combined atlas. */
+export const RAMROD_REGION = {
+  x: 0,
+  y: RAMROD_Y,
+  w: RAMROD_SHEET_W,
+  h: RAMROD_SHEET_H,
+} as const;
 
 export const KIND_ATLAS: Record<string, KindAtlasMeta> = {
   'line-infantry': {
@@ -123,5 +138,7 @@ export function generateCombinedAtlas(opts: CombinedAtlasOptions = {}): Uint8Arr
   blitRegion(buf, COMBINED_SHEET_W, 0, SOLDIER_Y,    soldier,    SOLDIER_SHEET_W,    SOLDIER_SHEET_H);
   blitRegion(buf, COMBINED_SHEET_W, 0, CUIRASSIER_Y, cuirassier, CUIRASSIER_SHEET_W, CUIRASSIER_SHEET_H);
   blitRegion(buf, COMBINED_SHEET_W, 0, CANNON_Y,     cannon,     CANNON_SHEET_W,     CANNON_SHEET_H);
+  const ramrod = generateRamrodSheet();
+  blitRegion(buf, COMBINED_SHEET_W, 0, RAMROD_Y,     ramrod,     RAMROD_SHEET_W,     RAMROD_SHEET_H);
   return buf;
 }

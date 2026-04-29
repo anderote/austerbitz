@@ -13,9 +13,11 @@ import {
   KIND_ATLAS,
   COMBINED_SHEET_W,
   COMBINED_SHEET_H,
+  RAMROD_REGION,
   generateCombinedAtlas,
   type KindAtlasMeta,
 } from '../sprite-atlas';
+import { ramrodPlungePx, RAMROD_ANCHOR_PX_BY_FACING } from '../reload-ramrod';
 import { type PoseAtlas, pickPoseUv, pickPoseVariantUv, pickWeaponUv, pickHeadUv } from '../poses/atlas';
 import { composeCombinedAtlas } from '../poses/combined-atlas';
 import {
@@ -289,6 +291,19 @@ export function createSpritePass(
     return [u0, v0, us, vs];
   };
 
+  // Pre-computed UV rect of the ramrod column in the combined atlas. Resolved
+  // once at pass creation; the per-frame loop just copies these four numbers
+  // into the per-instance UV buffer.
+  const ramrodUv: [number, number, number, number] = (() => {
+    const halfTexelU = 0.5 / sheetW;
+    const halfTexelV = 0.5 / sheetH;
+    const u0 = RAMROD_REGION.x / sheetW + halfTexelU;
+    const v0 = RAMROD_REGION.y / sheetH + halfTexelV;
+    const us = RAMROD_REGION.w / sheetW - 2 * halfTexelU;
+    const vs = RAMROD_REGION.h / sheetH - 2 * halfTexelV;
+    return [u0, v0, us, vs];
+  })();
+
   const scratchPos = new Float32Array(capacity * 2);
   const scratchSize = new Float32Array(capacity * 2);
   const scratchColor = new Float32Array(capacity * 4);
@@ -333,6 +348,17 @@ export function createSpritePass(
   const scratchWeaponShadowAlpha = new Float32Array(capacity);
   const scratchWeaponBehindFootY = new Float32Array(capacity);
   const scratchWeaponBehindShadowAlpha = new Float32Array(capacity);
+  // Per-frame ramrod overlay buffers (parallel to body/weapon scratch arrays).
+  // One ramrod instance per line-infantry soldier in the Reloading state.
+  const scratchRamrodPos = new Float32Array(capacity * 2);
+  const scratchRamrodSize = new Float32Array(capacity * 2);
+  const scratchRamrodColor = new Float32Array(capacity * 4);
+  const scratchRamrodUv = new Float32Array(capacity * 4);
+  const scratchRamrodPrimary = new Float32Array(capacity * 3);
+  const scratchRamrodSecondary = new Float32Array(capacity * 3);
+  const scratchRamrodTertiary = new Float32Array(capacity * 3);
+  const scratchRamrodPattern = new Float32Array(capacity);
+  const scratchRamrodRot = new Float32Array(capacity);
 
   // Pre-resolve per-kind foot offset once at pass creation; the per-frame
   // loop is then a single index lookup per body.
@@ -537,6 +563,9 @@ export function createSpritePass(
       // attached to a soldier — bound by `n` (one weapon per soldier max).
       let wn = 0;
       let wbn = 0;
+      // Per-frame ramrod instance count. Bumped once per line-infantry soldier
+      // in the Reloading state.
+      let rn = 0;
 
       for (let k = 0; k < n; k++) {
         const i = sortIdx[k]!;
@@ -815,6 +844,55 @@ export function createSpritePass(
               else wn++;
             }
           }
+          // Reload ramrod overlay. Emitted only for line infantry in the
+          // Reloading state — a thin steel column that plunges in and out of
+          // the rifle barrel during the reload window. Independent of the
+          // held-weapon overlay above.
+          if (
+            kind.id === 'line-infantry' &&
+            stateNow === EntityState.Reloading
+          ) {
+            const initial = e.reloadInitialT[i]!;
+            if (initial > 0) {
+              const progress = 1 - e.reloadT[i]! / initial;
+              const facing = e.facing[i]!;
+              const anchor = RAMROD_ANCHOR_PX_BY_FACING[facing]!;
+              const plungePx = ramrodPlungePx(progress);
+              const pxToWorld = sprW / SPRITE_CELL_PX;
+              const dxWorld = anchor[0] * pxToWorld;
+              const dyWorld = (anchor[1] + plungePx) * pxToWorld;
+              const ramrodWorldW = RAMROD_REGION.w * pxToWorld;
+              const ramrodWorldH = RAMROD_REGION.h * pxToWorld;
+              scratchRamrodPos[rn * 2 + 0] = scratchPos[k * 2 + 0]! + dxWorld;
+              scratchRamrodPos[rn * 2 + 1] = scratchPos[k * 2 + 1]! + dyWorld;
+              scratchRamrodSize[rn * 2 + 0] = ramrodWorldW;
+              scratchRamrodSize[rn * 2 + 1] = ramrodWorldH;
+              scratchRamrodColor[rn * 4 + 0] = 1;
+              scratchRamrodColor[rn * 4 + 1] = 1;
+              scratchRamrodColor[rn * 4 + 2] = 1;
+              scratchRamrodColor[rn * 4 + 3] = 1;
+              scratchRamrodUv[rn * 4 + 0] = ramrodUv[0];
+              scratchRamrodUv[rn * 4 + 1] = ramrodUv[1];
+              scratchRamrodUv[rn * 4 + 2] = ramrodUv[2];
+              scratchRamrodUv[rn * 4 + 3] = ramrodUv[3];
+              // Marker palette: ramrod has no marker pixels, but we must
+              // populate the attribute buffers — copy the body's team palette
+              // (harmless, never sampled because the steel pixels aren't
+              // marker colors).
+              scratchRamrodPrimary[rn * 3 + 0] = scratchPrimary[k * 3 + 0]!;
+              scratchRamrodPrimary[rn * 3 + 1] = scratchPrimary[k * 3 + 1]!;
+              scratchRamrodPrimary[rn * 3 + 2] = scratchPrimary[k * 3 + 2]!;
+              scratchRamrodSecondary[rn * 3 + 0] = scratchSecondary[k * 3 + 0]!;
+              scratchRamrodSecondary[rn * 3 + 1] = scratchSecondary[k * 3 + 1]!;
+              scratchRamrodSecondary[rn * 3 + 2] = scratchSecondary[k * 3 + 2]!;
+              scratchRamrodTertiary[rn * 3 + 0] = scratchTertiary[k * 3 + 0]!;
+              scratchRamrodTertiary[rn * 3 + 1] = scratchTertiary[k * 3 + 1]!;
+              scratchRamrodTertiary[rn * 3 + 2] = scratchTertiary[k * 3 + 2]!;
+              scratchRamrodPattern[rn] = 0;
+              scratchRamrodRot[rn] = 0;
+              rn++;
+            }
+          }
           // Body rotation: bodyRotNow is set above (zero outside Dying/Dead).
           scratchRot[k] = bodyRotNow;
         }
@@ -940,6 +1018,34 @@ export function createSpritePass(
       gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRot.subarray(0, n));
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+
+      // Ramrod pass: drawn after bodies (so it sits in front of the soldier's
+      // torso) but before the front-weapon overlay (so the rifle barrel
+      // covers the lower half of the rod, completing the "rod is in the
+      // barrel" illusion). Same VAO + shader as the body pass. No ground
+      // shadow — the rod is small and in-air, a shadow would just look like
+      // dirt under the soldier.
+      if (rn > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodPos.subarray(0, rn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodSize.subarray(0, rn * 2));
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodColor.subarray(0, rn * 4));
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvRectBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodUv.subarray(0, rn * 4));
+        gl.bindBuffer(gl.ARRAY_BUFFER, primaryBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodPrimary.subarray(0, rn * 3));
+        gl.bindBuffer(gl.ARRAY_BUFFER, secondaryBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodSecondary.subarray(0, rn * 3));
+        gl.bindBuffer(gl.ARRAY_BUFFER, tertiaryBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodTertiary.subarray(0, rn * 3));
+        gl.bindBuffer(gl.ARRAY_BUFFER, patternBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodPattern.subarray(0, rn));
+        gl.bindBuffer(gl.ARRAY_BUFFER, rotBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, scratchRamrodRot.subarray(0, rn));
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, rn);
+      }
 
       // Weapons-front pass: front-facings (S/SE/SW/E/W) drawn AFTER bodies so
       // the weapon overlays the body. Same VAO, shader, atlas.

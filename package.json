@@ -9,7 +9,7 @@
     "seed:line-infantry-locomotion": "node scripts/seed-line-infantry-locomotion.mjs && node scripts/draw-line-infantry-walking.mjs",
     "draw:line-infantry-walking": "node scripts/draw-line-infantry-walking.mjs",
     "build:gibs": "node scripts/draw-gib-chunks.mjs && node scripts/build-gib-chunks.mjs",
-    "build:poses": "npm run build:gibs && npm run build:soldier-components && node scripts/build-pose-manifest.mjs",
+    "build:poses": "npm run build:gibs && npm run build:soldier-components && node scripts/draw-gun-crew-poses.mjs && node scripts/build-pose-manifest.mjs",
     "draw:cuirassier-poses": "node scripts/draw-cuirassier-poses.mjs",
     "dev": "npm run build:poses && vite",
     "build": "npm run build:poses && tsc --noEmit && vite build",

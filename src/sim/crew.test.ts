@@ -167,3 +167,98 @@ describe('tickCrew', () => {
     }
   });
 });
+
+import { Pose } from '../render/poses/pose-config';
+
+describe('tickCrew sequential reload pose driving', () => {
+  function setupReloadingGun(reloadInitial: number, reloadRemaining: number) {
+    const e = createEntities(64);
+    const gunId = allocEntity(e);
+    e.kindId[gunId] = getUnitKindIndex('cannon-12');
+    e.posX[gunId] = 0; e.posY[gunId] = 0; e.facing[gunId] = 0;
+    e.state[gunId] = 4 /* EntityState.Reloading */;
+    e.reloadInitialT[gunId] = reloadInitial;
+    e.reloadT[gunId] = reloadRemaining;
+    const crewIds = spawnCrewForGun(e, gunId);
+    return { e, gunId, crewIds };
+  }
+
+  function poseFor(e: ReturnType<typeof createEntities>, crewIds: number[], role: number): { pose: number; poseT: number } {
+    const id = crewIds.find((cid) => e.crewRole[cid] === role)!;
+    return { pose: e.pose[id]!, poseT: e.poseT[id]! };
+  }
+
+  it('idle outside Reloading state', () => {
+    const e = createEntities(64);
+    const gunId = allocEntity(e);
+    e.kindId[gunId] = getUnitKindIndex('cannon-12');
+    e.state[gunId] = 0 /* Idle */;
+    const crewIds = spawnCrewForGun(e, gunId);
+    tickCrew(e);
+    for (const cid of crewIds) {
+      expect(e.pose[cid]).toBe(Pose.idle);
+    }
+  });
+
+  it('only sponger is reloading at fullProgress=0.05', () => {
+    // reloadInitial=20, reloadRemaining=19 -> fullProgress = 0.05
+    const { e, crewIds } = setupReloadingGun(20, 19);
+    tickCrew(e);
+    expect(poseFor(e, crewIds, 0 /* Sponger */).pose).toBe(Pose.reloading);
+    expect(poseFor(e, crewIds, 1 /* Rammer */).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 2 /* Loader */).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 3 /* Gunner */).pose).toBe(Pose.idle);
+  });
+
+  it('only loader is reloading at fullProgress=0.4', () => {
+    const { e, crewIds } = setupReloadingGun(20, 12);
+    tickCrew(e);
+    expect(poseFor(e, crewIds, 0).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 2 /* Loader */).pose).toBe(Pose.reloading);
+    expect(poseFor(e, crewIds, 1).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 3).pose).toBe(Pose.idle);
+  });
+
+  it('only rammer is reloading at fullProgress=0.6', () => {
+    const { e, crewIds } = setupReloadingGun(20, 8);
+    tickCrew(e);
+    expect(poseFor(e, crewIds, 1 /* Rammer */).pose).toBe(Pose.reloading);
+    expect(poseFor(e, crewIds, 0).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 2).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 3).pose).toBe(Pose.idle);
+  });
+
+  it('only gunner is reloading at fullProgress=0.95', () => {
+    const { e, crewIds } = setupReloadingGun(20, 1);
+    tickCrew(e);
+    expect(poseFor(e, crewIds, 3 /* Gunner */).pose).toBe(Pose.reloading);
+    expect(poseFor(e, crewIds, 0).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 1).pose).toBe(Pose.idle);
+    expect(poseFor(e, crewIds, 2).pose).toBe(Pose.idle);
+  });
+
+  it('poseT advances within the role window', () => {
+    // Sponger window is [0, 0.25]. At fullProgress=0.05, roleProgress=0.2.
+    // poseT should be roughly 0.2 * 4/6 ~= 0.133.
+    const { e, crewIds } = setupReloadingGun(20, 19);
+    tickCrew(e);
+    const sponger = poseFor(e, crewIds, 0);
+    expect(sponger.pose).toBe(Pose.reloading);
+    expect(sponger.poseT).toBeGreaterThan(0);
+    expect(sponger.poseT).toBeLessThan(4 / 6);
+  });
+
+  it('falls back to idle when reloadInitialT is zero (no active reload)', () => {
+    const e = createEntities(64);
+    const gunId = allocEntity(e);
+    e.kindId[gunId] = getUnitKindIndex('cannon-12');
+    e.state[gunId] = 4 /* Reloading */;
+    e.reloadInitialT[gunId] = 0;
+    e.reloadT[gunId] = 0;
+    const crewIds = spawnCrewForGun(e, gunId);
+    tickCrew(e);
+    for (const cid of crewIds) {
+      expect(e.pose[cid]).toBe(Pose.idle);
+    }
+  });
+});

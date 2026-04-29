@@ -16,7 +16,7 @@ export const lineInfantry: UnitKind = {
   footYFromCenter: 0.625,
   spriteCell: { col: 1, row: 1 },
   baseStats: {
-    hp: 20,
+    hp: 10,
     moveSpeed: 2.5,
     morale: 180,
     sightRange: 120,
