@@ -468,7 +468,6 @@ export function createSpritePass(
   const RUNTIME_FACING_TO_LETTER: Facing[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   // Facings where the weapon renders BEHIND the body (rear-facing soldiers
   // whose own torso would naturally occlude the held musket from the camera).
-  // Mirrors WEAPON_BEHIND_FACINGS in public/components-editor.html — keep in sync.
   const RUNTIME_FACING_IS_BEHIND: ReadonlyArray<boolean> = [
     /* E  */ false,
     /* SE */ false,

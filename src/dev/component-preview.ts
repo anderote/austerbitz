@@ -1,4 +1,11 @@
-import { loadRegiments, recolorImageData, type Regiment } from './regiments';
+import { loadRegiments, type Regiment } from './regiments';
+import { paintWeaponInto, facingToSuffix, type WeaponOrientation } from './weapon-rendering';
+import { renderCellInto } from './cell-render';
+import { mountUnitPicker, type UnitPickerKit } from './unit-picker';
+import { mountPoseStrip, type PoseStripPose } from './pose-strip';
+import { mountVariantsStrip } from './variants-strip';
+import { loadPixelEdits, lookupEdits, type PixelEditsTree, type PixelEdit } from './pixel-edits-overlay';
+import { mountPaintTool } from './paint-tool';
 
 // Component registry types ----------------------------------------------------
 type ComponentEntry = {
@@ -21,6 +28,20 @@ type KitFacingConfig = {
   layers: string[];
 };
 
+// Inline structural duplicate of PoseFacingEntry (dev-only; avoids importing runtime types).
+// layers may be string[] (single frame) or string[][] (multi-frame animation).
+// When absent or empty, the caller falls back to kit.facings[facing].layers.
+type KitPoseFacingEntry = {
+  layers?: string[] | string[][];
+  weapons?: WeaponOrientation[];
+};
+
+function isPoseEntryObject(
+  v: KitPoseFacingEntry | string[][],
+): v is KitPoseFacingEntry {
+  return !Array.isArray(v);
+}
+
 type KitConfig = {
   id: string;
   label: string;
@@ -28,18 +49,13 @@ type KitConfig = {
   outputAtlas?: string;
   outputPreview?: string;
   facings: Record<string, KitFacingConfig>;
+  poses?: Record<string, Record<string, KitPoseFacingEntry | string[][]>>;
+  weapon?: { layerPrefix: string };
 };
 
 const COMPONENT_BASE_URL = '/sprites/components/';
 const KIT_INDEX_URL = '/components/kits/index.json';
 const REGISTRY_URL = '/components/index.json';
-
-const SKELETON_URL: Record<string, string | null> = {
-  none: null,
-  front: '/memory/sprites/templates/anatomy/front-skeleton.png',
-  side: '/memory/sprites/templates/anatomy/side-skeleton.png',
-  back: '/memory/sprites/templates/anatomy/back-skeleton.png',
-};
 
 const LAYER_SEQUENCE = [
   'fx:shadow',
@@ -62,16 +78,10 @@ const GROUP_LABELS: Record<string, string> = {
 const registryContainer = document.getElementById('component-groups') as HTMLDivElement;
 const facingSelect = document.getElementById('facing-select') as HTMLSelectElement;
 const kitSelect = document.getElementById('kit-select') as HTMLSelectElement;
+const poseSelect = document.getElementById('pose-select') as HTMLSelectElement;
 const regimentSelect = document.getElementById('regiment-select') as HTMLSelectElement | null;
-const skeletonSelect = document.getElementById('skeleton-select') as HTMLSelectElement;
 const resetButton = document.getElementById('reset-button') as HTMLButtonElement;
 const infoCard = document.getElementById('info-card') as HTMLDivElement;
-
-const canvas = document.getElementById('preview-canvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d', { alpha: true });
-if (!ctx) {
-  throw new Error('Unable to acquire 2D context for preview canvas.');
-}
 
 const GRID_FACINGS = ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'] as const;
 type GridCell = { facing: string; cell: HTMLButtonElement; ctx: CanvasRenderingContext2D };
@@ -88,56 +98,110 @@ for (const facing of GRID_FACINGS) {
   gridCells.push({ facing, cell, ctx: cellCtx });
 }
 
-const imageCache = new Map<string, Promise<HTMLImageElement>>();
-const recolorCache = new Map<string, HTMLCanvasElement>();
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  if (!imageCache.has(url)) {
-    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.decoding = 'async';
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
-      img.src = url;
-    });
-    imageCache.set(url, promise);
-  }
-  return imageCache.get(url)!;
+// Right-side weapon source grid cells.
+type SourceGridCell = {
+  facing: string;
+  cell: HTMLButtonElement;
+  ctx: CanvasRenderingContext2D;
+};
+const sourceGridCells: SourceGridCell[] = [];
+for (const facing of GRID_FACINGS) {
+  const cell = document.querySelector<HTMLButtonElement>(
+    `.weapon-source-cell[data-facing="${facing}"]`,
+  );
+  if (!cell) continue;
+  const cellCanvas = cell.querySelector<HTMLCanvasElement>('canvas');
+  const cellCtx = cellCanvas?.getContext('2d', { alpha: true });
+  if (!cellCanvas || !cellCtx) continue;
+  cellCtx.imageSmoothingEnabled = false;
+  sourceGridCells.push({ facing, cell, ctx: cellCtx });
 }
 
-async function getRecoloredCanvas(url: string, reg: Regiment): Promise<HTMLCanvasElement> {
-  const key = `${url}|${reg.id}`;
-  const cached = recolorCache.get(key);
-  if (cached) return cached;
-  const img = await loadImage(url);
-  const off = document.createElement('canvas');
-  off.width = img.naturalWidth || img.width;
-  off.height = img.naturalHeight || img.height;
-  const octx = off.getContext('2d', { willReadFrequently: true });
-  if (!octx) throw new Error('2D context');
-  octx.imageSmoothingEnabled = false;
-  octx.drawImage(img, 0, 0);
-  const data = octx.getImageData(0, 0, off.width, off.height);
-  recolorImageData(data, reg);
-  octx.putImageData(data, 0, 0);
-  recolorCache.set(key, off);
-  return off;
-}
+// Edit-strip DOM handles.
+const editThumb = document.getElementById('weapon-edit-thumb') as HTMLCanvasElement | null;
+const editThumbCtx = editThumb?.getContext('2d', { alpha: true }) ?? null;
+if (editThumbCtx) editThumbCtx.imageSmoothingEnabled = false;
+const statX = document.getElementById('stat-x');
+const statY = document.getElementById('stat-y');
+const statRot = document.getElementById('stat-rot');
+const statFlipX = document.getElementById('stat-flipx');
+const btnMirror = document.getElementById('btn-mirror') as HTMLButtonElement | null;
+const btnRotate = document.getElementById('btn-rotate') as HTMLButtonElement | null;
+const btnDeleteVariant = document.getElementById('btn-delete-variant') as HTMLButtonElement | null;
+const btnSaveKit = document.getElementById('btn-save-kit') as HTMLButtonElement | null;
+const toastEl = document.getElementById('toast');
 
 const componentsById = new Map<string, ComponentEntry>();
 const kitsById = new Map<string, KitConfig>();
 const componentSelections = new Set<string>();
 
 let currentFacing = 'S';
+let currentPose = 'idle';
 let currentKitId: string | null = null;
-let currentSkeleton = 'none';
 let renderToken = 0;
 let currentRegiment: Regiment | null = null;
 let regiments: Regiment[] = [];
 
+// Unit picker handle (initialized in main(), used by initEvents() handlers).
+let unitPicker: ReturnType<typeof mountUnitPicker> | null = null;
+// Pose strip handle (initialized in main(), used by initEvents() handlers).
+let poseStrip: ReturnType<typeof mountPoseStrip> | null = null;
+// Variants strip handle (initialized in main(), used by initEvents() handlers).
+let selectedVariantIdx = 0;
+let variantsStrip: ReturnType<typeof mountVariantsStrip> | null = null;
+// Paint tool handle (initialized in main(), used by initEvents() handlers).
+let paintTool: ReturnType<typeof mountPaintTool> | null = null;
+
+// In-memory mirror of pixel-edits.json (loaded in main()).
+let pixelEdits: PixelEditsTree = {};
+
+function getLayerEditsAt(
+  kitId: string,
+  pose: string,
+  facing: string,
+  componentId: string,
+): readonly PixelEdit[] {
+  return lookupEdits(pixelEdits, kitId, pose, facing, componentId);
+}
+
 function layerKey(entry: ComponentEntry): string {
   return `${entry.type}:${entry.category}`;
+}
+
+function buildPoseStrip(): PoseStripPose[] {
+  if (!currentKitId) return [];
+  const kit = kitsById.get(currentKitId);
+  if (!kit) return [];
+  const poseNames = kit.poses ? Object.keys(kit.poses) : [];
+  const fallback = ['idle', 'walking', 'running', 'make-ready', 'present', 'fire', 'hit', 'dying'];
+  const names = poseNames.length > 0 ? poseNames : fallback;
+  return names.map((name) => {
+    const sEntry = kit.poses?.[name]?.['S'];
+    let sLayers: string[];
+    if (!sEntry) {
+      sLayers = kit.facings['S']?.layers ?? [];
+    } else if (Array.isArray(sEntry)) {
+      const first = sEntry[0];
+      sLayers = Array.isArray(first)
+        ? (first as string[])
+        : ((sEntry as unknown) as string[]);
+    } else {
+      const obj = sEntry as { layers?: string[] | string[][] };
+      const baseLayers = obj.layers && obj.layers.length > 0
+        ? (Array.isArray(obj.layers[0]) ? (obj.layers[0] as string[]) : (obj.layers as string[]))
+        : (kit.facings['S']?.layers ?? []);
+      sLayers = baseLayers;
+    }
+    let weapon: PoseStripPose['weapon'];
+    if (kit.weapon?.layerPrefix) {
+      let sOrientation: WeaponOrientation | undefined;
+      if (sEntry && !Array.isArray(sEntry)) {
+        sOrientation = (sEntry as { weapons?: WeaponOrientation[] }).weapons?.[0];
+      }
+      weapon = { layerPrefix: kit.weapon.layerPrefix, sOrientation };
+    }
+    return { name, kitId: currentKitId!, sLayers, weapon };
+  });
 }
 
 function layerPriority(entry: ComponentEntry): number {
@@ -243,6 +307,26 @@ function rebuildComponentGroups() {
   }
 }
 
+function resolvePoseLayers(
+  kit: KitConfig,
+  pose: string,
+  facing: string,
+): string[] | null {
+  const poseData = kit.poses?.[pose]?.[facing];
+  if (!poseData) return null;
+
+  const rawLayers = isPoseEntryObject(poseData) ? poseData.layers : poseData;
+  if (!rawLayers || rawLayers.length === 0) return null;
+
+  // Static editor preview — no frame slider yet, so always show frame 0.
+  if (Array.isArray(rawLayers[0])) {
+    const frame0 = rawLayers[0] as string[];
+    return frame0.length > 0 ? frame0 : null;
+  }
+
+  return rawLayers as string[];
+}
+
 function layersForFacing(facing: string): ComponentEntry[] {
   if (!currentKitId) {
     return Array.from(componentSelections)
@@ -255,7 +339,13 @@ function layersForFacing(facing: string): ComponentEntry[] {
       });
   }
   const kit = kitsById.get(currentKitId);
-  const ids = kit?.facings[facing]?.layers ?? [];
+  if (!kit) return [];
+
+  // Consult pose layers first; fall back to kit.facings[facing].layers when
+  // the pose has no entry for this facing, or when its layers array is empty.
+  const poseLayerIds = resolvePoseLayers(kit, currentPose, facing);
+  const ids = poseLayerIds ?? kit.facings[facing]?.layers ?? [];
+
   return ids
     .map((id) => componentsById.get(id))
     .filter((entry): entry is ComponentEntry => Boolean(entry && entry.facings.includes(facing)))
@@ -266,74 +356,108 @@ function layersForFacing(facing: string): ComponentEntry[] {
     });
 }
 
-async function paintLayersInto(
-  target: CanvasRenderingContext2D,
-  layers: readonly ComponentEntry[],
-  withSkeleton: boolean,
+function getPoseEntry(facing: string): KitPoseFacingEntry | null {
+  if (!currentKitId) return null;
+  const kit = kitsById.get(currentKitId);
+  if (!kit) return null;
+  const raw = kit.poses?.[currentPose]?.[facing];
+  if (!raw) return null;
+  if (isPoseEntryObject(raw)) return raw;
+  // Bare array — has no weapons field by definition.
+  return null;
+}
+
+function drawVariantBadge(target: CanvasRenderingContext2D, count: number): void {
+  if (count < 2) return;
+  const text = `×${count}`;
+  target.save();
+  // Use canvas dimensions for placement (canvas is 32x36 in current setup).
+  const cw = target.canvas.width;
+  const ch = target.canvas.height;
+  // Pixel-art aesthetic — small, hard-edged.
+  target.font = '8px ui-monospace, Menlo, monospace';
+  target.textBaseline = 'bottom';
+  target.textAlign = 'right';
+  const padX = 1;
+  const padY = 1;
+  const metrics = target.measureText(text);
+  const textWidth = Math.ceil(metrics.width);
+  const textHeight = 8;
+  const boxW = textWidth + padX * 2;
+  const boxH = textHeight + padY * 2;
+  const boxX = cw - boxW - 1;
+  const boxY = ch - boxH - 1;
+  target.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  target.fillRect(boxX, boxY, boxW, boxH);
+  target.fillStyle = '#ffffff';
+  target.fillText(text, cw - 2, ch - 2);
+  target.restore();
+}
+
+/**
+ * Render one center-grid cell (body + weapon overlay + variant badge).
+ * For the active facing, draws the currently selected variant; for other
+ * facings, draws their weapons[0] (or nothing if absent).
+ */
+async function renderCenterCell(
+  facing: string,
+  cellCtx: CanvasRenderingContext2D,
   token: number,
 ): Promise<void> {
-  target.clearRect(0, 0, target.canvas.width, target.canvas.height);
-  if (withSkeleton) {
-    const skeletonUrl = SKELETON_URL[currentSkeleton];
-    if (skeletonUrl) {
-      try {
-        const skeletonImage = await loadImage(skeletonUrl);
-        if (token !== renderToken) return;
-        target.save();
-        target.globalAlpha = 0.4;
-        target.drawImage(skeletonImage, 0, 0);
-        target.restore();
-      } catch (err) {
-        console.warn(err);
-      }
+  cellCtx.clearRect(0, 0, cellCtx.canvas.width, cellCtx.canvas.height);
+
+  const layers = layersForFacing(facing);
+  const layerIds = layers.map((entry) => entry.id);
+
+  const kit = currentKitId ? kitsById.get(currentKitId) : null;
+  const layerPrefix = kit?.weapon?.layerPrefix;
+
+  const variants = currentKitId
+    ? kitsById.get(currentKitId)?.poses?.[currentPose]?.[facing]
+    : null;
+  let orientation: WeaponOrientation | undefined;
+  if (variants && !Array.isArray(variants)) {
+    const list = (variants as { weapons?: WeaponOrientation[] }).weapons;
+    if (list && list.length > 0) {
+      const idx = facing === currentFacing ? Math.min(selectedVariantIdx, list.length - 1) : 0;
+      orientation = list[idx];
     }
   }
-  for (const entry of layers) {
-    const url = `${COMPONENT_BASE_URL}${entry.path}`;
-    try {
-      if (currentRegiment) {
-        const recolored = await getRecoloredCanvas(url, currentRegiment);
-        if (token !== renderToken) return;
-        target.drawImage(recolored, 0, 0);
-      } else {
-        const image = await loadImage(url);
-        if (token !== renderToken) return;
-        target.drawImage(image, 0, 0);
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  }
+
+  if (token !== renderToken) return;
+
+  await renderCellInto(cellCtx, {
+    layerIds,
+    components: componentsById,
+    componentBaseUrl: COMPONENT_BASE_URL,
+    regiment: currentRegiment,
+    weapon: layerPrefix && orientation ? { layerPrefix, orientation } : undefined,
+    layerEdits: (componentId) =>
+      currentKitId ? lookupEdits(pixelEdits, currentKitId, currentPose, facing, componentId) : [],
+  });
+
+  if (token !== renderToken) return;
+
+  // Variant badge (count of saved weapons[]).
+  const entry = getPoseEntry(facing);
+  const variantCount = entry?.weapons?.length ?? 0;
+  drawVariantBadge(cellCtx, variantCount);
 }
 
 async function renderPreview() {
   const token = ++renderToken;
-  if (!ctx) return;
-
-  const layers = Array.from(componentSelections)
-    .map((id) => componentsById.get(id))
-    .filter((entry): entry is ComponentEntry => Boolean(entry && entry.facings.includes(currentFacing)))
-    .sort((a, b) => {
-      const priority = layerPriority(a) - layerPriority(b);
-      if (priority !== 0) return priority;
-      return a.id.localeCompare(b.id);
-    });
-
-  await paintLayersInto(ctx, layers, true, token);
 
   // Update each grid cell using kit-defined layers for that facing so all 8
   // views stay in sync with the active kit + regiment.
   await Promise.all(
-    gridCells.map(async ({ facing, ctx: cellCtx }) => {
-      const cellLayers = layersForFacing(facing);
-      await paintLayersInto(cellCtx, cellLayers, false, token);
-    }),
+    gridCells.map(({ facing, ctx: cellCtx }) => renderCenterCell(facing, cellCtx, token)),
   );
 
   for (const { facing, cell } of gridCells) {
     cell.classList.toggle('active', facing === currentFacing);
   }
 
+  const layers = layersForFacing(currentFacing);
   const lines: string[] = [];
   if (currentKitId) {
     const kit = kitsById.get(currentKitId);
@@ -344,6 +468,187 @@ async function renderPreview() {
   lines.push(`<strong>Facing:</strong> ${currentFacing}`);
   lines.push(`<strong>Layers:</strong> ${layers.map((entry) => entry.id).join(', ') || 'none'}`);
   infoCard.innerHTML = lines.join('<br />');
+}
+
+/**
+ * Paint the right-side 3x3 weapon source grid using the raw weapon PNGs for
+ * the current kit. Cells without a registered source PNG render empty + disabled.
+ */
+async function renderWeaponSourceGrid(): Promise<void> {
+  if (!currentKitId) return;
+  const kit = kitsById.get(currentKitId);
+  const layerPrefix = kit?.weapon?.layerPrefix;
+  await Promise.all(
+    sourceGridCells.map(async ({ facing, cell, ctx: cellCtx }) => {
+      cellCtx.clearRect(0, 0, cellCtx.canvas.width, cellCtx.canvas.height);
+      if (!layerPrefix) {
+        cell.classList.add('disabled');
+        return;
+      }
+      const componentId = `${layerPrefix}-${facingToSuffix(facing)}`;
+      const componentEntry = componentsById.get(componentId);
+      if (!componentEntry) {
+        cell.classList.add('disabled');
+        return;
+      }
+      cell.classList.remove('disabled');
+      const weaponUrl = `${COMPONENT_BASE_URL}${componentEntry.path}`;
+      try {
+        await paintWeaponInto(
+          cellCtx,
+          weaponUrl,
+          { src: facing, x: 0, y: 0, rot: 0 },
+          { applyOffset: false },
+        );
+      } catch (err) {
+        console.warn('[source-grid]', err);
+      }
+    }),
+  );
+  // Reflect any active source selection.
+  updateSourceGridHighlight();
+}
+
+function updateSourceGridHighlight(): void {
+  const v = getSelectedVariant();
+  for (const { facing, cell } of sourceGridCells) {
+    cell.classList.toggle('active', !!v && v.src === facing);
+  }
+}
+
+function updateEditStrip(): void {
+  const v = getSelectedVariant();
+  if (statX) statX.textContent = v ? String(v.x) : '—';
+  if (statY) statY.textContent = v ? String(v.y) : '—';
+  if (statRot) statRot.textContent = v ? String(v.rot) : '—';
+  if (statFlipX) statFlipX.textContent = v ? (v.flipX ? 'true' : 'false') : '—';
+
+  if (editThumbCtx) {
+    editThumbCtx.clearRect(0, 0, editThumbCtx.canvas.width, editThumbCtx.canvas.height);
+    if (v && currentKitId) {
+      const kit = kitsById.get(currentKitId);
+      const layerPrefix = kit?.weapon?.layerPrefix;
+      if (layerPrefix) {
+        const componentId = `${layerPrefix}-${facingToSuffix(v.src)}`;
+        const componentEntry = componentsById.get(componentId);
+        if (componentEntry) {
+          const weaponUrl = `${COMPONENT_BASE_URL}${componentEntry.path}`;
+          void paintWeaponInto(editThumbCtx, weaponUrl, v, { applyOffset: true })
+            .catch((err) => console.warn('[edit-thumb]', err));
+        }
+      }
+    }
+  }
+}
+
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+function showToast(message: string, kind: 'success' | 'error' | 'info' = 'info'): void {
+  if (!toastEl) return;
+  toastEl.textContent = message;
+  toastEl.classList.remove('success', 'error');
+  if (kind === 'success') toastEl.classList.add('success');
+  else if (kind === 'error') toastEl.classList.add('error');
+  toastEl.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove('show');
+  }, 2000);
+}
+
+function ensurePoseEntryWeapons(
+  kit: KitConfig,
+  pose: string,
+  facing: string,
+): WeaponOrientation[] {
+  if (!kit.poses) kit.poses = {};
+  const poseMap = kit.poses[pose] ?? (kit.poses[pose] = {});
+  const existing = poseMap[facing];
+  let entry: KitPoseFacingEntry;
+  if (!existing) {
+    entry = {};
+    poseMap[facing] = entry;
+  } else if (isPoseEntryObject(existing)) {
+    entry = existing;
+  } else {
+    // Bare-array shape — convert to object form, preserving the layers.
+    entry = { layers: existing };
+    poseMap[facing] = entry;
+  }
+  if (!entry.weapons) entry.weapons = [];
+  return entry.weapons;
+}
+
+function currentVariants(): WeaponOrientation[] {
+  if (!currentKitId) return [];
+  const kit = kitsById.get(currentKitId);
+  if (!kit) return [];
+  const entry = kit.poses?.[currentPose]?.[currentFacing];
+  if (!entry || Array.isArray(entry)) return [];
+  return ((entry as { weapons?: WeaponOrientation[] }).weapons) ?? [];
+}
+
+function getSelectedVariant(): WeaponOrientation | null {
+  const list = currentVariants();
+  if (list.length === 0) return null;
+  if (selectedVariantIdx >= list.length) selectedVariantIdx = 0;
+  return list[selectedVariantIdx] ?? null;
+}
+
+function refreshVariantsStrip(): void {
+  if (!variantsStrip) return;
+  const layers = layersForFacing(currentFacing).map((e) => e.id);
+  const kit = currentKitId ? kitsById.get(currentKitId) : null;
+  const layerPrefix = kit?.weapon?.layerPrefix ?? null;
+  variantsStrip.setContent(layers, layerPrefix, currentVariants(), selectedVariantIdx);
+}
+
+function refreshPaintLayers(): void {
+  if (!paintTool) return;
+  const layerIds = layersForFacing(currentFacing).map((e) => e.id);
+  paintTool.setActiveLayers(layerIds);
+}
+
+async function saveKitToServer(kit: KitConfig): Promise<void> {
+  // Vite exposes import.meta.env.DEV at build time.
+  const isDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV ?? false;
+  const json = JSON.stringify(kit, null, 2) + '\n';
+  if (isDev) {
+    let response: Response;
+    try {
+      response = await fetch(`/api/save-kit/${encodeURIComponent(kit.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: json,
+      });
+    } catch (err) {
+      showToast(`Save failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
+      return;
+    }
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data.error) detail = data.error;
+      } catch {
+        // ignore
+      }
+      showToast(`Save failed (${response.status}): ${detail}`, 'error');
+      return;
+    }
+    showToast(`Saved ${kit.id}.json`, 'success');
+  } else {
+    // Built/preview mode — trigger a download.
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${kit.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${kit.id}.json`, 'success');
+  }
 }
 
 async function loadRegistry(): Promise<void> {
@@ -425,12 +730,25 @@ function initEvents() {
     }
     applyKitDefaults(currentKitId, currentFacing);
     rebuildComponentGroups();
+    updateEditStrip();
+    void renderWeaponSourceGrid();
     void renderPreview();
+    unitPicker?.setActiveKit(kitId);
+    poseStrip?.setPoses(buildPoseStrip());
+    poseStrip?.setActivePose(currentPose);
+    refreshVariantsStrip();
+    refreshPaintLayers();
   });
 
-  skeletonSelect.addEventListener('change', () => {
-    currentSkeleton = skeletonSelect.value;
+  poseSelect.addEventListener('change', () => {
+    selectedVariantIdx = 0;
+    currentPose = poseSelect.value;
+    updateEditStrip();
+    updateSourceGridHighlight();
     void renderPreview();
+    poseStrip?.setActivePose(currentPose);
+    refreshVariantsStrip();
+    refreshPaintLayers();
   });
 
   if (regimentSelect) {
@@ -439,6 +757,10 @@ function initEvents() {
       if (next) {
         currentRegiment = next;
         void renderPreview();
+        unitPicker?.refresh();
+        poseStrip?.refresh();
+        refreshVariantsStrip();
+        refreshPaintLayers();
       }
     });
   }
@@ -450,23 +772,128 @@ function initEvents() {
   });
 
   for (const { facing, cell } of gridCells) {
-    cell.addEventListener('click', () => {
-      if (facing === currentFacing) return;
-      const matchOption = Array.from(facingSelect.options).some((opt) => opt.value === facing);
-      if (!matchOption) return;
+    cell.addEventListener('click', (ev) => {
+      if (paintTool?.isEnabled() && facing === currentFacing) {
+        // Paint mode: compute the pixel under the cursor and write it.
+        const cellCanvas = cell.querySelector<HTMLCanvasElement>('canvas');
+        if (!cellCanvas) return;
+        const rect = cellCanvas.getBoundingClientRect();
+        const cssX = ev.clientX - rect.left;
+        const cssY = ev.clientY - rect.top;
+        const x = Math.floor((cssX / rect.width) * cellCanvas.width);
+        const y = Math.floor((cssY / rect.height) * cellCanvas.height);
+        if (currentKitId) {
+          paintTool.paintAt(currentKitId, currentPose, currentFacing, x, y);
+        }
+        return;
+      }
+
       setFacing(facing);
+      selectedVariantIdx = 0;
       if (currentKitId) {
         applyKitDefaults(currentKitId, currentFacing);
       }
       rebuildComponentGroups();
+      refreshVariantsStrip();
+      refreshPaintLayers();
+      updateEditStrip();
+      updateSourceGridHighlight();
       void renderPreview();
     });
   }
+
+  // Source-grid clicks: rebind the selected variant to a new source facing.
+  for (const { facing, cell } of sourceGridCells) {
+    cell.addEventListener('click', () => {
+      if (cell.classList.contains('disabled')) return;
+      const v = getSelectedVariant();
+      if (!v) {
+        showToast('Select a variant first', 'info');
+        return;
+      }
+      v.src = facing;
+      delete v.transform;
+      updateEditStrip();
+      updateSourceGridHighlight();
+      refreshVariantsStrip();
+      void renderPreview();
+    });
+  }
+
+  // Edit-strip buttons.
+  btnMirror?.addEventListener('click', () => {
+    const v = getSelectedVariant();
+    if (!v) return;
+    if (v.flipX) delete v.flipX;
+    else v.flipX = true;
+    updateEditStrip();
+    refreshVariantsStrip();
+    void renderPreview();
+  });
+
+  btnRotate?.addEventListener('click', () => {
+    const v = getSelectedVariant();
+    if (!v) return;
+    v.rot = (v.rot + 90) % 360;
+    updateEditStrip();
+    refreshVariantsStrip();
+    void renderPreview();
+  });
+
+  btnDeleteVariant?.addEventListener('click', () => {
+    if (!currentKitId) return;
+    const kit = kitsById.get(currentKitId);
+    if (!kit) return;
+    const entry = kit.poses?.[currentPose]?.[currentFacing];
+    if (!entry || Array.isArray(entry)) return;
+    const list = (entry as { weapons?: WeaponOrientation[] }).weapons;
+    if (!list || list.length === 0) return;
+    list.splice(selectedVariantIdx, 1);
+    if (selectedVariantIdx >= list.length) selectedVariantIdx = Math.max(0, list.length - 1);
+    refreshVariantsStrip();
+    updateEditStrip();
+    updateSourceGridHighlight();
+    void renderPreview();
+  });
+
+  btnSaveKit?.addEventListener('click', () => {
+    if (!currentKitId) return;
+    const kit = kitsById.get(currentKitId);
+    if (!kit) return;
+    void saveKitToServer(kit);
+  });
+
+  // Keyboard nudges — active only while a variant is selected, and not while
+  // focus is on a form control.
+  document.addEventListener('keydown', (ev) => {
+    const v = getSelectedVariant();
+    if (!v) return;
+    const target = ev.target as Element | null;
+    if (target) {
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    }
+    const step = ev.shiftKey ? 8 : 1;
+    let handled = false;
+    switch (ev.key) {
+      case 'ArrowLeft':  v.x -= step; handled = true; break;
+      case 'ArrowRight': v.x += step; handled = true; break;
+      case 'ArrowUp':    v.y -= step; handled = true; break;
+      case 'ArrowDown':  v.y += step; handled = true; break;
+    }
+    if (handled) {
+      ev.preventDefault();
+      updateEditStrip();
+      refreshVariantsStrip();
+      void renderPreview();
+    }
+  });
 }
 
 async function main() {
   await loadRegistry();
   await loadKits();
+  pixelEdits = await loadPixelEdits();
 
   regiments = await loadRegiments();
   if (regimentSelect) {
@@ -510,8 +937,110 @@ async function main() {
   }
 
   rebuildComponentGroups();
+
+  // Unit picker — top-left thumbnail + popover for switching kits.
+  function buildPickerKits(): UnitPickerKit[] {
+    const out: UnitPickerKit[] = [];
+    for (const kit of kitsById.values()) {
+      const sFacing = kit.facings['S'];
+      const sLayers = sFacing?.layers ?? [];
+      let weapon: UnitPickerKit['weapon'];
+      if (kit.weapon?.layerPrefix) {
+        const sPoseEntry = kit.poses?.idle?.['S'];
+        let sOrientation: WeaponOrientation | undefined;
+        if (sPoseEntry && !Array.isArray(sPoseEntry)) {
+          sOrientation = (sPoseEntry as { weapons?: WeaponOrientation[] }).weapons?.[0];
+        }
+        weapon = { layerPrefix: kit.weapon.layerPrefix, sOrientation };
+      }
+      out.push({ id: kit.id, label: kit.label, sLayers, weapon });
+    }
+    return out;
+  }
+  unitPicker = mountUnitPicker({
+    components: componentsById,
+    componentBaseUrl: COMPONENT_BASE_URL,
+    getRegiment: () => currentRegiment,
+    getLayerEdits: getLayerEditsAt,
+    onPick: (kitId) => {
+      setKit(kitId);
+      const kit = kitsById.get(kitId);
+      if (kit && !kit.facings[currentFacing]) {
+        const available = Object.keys(kit.facings);
+        if (available.length) setFacing(available[0]);
+      }
+      applyKitDefaults(currentKitId, currentFacing);
+      rebuildComponentGroups();
+      updateEditStrip();
+      void renderWeaponSourceGrid();
+      void renderPreview();
+      unitPicker?.setActiveKit(kitId);
+      poseStrip?.setPoses(buildPoseStrip());
+      poseStrip?.setActivePose(currentPose);
+      refreshVariantsStrip();
+      refreshPaintLayers();
+    },
+  });
+  unitPicker.setKits(buildPickerKits());
+  unitPicker.setActiveKit(currentKitId);
+
+  poseStrip = mountPoseStrip({
+    components: componentsById,
+    componentBaseUrl: COMPONENT_BASE_URL,
+    getRegiment: () => currentRegiment,
+    getLayerEdits: getLayerEditsAt,
+    onPick: (name) => {
+      currentPose = name;
+      poseSelect.value = name;
+      selectedVariantIdx = 0;
+      updateEditStrip();
+      updateSourceGridHighlight();
+      poseStrip?.setActivePose(name);
+      refreshVariantsStrip();
+      refreshPaintLayers();
+      void renderPreview();
+    },
+  });
+  poseStrip.setPoses(buildPoseStrip());
+  poseStrip.setActivePose(currentPose);
+
+  variantsStrip = mountVariantsStrip({
+    components: componentsById,
+    componentBaseUrl: COMPONENT_BASE_URL,
+    getRegiment: () => currentRegiment,
+    getLayerEdits: (componentId) =>
+      currentKitId ? getLayerEditsAt(currentKitId, currentPose, currentFacing, componentId) : [],
+    onPickVariant: (idx) => {
+      selectedVariantIdx = idx;
+      refreshVariantsStrip();
+      updateEditStrip();
+      updateSourceGridHighlight();
+      void renderPreview();
+    },
+    onAddVariant: () => {
+      if (!currentKitId) return;
+      const kit = kitsById.get(currentKitId);
+      if (!kit) return;
+      const list = ensurePoseEntryWeapons(kit, currentPose, currentFacing);
+      list.push({ src: currentFacing, x: 0, y: 0, rot: 0 });
+      selectedVariantIdx = list.length - 1;
+      refreshVariantsStrip();
+      void renderPreview();
+    },
+  });
+  refreshVariantsStrip();
+
+  paintTool = mountPaintTool({
+    getTree: () => pixelEdits,
+    onChange: () => void renderPreview(),
+    showToast,
+  });
+  refreshPaintLayers();
+
   initEvents();
+  updateEditStrip();
   await renderPreview();
+  await renderWeaponSourceGrid();
 }
 
 void main().catch((err) => {

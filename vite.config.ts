@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { execFile } from 'node:child_process';
+import { saveKitPlugin } from './src/dev/save-kit-plugin.js';
 
 const PROJECT_ROOT = __dirname;
 
@@ -411,7 +412,7 @@ function offsetsApiPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [offsetsApiPlugin(), musicManifestPlugin()],
+  plugins: [offsetsApiPlugin(), musicManifestPlugin(), saveKitPlugin()],
   build: {
     target: 'es2022',
     rollupOptions: {
