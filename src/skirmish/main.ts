@@ -35,7 +35,7 @@ import '../ui/styles.css';
 import { createOverlay } from '../ui/overlay';
 import { createSelectionPanel } from '../ui/selection-panel';
 import { createStatsCard } from '../ui/stats-card';
-import { createFormationControlsPanel } from '../ui/formation-controls-panel';
+import { createUnitControlsPanel } from '../ui/unit-controls-panel';
 import { computeStanceSummary } from '../input/stance-summary';
 import { createGroupBadges } from '../ui/group-badges';
 import { createPlacementInfo } from '../ui/placement-info';
@@ -176,7 +176,7 @@ async function start(): Promise<void> {
   const overlay = createOverlay();
   const selPanel = createSelectionPanel(overlay);
   const statsCard = createStatsCard(overlay);
-  const fcPanel = createFormationControlsPanel(overlay);
+  const ucPanel = createUnitControlsPanel(overlay);
   const groupBadges = createGroupBadges(overlay);
   const placementInfo = createPlacementInfo(overlay);
   const movePreview = createMovePreview(overlay);
@@ -343,7 +343,7 @@ async function start(): Promise<void> {
     selPanel.update(world, selection);
     statsCard.update(world, selection);
     scenarioBar.update(world);
-    fcPanel.update(selection, controller.formationParams, computeStanceSummary(selection, world.entities));
+    ucPanel.update(world, selection, controller.formationParams, computeStanceSummary(selection, world.entities), controller.runMode);
     groupBadges.update(world, camera, selection, controlGroups);
 
     hud.setCounters({

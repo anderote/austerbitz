@@ -67,7 +67,6 @@ const KIT_INDEX_URL = '/components/kits/index.json';
 const REGISTRY_URL = '/components/index.json';
 
 const LAYER_SEQUENCE = [
-  'fx:shadow',
   'anatomy:legs',
   'uniform:lower',
   'anatomy:torso',
