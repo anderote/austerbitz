@@ -43,12 +43,19 @@ function makeBucket(capacity: number): ProjectileBucket {
   };
 }
 
+// Cannonball/shell visual size — exaggerated above the historical ~12cm
+// diameter so the projectile reads as a chunky pixel object at battlefield
+// zoom levels. The 8-cell pixel disc shader produces ~0.075m cells.
+const BALL_VIS_SIZE = 0.6;
+const SHADOW_VIS_W = BALL_VIS_SIZE * 0.9;
+const SHADOW_VIS_H = BALL_VIS_SIZE * 0.55;
+
 function pushShadow(b: ProjectileBucket, cx: number, cy: number): void {
   const i = b.count;
   b.centerWorld[i * 2 + 0] = cx;
   b.centerWorld[i * 2 + 1] = cy;
-  b.sizeOrLen[i * 2 + 0] = 0.18;
-  b.sizeOrLen[i * 2 + 1] = 0.10;
+  b.sizeOrLen[i * 2 + 0] = SHADOW_VIS_W;
+  b.sizeOrLen[i * 2 + 1] = SHADOW_VIS_H;
   b.rotation[i] = 0;
   b.kind[i] = 2;
   b.color[i * 4 + 0] = 0;
@@ -62,8 +69,8 @@ function pushBall(b: ProjectileBucket, cx: number, cy: number): void {
   const i = b.count;
   b.centerWorld[i * 2 + 0] = cx;
   b.centerWorld[i * 2 + 1] = cy;
-  b.sizeOrLen[i * 2 + 0] = 0.18;
-  b.sizeOrLen[i * 2 + 1] = 0.18;
+  b.sizeOrLen[i * 2 + 0] = BALL_VIS_SIZE;
+  b.sizeOrLen[i * 2 + 1] = BALL_VIS_SIZE;
   b.rotation[i] = 0;
   b.kind[i] = 1;
   b.color[i * 4 + 0] = 0.18;

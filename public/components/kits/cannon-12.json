@@ -13,7 +13,8 @@
       "layers": [
         "cannon12-trail-north",
         "cannon12-wheels-north",
-        "cannon12-barrel-north"
+        "cannon12-barrel-north",
+        "cannon12-crew-north-idle"
       ]
     },
     "NE": {
@@ -24,7 +25,8 @@
       "layers": [
         "cannon12-trail-northeast",
         "cannon12-wheels-northeast",
-        "cannon12-barrel-northeast"
+        "cannon12-barrel-northeast",
+        "cannon12-crew-northeast-idle"
       ]
     },
     "E": {
@@ -35,7 +37,8 @@
       "layers": [
         "cannon12-trail-east",
         "cannon12-wheels-east",
-        "cannon12-barrel-east"
+        "cannon12-barrel-east",
+        "cannon12-crew-east-idle"
       ]
     },
     "SE": {
@@ -46,7 +49,8 @@
       "layers": [
         "cannon12-trail-southeast",
         "cannon12-wheels-southeast",
-        "cannon12-barrel-southeast"
+        "cannon12-barrel-southeast",
+        "cannon12-crew-southeast-idle"
       ]
     },
     "S": {
@@ -57,7 +61,8 @@
       "layers": [
         "cannon12-trail-south",
         "cannon12-wheels-south",
-        "cannon12-barrel-south"
+        "cannon12-barrel-south",
+        "cannon12-crew-south-idle"
       ]
     },
     "SW": {
@@ -68,7 +73,8 @@
       "layers": [
         "cannon12-trail-southwest",
         "cannon12-wheels-southwest",
-        "cannon12-barrel-southwest"
+        "cannon12-barrel-southwest",
+        "cannon12-crew-southwest-idle"
       ]
     },
     "W": {
@@ -79,7 +85,8 @@
       "layers": [
         "cannon12-trail-west",
         "cannon12-wheels-west",
-        "cannon12-barrel-west"
+        "cannon12-barrel-west",
+        "cannon12-crew-west-idle"
       ]
     },
     "NW": {
@@ -90,7 +97,8 @@
       "layers": [
         "cannon12-trail-northwest",
         "cannon12-wheels-northwest",
-        "cannon12-barrel-northwest"
+        "cannon12-barrel-northwest",
+        "cannon12-crew-northwest-idle"
       ]
     }
   },
@@ -101,6 +109,7 @@
           "cannon12-trail-north",
           "cannon12-wheels-north",
           "cannon12-barrel-north",
+          "cannon12-crew-north-fire",
           "cannon12-muzzle-flash-north-fire",
           "cannon12-smoke-north-fire"
         ]
@@ -110,6 +119,7 @@
           "cannon12-trail-northeast",
           "cannon12-wheels-northeast",
           "cannon12-barrel-northeast",
+          "cannon12-crew-northeast-fire",
           "cannon12-muzzle-flash-northeast-fire",
           "cannon12-smoke-northeast-fire"
         ]
@@ -119,6 +129,7 @@
           "cannon12-trail-east",
           "cannon12-wheels-east",
           "cannon12-barrel-east",
+          "cannon12-crew-east-fire",
           "cannon12-muzzle-flash-east-fire",
           "cannon12-smoke-east-fire"
         ]
@@ -128,6 +139,7 @@
           "cannon12-trail-southeast",
           "cannon12-wheels-southeast",
           "cannon12-barrel-southeast",
+          "cannon12-crew-southeast-fire",
           "cannon12-muzzle-flash-southeast-fire",
           "cannon12-smoke-southeast-fire"
         ]
@@ -137,6 +149,7 @@
           "cannon12-trail-south",
           "cannon12-wheels-south",
           "cannon12-barrel-south",
+          "cannon12-crew-south-fire",
           "cannon12-muzzle-flash-south-fire",
           "cannon12-smoke-south-fire"
         ]
@@ -146,6 +159,7 @@
           "cannon12-trail-southwest",
           "cannon12-wheels-southwest",
           "cannon12-barrel-southwest",
+          "cannon12-crew-southwest-fire",
           "cannon12-muzzle-flash-southwest-fire",
           "cannon12-smoke-southwest-fire"
         ]
@@ -155,6 +169,7 @@
           "cannon12-trail-west",
           "cannon12-wheels-west",
           "cannon12-barrel-west",
+          "cannon12-crew-west-fire",
           "cannon12-muzzle-flash-west-fire",
           "cannon12-smoke-west-fire"
         ]
@@ -164,6 +179,7 @@
           "cannon12-trail-northwest",
           "cannon12-wheels-northwest",
           "cannon12-barrel-northwest",
+          "cannon12-crew-northwest-fire",
           "cannon12-muzzle-flash-northwest-fire",
           "cannon12-smoke-northwest-fire"
         ]
@@ -175,7 +191,8 @@
           "cannon12-trail-north",
           "cannon12-wheels-north",
           "cannon12-barrel-north",
-          "cannon12-handspike-north-reload"
+          "cannon12-handspike-north-reload",
+          "cannon12-crew-north-reload"
         ]
       },
       "NE": {
@@ -183,7 +200,8 @@
           "cannon12-trail-northeast",
           "cannon12-wheels-northeast",
           "cannon12-barrel-northeast",
-          "cannon12-handspike-northeast-reload"
+          "cannon12-handspike-northeast-reload",
+          "cannon12-crew-northeast-reload"
         ]
       },
       "E": {
@@ -191,7 +209,8 @@
           "cannon12-trail-east",
           "cannon12-wheels-east",
           "cannon12-barrel-east",
-          "cannon12-handspike-east-reload"
+          "cannon12-handspike-east-reload",
+          "cannon12-crew-east-reload"
         ]
       },
       "SE": {
@@ -199,7 +218,8 @@
           "cannon12-trail-southeast",
           "cannon12-wheels-southeast",
           "cannon12-barrel-southeast",
-          "cannon12-handspike-southeast-reload"
+          "cannon12-handspike-southeast-reload",
+          "cannon12-crew-southeast-reload"
         ]
       },
       "S": {
@@ -207,7 +227,8 @@
           "cannon12-trail-south",
           "cannon12-wheels-south",
           "cannon12-barrel-south",
-          "cannon12-handspike-south-reload"
+          "cannon12-handspike-south-reload",
+          "cannon12-crew-south-reload"
         ]
       },
       "SW": {
@@ -215,7 +236,8 @@
           "cannon12-trail-southwest",
           "cannon12-wheels-southwest",
           "cannon12-barrel-southwest",
-          "cannon12-handspike-southwest-reload"
+          "cannon12-handspike-southwest-reload",
+          "cannon12-crew-southwest-reload"
         ]
       },
       "W": {
@@ -223,7 +245,8 @@
           "cannon12-trail-west",
           "cannon12-wheels-west",
           "cannon12-barrel-west",
-          "cannon12-handspike-west-reload"
+          "cannon12-handspike-west-reload",
+          "cannon12-crew-west-reload"
         ]
       },
       "NW": {
@@ -231,7 +254,8 @@
           "cannon12-trail-northwest",
           "cannon12-wheels-northwest",
           "cannon12-barrel-northwest",
-          "cannon12-handspike-northwest-reload"
+          "cannon12-handspike-northwest-reload",
+          "cannon12-crew-northwest-reload"
         ]
       }
     },
@@ -240,56 +264,64 @@
         "layers": [
           "cannon12-trail-north",
           "cannon12-wheels-north",
-          "cannon12-barrel-north"
+          "cannon12-barrel-north",
+          "cannon12-crew-north-idle"
         ]
       },
       "NE": {
         "layers": [
           "cannon12-trail-northeast",
           "cannon12-wheels-northeast",
-          "cannon12-barrel-northeast"
+          "cannon12-barrel-northeast",
+          "cannon12-crew-northeast-idle"
         ]
       },
       "E": {
         "layers": [
           "cannon12-trail-east",
           "cannon12-wheels-east",
-          "cannon12-barrel-east"
+          "cannon12-barrel-east",
+          "cannon12-crew-east-idle"
         ]
       },
       "SE": {
         "layers": [
           "cannon12-trail-southeast",
           "cannon12-wheels-southeast",
-          "cannon12-barrel-southeast"
+          "cannon12-barrel-southeast",
+          "cannon12-crew-southeast-idle"
         ]
       },
       "S": {
         "layers": [
           "cannon12-trail-south",
           "cannon12-wheels-south",
-          "cannon12-barrel-south"
+          "cannon12-barrel-south",
+          "cannon12-crew-south-idle"
         ]
       },
       "SW": {
         "layers": [
           "cannon12-trail-southwest",
           "cannon12-wheels-southwest",
-          "cannon12-barrel-southwest"
+          "cannon12-barrel-southwest",
+          "cannon12-crew-southwest-idle"
         ]
       },
       "W": {
         "layers": [
           "cannon12-trail-west",
           "cannon12-wheels-west",
-          "cannon12-barrel-west"
+          "cannon12-barrel-west",
+          "cannon12-crew-west-idle"
         ]
       },
       "NW": {
         "layers": [
           "cannon12-trail-northwest",
           "cannon12-wheels-northwest",
-          "cannon12-barrel-northwest"
+          "cannon12-barrel-northwest",
+          "cannon12-crew-northwest-idle"
         ]
       }
     },

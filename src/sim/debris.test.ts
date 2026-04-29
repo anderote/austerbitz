@@ -25,13 +25,34 @@ describe('Debris', () => {
     expect(d.aliveIds[0]).toBe(id);
   });
 
-  it('allocDebris fills capacity then returns -1 when full', () => {
+  it('allocDebris evicts the oldest settled gib when full (and reuses its slot)', () => {
+    const d = createDebris(2);
+    const a = allocDebris(d);
+    const b = allocDebris(d);
+    // Mark `a` as settled so it's the eviction target.
+    d.bounces[a] = 4;
+    // Stamp identifying values so we can verify the slot was overwritten.
+    d.chunkId[a] = 99;
+    const c = allocDebris(d);
+    expect(c).not.toBe(-1);
+    expect(d.count).toBe(2);
+    // Settled slot `a` is the eviction target, so the rolling cursor reuses it.
+    expect(c).toBe(a);
+    expect(d.alive[a]).toBe(1); // freshly allocated again
+    expect(d.alive[b]).toBe(1); // unsettled survivor untouched
+    expect(d.bounces[a]).toBe(4); // raw fields aren't reset on alloc; spawnGibs initialises
+  });
+
+  it('allocDebris falls back to oldest packed slot if none settled', () => {
     const d = createDebris(2);
     const a = allocDebris(d);
     const b = allocDebris(d);
     const c = allocDebris(d);
-    expect(a).not.toBe(b);
-    expect(c).toBe(-1);
+    expect(c).not.toBe(-1);
+    // No gibs settled → fallback evicts aliveIds[0] (which was `a`), and the
+    // freed slot is reused.
+    expect(c).toBe(a);
+    expect(d.alive[b]).toBe(1);
     expect(d.count).toBe(2);
   });
 

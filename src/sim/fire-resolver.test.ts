@@ -57,7 +57,9 @@ describe('resolveFire', () => {
     expect(projectiles.velX[0]!).toBeGreaterThan(0);
     // And a positive launch vz on the lower trajectory.
     expect(projectiles.velZ[0]!).toBeGreaterThan(0);
-    expect(e.recoilT[id]).toBeCloseTo(RECOIL_T, 6);
+    // cannon-12 has recoilDuration: 3.5 on its muzzle profile.
+    expect(e.recoilT[id]).toBeCloseTo(3.5, 6);
+    expect(e.recoilTotal[id]).toBeCloseTo(3.5, 6);
   });
 
   it('cuirassier (no weapon): returns false; nothing spawned', () => {
@@ -169,7 +171,9 @@ describe('resolveFire', () => {
 
       expect(ok).toBe(true);
       expect(projectiles.count).toBe(1);
-      expect(projectiles.damage[0]).toBe(99);
+      // Musket has ±33% damage variance; assert the roll is in [66, 132].
+      expect(projectiles.damage[0]).toBeGreaterThanOrEqual(99 * 0.66);
+      expect(projectiles.damage[0]).toBeLessThanOrEqual(99 * 1.34);
     } finally {
       (lineInfantry.baseStats as { weaponDamage: number }).weaponDamage = original;
     }
@@ -194,7 +198,10 @@ describe('resolveFire', () => {
 
     expect(ok).toBe(true);
     expect(projectiles.count).toBe(1);
-    expect(projectiles.damage[0]).toBeCloseTo(lineInfantry.baseStats.weaponDamage * 1.25, 6);
+    // Captain rank → 1.25× base; musket has ±33% variance on top.
+    const expectedMean = lineInfantry.baseStats.weaponDamage * 1.25;
+    expect(projectiles.damage[0]).toBeGreaterThanOrEqual(expectedMean * 0.66);
+    expect(projectiles.damage[0]).toBeLessThanOrEqual(expectedMean * 1.34);
   });
 
   it('musket recoil sets a render-only peak offset opposite the shot direction; sim pos/vel untouched', () => {

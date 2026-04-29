@@ -207,7 +207,9 @@ describe('tickStates — Idle stateT', () => {
     tickStates(e, proj, par, puff, rng, orders, 1/60, tick, fs, grid);
 
     // Cell at (50,50): cellSize 2 → cx=25, cy=25, cellIndex = 25*50 + 25 = 1275.
-    const idx = 1275 * 2 + 0;
-    expect(fs.tickByCellTeam[idx]).toBe(tick);
+    // formationRank = FORMATION_RANK_UNKNOWN (255) → clamped to MAX_TRACKED_RANKS-1 = 2.
+    // idx = (1275 * 2 + 0) * 3 + 2 = 7652.
+    const idx = (1275 * 2 + 0) * 3 + 2;
+    expect(fs.tickByCellTeamRank[idx]).toBe(tick);
   });
 });

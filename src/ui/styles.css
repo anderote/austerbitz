@@ -27,6 +27,16 @@
   white-space: pre;
 }
 
+#ui-root .perf-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: pre;
+  min-width: 280px;
+}
+
 #ui-root .selection-panel {
   position: absolute;
   bottom: 8px;
@@ -67,64 +77,6 @@
   font-size: 11px;
   color: #9ca3af;
   font-variant-numeric: tabular-nums;
-}
-
-#ui-root .build-menu {
-  position: absolute;
-  top: 80px;
-  right: 0;
-  width: 180px;
-  border-radius: 6px 0 0 6px;
-  border-right: none;
-  transition: transform 0.18s ease-out;
-  padding: 8px;
-}
-
-#ui-root .build-menu.collapsed {
-  transform: translateX(160px);
-}
-
-#ui-root .build-menu .toggle {
-  position: absolute;
-  left: -22px;
-  top: 8px;
-  width: 22px;
-  height: 32px;
-  background: var(--ui-bg);
-  border: 1px solid var(--ui-border);
-  border-right: none;
-  border-radius: 4px 0 0 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-#ui-root .build-menu h3 {
-  margin: 4px 0 8px;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ui-accent);
-}
-
-#ui-root .build-menu button {
-  display: block;
-  width: 100%;
-  margin-bottom: 4px;
-  padding: 6px 8px;
-  background: #2c343c;
-  border: 1px solid var(--ui-border);
-  color: var(--ui-text);
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-}
-
-#ui-root .build-menu button:hover {
-  background: #3a444f;
 }
 
 #ui-root .scale-bar {
@@ -482,19 +434,15 @@
   text-shadow: 0 0 2px #000;
 }
 
-/* === MUSIC PLAYER (top-right) === */
+/* === MUSIC PLAYER (mounted into the scenario bar's right slot) === */
 #music-player {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  z-index: 99;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
   background: rgba(20, 20, 40, 0.92);
   border: 1px solid rgba(100, 100, 160, 0.3);
-  border-radius: 4px;
-  padding: 4px 8px;
+  padding: 2px 6px;
   pointer-events: auto;
 }
 
@@ -697,4 +645,227 @@
   background: #8888aa;
   border: none;
   cursor: pointer;
+}
+
+/* Cannon ammo panel — appears above the selection panel when artillery is selected. */
+#ui-root .cannon-ammo-panel {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+#ui-root .cannon-ammo-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 56px;
+  padding: 6px 4px 4px;
+  border: 1px solid rgba(120, 120, 140, 0.35);
+  border-radius: 4px;
+  background: rgba(20, 24, 28, 0.4);
+  box-sizing: border-box;
+  user-select: none;
+}
+#ui-root .cannon-ammo-slot.active {
+  border-color: #cfe070;
+  background: rgba(80, 110, 40, 0.55);
+  box-shadow: 0 0 0 1px #cfe070 inset;
+}
+#ui-root .cannon-ammo-icon {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  margin-bottom: 4px;
+}
+#ui-root .cannon-ammo-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#ui-root .cannon-ammo-name {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d8d8c8;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+#ui-root .cannon-ammo-slot.active .cannon-ammo-name {
+  color: #f4f4d8;
+}
+#ui-root .cannon-ammo-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  line-height: 1;
+  border: 1px solid rgba(180, 180, 190, 0.35);
+  border-radius: 2px;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+#ui-root .cannon-ammo-slot.active .cannon-ammo-key {
+  color: #fff;
+  border-color: #cfe070;
+}
+#ui-root .cannon-ammo-mixed {
+  align-self: center;
+  margin-left: 4px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #d8c060;
+}
+
+/* === SCENARIO BAR === */
+#ui-root .sb-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  background: rgba(20, 20, 28, 0.92);
+  border-bottom: 1px solid #444;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #fff;
+  pointer-events: auto;
+  user-select: none;
+}
+
+#ui-root .sb-left,
+#ui-root .sb-center,
+#ui-root .sb-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#ui-root .sb-title {
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 12px;
+}
+
+#ui-root .sb-menu-link {
+  color: #aaaacc;
+  text-decoration: none;
+  font-size: 11px;
+}
+#ui-root .sb-menu-link:hover { color: #ccccee; }
+
+#ui-root .sb-team-label {
+  font-weight: bold;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+#ui-root .sb-team-blue { color: #6aa9ff; }
+#ui-root .sb-team-red  { color: #ff7a7a; }
+
+#ui-root .sb-team-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  min-width: 32px;
+  text-align: left;
+}
+
+#ui-root .sb-team-sep {
+  color: #888;
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+#ui-root .sb-scenario-picker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  height: 22px;
+  padding: 0 18px 0 6px;
+  background-color: rgba(40, 40, 70, 0.8);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><polygon points='0,0 10,0 5,6' fill='%238888aa'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  background-size: 7px 5px;
+  border: 1px solid rgba(80, 80, 120, 0.6);
+  color: #ccccee;
+  cursor: pointer;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+#ui-root .sb-scenario-picker option {
+  background: rgba(20, 20, 40, 0.98);
+  color: #aaaacc;
+}
+
+#ui-root .sb-options-wrap {
+  position: relative;
+}
+
+#ui-root .sb-options {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  height: 22px;
+  padding: 0 8px;
+  background: rgba(40, 40, 70, 0.8);
+  border: 1px solid rgba(80, 80, 120, 0.6);
+  color: #ccccee;
+  cursor: pointer;
+}
+#ui-root .sb-options:hover {
+  background: rgba(60, 60, 100, 0.9);
+  border-color: rgba(140, 140, 200, 0.8);
+}
+
+#ui-root .sb-options-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  width: 180px;
+  background: rgba(20, 20, 28, 0.97);
+  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 2px;
+  z-index: 110;
+}
+#ui-root .sb-options-dropdown[hidden] { display: none; }
+
+#ui-root .sb-opt-btn {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  text-align: left;
+  padding: 6px 8px;
+  background: rgba(40, 40, 70, 0.6);
+  border: 1px solid rgba(80, 80, 120, 0.5);
+  color: #ccccee;
+  cursor: pointer;
+}
+#ui-root .sb-opt-btn:hover {
+  background: rgba(60, 60, 100, 0.9);
+  border-color: rgba(140, 140, 200, 0.7);
+}
+#ui-root .sb-opt-btn.active {
+  background: rgba(80, 80, 140, 0.7);
+  border-color: rgba(160, 160, 220, 0.8);
+  color: #fff;
+}
+
+#ui-root .sb-music-slot {
+  display: flex;
+  align-items: center;
 }

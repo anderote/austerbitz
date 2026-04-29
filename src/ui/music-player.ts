@@ -3,7 +3,7 @@
 // expandable track list, minimize button, and volume slider. Ported from
 // beamline-tycoon's MusicPlayer.js.
 
-const STORAGE_KEY = 'austerbitz.music';
+const STORAGE_KEY = 'austerblitz.music';
 
 interface SavedState {
   selectedTheme: string | null;
@@ -456,12 +456,17 @@ export function createMusicPlayer(root: HTMLElement): MusicPlayer {
     if (currentIndex < 0) currentIndex = 0;
     updateTrackDisplay();
 
-    // Restore playback position + autoplay
+    // Restore playback position; only resume audio if previous session was playing
     if (saved && typeof saved.currentTime === 'number' && saved.currentTime > 0) {
       pendingResumeTime = saved.currentTime;
     }
     audio.src = tracks[currentIndex]!.url;
-    tryAutoplay();
+    if (saved?.wasPlaying) {
+      tryAutoplay();
+    } else {
+      isPlaying = false;
+      updatePlayButton();
+    }
   })();
 
   return { root: el };

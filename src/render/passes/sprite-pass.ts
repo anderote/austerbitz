@@ -23,6 +23,19 @@ import {
   type WeaponOrientation,
 } from '../poses/resolver';
 import { runtimePoseToEditorPoseName, type KitConfig } from '../poses/kit-loader';
+import { profiler } from '../../dev/profiler';
+import { Pose, POSE_CONFIG } from '../poses/pose-config';
+
+// Held-weapon vertical bob during locomotion. The body sprite's bob is baked
+// into its source frames, but the weapon overlay is anchored at one fixed
+// per-(pose, facing) position — without a synthesized match, it floats
+// steadily while the body bounces under it. Frequency = pose fps / 4 (one
+// full bob cycle per stride on a standard 4-frame gait); amplitude is in
+// source-sprite pixels and snapped to integers for pixel-art crispness.
+const WEAPON_BOB_WALK_PX = 1;
+const WEAPON_BOB_RUN_PX = 1;
+const WEAPON_BOB_WALK_HZ = POSE_CONFIG[Pose.walking].fps / 4;
+const WEAPON_BOB_RUN_HZ = POSE_CONFIG[Pose.running].fps / 4;
 
 const SOLDIER_FALLBACK = KIND_ATLAS['line-infantry']!;
 
@@ -132,13 +145,14 @@ export function createSpritePass(
   capacity: number,
   poseAtlas: PoseAtlas | null,
   kits: ReadonlyMap<string, KitConfig> = new Map(),
+  worldH = 2000,
 ): SpritePass {
   // Fire-and-forget regiment load; falls back to the hardcoded defaults until
   // the fetch resolves. Validation + warning live inside loadRegimentsAsync.
   void loadRegimentsAsync();
 
   const prog = linkProgram(gl, SPRITE_VS, SPRITE_FS);
-  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld'] as const);
+  const u = getUniforms(gl, prog, ['u_viewProj', 'u_atlas', 'u_patternFeatureWorld', 'u_worldH'] as const);
 
   // Ground-shadow program. Reuses the same VAO and atlas as the sprite pass;
   // its VS reads attributes 0,1,2,4,9,10,11 and projects each vertex onto the
@@ -511,7 +525,9 @@ export function createSpritePass(
       // World Y grows downward, so larger Y = in front. Draw ascending by Y
       // so front sprites overwrite back ones (painter's algorithm).
       sortPosY = e.posY;
+      profiler.begin('render/sprite-ysort');
       sortIdx.subarray(0, n).sort(sortByY);
+      profiler.end('render/sprite-ysort');
 
       const infantryDot = INFANTRY_DOT_PIXELS / cam.zoom;
       const cavalryDot = CAVALRY_DOT_PIXELS / cam.zoom;
@@ -539,7 +555,8 @@ export function createSpritePass(
         const rt = e.recoilT[i]!;
         let wave = 0;
         if (rt > 0) {
-          const phase = 1 - rt / RECOIL_T;
+          const total = e.recoilTotal[i]! > 0 ? e.recoilTotal[i]! : RECOIL_T;
+          const phase = 1 - rt / total;
           if (phase < RECOIL_PUSH_END) {
             const u = phase / RECOIL_PUSH_END;
             const inv = 1 - u;
@@ -645,7 +662,13 @@ export function createSpritePass(
           scratchPattern[k] = 0;
           const facing = e.facing[i]!;
           const pose = e.pose[i]!;
-          const poseT = e.poseT[i]!;
+          // Running soldiers desync per-entity so a column doesn't animate in
+          // lockstep; walking pose (= marching/formation) stays synchronized.
+          // Stable hash → [0, 1) seconds, large enough to span any pose's loop.
+          const desync = pose === Pose.running
+            ? ((i * 2654435761) >>> 0) / 0x100000000
+            : 0;
+          const poseT = e.poseT[i]! + desync;
           const clipIdx = e.clipIndex[i]!;
           let uv: readonly [number, number, number, number] | null = null;
           // Detachable-part variant lookup: when a part bit is set, prefer the
@@ -706,7 +729,13 @@ export function createSpritePass(
               // composites against 1:1.
               const pxToWorld = sprW / SPRITE_CELL_PX;
               const dxWorld = offset.x * pxToWorld;
-              const dyWorld = offset.y * pxToWorld;
+              let bobPx = 0;
+              if (pose === Pose.walking) {
+                bobPx = Math.round(Math.sin(poseT * 2 * Math.PI * WEAPON_BOB_WALK_HZ) * WEAPON_BOB_WALK_PX);
+              } else if (pose === Pose.running) {
+                bobPx = Math.round(Math.sin(poseT * 2 * Math.PI * WEAPON_BOB_RUN_HZ) * WEAPON_BOB_RUN_PX);
+              }
+              const dyWorld = (offset.y + bobPx) * pxToWorld;
               const wWorldW = WEAPON_PX_W * pxToWorld;
               const wWorldH = WEAPON_PX_H * pxToWorld;
               const isBehind = RUNTIME_FACING_IS_BEHIND[facing]!;
@@ -857,11 +886,15 @@ export function createSpritePass(
         gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, wn);
       }
 
-      // ---- Sprite draws.
+      // ---- Sprite draws. Depth-write the body z derived from foot-Y so that
+      // grass / trees in front (larger foot-Y) cover the body and vice versa.
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
       gl.useProgram(prog);
       gl.uniform1i(u.u_atlas, 0);
       gl.uniformMatrix3fv(u.u_viewProj, false, viewProjection(cam));
       gl.uniform1f(u.u_patternFeatureWorld, PATTERN_FEATURE_PIXELS / cam.zoom);
+      gl.uniform1f(u.u_worldH, worldH);
 
       // Weapons-behind pass: rear-facings (N/NE/NW) drawn FIRST so the body
       // composited next will occlude the weapon.
@@ -933,6 +966,8 @@ export function createSpritePass(
       }
 
       gl.disable(gl.BLEND);
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
 
       gl.bindVertexArray(null);
     },

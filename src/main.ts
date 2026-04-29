@@ -4,7 +4,7 @@ import { createCamera } from './render/camera';
 import { createInputManager } from './input/input-manager';
 import { createCameraControls } from './input/camera-controls';
 import { createWorld, tickWorld } from './sim/world';
-import { allocEntity, EntityState } from './sim/entities';
+import { allocEntity, EntityState, type Entities } from './sim/entities';
 import { getUnitKind, getUnitKindIndex } from './data/units';
 import { createDefaultMap } from './map/world-map';
 import { ordersSystem } from './sim/systems/orders-system';
@@ -13,31 +13,36 @@ import { collisionSystem } from './sim/systems/collision-system';
 import { facingSystem } from './sim/systems/facing-system';
 import { tickStates, type FireOrders } from './sim/systems/state-system';
 import { tickProjectiles } from './sim/systems/projectile-system';
+import { updateShockwaves } from './sim/systems/shockwave-system';
 import { tickDebris } from './sim/systems/debris-system';
 import { tickRagdoll } from './sim/systems/ragdoll-system';
 import { createCombatSystem } from './sim/systems/combat-system';
 import { createDeathDropsSystem } from './sim/systems/death-drops-system';
+import { setKitGibTable } from './sim/systems/combat-events';
+import { buildKitGibTable } from './sim/kit-gib-table';
 import { marchSystem } from './sim/systems/march-system';
 import { assignIdentity } from './sim/spawn-identity';
 import type { System } from './sim/world';
-import { createSelection, createDragRect, createFormationDrag, createControlGroups } from './input/selection';
+import { createSelection, createDragRect, createFormationDrag, createControlGroups, type Selection } from './input/selection';
 import { createSelectionController } from './input/selection-controller';
 import './ui/styles.css';
 import { createOverlay } from './ui/overlay';
 import { createHud } from './ui/hud';
 import { createSelectionPanel } from './ui/selection-panel';
+import { createCannonAmmoPanel } from './ui/cannon-ammo-panel';
 import { createStatsCard } from './ui/stats-card';
-import { createBuildMenu } from './ui/build-menu';
 import { createScaleBar } from './ui/scale-bar';
+import { createScenarioBar } from './ui/scenario-bar';
 import { createWindIndicator } from './ui/wind-indicator';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
-import { createFormationControlsPanel } from './ui/formation-controls-panel';
+import { createFormationControlsPanel, type StanceSummary } from './ui/formation-controls-panel';
 import { createGroupBadges } from './ui/group-badges';
 import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
 import { createMusicPlayer } from './ui/music-player';
 import { createParticles, updateParticles } from './particles/particles';
+import { createDamageTexts, updateDamageTexts } from './fx/damage-texts/damage-texts';
 import { createPuffs, updatePuffs } from './puffs/puffs';
 import { coalesceStep } from './puffs/coalesce';
 import { getProfileByIndex } from './puffs/profile';
@@ -46,12 +51,16 @@ import { emitDustForFrame } from './puffs/emit-dust';
 import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clouds';
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
+import { clearSfxRequests } from './sim/sfx-requests';
+import { initSfx, playSfx, setSfxMuted } from './audio/sfx';
 import { loadPoseAtlas } from './render/poses/atlas';
 import { loadDebrisAtlas } from './render/debris-atlas';
 import { loadKits } from './render/poses/kit-loader';
 import { startLiveReload } from './render/poses/live-reload';
 import { composeCombinedAtlas } from './render/poses/combined-atlas';
 import { generateCombinedAtlas, COMBINED_SHEET_W, COMBINED_SHEET_H } from './render/sprite-atlas';
+import { profiler } from './dev/profiler';
+import { createPerfPanel } from './ui/perf-panel';
 
 const CAPACITY = 131072; // hard ceiling — comfortably fits 100k+ troops
 const PARTICLE_CAPACITY = 50000;
@@ -70,10 +79,15 @@ try {
 }
 const debrisAtlas = await loadDebrisAtlas(gl);
 const kits = await loadKits();
+const chunkIdLookup = debrisAtlas
+  ? new Map(debrisAtlas.chunks.map((c, i) => [c.id, i]))
+  : undefined;
+const kitGibTable = buildKitGibTable(kits, chunkIdLookup);
+setKitGibTable(kitGibTable);
 const renderer = createRenderer(
   gl, canvas, CAPACITY, PARTICLE_CAPACITY, PUFF_CAPACITY, PROJECTILE_CAPACITY,
   map.size.w, map.size.h, poseAtlas, kits,
-  debrisAtlas,
+  debrisAtlas, undefined, map, kitGibTable,
 );
 
 // Dev-mode live-reload: poll kit JSONs for per-(pose, facing) weapon edits
@@ -127,14 +141,17 @@ const cloudCfg: AmbientCloudConfig = {
 };
 const particles = createParticles(PARTICLE_CAPACITY);
 const puffs = createPuffs(PUFF_CAPACITY);
+const damageTexts = createDamageTexts(256);
 const windState = createWindState();
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
 const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
   tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
-const projectileSystem: System = (w, dt) =>
-  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.debris, dt, w.bloodSplats);
+const projectileSystem: System = (w, dt) => {
+  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.shockwaves, w.debris, dt, w.bloodSplats, w.shakeRequests, w.craterSplats, w.sfxRequests, damageTexts);
+  updateShockwaves(w.shockwaves, w.entities, w.grid, particles, w.rng, w.bloodSplats, w.debris, dt, damageTexts);
+};
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
 const debrisSystem: System = (w, dt) => tickDebris(w.debris, dt);
 const deathDropsSystem = createDeathDropsSystem(kits);
@@ -155,7 +172,6 @@ world.systems = [
 
 const cameraControls = createCameraControls(camera, input, {
   bounds: { minX: 0, minY: 0, maxX: map.size.w, maxY: map.size.h },
-  suppressArrowsWhen: () => selection.ids.size > 0,
 });
 
 function spawn(kindId: string, team: number, x: number, y: number, facing = 0): number {
@@ -189,7 +205,7 @@ function spawn(kindId: string, team: number, x: number, y: number, facing = 0): 
 const cx = map.size.w / 2;
 const cy = map.size.h / 2;
 
-const BATTLE_GAP = 100;     // metres between the two armies' front ranks
+const BATTLE_GAP = 75;      // metres between the two armies' front ranks
 const FACING_E = 0;         // +X
 const FACING_W = 4;         // -X
 
@@ -311,16 +327,31 @@ function syncViewport() {
 }
 window.addEventListener('resize', syncViewport);
 syncViewport();
+window.addEventListener('pointerdown', initSfx, { once: true });
+window.addEventListener('keydown', initSfx, { once: true });
 
 camera.center.x = cx;
 camera.center.y = cy;
 camera.zoom = 12;
 
 const overlay = createOverlay();
+let showHealthBarsOverride = false;
+const scenarioBar = createScenarioBar(overlay, {
+  scenarioId: 'line-battles',
+  scenarios: [
+    { id: 'line-battles', label: 'Line Battles', url: 'line-battles.html' },
+    { id: 'skirmish', label: 'Skirmish Defense', url: 'skirmish.html' },
+  ],
+  options: { canShowHealthBars: true, canPause: false, canReset: false },
+  callbacks: {
+    onShowHealthBarsToggle: (on) => { showHealthBarsOverride = on; },
+    onSoundToggle: (m) => setSfxMuted(m),
+  },
+});
 const hud = createHud(overlay);
 const selPanel = createSelectionPanel(overlay);
+const cannonAmmoPanel = createCannonAmmoPanel(overlay);
 const statsCard = createStatsCard(overlay);
-const buildMenu = createBuildMenu(overlay);
 const scaleBar = createScaleBar(overlay);
 const windIndicator = createWindIndicator(overlay);
 const minimap = createMinimap(overlay, map.size, camera);
@@ -329,17 +360,31 @@ const fcPanel = createFormationControlsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
 const placementInfo = createPlacementInfo(overlay);
 const movePreview = createMovePreview(overlay);
-createMusicPlayer(overlay);
+createMusicPlayer(scenarioBar.musicSlot);
+const perfPanel = createPerfPanel(overlay, input);
 
 const controller = createSelectionController({
   canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
-  particles, movePreview,
+  particles, movePreview, projectiles, puffs,
 });
 
 let lastT = performance.now();
+function computeStanceSummary(sel: Selection, e: Entities): StanceSummary {
+  if (sel.ids.size === 0) return { kind: 'none' };
+  let first: number | undefined;
+  for (const id of sel.ids) {
+    if (e.alive[id] !== 1) continue;
+    if (first === undefined) { first = e.stance[id]!; continue; }
+    if (e.stance[id]! !== first) return { kind: 'mixed' };
+  }
+  if (first === undefined) return { kind: 'none' };
+  return { kind: 'uniform', stance: first };
+}
+
 let smoothedFps = 60;
 let simElapsed = 0;
 function frame(t: number) {
+  profiler.beginFrame();
   const dt = Math.min(0.1, (t - lastT) / 1000);
   lastT = t;
   simElapsed += dt;
@@ -347,37 +392,52 @@ function frame(t: number) {
   input.beginFrame();
   cameraControls.update(dt);
   controller.update(dt);
-  tickWorld(world, dt);
-  emitDustForFrame(world, puffs, dt);
-  tickAmbientClouds(puffs, cloudCfg, dt, world.rng);
-  updatePuffs(puffs, dt);
+  profiler.time('sim/tickWorld', () => tickWorld(world, dt));
+  profiler.time('puffs/emitDust', () => emitDustForFrame(world, puffs, dt));
+  profiler.time('puffs/ambient', () => tickAmbientClouds(puffs, cloudCfg, dt, world.rng));
+  profiler.time('puffs/update', () => updatePuffs(puffs, dt));
   tickWind(windState, simElapsed, world.rng);
   const wind = windAt(windState, simElapsed);
-  applyWindToPuffs(puffs, wind.x, wind.y, dt);
+  profiler.time('puffs/wind', () => applyWindToPuffs(puffs, wind.x, wind.y, dt));
   windIndicator.update(wind.x, wind.y);
-  coalesceStep(puffs, dt, world.rng, getProfileByIndex);
-  updateParticles(particles, dt, world.bloodSplats);
+  profiler.time('puffs/coalesce', () => coalesceStep(puffs, dt, world.rng, getProfileByIndex));
+  profiler.time('particles/update', () => updateParticles(particles, dt, world.bloodSplats));
+  profiler.time('damage-texts/update', () => updateDamageTexts(damageTexts, dt));
   // Drain sim-queued blood splats into the GPU stain pass.
+  profiler.begin('blood/drain');
   const bs = world.bloodSplats;
   for (let i = 0; i < bs.count; i++) {
     renderer.bloodStain.splat(bs.posX[i]!, bs.posY[i]!, bs.radius[i]!, bs.intensity[i]!);
   }
   clearBloodSplats(bs);
-  const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+  profiler.end('blood/drain');
+  // Drain sim-queued sfx requests.
+  const sfx = world.sfxRequests;
+  for (let i = 0; i < sfx.count; i++) {
+    playSfx(sfx.name[i]!, sfx.x[i]!, sfx.y[i]!, camera);
+  }
+  clearSfxRequests(sfx);
+  const altHeld = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+  const showHealthBars = altHeld || showHealthBarsOverride;
   const showMovePreview = input.state.keys.has('Space');
   const formationPreview = controller.formationPreview();
-  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview });
+  profiler.time('render/all', () => {
+    renderer.render(world, projectiles, puffs, particles, damageTexts, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview }, dt);
+  });
   hud.update(smoothedFps, world, controller.cursorMode);
   placementInfo.update(world, camera, selection, formationPreview);
   movePreview.update(camera);
   selPanel.update(world, selection);
+  cannonAmmoPanel.update(world, selection);
   statsCard.update(world, selection);
-  buildMenu.update();
+  scenarioBar.update(world);
   scaleBar.update(camera);
   minimap.update(world, camera);
   cgPanel.update(world, controlGroups);
-  fcPanel.update(selection, controller.formationParams);
+  fcPanel.update(selection, controller.formationParams, computeStanceSummary(selection, world.entities));
   groupBadges.update(world, camera, selection, controlGroups);
+  profiler.endFrame();
+  perfPanel.update();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

@@ -30,7 +30,7 @@ function scanThemes(musicDir: string): Record<string, string[]> {
 function musicManifestPlugin(): Plugin {
   const musicDir = resolve(PROJECT_ROOT, 'public/music');
   return {
-    name: 'austerbitz-music-manifest',
+    name: 'austerblitz-music-manifest',
     configureServer(server) {
       // Serve a live theme manifest during dev
       server.middlewares.use('/music/tracks.json', (_req, res) => {
@@ -103,7 +103,7 @@ async function maxMtimeUnder(dir: string): Promise<number> {
 
 function offsetsApiPlugin(): Plugin {
   return {
-    name: 'austerbitz-poses-offsets-api',
+    name: 'austerblitz-poses-offsets-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
@@ -418,8 +418,11 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        lineBattles: resolve(__dirname, 'line-battles.html'),
+        skirmish: resolve(__dirname, 'skirmish.html'),
         lab: resolve(__dirname, 'lab.html'),
         components: resolve(__dirname, 'components.html'),
+        cannonTest: resolve(__dirname, 'cannon-test.html'),
       },
     },
   },

@@ -27,6 +27,12 @@ export function quantizeDirectionToFacing(dirX: number, dirY: number): number {
   return oct;
 }
 
+/** Octant (0..7) → unit vector (CCW from east). */
+export function facingToVec(facing: number): { x: number; y: number } {
+  const theta = (facing * Math.PI) / 4;
+  return { x: Math.cos(theta), y: Math.sin(theta) };
+}
+
 function angleDifference(a: number, b: number): number {
   let d = a - b;
   while (d > Math.PI) d -= Math.PI * 2;
@@ -38,6 +44,10 @@ export const facingSystem: System = (world, _dt) => {
   const e = world.entities;
   for (let i = 0; i < e.count; i++) {
     const id = e.aliveIds[i]!;
+    // Player-controlled units (manual cannon aim) own their facing directly.
+    // Skip the velocity-driven re-alignment + hysteresis; the input handler
+    // sets facing/facingIntent on every keypress.
+    if (e.manualControlled[id] === 1) continue;
     const vx = e.velX[id]!;
     const vy = e.velY[id]!;
 

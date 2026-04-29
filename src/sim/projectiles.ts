@@ -1,3 +1,6 @@
+import type { CanisterProfile } from '../data/weapons/types';
+import { gaussian, type Rng } from '../util/rng';
+
 export const ProjectileKind = {
   Musket:    0,
   SolidShot: 1,
@@ -184,4 +187,36 @@ export function spawnShell(
   p.fuseT[id] = fuseT;
   p.ownerId[id] = ownerId;
   return id;
+}
+
+/**
+ * Fire a canister round: spawn `ballCount` musket-class projectiles in a
+ * Gaussian cone. Each ball decays via the standard musket projectile path.
+ */
+export function spawnCanister(
+  p: Projectiles,
+  ox: number, oy: number,
+  dirX: number, dirY: number,
+  team: number,
+  profile: CanisterProfile,
+  ownerId: number,
+  rng: Rng,
+): void {
+  const baseAngle = Math.atan2(dirY, dirX);
+  const sigma = profile.spreadSigmaDeg * Math.PI / 180;
+  for (let i = 0; i < profile.ballCount; i++) {
+    const j = gaussian(rng) * sigma;
+    const a = baseAngle + j;
+    const sp = profile.muzzleSpeed * (1 + (rng.next() * 2 - 1) * profile.speedJitter);
+    spawnMusketBall(
+      p, ox, oy,
+      Math.cos(a), Math.sin(a),
+      team,
+      profile.ballDamage,
+      sp,
+      profile.ballMass,
+      profile.ballMaxLife,
+      ownerId,
+    );
+  }
 }

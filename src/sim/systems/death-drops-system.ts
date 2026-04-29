@@ -37,7 +37,7 @@ function hash(id: number, salt: number): number {
 }
 
 export function createDeathDropsSystem(kits: ReadonlyMap<string, KitConfig>): System {
-  return (world, _dt) => {
+  return function deathDropsSystem(world, _dt) {
     const e = world.entities;
     const d = world.droppedItems;
     for (let n = 0; n < e.count; n++) {

@@ -3,6 +3,18 @@ import type { Puffs } from './puffs';
 import { DUST, DUST_INDEX } from './profiles/dust';
 import { buildCoalesceGrid, gridInsert, tryMergeOrSpawn } from './coalesce';
 import { allocPuff } from './puffs';
+import { unitKinds } from '../data/units';
+
+// Per-kind foot offset (sprite-center → feet, in world units), cached so the
+// hot loop avoids the optional-chain + nullish-coalesce dance per entity.
+const FOOT_Y_BY_KIND: Float32Array = (() => {
+  const arr = new Float32Array(unitKinds.length);
+  for (let i = 0; i < unitKinds.length; i++) {
+    const k = unitKinds[i]!;
+    arr[i] = k.footYFromCenter ?? k.placeholderSize.h * 0.5;
+  }
+  return arr;
+})();
 
 const DUST_PER_SEC = 1.0; // particles per moving entity per second
 
@@ -20,10 +32,11 @@ export function emitDustForFrame(world: World, puffs: Puffs, dt: number): void {
     const inv = speed > 0 ? 1 / speed : 0;
     const dirX = vx * inv;
     const dirY = vy * inv;
-    const jx = world.rng.range(-0.4, 0.4);
-    const jy = world.rng.range(-0.4, 0.4);
+    const jx = world.rng.range(-0.25, 0.25);
+    const jy = world.rng.range(-0.12, 0.12);
+    const footY = FOOT_Y_BY_KIND[e.kindId[i]!] ?? 0.5;
     const fx = e.posX[i]! + jx;
-    const fy = e.posY[i]! + jy + 0.5;
+    const fy = e.posY[i]! + footY + jy;
     // Emission velocity: drift backward and slightly upward, like the old dust.
     const vex = -dirX * 0.16 + world.rng.range(-0.18, 0.18);
     const vey = -dirY * 0.16 - world.rng.range(0.18, 0.4);

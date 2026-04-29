@@ -12,6 +12,8 @@ export interface MuzzleProfile {
     speed: { min: number; max: number };
   };
   recoilFirer: number;        // meters of one-time positional shove backward on the shooter
+  /** Visual recoil animation duration in seconds. Defaults to RECOIL_T (0.9). */
+  recoilDuration?: number;
 }
 
 export interface ExplosionProfile {
@@ -29,6 +31,20 @@ export interface ExplosionProfile {
   impulse: number;            // base N·s on a target at impact center
 }
 
+export interface CanisterProfile {
+  ballCount: number;
+  coneDeg: number;
+  spreadSigmaDeg: number;
+  muzzleSpeed: number;
+  speedJitter: number;       // ±fraction of muzzleSpeed
+  ballDamage: number;
+  ballMass: number;
+  ballMaxLife: number;
+  muzzleSmokeProfile: PuffProfile;
+  muzzleSmokeProfileIdx: number;
+  muzzleSmokeCount: number;
+}
+
 /** A weapon profile bundles the per-shot params used by sim + FX. */
 export interface WeaponProfile {
   id: string;
@@ -38,6 +54,11 @@ export interface WeaponProfile {
     mass: number;               // kg
     muzzleVelocity: number;     // m/s
     damage: number;
+    /**
+     * Per-shot damage variance, uniform ±fraction of `damage`. e.g. 0.33 →
+     * roll in [0.67·damage, 1.33·damage]. Omit / 0 = deterministic.
+     */
+    damageVarianceFrac?: number;
     accuracySpreadRad?: number; // optional aim cone
     maxLife: number;            // s
     /** For arcing shots only. */

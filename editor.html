@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sprite editor — austerblitz</title>
+<style>
+  :root {
+    --bg: #1a1c20;
+    --panel: #24272d;
+    --line: #3a3e46;
+    --ink: #e6e8ec;
+    --muted: #8a8f99;
+    --accent: #6cb4ff;
+    --accent-2: #ffd166;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; }
+
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  header h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; }
+  header .sep { color: var(--muted); }
+  header input[type=text] {
+    background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+    padding: 6px 10px; border-radius: 4px; font: inherit; width: 240px;
+  }
+  header button {
+    background: var(--accent); color: #061018; border: 0; padding: 6px 14px;
+    border-radius: 4px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  header button:hover { filter: brightness(1.1); }
+  header button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); font-weight: 400; }
+  header .hint { color: var(--muted); margin-left: auto; }
+
+  main { display: grid; grid-template-columns: 1fr 280px; height: calc(100% - 49px); }
+
+  #stage {
+    position: relative; overflow: auto; padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      linear-gradient(45deg, #16181c 25%, transparent 25%) -8px 0 / 16px 16px,
+      linear-gradient(-45deg, #16181c 25%, transparent 25%) -8px 0 / 16px 16px,
+      linear-gradient(45deg, transparent 75%, #16181c 75%) 0 0 / 16px 16px,
+      linear-gradient(-45deg, transparent 75%, #16181c 75%) 0 0 / 16px 16px,
+      var(--bg);
+  }
+  #stage.empty::after {
+    content: "drop a PNG anywhere to begin";
+    color: var(--muted); font-size: 14px;
+  }
+  #stage.dragover { outline: 2px dashed var(--accent); outline-offset: -16px; }
+
+  #canvas-wrap { position: relative; }
+  canvas { display: block; image-rendering: pixelated; }
+
+  aside {
+    background: var(--panel); border-left: 1px solid var(--line);
+    padding: 16px; overflow-y: auto;
+  }
+  aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin: 16px 0 8px; }
+  aside h2:first-child { margin-top: 0; }
+  aside .row { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center;
+    margin-bottom: 6px; }
+  aside .row label { color: var(--muted); font-weight: 600; }
+  aside select {
+    background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+    padding: 4px 6px; border-radius: 3px; font: inherit; width: 100%;
+  }
+  aside .legend { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+  aside .legend kbd {
+    background: var(--bg); border: 1px solid var(--line); border-bottom-width: 2px;
+    padding: 1px 5px; border-radius: 3px; font-size: 11px; color: var(--ink);
+  }
+  aside #status { color: var(--muted); font-size: 12px; min-height: 1.4em; }
+  aside #status.ok { color: var(--accent); }
+  aside #status.err { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>sprite editor</h1>
+  <span class="sep">·</span>
+  <label>unit:&nbsp;<input id="unit-id" type="text" placeholder="british-line-infantry" autocomplete="off" /></label>
+  <button id="save">save json</button>
+  <button id="load-json" class="ghost">load json…</button>
+  <span class="hint">drop PNG anywhere — click cell to cycle direction</span>
+</header>
+
+<main>
+  <section id="stage" class="empty">
+    <div id="canvas-wrap">
+      <canvas id="canvas" width="0" height="0"></canvas>
+    </div>
+  </section>
+
+  <aside>
+    <h2>row state</h2>
+    <div id="row-states"></div>
+
+    <h2>cell shortcuts</h2>
+    <div class="legend">
+      <div>click cell — cycle direction (N→E→S→W→·)</div>
+      <div>shift+click — clear cell</div>
+      <div><kbd>⌘S</kbd> save · <kbd>⌘O</kbd> load</div>
+    </div>
+
+    <h2>image</h2>
+    <div id="image-info" class="legend"><div>no image loaded</div></div>
+
+    <h2>status</h2>
+    <div id="status"></div>
+  </aside>
+</main>
+
+<input id="file-input" type="file" accept="image/png,image/*" hidden />
+<input id="json-input" type="file" accept="application/json,.json" hidden />
+
+<script>
+"use strict";
+
+const STATES = ["STANDING", "WALKING", "FIRING", "RELOADING", "GETTING_SHOT", "DYING"];
+const DIRECTIONS = ["NORTH", "EAST", "SOUTH", "WEST"];
+const DIR_LABEL = { NORTH: "N", EAST: "E", SOUTH: "S", WEST: "W" };
+const DIR_CYCLE = [null, "NORTH", "EAST", "SOUTH", "WEST"];
+const ROWS = 4, COLS = 4;
+
+const stage = document.getElementById("stage");
+const wrap = document.getElementById("canvas-wrap");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const unitInput = document.getElementById("unit-id");
+const rowStatesEl = document.getElementById("row-states");
+const statusEl = document.getElementById("status");
+const imageInfoEl = document.getElementById("image-info");
+const fileInput = document.getElementById("file-input");
+const jsonInput = document.getElementById("json-input");
+
+const state = {
+  image: null,            // HTMLImageElement
+  imageName: "",
+  imageDataUrl: "",       // for preview save (not exported)
+  cellW: 0,
+  cellH: 0,
+  rowStates: ["STANDING", "WALKING", "FIRING", "RELOADING"],   // 4 rows default
+  cells: makeCells(),     // cells[row][col].direction
+  scale: 1,               // display scale
+};
+
+function makeCells() {
+  return Array.from({ length: ROWS }, () =>
+    Array.from({ length: COLS }, () => ({ direction: null }))
+  );
+}
+
+function setStatus(msg, kind = "") {
+  statusEl.textContent = msg;
+  statusEl.className = kind;
+}
+
+function buildRowStateUI() {
+  rowStatesEl.innerHTML = "";
+  for (let r = 0; r < ROWS; r++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const lbl = document.createElement("label");
+    lbl.textContent = `r${r}`;
+    const sel = document.createElement("select");
+    for (const s of STATES) {
+      const o = document.createElement("option");
+      o.value = s;
+      o.textContent = s;
+      if (state.rowStates[r] === s) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener("change", () => {
+      state.rowStates[r] = sel.value;
+      draw();
+    });
+    row.appendChild(lbl);
+    row.appendChild(sel);
+    rowStatesEl.appendChild(row);
+  }
+}
+
+function fitScale() {
+  if (!state.image) { state.scale = 1; return; }
+  const stageRect = stage.getBoundingClientRect();
+  const padding = 64;
+  const maxW = stageRect.width - padding;
+  const maxH = stageRect.height - padding;
+  const sx = maxW / state.image.width;
+  const sy = maxH / state.image.height;
+  // Snap to integer scale up to a reasonable cap so pixel art stays crisp.
+  const fit = Math.min(sx, sy);
+  if (fit >= 1) state.scale = Math.max(1, Math.floor(fit));
+  else state.scale = fit;
+}
+
+function draw() {
+  if (!state.image) return;
+  const img = state.image;
+  fitScale();
+  const dw = Math.round(img.width * state.scale);
+  const dh = Math.round(img.height * state.scale);
+  canvas.width = dw;
+  canvas.height = dh;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, dw, dh);
+  ctx.drawImage(img, 0, 0, dw, dh);
+
+  const cw = dw / COLS;
+  const ch = dh / ROWS;
+
+  // Cell grid lines
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(108, 180, 255, 0.55)";
+  for (let i = 1; i < COLS; i++) {
+    const x = Math.round(i * cw) + 0.5;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, dh); ctx.stroke();
+  }
+  for (let i = 1; i < ROWS; i++) {
+    const y = Math.round(i * ch) + 0.5;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(dw, y); ctx.stroke();
+  }
+
+  // Cell badges
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = state.cells[r][c];
+      const x = c * cw;
+      const y = r * ch;
+      // tint assigned cells
+      if (cell.direction) {
+        ctx.fillStyle = "rgba(255, 209, 102, 0.10)";
+        ctx.fillRect(x + 1, y + 1, cw - 2, ch - 2);
+      }
+      // top-left badge: direction
+      const badge = cell.direction ? DIR_LABEL[cell.direction] : "·";
+      const badgeW = 22, badgeH = 18;
+      ctx.fillStyle = cell.direction ? "rgba(255, 209, 102, 0.95)" : "rgba(60, 64, 72, 0.85)";
+      ctx.fillRect(x + 4, y + 4, badgeW, badgeH);
+      ctx.fillStyle = cell.direction ? "#1a1c20" : "#8a8f99";
+      ctx.font = "bold 12px ui-monospace, monospace";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText(badge, x + 4 + badgeW / 2, y + 4 + badgeH / 2);
+    }
+  }
+
+  // Row state labels (left edge)
+  for (let r = 0; r < ROWS; r++) {
+    const y = r * ch + 4;
+    const label = state.rowStates[r];
+    const w = ctx.measureText(label).width + 12;
+    ctx.fillStyle = "rgba(108, 180, 255, 0.85)";
+    ctx.fillRect(dw - w - 4, y, w, 18);
+    ctx.fillStyle = "#061018";
+    ctx.font = "bold 11px ui-monospace, monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(label, dw - w + 2, y + 9);
+  }
+
+  // Image info
+  const native = `${img.width}×${img.height}px`;
+  const cells = `cells: ${(img.width / COLS) | 0}×${(img.height / ROWS) | 0}px`;
+  imageInfoEl.innerHTML = `<div>${state.imageName}</div><div>${native} · ${cells}</div><div>display ${state.scale}×</div>`;
+  state.cellW = img.width / COLS;
+  state.cellH = img.height / ROWS;
+}
+
+canvas.addEventListener("click", (e) => {
+  if (!state.image) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const cw = canvas.width / COLS;
+  const ch = canvas.height / ROWS;
+  const c = Math.floor(x / cw);
+  const r = Math.floor(y / ch);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+  const cell = state.cells[r][c];
+  if (e.shiftKey) {
+    cell.direction = null;
+  } else {
+    const idx = DIR_CYCLE.indexOf(cell.direction);
+    cell.direction = DIR_CYCLE[(idx + 1) % DIR_CYCLE.length];
+  }
+  draw();
+});
+
+// File handling
+function handleImageFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      state.imageName = file.name;
+      state.imageDataUrl = reader.result;
+      state.cells = makeCells();
+      stage.classList.remove("empty");
+      if (!unitInput.value) {
+        unitInput.value = file.name.replace(/\.[^.]+$/, "");
+      }
+      draw();
+      setStatus(`loaded ${file.name}`, "ok");
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleJsonFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (data.id) unitInput.value = data.id;
+      if (Array.isArray(data.rowStates) && data.rowStates.length === ROWS) {
+        state.rowStates = data.rowStates.slice();
+        buildRowStateUI();
+      }
+      if (Array.isArray(data.cells)) {
+        state.cells = makeCells();
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const cell = data.cells?.[r]?.[c];
+            if (cell && DIRECTIONS.includes(cell.direction)) {
+              state.cells[r][c].direction = cell.direction;
+            }
+          }
+        }
+        draw();
+      }
+      setStatus(`loaded manifest: ${data.id || file.name}`, "ok");
+    } catch (err) {
+      setStatus(`failed to parse json: ${err.message}`, "err");
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Drag-drop on whole stage
+["dragenter", "dragover"].forEach(ev =>
+  stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach(ev =>
+  stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.remove("dragover"); })
+);
+stage.addEventListener("drop", e => {
+  const f = e.dataTransfer.files?.[0];
+  if (!f) return;
+  if (f.type === "application/json" || f.name.endsWith(".json")) handleJsonFile(f);
+  else handleImageFile(f);
+});
+
+// Click empty stage to open file picker
+stage.addEventListener("click", e => {
+  if (!state.image && e.target === stage) fileInput.click();
+});
+fileInput.addEventListener("change", () => handleImageFile(fileInput.files?.[0]));
+jsonInput.addEventListener("change", () => handleJsonFile(jsonInput.files?.[0]));
+
+document.getElementById("load-json").addEventListener("click", () => jsonInput.click());
+
+// Save manifest
+function buildManifest() {
+  const id = unitInput.value.trim();
+  if (!id) { setStatus("set a unit id first", "err"); return null; }
+  if (!state.image) { setStatus("drop an image first", "err"); return null; }
+
+  // Pivot cells into animations[state][direction] = [{row, col}, ...]
+  const anims = {};
+  for (let r = 0; r < ROWS; r++) {
+    const s = state.rowStates[r];
+    for (let c = 0; c < COLS; c++) {
+      const dir = state.cells[r][c].direction;
+      if (!dir) continue;
+      anims[s] ??= {};
+      anims[s][dir] ??= [];
+      anims[s][dir].push({ row: r, col: c });
+    }
+  }
+
+  return {
+    id,
+    image: state.imageName,
+    grid: { rows: ROWS, cols: COLS },
+    cell: { w: state.cellW | 0, h: state.cellH | 0 },
+    rowStates: state.rowStates.slice(),
+    cells: state.cells.map(row => row.map(c => ({ direction: c.direction }))),
+    animations: anims,
+  };
+}
+
+function downloadJson(manifest) {
+  const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${manifest.id}.sprites.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+document.getElementById("save").addEventListener("click", () => {
+  const m = buildManifest();
+  if (!m) return;
+  downloadJson(m);
+  setStatus(`saved ${m.id}.sprites.json`, "ok");
+});
+
+document.addEventListener("keydown", (e) => {
+  const meta = e.metaKey || e.ctrlKey;
+  if (meta && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    document.getElementById("save").click();
+  }
+  if (meta && e.key.toLowerCase() === "o") {
+    e.preventDefault();
+    jsonInput.click();
+  }
+});
+
+window.addEventListener("resize", () => { if (state.image) draw(); });
+
+// Boot
+buildRowStateUI();
+setStatus("drop a PNG to begin");
+</script>
+</body>
+</html>

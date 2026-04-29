@@ -6,6 +6,7 @@ import { createCameraControls } from '../input/camera-controls';
 import { createWorld, rebuildGrid } from '../sim/world';
 import { createParticles, updateParticles } from '../particles/particles';
 import { createPuffs, updatePuffs } from '../puffs/puffs';
+import { createDamageTexts, updateDamageTexts } from '../fx/damage-texts/damage-texts';
 import { coalesceStep } from '../puffs/coalesce';
 import { getProfileByIndex } from '../puffs/profile';
 import { tickAmbientClouds, type AmbientCloudConfig } from '../puffs/ambient-clouds';
@@ -15,10 +16,13 @@ import { movementSystem } from '../sim/systems/movement-system';
 import { facingSystem } from '../sim/systems/facing-system';
 import { tickStates, type FireOrders } from '../sim/systems/state-system';
 import { tickProjectiles } from '../sim/systems/projectile-system';
+import { updateShockwaves } from '../sim/systems/shockwave-system';
 import { tickDebris } from '../sim/systems/debris-system';
 import { tickRagdoll } from '../sim/systems/ragdoll-system';
 import { createDeathDropsSystem } from '../sim/systems/death-drops-system';
 import { EntityState } from '../sim/entities';
+import { clearSfxRequests } from '../sim/sfx-requests';
+import { initSfx, playSfx } from '../audio/sfx';
 import '../ui/styles.css';
 
 import { setupStage, resetStage, spawnSubject } from './stage';
@@ -96,6 +100,7 @@ const cloudCfg: AmbientCloudConfig = {
 };
 const particles = createParticles(PARTICLE_CAPACITY);
 const puffs = createPuffs(PUFF_CAPACITY);
+const damageTexts = createDamageTexts(256);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 
 // Camera bounds: lab is small, anchored around origin. Map size is 200, but we
@@ -110,6 +115,8 @@ function syncViewport() {
 }
 window.addEventListener('resize', syncViewport);
 syncViewport();
+window.addEventListener('pointerdown', initSfx, { once: true });
+window.addEventListener('keydown', initSfx, { once: true });
 
 camera.center.x = 15; // halfway between subject (0) and dummies (30)
 camera.center.y = 0;
@@ -180,9 +187,10 @@ function frame(t: number) {
   movementSystem(world, dt);
   facingSystem(world, dt);
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
-  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
+  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests, damageTexts);
+  updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt, damageTexts);
   tickRagdoll(world.entities, dt);
-  tickDebris(world.debris, dt);
+  tickDebris(world.debris, dt, puffs, world.rng);
   deathDropsSystem(world, dt);
 
   // Auto-fire: queue a fresh shot whenever the subject lapses into Idle.
@@ -200,6 +208,7 @@ function frame(t: number) {
   updatePuffs(puffs, dt);
   coalesceStep(puffs, dt, world.rng, getProfileByIndex);
   updateParticles(particles, dt, world.bloodSplats);
+  updateDamageTexts(damageTexts, dt);
 
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;
@@ -207,8 +216,14 @@ function frame(t: number) {
     renderer.bloodStain.splat(bs.posX[i]!, bs.posY[i]!, bs.radius[i]!, bs.intensity[i]!);
   }
   bs.count = 0;
+  // Drain sim-queued sfx requests.
+  const sfx = world.sfxRequests;
+  for (let i = 0; i < sfx.count; i++) {
+    playSfx(sfx.name[i]!, sfx.x[i]!, sfx.y[i]!, camera);
+  }
+  clearSfxRequests(sfx);
 
-  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, null, { showHealthBars: false, showMovePreview: false });
+  renderer.render(world, projectiles, puffs, particles, damageTexts, camera, selection, drag, null, { showHealthBars: false, showMovePreview: false }, dt);
 
   ui.update({
     fps: smoothedFps,

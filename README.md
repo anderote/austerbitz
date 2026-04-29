@@ -1,4 +1,4 @@
-# Austerbitz
+# Austerblitz
 
 Top-down 2D Napoleonic RTS in WebGL2.
 

@@ -6,13 +6,19 @@ import type { Rng } from '../../util/rng';
 import { applyHit } from './combat-events';
 import type { BloodSplats } from '../blood-splats';
 import type { Debris } from '../debris';
+import type { Shockwaves } from '../../fx/shockwaves';
+import type { ShakeRequests } from '../shake-requests';
+import type { CraterSplats } from '../crater-splats';
+import { pushSfxRequest, type SfxRequests } from '../sfx-requests';
+import type { DamageTexts } from '../../fx/damage-texts/damage-texts';
 import {
   emitImpactDust,
   emitRicochetBurst,
 } from '../../particles/emitters';
-import { emitPuff } from '../../puffs/emit';
+import { emitPuff, emitPuffBurst } from '../../puffs/emit';
 import type { Puffs } from '../../puffs/puffs';
 import { CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX } from '../../puffs/profiles/cannonball-trail';
+import { DIRT_SKIP, DIRT_SKIP_INDEX } from '../../puffs/profiles/dirt-skip';
 import { spawnExplosion } from '../../fx/explosion';
 import { getUnitKindByIndex } from '../../data/units';
 import { GAME_GRAVITY } from '../../fx/ballistics';
@@ -27,10 +33,16 @@ const GROUND_FRICTION = 1.5;
 /** Speed (m/s) below which a rolling solid shot is freed. */
 const ROLL_STOP_SPEED = 3;
 const ROLL_STOP_SPEED_SQ = ROLL_STOP_SPEED * ROLL_STOP_SPEED;
-/** Restitution applied to vertical velocity on a solid-shot ricochet. */
-const RICOCHET_RESTITUTION_Z = 0.5;
-/** Per-ricochet horizontal velocity damping. */
-const RICOCHET_HORIZONTAL_DAMPING = 0.7;
+/** Above this incoming angle (radians from horizontal) the ball plants instead of bouncing. */
+const RICOCHET_PLANT_ANGLE_RAD = 35 * Math.PI / 180;
+/** Restitution at a grazing impact (angle ≈ 0). */
+const RICOCHET_REST_Z_GRAZE = 0.7;
+/** Restitution at the plant threshold. */
+const RICOCHET_REST_Z_STEEP = 0.15;
+/** Horizontal damping at a grazing impact. */
+const RICOCHET_DAMP_XY_GRAZE = 0.95;
+/** Horizontal damping at the plant threshold. */
+const RICOCHET_DAMP_XY_STEEP = 0.55;
 /** Solid-shot damage falloff per entity it plows through. */
 const SOLID_SHOT_DAMAGE_FALLOFF = 0.6;
 /** Solid-shot velocity falloff per entity it plows through. */
@@ -58,15 +70,33 @@ export function tickProjectiles(
   puffs: Puffs,
   particles: Particles,
   rng: Rng,
+  shockwaves: Shockwaves,
   debris: Debris,
   dt: number,
   splats?: BloodSplats,
+  shakeRequests?: ShakeRequests,
+  craterSplats?: CraterSplats,
+  sfxRequests?: SfxRequests,
+  damageTexts?: DamageTexts,
 ): void {
   const p = projectiles;
   for (let i = 0; i < p.capacity; i++) {
     if (p.alive[i] === 0) continue;
 
     const kind = p.kind[i]! as ProjectileKind;
+
+    // Spent solid shot: planted on the ground with no velocity. Skip all
+    // simulation (gravity, collision, life decay) so the ball just sits
+    // there for the rest of the session, still rendered by projectile-pass.
+    if (
+      kind === ProjectileKind.SolidShot
+      && p.posZ[i]! === 0
+      && p.velX[i]! === 0
+      && p.velY[i]! === 0
+      && p.velZ[i]! === 0
+    ) {
+      continue;
+    }
 
     // 1. Snapshot prev pos and write it back into the SoA for renderers/tests.
     const pX0 = p.posX[i]!;
@@ -90,13 +120,17 @@ export function tickProjectiles(
       p.fuseT[i] = p.fuseT[i]! - dt;
       if (p.fuseT[i]! <= 0) {
         spawnExplosion(
+          shockwaves,
           entities, grid, puffs, particles, rng,
           p.posX[i]!, p.posY[i]!,
           cannon12Shell.projectile.explosion!,
-          undefined,
+          undefined,                           // friendly-fire on: shells damage all teams in radius
           splats,
           debris,
           p.ownerId[i]!,
+          shakeRequests,
+          craterSplats,
+          sfxRequests,
         );
         freeProjectile(p, i);
         continue;
@@ -107,13 +141,37 @@ export function tickProjectiles(
     // detonate, or kick up dust depending on kind.
     if (p.posZ[i]! <= 0 && p.velZ[i]! < 0) {
       if (kind === ProjectileKind.SolidShot) {
-        if (p.ricochets[i]! > 0) {
+        // Angle-dependent bounce: shallow impacts skip with most energy
+        // intact; steep impacts plant the ball. The `ricochets` counter
+        // is a safety cap on consecutive skips.
+        const speedXY = Math.hypot(p.velX[i]!, p.velY[i]!);
+        const impactAngle = Math.atan2(-p.velZ[i]!, Math.max(speedXY, 1e-3));
+        const planted = impactAngle >= RICOCHET_PLANT_ANGLE_RAD;
+        if (!planted && p.ricochets[i]! > 0) {
+          // Quality 1 at angle 0 (perfect graze), 0 at the plant threshold.
+          const q = 1 - impactAngle / RICOCHET_PLANT_ANGLE_RAD;
+          const restZ = RICOCHET_REST_Z_STEEP + (RICOCHET_REST_Z_GRAZE - RICOCHET_REST_Z_STEEP) * q;
+          const dampXY = RICOCHET_DAMP_XY_STEEP + (RICOCHET_DAMP_XY_GRAZE - RICOCHET_DAMP_XY_STEEP) * q;
           p.posZ[i] = 0;
-          p.velZ[i] = -RICOCHET_RESTITUTION_Z * p.velZ[i]!;
-          p.velX[i] = p.velX[i]! * RICOCHET_HORIZONTAL_DAMPING;
-          p.velY[i] = p.velY[i]! * RICOCHET_HORIZONTAL_DAMPING;
+          p.velZ[i] = -restZ * p.velZ[i]!;
+          p.velX[i] = p.velX[i]! * dampXY;
+          p.velY[i] = p.velY[i]! * dampXY;
           p.ricochets[i] = p.ricochets[i]! - 1;
+          const speedMag = Math.hypot(p.velX[i]!, p.velY[i]!);
+          const dirX = speedMag > 1e-3 ? p.velX[i]! / speedMag : 1;
+          const dirY = speedMag > 1e-3 ? p.velY[i]! / speedMag : 0;
+          emitPuffBurst(
+            puffs,
+            DIRT_SKIP, DIRT_SKIP_INDEX,
+            p.posX[i]!, p.posY[i]!,
+            dirX, dirY,
+            6,
+            Math.PI / 3,
+            { min: 3, max: 5 },
+            rng,
+          );
           emitRicochetBurst(particles, p.posX[i]!, p.posY[i]!, p.velX[i]!, p.velY[i]!, rng);
+          if (sfxRequests) pushSfxRequest(sfxRequests, 'solid-skip', p.posX[i]!, p.posY[i]!);
         } else {
           // Pin to the ground; rolling proceeds in step 6 on subsequent ticks.
           p.posZ[i] = 0;
@@ -122,13 +180,17 @@ export function tickProjectiles(
       } else if (kind === ProjectileKind.Shell) {
         // Detonate at the impact point before clamping.
         spawnExplosion(
+          shockwaves,
           entities, grid, puffs, particles, rng,
           p.prevX[i]!, p.prevY[i]!,
           cannon12Shell.projectile.explosion!,
-          undefined,
+          undefined,                           // friendly-fire on: shells damage all teams in radius
           splats,
           debris,
           p.ownerId[i]!,
+          shakeRequests,
+          craterSplats,
+          sfxRequests,
         );
         freeProjectile(p, i);
         continue;
@@ -154,7 +216,11 @@ export function tickProjectiles(
       const vyR = p.velY[i]!;
       const speedSq = vxR * vxR + vyR * vyR;
       if (speedSq < ROLL_STOP_SPEED_SQ) {
-        freeProjectile(p, i);
+        // Plant the ball at rest. Next tick the early-out skip kicks in
+        // and the ball just sits there visually until the user resets.
+        p.velX[i] = 0;
+        p.velY[i] = 0;
+        p.velZ[i] = 0;
         continue;
       }
     }
@@ -207,13 +273,17 @@ export function tickProjectiles(
         if (kind === ProjectileKind.Shell) {
           // Detonate at the candidate's xy; the explosion handles damage.
           spawnExplosion(
+            shockwaves,
             entities, grid, puffs, particles, rng,
             ex, ey,
             cannon12Shell.projectile.explosion!,
-            undefined,
+            undefined,                           // friendly-fire on: shells damage all teams in radius
             splats,
             debris,
             p.ownerId[i]!,
+            shakeRequests,
+            craterSplats,
+            sfxRequests,
           );
           freeProjectile(p, i);
           freed = true;
@@ -223,7 +293,7 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!);
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!, damageTexts);
 
         if (kind === ProjectileKind.Musket) {
           freeProjectile(p, i);
@@ -252,9 +322,13 @@ export function tickProjectiles(
       continue;
     }
 
-    // 9. Trail — solid shots and shells drop a smoke puff each tick.
+    // 9. Trail — solid shots and shells drop an occasional wispy puff. Most
+    // of the smoke comes from the muzzle spray at fire time; the trail just
+    // adds a faint thread along the arc, not a continuous plume.
     if (kind === ProjectileKind.SolidShot || kind === ProjectileKind.Shell) {
-      emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, p.posX[i]!, p.posY[i]!, 0, 0, rng);
+      if (rng.next() < 0.12) {
+        emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, p.posX[i]!, p.posY[i]!, 0, 0, rng);
+      }
     }
   }
 }

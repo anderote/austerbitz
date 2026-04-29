@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from '../world';
-import { allocEntity, EntityState } from '../entities';
+import { allocEntity, EntityState, FireStance, FORMATION_RANK_UNKNOWN } from '../entities';
 import { getUnitKindIndex, getUnitKindByIndex } from '../../data/units';
 import { rebuildGrid } from '../world';
 import { createCombatSystem } from './combat-system';
@@ -226,21 +226,20 @@ describe('combatSystem', () => {
     expect(world.entities.targetId[shooter]).toBe(target);
   });
 
-  it('acquires one of multiple in-range enemies (first-valid, no closest guarantee)', () => {
+  it('acquires the closest of multiple in-range enemies', () => {
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    const a = spawnLineInfantry(world, 1, 70, 0);
-    const b = spawnLineInfantry(world, 1, 30, 0);
+    spawnLineInfantry(world, 1, 70, 0);
+    const near = spawnLineInfantry(world, 1, 30, 0);
 
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
     system(world, 1 / 60);
 
-    const picked = world.entities.targetId[shooter]!;
-    expect(picked === a || picked === b).toBe(true);
+    expect(world.entities.targetId[shooter]).toBe(near);
   });
 
   it('skips enemies in Dying / Dead / Ragdoll and falls through to the next-nearest', () => {
@@ -309,7 +308,7 @@ describe('combatSystem', () => {
     system(world, 1 / 60);
 
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
-    expect(world.entities.stateT[shooter]).toBeCloseTo(0.15, 6);  // full leader windup
+    expect(world.entities.stateT[shooter]).toBeCloseTo(0.25, 6);  // ByRanks leader windup
   });
 
   it('a hot same-team fireSignal in the 3x3 neighbourhood causes immediate fire with 0 windup', () => {
@@ -322,7 +321,9 @@ describe('combatSystem', () => {
     world.entities.stateT[shooter] = 0;
 
     // Plant a fresh signal in shooter's own cell, same team, current tick.
-    writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, world.tickCount);
+    // Rank 0: inferFormationRank returns 0 for a lone soldier, so the signal
+    // must match the inferred rank for the join check to trigger.
+    writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, 0, world.tickCount);
 
     rebuildGrid(world);
     system(world, 1 / 60);
@@ -341,7 +342,7 @@ describe('combatSystem', () => {
     world.entities.stateT[shooter] = 0;
 
     // 12 m away — outside the 3x3 cell neighbourhood (radius ~5–6 m).
-    writeFireSignal(world.fireSignal, world.grid, 12, 0, 0, world.tickCount);
+    writeFireSignal(world.fireSignal, world.grid, 12, 0, 0, FORMATION_RANK_UNKNOWN, world.tickCount);
 
     rebuildGrid(world);
     system(world, 1 / 60);
@@ -359,7 +360,7 @@ describe('combatSystem', () => {
     spawnLineInfantry(world, 1, 50, 0);
     world.entities.stateT[shooter] = 0;
 
-    writeFireSignal(world.fireSignal, world.grid, 0, 0, 1, world.tickCount); // team 1
+    writeFireSignal(world.fireSignal, world.grid, 0, 0, 1, FORMATION_RANK_UNKNOWN, world.tickCount); // team 1
 
     rebuildGrid(world);
     system(world, 1 / 60);
@@ -379,7 +380,7 @@ describe('combatSystem', () => {
 
     // 50 ticks old at tickCount=0 — write at tick=-50.
     world.tickCount = 50;
-    writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, 0);  // age 50 > window
+    writeFireSignal(world.fireSignal, world.grid, 0, 0, 0, FORMATION_RANK_UNKNOWN, 0);  // age 50 > window
 
     rebuildGrid(world);
     system(world, 1 / 60);
@@ -417,18 +418,25 @@ describe('combatSystem', () => {
     expect(fireOrders.get(shooter)).toEqual({ tx: 60, ty: 0 });
   });
 
-  it('a soldier with 3 friendlies stacked in its forward arc does not fire (back rank)', () => {
-    // Default facingIntent is (1, 0) → forward = +X. Place 3 friendlies at +1m,
-    // +2m, +3m ahead. Shooter is the 4th rank — should be blocked.
+  it('a soldier with rank >= 2 does not fire (back rank)', () => {
+    // Rank 2+ is blocked. Place shooter at (0,0) with 3 friendlies ahead along
+    // +X (restFacing 0 = East). Set restPos to match posX so inferFormationRank
+    // sees 3 friends ahead and assigns rank 3 → canFire = 0.
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    spawnLineInfantry(world, 0, 1, 0);
-    spawnLineInfantry(world, 0, 2, 0);
-    spawnLineInfantry(world, 0, 3, 0);
+    const f1 = spawnLineInfantry(world, 0, 1, 0);
+    const f2 = spawnLineInfantry(world, 0, 2, 0);
+    const f3 = spawnLineInfantry(world, 0, 3, 0);
     spawnLineInfantry(world, 1, 50, 0); // enemy in range
+
+    // Set restPos + restFacing so inference sees 3 friendlies ahead.
+    world.entities.restFacing[shooter] = 0; world.entities.restPosX[shooter] = 0;  world.entities.restPosY[shooter] = 0;
+    world.entities.restFacing[f1]      = 0; world.entities.restPosX[f1]      = 1;  world.entities.restPosY[f1]      = 0;
+    world.entities.restFacing[f2]      = 0; world.entities.restPosX[f2]      = 2;  world.entities.restPosY[f2]      = 0;
+    world.entities.restFacing[f3]      = 0; world.entities.restPosX[f3]      = 3;  world.entities.restPosY[f3]      = 0;
 
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
@@ -439,16 +447,18 @@ describe('combatSystem', () => {
     expect(fireOrders.has(shooter)).toBe(false);
   });
 
-  it('a soldier with 2 friendlies in its forward arc still fires (front 3 ranks)', () => {
-    // 2 friendlies ahead → shooter is the 3rd rank, still in the front 3.
+  it('a soldier at rank 1 (second rank) still fires', () => {
+    // Rank 1 (1 friend ahead) → canFire = 1.
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    spawnLineInfantry(world, 0, 1, 0);
-    spawnLineInfantry(world, 0, 2, 0);
+    const f1 = spawnLineInfantry(world, 0, 1, 0);
     const target = spawnLineInfantry(world, 1, 50, 0);
+
+    world.entities.restFacing[shooter] = 0; world.entities.restPosX[shooter] = 0; world.entities.restPosY[shooter] = 0;
+    world.entities.restFacing[f1]      = 0; world.entities.restPosX[f1]      = 1; world.entities.restPosY[f1]      = 0;
 
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
@@ -459,76 +469,25 @@ describe('combatSystem', () => {
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
   });
 
-  it('lateral neighbours (1 m to the side) do not count as blockers', () => {
-    // Forward arc is ±0.5 m wide; 1 m to the side is well outside it.
-    const world = makeWorld();
-    const fireOrders: FireOrders = new Map();
-    const system = createCombatSystem(fireOrders);
-
-    const shooter = spawnLineInfantry(world, 0, 0, 0);
-    spawnLineInfantry(world, 0, 0, 1);
-    spawnLineInfantry(world, 0, 0, -1);
-    spawnLineInfantry(world, 0, 1, 1);
-    const target = spawnLineInfantry(world, 1, 50, 0);
-
-    world.entities.stateT[shooter] = 999;
-    rebuildGrid(world);
-    system(world, 1 / 60);
-
-    expect(world.entities.canFire[shooter]).toBe(1);
-    expect(world.entities.targetId[shooter]).toBe(target);
-  });
-
-  it('enemy soldiers in the forward arc do not count as blockers', () => {
-    // Only same-team soldiers occlude the firing line.
-    const world = makeWorld();
-    const fireOrders: FireOrders = new Map();
-    const system = createCombatSystem(fireOrders);
-
-    const shooter = spawnLineInfantry(world, 0, 0, 0);
-    spawnLineInfantry(world, 1, 1, 0);
-    spawnLineInfantry(world, 1, 2, 0);
-    spawnLineInfantry(world, 1, 3, 0);
-
-    world.entities.stateT[shooter] = 999;
-    rebuildGrid(world);
-    system(world, 1 / 60);
-
-    expect(world.entities.canFire[shooter]).toBe(1);
-  });
-
-  it('forward arc tracks direction-to-target, not last facing', () => {
-    // 3 friendlies along +X. Enemy along +Y → target direction is +Y, so the
-    // +X friendlies are off-axis (lateral) and do not block.
-    const world = makeWorld();
-    const fireOrders: FireOrders = new Map();
-    const system = createCombatSystem(fireOrders);
-
-    const shooter = spawnLineInfantry(world, 0, 0, 0);
-    spawnLineInfantry(world, 0, 1, 0);
-    spawnLineInfantry(world, 0, 2, 0);
-    spawnLineInfantry(world, 0, 3, 0);
-    spawnLineInfantry(world, 1, 0, 50);
-
-    world.entities.stateT[shooter] = 999;
-    rebuildGrid(world);
-    system(world, 1 / 60);
-
-    expect(world.entities.canFire[shooter]).toBe(1);
-  });
-
   it('blocks at default line-infantry spacing (1.2 m between ranks)', () => {
-    // Real spacingY = 1.2; three ranks ahead at 1.2, 2.4, 3.6 m must all land
-    // inside the forward arc (FORWARD_FAR ≈ 1.2 × 4.5 = 5.4 m).
+    // Real spacingY = 1.2; four soldiers in a column. The rear soldier is rank
+    // 3 (>1) and must be blocked under the rank-based canFire rule.
     const world = makeWorld();
     const fireOrders: FireOrders = new Map();
     const system = createCombatSystem(fireOrders);
 
     const shooter = spawnLineInfantry(world, 0, 0, 0);
-    spawnLineInfantry(world, 0, 1.2, 0);
-    spawnLineInfantry(world, 0, 2.4, 0);
-    spawnLineInfantry(world, 0, 3.6, 0);
+    // Place shooter behind 3 friendlies along +X (facing 0 = East).
+    const f1 = spawnLineInfantry(world, 0, 1.2, 0);
+    const f2 = spawnLineInfantry(world, 0, 2.4, 0);
+    const f3 = spawnLineInfantry(world, 0, 3.6, 0);
     spawnLineInfantry(world, 1, 60, 0);
+
+    // Set up restPos + restFacing so inferFormationRank sees 3 ahead → rank 3.
+    world.entities.restFacing[shooter] = 0; world.entities.restPosX[shooter] = 0;   world.entities.restPosY[shooter] = 0;
+    world.entities.restFacing[f1]      = 0; world.entities.restPosX[f1]      = 1.2; world.entities.restPosY[f1]      = 0;
+    world.entities.restFacing[f2]      = 0; world.entities.restPosX[f2]      = 2.4; world.entities.restPosY[f2]      = 0;
+    world.entities.restFacing[f3]      = 0; world.entities.restPosX[f3]      = 3.6; world.entities.restPosY[f3]      = 0;
 
     world.entities.stateT[shooter] = 999;
     rebuildGrid(world);
@@ -538,12 +497,110 @@ describe('combatSystem', () => {
     expect(fireOrders.has(shooter)).toBe(false);
   });
 
-  it('maxHoldFor returns a value within [MAX_HOLD_MIN_S, MAX_HOLD_MAX_S]', () => {
+  it('maxHoldFor returns a value within ByRanks [maxHoldMin, maxHoldMax]', () => {
     for (let id = 0; id < 200; id++) {
-      const v = maxHoldFor(id);
-      expect(v).toBeGreaterThanOrEqual(0.20);
-      expect(v).toBeLessThanOrEqual(0.60);
+      const v = maxHoldFor(id, FireStance.ByRanks);
+      expect(v).toBeGreaterThanOrEqual(0.3);
+      expect(v).toBeLessThanOrEqual(1.2);
     }
+  });
+});
+
+describe('combat-system — rank blocking', () => {
+  // cos(45°) = sin(45°) = √2/2 ≈ 0.7071
+  const C45 = Math.SQRT2 / 2;
+
+  it('rear unit on a NE diagonal is rank 2 and cannot fire', () => {
+    // Build a 3-rank stack along the NE axis (facing octant 1 = 45°).
+    // restPos offsets: front=(0,0), middle=(1.2*cos45, 1.2*sin45), rear=(2.4*cos45, 2.4*sin45).
+    // Enemy is far ahead in the NE direction.
+    // Expected: front → rank 0 canFire 1; rear → rank 2 canFire 0.
+    const world = makeWorld();
+    const fireOrders: FireOrders = new Map();
+    const system = createCombatSystem(fireOrders);
+
+    const SPACING = 1.2;
+    const ox = SPACING * C45;
+    const oy = SPACING * C45;
+
+    // restFacing = 1 (NE). "Front" = furthest ahead (most NE). "Rear" = at origin.
+    // Front has 0 friendlies ahead → rank 0. Rear has 2 ahead → rank 2.
+    const front  = spawnLineInfantry(world, 0, 2 * ox, 2 * oy);
+    const middle = spawnLineInfantry(world, 0, ox, oy);
+    const rear   = spawnLineInfantry(world, 0, 0, 0);
+
+    // Enemy far ahead in NE direction (beyond front). Must be in range so
+    // units on their stripe tick acquire it and proceed to canFire assignment.
+    spawnLineInfantry(world, 1, 50 * C45, 50 * C45);
+
+    // Set restPos and restFacing (1 = NE octant) for rank inference.
+    world.entities.restPosX[front]  = 2 * ox;   world.entities.restPosY[front]  = 2 * oy;
+    world.entities.restPosX[middle] = ox;        world.entities.restPosY[middle] = oy;
+    world.entities.restPosX[rear]   = 0;         world.entities.restPosY[rear]   = 0;
+    world.entities.restFacing[front]  = 1;
+    world.entities.restFacing[middle] = 1;
+    world.entities.restFacing[rear]   = 1;
+
+    world.entities.stateT[front]  = 999;
+    world.entities.stateT[middle] = 999;
+    world.entities.stateT[rear]   = 999;
+
+    // Run enough ticks to guarantee every entity has hit its stripe tick at
+    // least once (SCAN_PERIOD = 8; run 16 ticks covers ids 0-7 twice).
+    // Do NOT pre-set targetId — let target acquisition happen on the stripe
+    // tick so rank inference (same tick) precedes canFire assignment.
+    for (let i = 0; i < 16; i++) {
+      rebuildGrid(world);
+      system(world, 1 / 60);
+      world.tickCount++;
+    }
+
+    expect(world.entities.formationRank[front]).toBe(0);
+    expect(world.entities.formationRank[rear]).toBe(2);
+    expect(world.entities.canFire[front]).toBe(1);
+    expect(world.entities.canFire[rear]).toBe(0);
+  });
+});
+
+describe('combat pipeline integration — cohesion', () => {
+  it('a fully-cohesive shooter ends up with a shorter reloadT than a lone one', () => {
+    // Same seed in both worlds → same ±20% jitter draw in identical order, so
+    // the only thing differing the reloadT is the cohesion speed multiplier.
+    function reloadAfterFire(cohesion: number): number {
+      const world = createWorld({ seed: 42, capacity: 64, mapSize: 200, cellSize: 2 });
+      const projectiles = createProjectiles(16);
+      const particles = createParticles(2048);
+      const puffs = createPuffs(256);
+      const fireOrders: FireOrders = new Map();
+      const combat = createCombatSystem(fireOrders);
+
+      const shooter = spawnLineInfantry(world, 0, 0, 0);
+      spawnLineInfantry(world, 1, 50, 0);
+
+      const dt = 1 / 60;
+      world.entities.stateT[shooter] = 999;
+      world.entities.cohesion[shooter] = cohesion;
+
+      // Run the pipeline long enough to traverse Aiming → Reloading. The
+      // combat-system rank-scan only runs on the entity's stripe tick, but we
+      // re-pin cohesion every tick so neither cluster geometry nor scan timing
+      // affects the multiplier seen at the firing transition.
+      for (let i = 0; i < 40; i++) {
+        world.entities.cohesion[shooter] = cohesion;
+        rebuildGrid(world);
+        combat(world, dt);
+        tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
+        if (world.entities.state[shooter] === EntityState.Reloading) break;
+      }
+
+      expect(world.entities.state[shooter]).toBe(EntityState.Reloading);
+      return world.entities.reloadT[shooter]!;
+    }
+
+    const lone = reloadAfterFire(0);
+    const cohesive = reloadAfterFire(1);
+    // 1.5× faster reload → cohesive reloadT should be ~lone / 1.5.
+    expect(cohesive).toBeLessThan(lone * 0.9);
   });
 });
 
@@ -566,20 +623,20 @@ describe('combat pipeline integration', () => {
     rebuildGrid(world);
     combat(world, dt);
     tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
-    tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
+    tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats);
 
     expect(world.entities.state[shooter]).toBe(EntityState.Aiming);
     expect(projectiles.count).toBe(0);
 
-    // Run enough ticks to outlast the 0.15 s aiming windup. After Aiming
+    // Run enough ticks to outlast the 0.25 s ByRanks aiming windup. After Aiming
     // expires, state-system resolves the shot (spawning a projectile via
     // fire-resolver) and transitions to Reloading.
     let peakProjectiles = 0;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 20; i++) {
       rebuildGrid(world);
       combat(world, dt);
       tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, 0, world.fireSignal, world.grid);
-      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.debris, dt, world.bloodSplats);
+      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats);
       peakProjectiles = Math.max(peakProjectiles, projectiles.count);
     }
 

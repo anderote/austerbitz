@@ -14,6 +14,8 @@ const CLASS_ALPHA: Record<ParticleClass, number> = {
   [ParticleClass.Flash]: 1,
   [ParticleClass.Blood]: 0.6,
   [ParticleClass.Debris]: 1,
+  [ParticleClass.Ring]: 1,
+  [ParticleClass.Ember]: 1,
 };
 
 export interface ParticlePass {

@@ -12,6 +12,26 @@ export const EntityState = {
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
 /**
+ * Firing stance per-unit. Set by UI selection-wide. Determines volley
+ * contagion behaviour and aiming/hold tunables in combat-system.
+ */
+export const FireStance = {
+  AtWill:  0,
+  Volley:  1,
+  ByRanks: 2,
+  Hold:    3,
+} as const;
+export type FireStance = (typeof FireStance)[keyof typeof FireStance];
+
+/** Sentinel for `formationRank` before its first stripe inference. */
+export const FORMATION_RANK_UNKNOWN = 255;
+
+/** Ranks 0..MAX_TRACKED_RANKS-1 each get their own slot in the fire signal.
+ *  Anyone past this rank is blocked from firing anyway, so they share the
+ *  last bucket. Three is enough for the historically-typical 3-deep line. */
+export const MAX_TRACKED_RANKS = 3;
+
+/**
  * Bitmask flags identifying which detachable parts an entity has lost.
  * Each bit lines up with a kit-declared `detachables[].name` so the renderer
  * can swap to the matching `--no-<name>` body variant. Bits are independent;
@@ -56,10 +76,20 @@ export interface Entities {
   state: Uint8Array;        // EntityState (0..8)
   reloadT: Float32Array;
   targetId: Int32Array;     // -1 if none
-  // 1 = clear forward arc (front-rank), 0 = blocked by ≥3 same-team soldiers
-  // along facingIntent. Refreshed on combat-system's SCAN_PERIOD stripe; back
-  // rankers early-exit before target acquisition.
+  // 1 = unit is in rank 0 or 1 (front two ranks) and may fire; 0 = blocked
+  // (rank 2+, the line in front would be hit). Derived from formationRank
+  // every tick after target acquisition.
   canFire: Uint8Array;
+
+  // Firing stance + rank within formation. See `FireStance` and
+  // `formation-rank.ts`. `formationRank` is refreshed lazily on the
+  // combat-system stripe tick from `restPos` + `restFacing`.
+  stance: Uint8Array;
+  formationRank: Uint8Array;
+  cohesion: Float32Array;
+  // 1 if currently in Hold and the unit has a loaded shot ready. Lets a
+  // stance flip away from Hold release the shot without re-reloading.
+  holdLoaded: Uint8Array;
 
   // Veterancy
   rank: Uint8Array;     // 0..4 (Recruit, Veteran, Sergeant, SgtMajor, Captain)
@@ -71,6 +101,7 @@ export interface Entities {
 
   // State-machine transients
   recoilT: Float32Array;    // countdown for visual recoil offset
+  recoilTotal: Float32Array; // total recoil animation duration (per-weapon, for normalization)
   recoilPeakX: Float32Array; // peak render-only recoil displacement x
   recoilPeakY: Float32Array; // peak render-only recoil displacement y
   stateT: Float32Array;     // generic time-remaining-in-state timer
@@ -118,6 +149,17 @@ export interface Entities {
   // pass routes through the matching `--no-<part>` body variant when set.
   partLost: Uint8Array;
 
+  // Cannon manual aim/fire
+  cannonElevationDeg: Float32Array;  // default 18°
+  cannonAmmo: Uint8Array;            // 0=solid 1=shell 2=canister
+  manualControlled: Uint8Array;      // 1 when under player manual control (skip auto-fire)
+
+  // Crew → parent-gun link. Set by spawnCrewForGun; -1 for non-crew entities.
+  parentGunId: Int32Array;
+  // Role index 0..3 (sponger / rammer / loader / gunner). Meaningful only when
+  // kindId === 'gun-crew'; zero for everything else.
+  crewRole: Uint8Array;
+
   // Free-list
   freeListHead: number;
   freeListNext: Int32Array;  // -1 = end of list
@@ -150,11 +192,16 @@ export function createEntities(capacity: number): Entities {
     reloadT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
     canFire: new Uint8Array(capacity),
+    stance: new Uint8Array(capacity),
+    formationRank: new Uint8Array(capacity),
+    cohesion: new Float32Array(capacity),
+    holdLoaded: new Uint8Array(capacity),
     rank: new Uint8Array(capacity),
     xp: new Uint16Array(capacity),
     kills: new Uint16Array(capacity),
     damageDealt: new Uint32Array(capacity),
     recoilT: new Float32Array(capacity),
+    recoilTotal: new Float32Array(capacity),
     recoilPeakX: new Float32Array(capacity),
     recoilPeakY: new Float32Array(capacity),
     stateT: new Float32Array(capacity),
@@ -179,6 +226,11 @@ export function createEntities(capacity: number): Entities {
     bodyRot: new Float32Array(capacity),
     weaponDropped: new Uint8Array(capacity),
     partLost: new Uint8Array(capacity),
+    cannonElevationDeg: new Float32Array(capacity).fill(18),
+    cannonAmmo: new Uint8Array(capacity),
+    manualControlled: new Uint8Array(capacity),
+    parentGunId: new Int32Array(capacity).fill(-1),
+    crewRole: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -207,11 +259,16 @@ export function allocEntity(e: Entities): number {
   e.reloadT[id] = 0;
   e.targetId[id] = -1;
   e.canFire[id] = 1;
+  e.stance[id] = FireStance.ByRanks;
+  e.formationRank[id] = FORMATION_RANK_UNKNOWN;
+  e.cohesion[id] = 0;
+  e.holdLoaded[id] = 0;
   e.rank[id] = 0;
   e.xp[id] = 0;
   e.kills[id] = 0;
   e.damageDealt[id] = 0;
   e.recoilT[id] = 0;
+  e.recoilTotal[id] = 0;
   e.recoilPeakX[id] = 0;
   e.recoilPeakY[id] = 0;
   e.stateT[id] = 0;
@@ -236,6 +293,11 @@ export function allocEntity(e: Entities): number {
   e.bodyRot[id] = 0;
   e.weaponDropped[id] = 0;
   e.partLost[id] = 0;
+  e.cannonElevationDeg[id] = 18;
+  e.cannonAmmo[id] = 0;
+  e.manualControlled[id] = 0;
+  e.parentGunId[id] = -1;
+  e.crewRole[id] = 0;
   return id;
 }
 

@@ -14,6 +14,8 @@ import { createRng, type Rng } from '../../util/rng';
 import { getUnitKindIndex } from '../../data/units';
 import { tickProjectiles } from './projectile-system';
 import { createDebris } from '../debris';
+import { createShockwaves } from '../../fx/shockwaves';
+import { updateShockwaves } from './shockwave-system';
 
 interface Setup {
   entities: Entities;
@@ -23,6 +25,7 @@ interface Setup {
   particles: Particles;
   rng: Rng;
   debris: ReturnType<typeof createDebris>;
+  shockwaves: ReturnType<typeof createShockwaves>;
 }
 
 function setup(): Setup {
@@ -34,6 +37,7 @@ function setup(): Setup {
     particles: createParticles(512),
     rng: createRng(1),
     debris: createDebris(64),
+    shockwaves: createShockwaves(8, 16),
   };
 }
 
@@ -59,7 +63,7 @@ describe('tickProjectiles — integration', () => {
     const s = setup();
     const pid = spawnMusketBall(s.projectiles, 0, 0, 1, 0, /*team*/ 1, /*dmg*/ 12, /*v*/ 100, /*mass*/ 0.03, /*life*/ 0.4, /*ownerId*/ -1);
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.01);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.01);
 
     expect(s.projectiles.prevX[pid]).toBe(0);
     expect(s.projectiles.posX[pid]).toBeCloseTo(1.0, 5);
@@ -82,7 +86,7 @@ describe('tickProjectiles — integration', () => {
     let maxZ = s.projectiles.posZ[pid]!;
     let groundedAt = -1;
     for (let step = 0; step < 200; step++) {
-      tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, dt);
+      tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, dt);
       if (s.projectiles.alive[pid] === 0) break;
       if (s.projectiles.posZ[pid]! > maxZ) maxZ = s.projectiles.posZ[pid]!;
       if (groundedAt < 0 && s.projectiles.posZ[pid]! === 0) groundedAt = step;
@@ -104,17 +108,19 @@ describe('tickProjectiles — ricochet & rolling', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 1 / 60);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 1 / 60);
 
     // Ricochet count should drop by exactly one.
     expect(s.projectiles.ricochets[pid]).toBe(2);
-    // velZ flipped to roughly +2.5 (gravity perturbs the exact value slightly).
-    expect(s.projectiles.velZ[pid]).toBeGreaterThan(2);
-    expect(s.projectiles.velZ[pid]).toBeLessThan(3);
+    // velZ flipped (positive after bounce). Magnitude is angle-dependent;
+    // at impactAngle ≈ 28° the restitution lands near 0.26, giving ~1.4.
+    expect(s.projectiles.velZ[pid]).toBeGreaterThan(0.5);
+    expect(s.projectiles.velZ[pid]).toBeLessThan(2.5);
     // posZ pinned to 0 at the bounce instant.
     expect(s.projectiles.posZ[pid]).toBe(0);
-    // Horizontal damped by 0.7×.
-    expect(s.projectiles.velX[pid]).toBeCloseTo(10 * 0.7, 5);
+    // Horizontal velocity damped (angle-dependent; at this angle ~0.63×).
+    expect(s.projectiles.velX[pid]).toBeGreaterThan(5);
+    expect(s.projectiles.velX[pid]).toBeLessThan(10);
     expect(s.projectiles.alive[pid]).toBe(1);
   });
 
@@ -128,7 +134,7 @@ describe('tickProjectiles — ricochet & rolling', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 1 / 60);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 1 / 60);
 
     expect(s.projectiles.alive[pid]).toBe(0);
     expect(s.projectiles.count).toBe(0);
@@ -145,7 +151,7 @@ describe('tickProjectiles — entity collision', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.1);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.1);
 
     expect(s.entities.hp[target]).toBeLessThan(60);
     expect(s.projectiles.alive[pid]).toBe(0);
@@ -160,7 +166,7 @@ describe('tickProjectiles — entity collision', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.1);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.1);
 
     expect(s.entities.hp[friend]).toBe(60);
   });
@@ -177,7 +183,7 @@ describe('tickProjectiles — entity collision', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.2);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.2);
 
     expect(s.entities.hp[a]).toBeLessThan(60);
     expect(s.entities.hp[b]).toBeLessThan(60);
@@ -196,7 +202,7 @@ describe('tickProjectiles — entity collision', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.2);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.2);
 
     expect(s.entities.hp[target]).toBe(60);
   });
@@ -213,7 +219,7 @@ describe('tickProjectiles — shell behaviour', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.02);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.02);
 
     expect(s.projectiles.alive[pid]).toBe(0);
     // Explosion should have spawned at least the flash + smoke billow + debris.
@@ -231,7 +237,11 @@ describe('tickProjectiles — shell behaviour', () => {
       /*ownerId*/ -1,
     );
 
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 0.2);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.2);
+    // Drive the shockwave system to deliver splash damage (damage now arrives over ~3 ticks).
+    for (let i = 0; i < 10; i++) {
+      updateShockwaves(s.shockwaves, s.entities, s.grid, s.particles, s.rng, undefined, s.debris, 1 / 60);
+    }
 
     expect(s.projectiles.alive[pid]).toBe(0);
     // Splash damage from the explosion radius (target is at the centre).
@@ -251,7 +261,7 @@ describe('tickProjectiles — trail emission', () => {
     );
 
     expect(s.puffs.count).toBe(0);
-    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.debris, 1 / 60);
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 1 / 60);
     expect(s.puffs.count).toBeGreaterThanOrEqual(1);
   });
 });

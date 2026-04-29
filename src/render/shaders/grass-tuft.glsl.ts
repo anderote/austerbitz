@@ -1,0 +1,51 @@
+export const TUFT_VS = `#version 300 es
+precision highp float;
+
+// Per-vertex (unit quad): cx in [-0.5, 0.5], cy in [0, 1] where cy=1 is the foot.
+layout(location = 0) in vec2 a_corner;
+
+// Per-instance:
+layout(location = 1) in vec2  a_foot;     // world position of the foot (bottom-centre)
+layout(location = 2) in float a_size;     // world width of the tuft (height = size * H/W)
+layout(location = 3) in float a_variant;  // 0..VARIANTS-1
+
+uniform mat3  u_viewProj;
+uniform float u_aspect;                    // TUFT_H / TUFT_W
+uniform float u_worldH;                    // for foot-Y → depth
+
+out vec2 v_uv;
+flat out float v_variant;
+
+void main() {
+  // World position: foot.x + cx*size, foot.y + (cy - 1)*size*aspect.
+  // (+y is screen-down, so subtracting moves the top of the tuft toward the
+  // top of the screen.)
+  vec2 wp = a_foot + vec2(a_corner.x * a_size, (a_corner.y - 1.0) * a_size * u_aspect);
+  v_uv = vec2(a_corner.x + 0.5, a_corner.y);
+  v_variant = a_variant;
+  vec3 clip = u_viewProj * vec3(wp, 1.0);
+  // Larger foot-Y → closer to viewer → smaller z (drawn on top under LESS).
+  // Range: [0.05, 0.95] keeps headroom for things behind/in-front.
+  float depth = clamp(0.95 - 0.90 * (a_foot.y / u_worldH), 0.05, 0.95);
+  gl_Position = vec4(clip.xy, depth, 1.0);
+}
+`;
+
+export const TUFT_FS = `#version 300 es
+precision highp float;
+
+in vec2  v_uv;
+flat in float v_variant;
+
+uniform sampler2D u_atlas;
+uniform float u_atlasGrid;   // = TUFT_VARIANTS
+
+out vec4 outColor;
+
+void main() {
+  float u = (v_variant + v_uv.x) / u_atlasGrid;
+  vec4 c = texture(u_atlas, vec2(u, v_uv.y));
+  if (c.a < 0.5) discard;
+  outColor = c;
+}
+`;

@@ -72,12 +72,17 @@ export function resolveFire(
       dirY = ry;
     }
 
+    const baseDmg = effectiveDamage(e, id, kind.baseStats.weaponDamage);
+    const varFrac = weapon.projectile.damageVarianceFrac ?? 0;
+    const varMul = varFrac > 0 ? 1 + (rng.next() - 0.5) * 2 * varFrac : 1;
+    const rolledDmg = Math.max(1, Math.round(baseDmg * varMul));
+
     spawnMusketBall(
       projectiles,
       tip.x, tip.y,
       dirX, dirY,
       team,
-      effectiveDamage(e, id, kind.baseStats.weaponDamage),
+      rolledDmg,
       weapon.projectile.muzzleVelocity,
       weapon.projectile.mass,
       weapon.projectile.maxLife,
@@ -98,7 +103,9 @@ export function resolveFire(
       );
     }
 
-    e.recoilT[id] = RECOIL_T;
+    const recoilDur = weapon.muzzle?.recoilDuration ?? RECOIL_T;
+    e.recoilT[id] = recoilDur;
+    e.recoilTotal[id] = recoilDur;
     if (weapon.muzzle?.recoilFirer) {
       e.recoilPeakX[id] = -dirX * weapon.muzzle.recoilFirer;
       e.recoilPeakY[id] = -dirY * weapon.muzzle.recoilFirer;
@@ -169,7 +176,9 @@ export function resolveFire(
       );
     }
 
-    e.recoilT[id] = RECOIL_T;
+    const recoilDur2 = weapon.muzzle?.recoilDuration ?? RECOIL_T;
+    e.recoilT[id] = recoilDur2;
+    e.recoilTotal[id] = recoilDur2;
     if (weapon.muzzle?.recoilFirer) {
       e.recoilPeakX[id] = -dirX * weapon.muzzle.recoilFirer;
       e.recoilPeakY[id] = -dirY * weapon.muzzle.recoilFirer;

@@ -1,4 +1,4 @@
-import { type Entities, EntityState, isDead } from '../entities';
+import { type Entities, EntityState, freeEntity, isDead } from '../entities';
 import { getUnitKindByIndex } from '../../data/units';
 import type { Particles } from '../../particles/particles';
 import { emitPromotionSparkle, spawnBlood } from '../../particles/emitters';
@@ -6,7 +6,19 @@ import type { Rng } from '../../util/rng';
 import type { BloodSplats } from '../blood-splats';
 import type { Debris } from '../debris';
 import { spawnGibs } from './debris-emit';
+import { EMPTY_KIT_GIB_TABLE, type KitGibTable } from '../kit-gib-table';
 import { effectiveArmor, promote } from '../veterancy';
+import { spawnDamageText, type DamageTexts } from '../../fx/damage-texts/damage-texts';
+
+/**
+ * Module-level pointer to the per-kit gib lookup. Built once at world bootstrap
+ * (after kits load) and used by `applyHit` to spawn kit-aware debris without
+ * having to thread the table through every call site.
+ */
+let kitGibTable: KitGibTable = EMPTY_KIT_GIB_TABLE;
+export function setKitGibTable(table: KitGibTable): void {
+  kitGibTable = table;
+}
 
 /** Impulse magnitude (N·s) at or above which a kill ragdolls instead of falling in place. */
 export const KILL_RAGDOLL_THRESHOLD = 8000;
@@ -18,6 +30,29 @@ export type HitKind = 'musket' | 'cannon' | 'melee' | 'charge' | 'explosion';
 const FLINCH_DURATION = 0.3;
 const RAGDOLL_DURATION = 2.0;
 const DYING_DURATION = 0.5;
+
+/**
+ * Despawn a corpse (Dying / Dead / Ragdoll) and emit a full kit-aware
+ * dismemberment burst at its position. Used when an explosion shockwave passes
+ * through an already-down body — the corpse vanishes and is replaced with gibs.
+ */
+export function gibCorpse(
+  e: Entities,
+  rng: Rng,
+  debris: Debris,
+  id: number,
+  impX: number,
+  impY: number,
+): void {
+  if (e.alive[id] === 0) return;
+  const px = e.posX[id]!;
+  const py = e.posY[id]!;
+  spawnGibs(
+    debris, rng, 'explosion', px, py, impX, impY,
+    e.team[id]!, true, e.kindId[id]!, e.facing[id]!, kitGibTable,
+  );
+  freeEntity(e, id);
+}
 
 export function enterFlinch(e: Entities, id: number): void {
   e.state[id] = EntityState.Flinch;
@@ -49,8 +84,13 @@ export function enterDying(e: Entities, id: number): void {
  * updateParticles in particles.ts). Direction (impX, impY) is forwarded to
  * spawnBlood so the spray cones forward along the projectile's travel.
  *
- * The trailing `splats` parameter is unused; it's retained for call-site
- * compatibility (projectile-system / explosion still pass it through).
+ * The `_splats` parameter is unused; it's retained for call-site compatibility
+ * (projectile-system / explosion still pass it through).
+ *
+ * The trailing `damageTexts` parameter is purely visual — when provided, a
+ * floating damage number is spawned above the victim. Tests / lab harnesses
+ * may pass `undefined` to skip the spawn; the sim-side behaviour is identical
+ * either way.
  */
 export function applyHit(
   e: Entities,
@@ -65,6 +105,7 @@ export function applyHit(
   _splats: BloodSplats | undefined,
   debris: Debris,
   attackerId: number,
+  damageTexts?: DamageTexts,
 ): void {
   if (e.alive[id] === 0) return;
   if (isDead(e, id)) return;
@@ -72,6 +113,16 @@ export function applyHit(
   const unitKind = getUnitKindByIndex(e.kindId[id]!);
   const effArmor = effectiveArmor(e, id, unitKind.baseStats.armor);
   const effDmg = Math.max(1, dmg - effArmor);
+
+  // Visual: floating damage number above the victim. Skipped when no pool
+  // was supplied (tests, lab harness). No effect on sim state.
+  // World Y is screen-down (see camera.ts), so "above the head" subtracts.
+  if (damageTexts !== undefined) {
+    const px0 = e.posX[id]!;
+    const py0 = e.posY[id]!;
+    const above = py0 - unitKind.placeholderSize.h * 0.5 - 0.3;
+    spawnDamageText(damageTexts, px0, above, effDmg);
+  }
 
   // Attacker-validity guard — computed once and reused for damage credit
   // (every hit) and kill / XP credit (lethal only).
@@ -109,7 +160,10 @@ export function applyHit(
       enterDying(e, id);
     }
     spawnBlood(particles, px, py, impMag, rng, impX, impY);
-    spawnGibs(debris, rng, kind, px, py, impX, impY, e.team[id]!);
+    spawnGibs(
+      debris, rng, kind, px, py, impX, impY,
+      e.team[id]!, true, e.kindId[id]!, e.facing[id]!, kitGibTable,
+    );
 
     // Kill + XP credit — same guard as damage credit, additionally requires lethal.
     if (attackerValid) {
@@ -128,4 +182,10 @@ export function applyHit(
     enterFlinch(e, id);
   }
   spawnBlood(particles, px, py, impMag * 0.4, rng, impX, impY);
+  // Non-lethal musket hits get a small chance of a severed limb — internally
+  // gated by MUSKET_NONLETHAL_GIB_CHANCE; other hit kinds short-circuit.
+  spawnGibs(
+    debris, rng, kind, px, py, impX, impY,
+    e.team[id]!, false, e.kindId[id]!, e.facing[id]!, kitGibTable,
+  );
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createDebris, allocDebris } from '../debris';
 import { tickDebris } from './debris-system';
+import { createPuffs } from '../../puffs/puffs';
+import { createRng } from '../../util/rng';
 
 function spawnAt(d: ReturnType<typeof createDebris>, x: number, y: number, z: number, vx = 0, vy = 0, vz = 0) {
   const id = allocDebris(d);
@@ -42,13 +44,56 @@ describe('tickDebris', () => {
     expect(d.bounces[id]).toBe(1);
   });
 
-  it('frees debris when ttl reaches zero', () => {
+  it('frees in-flight debris when ttl reaches zero', () => {
     const d = createDebris(4);
-    const id = spawnAt(d, 0, 0, 0);
+    // In-flight (z>0) so TTL ticks; settled gibs are persistent now.
+    const id = spawnAt(d, 0, 0, 5, 0, 0, 1);
     d.ttl[id] = 0.1;
     tickDebris(d, 0.2);
     expect(d.alive[id]).toBe(0);
     expect(d.count).toBe(0);
+  });
+
+  it('keeps settled debris alive past ttl expiry (persistence)', () => {
+    const d = createDebris(4);
+    const id = spawnAt(d, 0, 0, 0);
+    d.bounces[id] = 4; // forced-settled
+    d.ttl[id] = 0.01;
+    tickDebris(d, 1.0);
+    expect(d.alive[id]).toBe(1);
+    expect(d.count).toBe(1);
+  });
+
+  it('emits smoke puffs for from-explosion airborne gibs', () => {
+    const d = createDebris(4);
+    const id = spawnAt(d, 0, 0, 5, 0, 0, 1);
+    d.fromExplosion[id] = 1;
+    const puffs = createPuffs(64);
+    const rng = createRng(1);
+    expect(puffs.count).toBe(0);
+    // 0.2s @ 0.08s period -> 2 puffs.
+    tickDebris(d, 0.2, puffs, rng);
+    expect(puffs.count).toBeGreaterThanOrEqual(2);
+  });
+
+  it('does not emit smoke for non-explosion gibs', () => {
+    const d = createDebris(4);
+    const id = spawnAt(d, 0, 0, 5, 0, 0, 1);
+    d.fromExplosion[id] = 0;
+    const puffs = createPuffs(64);
+    const rng = createRng(1);
+    tickDebris(d, 1.0, puffs, rng);
+    expect(puffs.count).toBe(0);
+  });
+
+  it('does not emit smoke for from-explosion gibs that are grounded', () => {
+    const d = createDebris(4);
+    const id = spawnAt(d, 0, 0, 0, 0, 0, 0);
+    d.fromExplosion[id] = 1;
+    const puffs = createPuffs(64);
+    const rng = createRng(1);
+    tickDebris(d, 1.0, puffs, rng);
+    expect(puffs.count).toBe(0);
   });
 
   it('settles after multiple bounces', () => {

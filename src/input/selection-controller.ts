@@ -3,9 +3,9 @@ import { screenToWorld } from '../render/camera';
 import type { World } from '../sim/world';
 import { PLAYER_TEAM } from '../sim/player';
 import { hitTestPoint, hitTestRect, findSameKindInView, type Selection, type DragRect, type ControlGroups, type FormationDrag, type FormationPreview } from './selection';
-import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots, issueNudge } from './commands';
+import { issueMove, issueAttack, issueAttackMove, issueStop, issueFormationMove, issueReformInPlace, issueReformAtTarget, issueMarchFormation, issueHurryToSlots } from './commands';
 import { computeFormationSlots, assignFormationSlots, liveFormationUnits as materializeUnits, inferRanksFromPositions, computeMarchSlots } from './formation';
-import { isDead, EntityState } from '../sim/entities';
+import { isDead, EntityState, FireStance } from '../sim/entities';
 import {
   createFormationParams, resetFormationParams,
   bumpSpacing, bumpRanks, spacingMultiplier, minSpacingIndexForMult,
@@ -15,6 +15,10 @@ import {
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
 import type { Vec2 } from '../util/math';
+import type { Projectiles } from '../sim/projectiles';
+import type { Puffs } from '../puffs/puffs';
+import { fireCannonSolid, fireCannonShell, fireCannonCanister } from '../sim/cannon-fire';
+import { getUnitKindByIndex } from '../data/units';
 
 export type CursorMode = 'normal' | 'attack-move';
 
@@ -31,6 +35,10 @@ export interface SelectionControllerDeps {
   particles?: Particles;
   /** Optional — when present, click-move targets are previewed at each unit's destination. */
   movePreview?: { add(targets: Vec2[]): void };
+  /** Optional — when present, Space fires selected cannons manually. */
+  projectiles?: Projectiles;
+  /** Optional — puffs required for cannon muzzle smoke on manual fire. */
+  puffs?: Puffs;
 }
 
 export interface SelectionController {
@@ -62,10 +70,6 @@ interface ControllerInternals {
 }
 
 const DRAG_THRESHOLD_PX = 4;
-// World-space step per arrow-key nudge. OS key-repeat accumulates additional
-// presses, and issueNudge compounds against the previous move target so a held
-// key produces continuous motion rather than locking to (pos + step).
-const NUDGE_STEP_WORLD = 2;
 
 export function createSelectionController(deps: SelectionControllerDeps): SelectionController {
   const { canvas, overlayRoot, camera, world, selection, drag, formationDrag, controlGroups } = deps;
@@ -85,6 +89,50 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
 
   function puff(x: number, y: number) {
     if (deps.particles) emitOrderPuff(deps.particles, x, y);
+  }
+
+  const aimKeysHeld = new Set<string>();
+
+  // Cannon helpers
+  const AIM_RATE_DEG = 30; // degrees per second
+  const ROT_RATE = AIM_RATE_DEG * Math.PI / 180; // radians per second
+
+  function eachSelectedCannon(callback: (id: number) => void): void {
+    const e = world.entities;
+    for (const id of selection.ids) {
+      if (e.alive[id] !== 1) continue;
+      const kind = getUnitKindByIndex(e.kindId[id]!);
+      if (kind.category !== 'artillery') continue;
+      callback(id);
+    }
+  }
+
+  function rotateCannonAim(id: number, deltaRad: number): void {
+    const e = world.entities;
+    const fx = e.facingIntentX[id]!;
+    const fy = e.facingIntentY[id]!;
+    const cos = Math.cos(deltaRad);
+    const sin = Math.sin(deltaRad);
+    const nx = fx * cos - fy * sin;
+    const ny = fx * sin + fy * cos;
+    const len = Math.hypot(nx, ny);
+    e.facingIntentX[id] = len > 1e-6 ? nx / len : nx;
+    e.facingIntentY[id] = len > 1e-6 ? ny / len : ny;
+    const angle = Math.atan2(ny, nx);
+    const oct = (((Math.round(angle / (Math.PI / 4))) % 8) + 8) % 8;
+    e.facing[id] = oct;
+    e.restFacing[id] = oct;
+  }
+
+  function syncManualControlled(): void {
+    const e = world.entities;
+    for (let i = 0; i < e.capacity; i++) e.manualControlled[i] = 0;
+    for (const id of selection.ids) {
+      if (e.alive[id] === 1) {
+        const kind = getUnitKindByIndex(e.kindId[id]!);
+        if (kind.category === 'artillery') e.manualControlled[id] = 1;
+      }
+    }
   }
 
   let cursorMode: CursorMode = 'normal';
@@ -465,6 +513,48 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
 
+    if (e.code === 'KeyZ' || e.code === 'KeyX' || e.code === 'KeyC' || e.code === 'KeyV') {
+      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
+      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (selection.ids.size === 0) return;
+      // Z/X/C/V are overloaded: fire-stance for infantry, ammo-load for
+      // cannons. If the selection contains any artillery, route to ammo
+      // (V is unused for ammo). Otherwise route to stance.
+      const ents = world.entities;
+      let hasArtillery = false;
+      for (const id of selection.ids) {
+        if (ents.alive[id] !== 1) continue;
+        if (getUnitKindByIndex(ents.kindId[id]!).category === 'artillery') {
+          hasArtillery = true;
+          break;
+        }
+      }
+      if (hasArtillery) {
+        const ammo = e.code === 'KeyZ' ? 0
+                   : e.code === 'KeyX' ? 1
+                   : e.code === 'KeyC' ? 2
+                   : -1;
+        if (ammo >= 0) {
+          for (const id of selection.ids) {
+            if (ents.alive[id] !== 1) continue;
+            if (getUnitKindByIndex(ents.kindId[id]!).category !== 'artillery') continue;
+            ents.cannonAmmo[id] = ammo;
+          }
+        }
+        return;
+      }
+      const stance = e.code === 'KeyZ' ? FireStance.AtWill
+                   : e.code === 'KeyX' ? FireStance.Volley
+                   : e.code === 'KeyC' ? FireStance.ByRanks
+                   :                     FireStance.Hold;
+      for (const id of selection.ids) {
+        if (ents.alive[id] !== 1) continue;
+        ents.stance[id] = stance;
+      }
+      return;
+    }
+
     if (e.code === 'KeyT') {
       const ae = (typeof document !== 'undefined') ? document.activeElement : null;
       const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
@@ -526,23 +616,43 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
 
-    if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
-      const ae = (typeof document !== 'undefined') ? document.activeElement : null;
-      const tag = (ae && 'tagName' in ae) ? (ae as Element).tagName : null;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (selection.ids.size === 0) return;
-      const fwd = averageFacing();
-      const leftX = -fwd.y, leftY = fwd.x;
-      const s = NUDGE_STEP_WORLD;
-      let dx = 0, dy = 0;
-      if (e.code === 'ArrowUp') { dx = fwd.x * s; dy = fwd.y * s; }
-      else if (e.code === 'ArrowDown') { dx = -fwd.x * s; dy = -fwd.y * s; }
-      else if (e.code === 'ArrowLeft') { dx = leftX * s; dy = leftY * s; }
-      else { dx = -leftX * s; dy = -leftY * s; }
-      issueNudge(world, selection, dx, dy, fwd, { queue: e.shiftKey });
-      tightHeld = false;
-      return;
+    // Cannon-specific controls — only active when cannons are selected
+    if (e.code === 'Space') {
+      if (deps.projectiles && deps.puffs && deps.particles) {
+        const { projectiles: proj, puffs: pf, particles: pts } = deps;
+        let hasCannon = false;
+        eachSelectedCannon(() => { hasCannon = true; });
+        if (hasCannon) {
+          const ent = world.entities;
+          eachSelectedCannon((id) => {
+            const elev = ent.cannonElevationDeg[id]!;
+            const ammo = ent.cannonAmmo[id]!;
+            if (ammo === 0) {
+              fireCannonSolid(ent, proj, pts, pf, world.rng, id, elev, world.sfxRequests);
+            } else if (ammo === 1) {
+              fireCannonShell(ent, proj, pts, pf, world.rng, id, elev, world.sfxRequests);
+            } else {
+              fireCannonCanister(ent, proj, pf, world.rng, id, world.sfxRequests);
+            }
+          });
+          return;
+        }
+      }
     }
+
+    // Arrow keys for aim: held state tracked, update applied in update()
+    if (
+      e.code === 'ArrowLeft' || e.code === 'ArrowRight' ||
+      e.code === 'ArrowUp' || e.code === 'ArrowDown'
+    ) {
+      let hasCannon = false;
+      eachSelectedCannon(() => { hasCannon = true; });
+      if (hasCannon) {
+        aimKeysHeld.add(e.code);
+        return;
+      }
+    }
+
   }
 
   function onKeyUp(e: { key: string; code: string }): void {
@@ -550,6 +660,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     if (e.code === 'KeyF') {
       clearGridHold();
     }
+    aimKeysHeld.delete(e.code);
   }
 
   function onBlur(): void {
@@ -562,6 +673,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     ctrlHeld = false;
     lastCursorScreen = null;
     lastRightClick = null;
+    aimKeysHeld.clear();
   }
 
   // DOM bindings — narrow event types pass through to the pure handlers above.
@@ -616,7 +728,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     get lockedRanks() { return lockedRanks; },
     get runMode() { return runMode; },
     formationPreview,
-    update(_dt) {
+    update(dt) {
       const e = world.entities;
       for (const id of selection.ids) {
         if (e.alive[id] !== 1 || isDead(e, id)) selection.ids.delete(id);
@@ -636,6 +748,26 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         tightHeld = false;
         clearGridHold();
         lastSelectionSig = sig;
+      }
+
+      // Sync manualControlled flag — artillery units that are selected get manual control,
+      // others are cleared. O(capacity) but capacity is small.
+      syncManualControlled();
+
+      // Apply held aim keys for selected cannons
+      if (aimKeysHeld.size > 0 && dt > 0) {
+        const rotDelta = ROT_RATE * dt;
+        const elevDelta = AIM_RATE_DEG * dt;
+        eachSelectedCannon((id) => {
+          if (aimKeysHeld.has('ArrowLeft')) rotateCannonAim(id, rotDelta);
+          if (aimKeysHeld.has('ArrowRight')) rotateCannonAim(id, -rotDelta);
+          if (aimKeysHeld.has('ArrowUp')) {
+            e.cannonElevationDeg[id] = Math.min(45, (e.cannonElevationDeg[id] ?? 12) + elevDelta);
+          }
+          if (aimKeysHeld.has('ArrowDown')) {
+            e.cannonElevationDeg[id] = Math.max(2, (e.cannonElevationDeg[id] ?? 12) - elevDelta);
+          }
+        });
       }
 
       // F = hurry. Each frame F is held, push every selected unit toward the

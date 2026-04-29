@@ -58,50 +58,50 @@ const PALETTE_BASE: Record<string, [number, number, number, number]> = {
 
 const POSE_FRONT = [
   '.................', //  0
-  '.......mmm.......', //  1 trail visible going up/away
+  '.......PPP.......', //  1 spade tip pronounced
   '......mPPPm......', //  2 carriage rear
   '.....mPPPPPm.....', //  3 carriage
   '....mPPPmPPPm....', //  4 carriage with seam
-  '.....mPgggPm.....', //  5 carriage w/ barrel emerging
-  '......gGGGg......', //  6 barrel face
-  '......gGgGg......', //  7 muzzle ring
+  '....mPgggggPm....', //  5 carriage w/ barrel emerging
+  '.....gGGGGGg.....', //  6 barrel face
+  '.....gGgkgGg.....', //  7 muzzle ring + bore
   '..kkSSk...kSSkk..', //  8 wheels top
   '.kSwwwS...SwwwSk.', //  9 wheels
   '.kSwkwS...SwkwSk.', // 10 wheels + hub
-  '..kkSSk...kSSkk..', // 11 wheels bottom
-  '.................', // 12
+  '.kSwkwS...SwkwSk.', // 11 wheels + hub thickened
+  '..kkSSk...kSSkk..', // 12 wheels bottom
   '..ssssssssssss...', // 13 ground shadow
 ];
 
 const POSE_FRONT_DIAG = [
   '.................', //  0
-  '......mmm........', //  1 trail nudged left of center
-  '.....mPPPm.......', //  2
-  '....mPPPPPm......', //  3 carriage shifted slightly left
-  '...mPPPmPPPm.....', //  4
-  '....mPgggPmm.....', //  5 carriage w/ barrel angled right
-  '.....gGGGggm.....', //  6 barrel emerging toward viewer-right
-  '.....gGgGgg......', //  7 muzzle nudged right
-  '..kkSSk.kSSkk....', //  8 both wheels visible, near pair on right
+  '....PPPP.........', //  1 spade tip pronounced, nudged left
+  '...mPPPPm........', //  2 trail angled
+  '..mPPPPPPm.......', //  3 carriage
+  '..mPPmmPPPm......', //  4 carriage with seam
+  '...mPgggggPm.....', //  5 carriage w/ barrel angled right
+  '....gGGGGGgm.....', //  6 barrel emerging toward viewer-right
+  '....gGgkgGg......', //  7 muzzle nudged right + bore
+  '..kkSSk.kSSkk....', //  8 both wheels visible
   '.kSwwwS.SwwwSk...', //  9
   '.kSwkwS.SwkwSk...', // 10
-  '..kkSSk.kSSkk....', // 11
-  '.................', // 12
+  '.kSwkwS.SwkwSk...', // 11 hub thickened
+  '..kkSSk.kSSkk....', // 12
   '..ssssssssssss...', // 13
 ];
 
 const POSE_SIDE = [
   '.................', //  0
-  '.................', //  1
-  '..............ggG', //  2 muzzle tip + reinforce
-  '.........ggggggGG', //  3 barrel
-  'mmmm.....ggggggGg', //  4 trail extending left + barrel
-  'mPPPmmmmmgggggGgg', //  5 trail trim + cheek + barrel + breech ring
-  '.mMMmmmmmmgggggg.', //  6 carriage shadow + breech
-  '.....mmkmm.......', //  7 axle bracket
+  '.............ggGG', //  1 muzzle swell extends right
+  '............ggGGg', //  2 muzzle tip + bore
+  '.......gggggggGGg', //  3 barrel w/ reinforce ring
+  'mmmmmmmgggggggGgg', //  4 long trail extending left + barrel
+  'mPPPPPmgggggggGgg', //  5 trail trim + cheek + barrel + breech bulge
+  'mMMMMMmmgggggggg.', //  6 trail shadow + breech
+  '.....mmkkmm......', //  7 axle bracket
   '....kkSSSkk......', //  8 wheel top
   '...kSwwwwwSk.....', //  9 wheel
-  '...kSwkSkwSk.....', // 10 wheel + hub + spoke detail
+  '...kSwkkkwSk.....', // 10 wheel + thicker hub
   '...kSwwwwwSk.....', // 11 wheel
   '....kkSSSkk......', // 12 wheel bottom
   '....sssssss......', // 13 ground shadow
@@ -115,29 +115,29 @@ const POSE_BACK = [
   '....mPPPPPPPm....', //  4 trail meeting carriage
   '...mPPmmmmmPPm...', //  5 carriage rear w/ breech bulge
   '...mmmgggggmmm...', //  6 breech of barrel
-  '...mkmGGGGGmkm...', //  7 axle ends + breech ring
+  '...mkmGGkGGmkm...', //  7 axle ends + cascabel knob
   '..kkSSk...kSSkk..', //  8 wheels (mirror of front)
   '.kSwwwS...SwwwSk.', //  9
   '.kSwkwS...SwkwSk.', // 10
-  '..kkSSk...kSSkk..', // 11
-  '.................', // 12
+  '.kSwkwS...SwkwSk.', // 11 hub thickened
+  '..kkSSk...kSSkk..', // 12
   '..ssssssssssss...', // 13 ground shadow
 ];
 
 const POSE_BACK_DIAG = [
   '.................', //  0
-  '.....PPP.........', //  1 trail nudged toward viewer-left (cannon turned away-right)
-  '....PPPPP........', //  2
-  '...PPPPPPP.......', //  3
-  '..mPPPPPPPm......', //  4
+  '....PPPP.........', //  1 spade tip pronounced
+  '...PPPPPPP.......', //  2 trail spade larger
+  '..PPPPPPPPP......', //  3 spade widening
+  '..mPPPPPPPmm.....', //  4 trail meeting carriage
   '..mPPmmmPPmm.....', //  5 carriage rear angled
   '..mmgggggmmm.....', //  6 breech
-  '..mkGGGGGmkm.....', //  7 axle / breech ring
-  '..kkSSk.kSSkk....', //  8 both wheels visible, near pair on right
+  '..mkGGkGGmkm.....', //  7 axle / cascabel
+  '..kkSSk.kSSkk....', //  8 both wheels visible
   '.kSwwwS.SwwwSk...', //  9
   '.kSwkwS.SwkwSk...', // 10
-  '..kkSSk.kSSkk....', // 11
-  '.................', // 12
+  '.kSwkwS.SwkwSk...', // 11 hub thickened
+  '..kkSSk.kSSkk....', // 12
   '..ssssssssssss...', // 13
 ];
 

@@ -88,8 +88,17 @@ export function issueAttack(world: World, sel: Selection, targetId: number, opts
 
 export function issueStop(world: World, sel: Selection): void {
   if (sel.ids.size === 0) return;
+  const e = world.entities;
   for (const id of sel.ids) {
-    if (world.entities.alive[id] === 1) world.orderQueue.delete(id);
+    if (e.alive[id] !== 1) continue;
+    world.orderQueue.delete(id);
+    // Halt in place: re-anchor rest to current position so the idle drift-back
+    // loop in orders-system doesn't pull the unit back toward an old slot.
+    e.velX[id] = 0;
+    e.velY[id] = 0;
+    e.pushedT[id] = 0;
+    e.restPosX[id] = e.posX[id]!;
+    e.restPosY[id] = e.posY[id]!;
   }
 }
 

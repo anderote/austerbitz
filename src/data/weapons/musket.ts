@@ -19,6 +19,7 @@ export const musket: WeaponProfile = {
     mass: 0.03,
     muzzleVelocity: 50,
     damage: 12,
+    damageVarianceFrac: 0.33,
     accuracySpreadRad: (4 * Math.PI) / 180,
     maxLife: 2.0,
   },
