@@ -282,8 +282,16 @@ describe('isDead', () => {
 
 describe('gun-crew unit kind', () => {
   it('is registered and resolvable', () => {
-    const k = getUnitKind('gun-crew');
-    expect(k.id).toBe('gun-crew');
-    expect(getUnitKindIndex('gun-crew')).toBeGreaterThanOrEqual(0);
+    const k = getUnitKind('gun-crew-sponger');
+    expect(k.id).toBe('gun-crew-sponger');
+    expect(getUnitKindIndex('gun-crew-sponger')).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('reloadInitialT field', () => {
+  it('initializes reloadInitialT to 0 on alloc', () => {
+    const e = createEntities(8);
+    const id = allocEntity(e);
+    expect(e.reloadInitialT[id]).toBe(0);
   });
 });

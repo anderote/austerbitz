@@ -11,10 +11,10 @@ import type { UnitKind } from '../types';
  * given the union (`'infantry' | 'cavalry' | 'artillery'`); the gun itself is
  * the artillery entity.
  */
-export const gunCrew: UnitKind = {
-  id: 'gun-crew',
+export const gunCrewRammer: UnitKind = {
+  id: 'gun-crew-rammer',
   category: 'infantry',
-  name: 'Gun Crew',
+  name: 'Gun Crew (Rammer)',
   placeholderColor: [255, 255, 255],
   placeholderSize: { w: 1.0, h: 2.25 },
   spriteSize: { w: 2.0, h: 2.25 },

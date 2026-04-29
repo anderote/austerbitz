@@ -75,6 +75,10 @@ export interface Entities {
   morale: Uint8Array;       // 0..255
   state: Uint8Array;        // EntityState (0..8)
   reloadT: Float32Array;
+  // Initial reload duration (seconds) captured when transitioning to
+  // Reloading. Used by tickCrew to compute fullProgress = 1 - reloadT/reloadInitialT.
+  // Zero outside of an active reload cycle.
+  reloadInitialT: Float32Array;
   targetId: Int32Array;     // -1 if none
   // 1 = unit is in rank 0 or 1 (front two ranks) and may fire; 0 = blocked
   // (rank 2+, the line in front would be hit). Derived from formationRank
@@ -190,6 +194,7 @@ export function createEntities(capacity: number): Entities {
     morale: new Uint8Array(capacity),
     state: new Uint8Array(capacity),
     reloadT: new Float32Array(capacity),
+    reloadInitialT: new Float32Array(capacity),
     targetId: new Int32Array(capacity).fill(-1),
     canFire: new Uint8Array(capacity),
     stance: new Uint8Array(capacity),
@@ -257,6 +262,7 @@ export function allocEntity(e: Entities): number {
   e.morale[id] = 200;
   e.state[id] = EntityState.Idle;
   e.reloadT[id] = 0;
+  e.reloadInitialT[id] = 0;
   e.targetId[id] = -1;
   e.canFire[id] = 1;
   e.stance[id] = FireStance.ByRanks;

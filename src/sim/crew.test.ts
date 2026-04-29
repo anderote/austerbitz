@@ -63,14 +63,20 @@ describe('spawnCrewForGun', () => {
     const crewIds = spawnCrewForGun(e, gunId);
     expect(crewIds.length).toBe(4);
 
-    const crewKindIdx = getUnitKindIndex('gun-crew');
+    const ROLE_TO_KIND: Record<number, string> = {
+      0: 'gun-crew-sponger',
+      1: 'gun-crew-rammer',
+      2: 'gun-crew-loader',
+      3: 'gun-crew-gunner',
+    };
     const seenRoles = new Set<number>();
     for (const cid of crewIds) {
       expect(e.alive[cid]).toBe(1);
-      expect(e.kindId[cid]).toBe(crewKindIdx);
+      const role = e.crewRole[cid]!;
+      expect(e.kindId[cid]).toBe(getUnitKindIndex(ROLE_TO_KIND[role]!));
       expect(e.parentGunId[cid]).toBe(gunId);
       expect(e.team[cid]).toBe(1);
-      seenRoles.add(e.crewRole[cid]!);
+      seenRoles.add(role);
     }
     expect(seenRoles.size).toBe(4); // all four roles distinct
   });

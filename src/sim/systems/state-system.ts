@@ -124,6 +124,7 @@ export function tickStates(
           // Jitter ±20% so units don't resync into a single volley over time.
           const baseReload = effectiveReload(e, i, kind.baseStats.weaponReload) / cohesionSpeedMult(e.cohesion[i]!);
           e.reloadT[i] = baseReload * rng.range(0.8, 1.2);
+          e.reloadInitialT[i] = e.reloadT[i]!;
           e.stateT[i] = 0;
         }
         break;
@@ -133,6 +134,7 @@ export function tickStates(
         if (e.reloadT[i]! <= 0) {
           e.state[i] = EntityState.Idle;
           e.reloadT[i] = 0;
+          e.reloadInitialT[i] = 0;
           e.stateT[i] = 0;
           e.holdLoaded[i] = e.stance[i] === FireStance.Hold ? 1 : 0;
         }

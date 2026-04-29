@@ -42,6 +42,13 @@ const ROLE_SPECS: Record<CrewRole, RoleSpec> = {
   [CrewRole.Gunner]:  { forward: -1.2, side:  0.0, facingOffset:  0 },
 };
 
+export const ROLE_KIND_ID: Record<CrewRole, string> = {
+  [CrewRole.Sponger]: 'gun-crew-sponger',
+  [CrewRole.Rammer]:  'gun-crew-rammer',
+  [CrewRole.Loader]:  'gun-crew-loader',
+  [CrewRole.Gunner]:  'gun-crew-gunner',
+};
+
 export interface CrewWorldPose {
   x: number;
   y: number;
@@ -75,8 +82,6 @@ export function computeCrewWorldPose(
  * this. Returns the crew ids in role order (sponger, rammer, loader, gunner).
  */
 export function spawnCrewForGun(entities: Entities, gunId: number): number[] {
-  const kindIdx = getUnitKindIndex('gun-crew');
-  const kind = getUnitKind('gun-crew');
   const team = entities.team[gunId]!;
   const gunX = entities.posX[gunId]!;
   const gunY = entities.posY[gunId]!;
@@ -84,6 +89,10 @@ export function spawnCrewForGun(entities: Entities, gunId: number): number[] {
 
   const ids: number[] = [];
   for (const role of CREW_ROLES) {
+    const kindId = ROLE_KIND_ID[role];
+    const kind = getUnitKind(kindId);
+    const kindIdx = getUnitKindIndex(kindId);
+
     const id = allocEntity(entities);
     if (id === -1) {
       console.warn('[crew] entity allocation exhausted; skipping crew spawn');
@@ -123,13 +132,15 @@ export function spawnCrewForGun(entities: Entities, gunId: number): number[] {
  * no impulse / velocity integration of their own.
  */
 export function tickCrew(entities: Entities): void {
-  const crewKindIdx = getUnitKindIndex('gun-crew');
+  const crewKindIdxSet = new Set<number>(
+    CREW_ROLES.map((r) => getUnitKindIndex(ROLE_KIND_ID[r])),
+  );
 
   // Pass 1: orphan cleanup. Iterate by id range (not aliveIds) so freeing
   // doesn't perturb a snapshot.
   for (let id = 0; id < entities.capacity; id++) {
     if (entities.alive[id] !== 1) continue;
-    if (entities.kindId[id] !== crewKindIdx) continue;
+    if (!crewKindIdxSet.has(entities.kindId[id]!)) continue;
     const parent = entities.parentGunId[id]!;
     if (parent < 0) continue;
     if (entities.alive[parent] !== 1 || isDead(entities, parent)) {
@@ -140,7 +151,7 @@ export function tickCrew(entities: Entities): void {
   // Pass 2: position update for surviving crew.
   for (let id = 0; id < entities.capacity; id++) {
     if (entities.alive[id] !== 1) continue;
-    if (entities.kindId[id] !== crewKindIdx) continue;
+    if (!crewKindIdxSet.has(entities.kindId[id]!)) continue;
     const parent = entities.parentGunId[id]!;
     if (parent < 0) continue;
     const role = entities.crewRole[id]! as CrewRole;

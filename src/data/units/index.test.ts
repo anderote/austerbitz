@@ -4,7 +4,7 @@ import { unitKinds, getUnitKind, getUnitKindIndex } from './index';
 describe('unit kind registry', () => {
   it('exposes the registered unit kinds', () => {
     expect(unitKinds.map(k => k.id).sort()).toEqual(
-      ['cannon-12', 'cuirassier', 'gun-crew', 'line-infantry'],
+      ['cannon-12', 'cuirassier', 'gun-crew-gunner', 'gun-crew-loader', 'gun-crew-rammer', 'gun-crew-sponger', 'line-infantry'],
     );
   });
 
