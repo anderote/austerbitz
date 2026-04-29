@@ -83,6 +83,19 @@ export function tickProjectiles(
 
     const kind = p.kind[i]! as ProjectileKind;
 
+    // Spent solid shot: planted on the ground with no velocity. Skip all
+    // simulation (gravity, collision, life decay) so the ball just sits
+    // there for the rest of the session, still rendered by projectile-pass.
+    if (
+      kind === ProjectileKind.SolidShot
+      && p.posZ[i]! === 0
+      && p.velX[i]! === 0
+      && p.velY[i]! === 0
+      && p.velZ[i]! === 0
+    ) {
+      continue;
+    }
+
     // 1. Snapshot prev pos and write it back into the SoA for renderers/tests.
     const pX0 = p.posX[i]!;
     const pY0 = p.posY[i]!;
@@ -201,7 +214,11 @@ export function tickProjectiles(
       const vyR = p.velY[i]!;
       const speedSq = vxR * vxR + vyR * vyR;
       if (speedSq < ROLL_STOP_SPEED_SQ) {
-        freeProjectile(p, i);
+        // Plant the ball at rest. Next tick the early-out skip kicks in
+        // and the ball just sits there visually until the user resets.
+        p.velX[i] = 0;
+        p.velY[i] = 0;
+        p.velZ[i] = 0;
         continue;
       }
     }
@@ -303,9 +320,13 @@ export function tickProjectiles(
       continue;
     }
 
-    // 9. Trail — solid shots and shells drop a smoke puff each tick.
+    // 9. Trail — solid shots and shells drop an occasional wispy puff. Most
+    // of the smoke comes from the muzzle spray at fire time; the trail just
+    // adds a faint thread along the arc, not a continuous plume.
     if (kind === ProjectileKind.SolidShot || kind === ProjectileKind.Shell) {
-      emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, p.posX[i]!, p.posY[i]!, 0, 0, rng);
+      if (rng.next() < 0.12) {
+        emitPuff(puffs, CANNONBALL_TRAIL, CANNONBALL_TRAIL_INDEX, p.posX[i]!, p.posY[i]!, 0, 0, rng);
+      }
     }
   }
 }

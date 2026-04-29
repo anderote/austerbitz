@@ -519,8 +519,8 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (selection.ids.size === 0) return;
       // Z/X/C/V are overloaded: fire-stance for infantry, ammo-load for
-      // cannons. If the selection contains any artillery, the cannon-block
-      // below handles it; skip stance assignment so we don't double-act.
+      // cannons. If the selection contains any artillery, route to ammo
+      // (V is unused for ammo). Otherwise route to stance.
       const ents = world.entities;
       let hasArtillery = false;
       for (const id of selection.ids) {
@@ -530,7 +530,20 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
           break;
         }
       }
-      if (hasArtillery) return;
+      if (hasArtillery) {
+        const ammo = e.code === 'KeyZ' ? 0
+                   : e.code === 'KeyX' ? 1
+                   : e.code === 'KeyC' ? 2
+                   : -1;
+        if (ammo >= 0) {
+          for (const id of selection.ids) {
+            if (ents.alive[id] !== 1) continue;
+            if (getUnitKindByIndex(ents.kindId[id]!).category !== 'artillery') continue;
+            ents.cannonAmmo[id] = ammo;
+          }
+        }
+        return;
+      }
       const stance = e.code === 'KeyZ' ? FireStance.AtWill
                    : e.code === 'KeyX' ? FireStance.Volley
                    : e.code === 'KeyC' ? FireStance.ByRanks
@@ -625,20 +638,6 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
           return;
         }
       }
-    }
-
-    // Ammo selection: Z=solid, X=shell, C=canister
-    if (e.code === 'KeyZ') {
-      eachSelectedCannon((id) => { world.entities.cannonAmmo[id] = 0; });
-      return;
-    }
-    if (e.code === 'KeyX') {
-      eachSelectedCannon((id) => { world.entities.cannonAmmo[id] = 1; });
-      return;
-    }
-    if (e.code === 'KeyC') {
-      eachSelectedCannon((id) => { world.entities.cannonAmmo[id] = 2; });
-      return;
     }
 
     // Arrow keys for aim: held state tracked, update applied in update()

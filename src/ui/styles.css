@@ -720,6 +720,7 @@
   gap: 6px;
   padding: 8px 10px;
   border-radius: 6px;
+  pointer-events: none;
 }
 #ui-root .cannon-ammo-slot {
   display: flex;

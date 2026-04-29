@@ -18,6 +18,7 @@ import { createProjectiles } from '../sim/projectiles';
 import { createSelection, createDragRect, createFormationDrag, createControlGroups } from '../input/selection';
 import { createSelectionController } from '../input/selection-controller';
 import { createOverlay } from '../ui/overlay';
+import { createCannonAmmoPanel } from '../ui/cannon-ammo-panel';
 import { movementSystem } from '../sim/systems/movement-system';
 import { facingSystem } from '../sim/systems/facing-system';
 import { createCombatSystem } from '../sim/systems/combat-system';
@@ -115,6 +116,7 @@ async function start(): Promise<void> {
     canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
     particles, projectiles, puffs,
   });
+  const cannonAmmoPanel = createCannonAmmoPanel(overlay);
 
   // Spawn the initial scene.
   spawnCannons(world.entities, 0);
@@ -243,6 +245,8 @@ async function start(): Promise<void> {
       world, projectiles, puffs, particles, camera, selection, drag, formationPreview,
       { showHealthBars: false, showMovePreview: false }, dt,
     );
+
+    cannonAmmoPanel.update(world, selection);
 
     hud.setCounters({
       fps: smoothedFps,
