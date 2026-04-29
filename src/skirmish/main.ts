@@ -41,8 +41,10 @@ import { createGroupBadges } from '../ui/group-badges';
 import { createPlacementInfo } from '../ui/placement-info';
 import { createMovePreview } from '../ui/move-preview';
 import { createMusicPlayer } from '../ui/music-player';
+import { createScenarioBar } from '../ui/scenario-bar';
 import { createPerfPanel } from '../ui/perf-panel';
 import { createParticles, updateParticles } from '../particles/particles';
+import { createDamageTexts, updateDamageTexts } from '../fx/damage-texts/damage-texts';
 import { createPuffs, updatePuffs } from '../puffs/puffs';
 import { coalesceStep } from '../puffs/coalesce';
 import { getProfileByIndex } from '../puffs/profile';
@@ -52,7 +54,7 @@ import { tickAmbientClouds, type AmbientCloudConfig } from '../puffs/ambient-clo
 import { createProjectiles } from '../sim/projectiles';
 import { clearBloodSplats } from '../sim/blood-splats';
 import { clearSfxRequests } from '../sim/sfx-requests';
-import { initSfx, playSfx } from '../audio/sfx';
+import { initSfx, playSfx, setSfxMuted } from '../audio/sfx';
 import { loadPoseAtlas } from '../render/poses/atlas';
 import { loadDebrisAtlas } from '../render/debris-atlas';
 import { loadKits } from '../render/poses/kit-loader';
@@ -121,6 +123,10 @@ async function start(): Promise<void> {
   };
   const particles = createParticles(PARTICLE_CAPACITY);
   const puffs = createPuffs(PUFF_CAPACITY);
+  // Floating damage numbers — short-lived (~0.7 s), so 256 slots is plenty
+  // even at 100+ hits/s. Owned outside the sim (parallel to `particles` /
+  // `puffs`); jitter is deterministic, so this doesn't perturb sim RNG.
+  const damageTexts = createDamageTexts(256);
   const windState = createWindState();
   const projectiles = createProjectiles(PROJECTILE_CAPACITY);
   const fireOrders: FireOrders = new Map();
@@ -128,8 +134,8 @@ async function start(): Promise<void> {
   const stateSystem: System = (w, dt) =>
     tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
   const projectileSystem: System = (w, dt) => {
-    tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.shockwaves, w.debris, dt, w.bloodSplats, w.shakeRequests, w.craterSplats, w.sfxRequests);
-    updateShockwaves(w.shockwaves, w.entities, w.grid, particles, w.rng, w.bloodSplats, w.debris, dt);
+    tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.shockwaves, w.debris, dt, w.bloodSplats, w.shakeRequests, w.craterSplats, w.sfxRequests, damageTexts);
+    updateShockwaves(w.shockwaves, w.entities, w.grid, particles, w.rng, w.bloodSplats, w.debris, dt, damageTexts);
   };
   const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
   const debrisSystem: System = (w, dt) => tickDebris(w.debris, dt);
@@ -174,8 +180,11 @@ async function start(): Promise<void> {
   const groupBadges = createGroupBadges(overlay);
   const placementInfo = createPlacementInfo(overlay);
   const movePreview = createMovePreview(overlay);
-  createMusicPlayer(overlay);
   const perfPanel = createPerfPanel(overlay, input);
+
+  let paused = false;
+  let showHealthBarsOverride = false;
+  // resetScene + scenarioBar are wired below once resetScene is defined.
 
   const controller = createSelectionController({
     canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
@@ -211,6 +220,15 @@ async function start(): Promise<void> {
     pf.count = 0;
   }
 
+  function clearDamageTexts(): void {
+    for (let i = 0; i < damageTexts.capacity; i++) {
+      damageTexts.alive[i] = 0;
+      damageTexts.aliveIdx[i] = -1;
+    }
+    damageTexts.count = 0;
+    damageTexts.cursor = 0;
+  }
+
   function resetScene(): void {
     const e = world.entities;
     for (let i = 0; i < e.capacity; i++) {
@@ -219,6 +237,7 @@ async function start(): Promise<void> {
     clearProjectiles();
     clearParticles();
     clearPuffs();
+    clearDamageTexts();
     fireOrders.clear();
     world.marchGroups.clear();
     world.orderQueue.clear();
@@ -239,6 +258,22 @@ async function start(): Promise<void> {
   }
 
   const hud = createSkirmishHud({ reset: resetScene });
+
+  const scenarioBar = createScenarioBar(overlay, {
+    scenarioId: 'skirmish',
+    scenarios: [
+      { id: 'line-battles', label: 'Line Battles', url: 'line-battles.html' },
+      { id: 'skirmish', label: 'Skirmish Defense', url: 'skirmish.html' },
+    ],
+    options: { canShowHealthBars: true, canPause: true, canReset: true },
+    callbacks: {
+      onShowHealthBarsToggle: (on) => { showHealthBarsOverride = on; },
+      onSoundToggle: (m) => setSfxMuted(m),
+      onPauseToggle: (p) => { paused = p; },
+      onReset: () => resetScene(),
+    },
+  });
+  createMusicPlayer(scenarioBar.musicSlot);
 
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -273,19 +308,23 @@ async function start(): Promise<void> {
     cameraControls.update(dt);
     controller.update(dt);
 
-    profiler.time('sim/tickWorld', () => tickWorld(world, dt));
-    tickSpawner(spawnerState, world, dt);
-    tickKillCounter(world, counters);
-    tickDespawn(world, counters);
+    const shouldTick = !paused;
+    if (shouldTick) {
+      profiler.time('sim/tickWorld', () => tickWorld(world, dt));
+      tickSpawner(spawnerState, world, dt);
+      tickKillCounter(world, counters);
+      tickDespawn(world, counters);
+    }
 
     profiler.time('puffs/emitDust', () => emitDustForFrame(world, puffs, dt));
     profiler.time('puffs/ambient', () => tickAmbientClouds(puffs, cloudCfg, dt, world.rng));
-    profiler.time('puffs/update', () => updatePuffs(puffs, dt));
+    if (shouldTick) profiler.time('puffs/update', () => updatePuffs(puffs, dt));
     tickWind(windState, simElapsed, world.rng);
     const wind = windAt(windState, simElapsed);
-    profiler.time('puffs/wind', () => applyWindToPuffs(puffs, wind.x, wind.y, dt));
-    profiler.time('puffs/coalesce', () => coalesceStep(puffs, dt, world.rng, getProfileByIndex));
-    profiler.time('particles/update', () => updateParticles(particles, dt, world.bloodSplats));
+    if (shouldTick) profiler.time('puffs/wind', () => applyWindToPuffs(puffs, wind.x, wind.y, dt));
+    if (shouldTick) profiler.time('puffs/coalesce', () => coalesceStep(puffs, dt, world.rng, getProfileByIndex));
+    if (shouldTick) profiler.time('particles/update', () => updateParticles(particles, dt, world.bloodSplats));
+    if (shouldTick) profiler.time('damage-texts/update', () => updateDamageTexts(damageTexts, dt));
 
     // Drain blood splats.
     profiler.begin('blood/drain');
@@ -303,17 +342,19 @@ async function start(): Promise<void> {
     }
     clearSfxRequests(sfx);
 
-    const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+    const altHeld = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+    const showHealthBars = altHeld || showHealthBarsOverride;
     const showMovePreview = input.state.keys.has('Space');
     const formationPreview = controller.formationPreview();
     profiler.time('render/all', () => {
-      renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview }, dt);
+      renderer.render(world, projectiles, puffs, particles, damageTexts, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview }, dt);
     });
 
     placementInfo.update(world, camera, selection, formationPreview);
     movePreview.update(camera);
     selPanel.update(world, selection);
     statsCard.update(world, selection);
+    scenarioBar.update(world);
     fcPanel.update(selection, controller.formationParams, computeStanceSummary(selection, world.entities));
     groupBadges.update(world, camera, selection, controlGroups);
 

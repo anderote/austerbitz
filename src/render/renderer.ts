@@ -8,6 +8,7 @@ import { createParticlePass } from './passes/particle-pass';
 import { createRingPass, type RingPass } from './passes/ring-pass';
 import { createProjectilePass } from './passes/projectile-pass';
 import { createHealthBarPass } from './passes/health-bar-pass';
+import { createDamageTextPass } from './passes/damage-text-pass';
 import { createBloodStainPass, type BloodStainPass } from './passes/blood-stain-pass';
 import { createCraterStainPass, type CraterStainPass } from './passes/crater-stain-pass';
 import { createPuffPass } from './passes/puff-pass';
@@ -20,6 +21,7 @@ import type { Selection, DragRect, FormationPreview } from '../input/selection';
 import { ParticleClass, type Particles } from '../particles/particles';
 import type { Projectiles } from '../sim/projectiles';
 import type { Puffs } from '../puffs/puffs';
+import type { DamageTexts } from '../fx/damage-texts/damage-texts';
 import { PLAYER_TEAM } from '../sim/player';
 import type { PoseAtlas } from './poses/atlas';
 import type { KitConfig } from './poses/kit-loader';
@@ -61,6 +63,7 @@ export interface Renderer {
     projectiles: Projectiles,
     puffs: Puffs,
     particles: Particles,
+    damageTexts: DamageTexts,
     cam: Camera,
     sel: Selection,
     drag: DragRect,
@@ -136,6 +139,10 @@ export function createRenderer(
   const grassTuftsPass: GrassTuftsPass | null = map ? createGrassTuftsPass(gl, map) : null;
   const treesPass: TreesPass | null = map ? createTreesPass(gl, map) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
+  // Damage-text pool capacity is fixed in main.ts at 256; pass a matching
+  // instance-buffer capacity so a fully-saturated pool of 3-digit values
+  // (256 * 3 = 768 instances) renders without truncation.
+  const damageTextPass = createDamageTextPass(gl, 256);
   const trajectoryPreviewPass = createTrajectoryPreviewPass(gl);
 
   // Camera shake state — owned by the renderer, invisible to the sim.
@@ -163,7 +170,7 @@ export function createRenderer(
     replaceSpriteAtlas(image) {
       sprites.replaceAtlasTexture(image);
     },
-    render(world, projectiles, puffs, particlePool, cam, sel, drag, formation, opts, frameDt) {
+    render(world, projectiles, puffs, particlePool, damageTexts, cam, sel, drag, formation, opts, frameDt) {
       // Drain camera-shake requests from the sim. Attenuate by camera distance
       // (30 m reference distance) so far-away explosions cause less shake.
       const sr = world.shakeRequests;
@@ -227,6 +234,12 @@ export function createRenderer(
       profiler.begin('render/puffs'); puffsPass.draw(puffs, cam); profiler.end('render/puffs');
       profiler.begin('render/particles'); particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK); profiler.end('render/particles');
       profiler.begin('render/rings'); ringPass.draw(particlePool, cam); profiler.end('render/rings');
+
+      // Floating damage numbers — drawn over all in-world FX, before the
+      // (much larger) trajectory-preview overlays.
+      profiler.begin('render/damage-texts');
+      damageTextPass.draw(damageTexts, cam);
+      profiler.end('render/damage-texts');
 
       // Trajectory preview for selected cannons (white dashed arc, no canister).
       profiler.begin('render/trajectory-preview');

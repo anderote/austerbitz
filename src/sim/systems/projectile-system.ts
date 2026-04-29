@@ -10,6 +10,7 @@ import type { Shockwaves } from '../../fx/shockwaves';
 import type { ShakeRequests } from '../shake-requests';
 import type { CraterSplats } from '../crater-splats';
 import { pushSfxRequest, type SfxRequests } from '../sfx-requests';
+import type { DamageTexts } from '../../fx/damage-texts/damage-texts';
 import {
   emitImpactDust,
   emitRicochetBurst,
@@ -76,6 +77,7 @@ export function tickProjectiles(
   shakeRequests?: ShakeRequests,
   craterSplats?: CraterSplats,
   sfxRequests?: SfxRequests,
+  damageTexts?: DamageTexts,
 ): void {
   const p = projectiles;
   for (let i = 0; i < p.capacity; i++) {
@@ -291,7 +293,7 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!);
+        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!, damageTexts);
 
         if (kind === ProjectileKind.Musket) {
           freeProjectile(p, i);

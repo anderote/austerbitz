@@ -3,8 +3,14 @@ import { MANIFEST } from './manifest';
 let ctx: AudioContext | null = null;
 const buffers = new Map<string, AudioBuffer | null>();
 let loadStarted = false;
+let muted = false;
 
 export interface SfxCamera { center: { x: number; y: number } }
+
+/** Toggle global SFX mute. When muted, `playSfx` is a no-op. */
+export function setSfxMuted(v: boolean): void {
+  muted = v;
+}
 
 /**
  * Lazy-initialize the AudioContext (must be called from a user gesture
@@ -40,6 +46,7 @@ async function loadOne(name: string, url: string): Promise<void> {
  * named clip is missing/failed-to-load.
  */
 export function playSfx(name: string, x: number, y: number, camera: SfxCamera): void {
+  if (muted) return;
   if (!ctx) return;
   const buf = buffers.get(name);
   if (!buf) return;

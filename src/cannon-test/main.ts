@@ -11,6 +11,7 @@ import { createCameraControls } from '../input/camera-controls';
 import { createWorld, rebuildGrid } from '../sim/world';
 import { createParticles, updateParticles } from '../particles/particles';
 import { createPuffs, updatePuffs } from '../puffs/puffs';
+import { createDamageTexts, updateDamageTexts } from '../fx/damage-texts/damage-texts';
 import { coalesceStep } from '../puffs/coalesce';
 import { getProfileByIndex } from '../puffs/profile';
 import { tickAmbientClouds, type AmbientCloudConfig } from '../puffs/ambient-clouds';
@@ -85,6 +86,7 @@ async function start(): Promise<void> {
 
   const particles = createParticles(PARTICLE_CAPACITY);
   const puffs = createPuffs(PUFF_CAPACITY);
+  const damageTexts = createDamageTexts(256);
   const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 
   const fireOrders: FireOrders = new Map();
@@ -206,8 +208,8 @@ async function start(): Promise<void> {
       facingSystem(world, dt);
       combatSystem(world, dt);
       tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
-      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests);
-      updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt);
+      tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests, damageTexts);
+      updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt, damageTexts);
       tickRagdoll(world.entities, dt);
       tickDebris(world.debris, dt, puffs, world.rng);
       deathDropsSystem(world, dt);
@@ -216,6 +218,7 @@ async function start(): Promise<void> {
       updatePuffs(puffs, dt);
       coalesceStep(puffs, dt, world.rng, getProfileByIndex);
       updateParticles(particles, dt, world.bloodSplats);
+      updateDamageTexts(damageTexts, dt);
 
       // Drain blood splats.
       const bs = world.bloodSplats;
@@ -242,7 +245,7 @@ async function start(): Promise<void> {
 
     const formationPreview = controller.formationPreview();
     renderer.render(
-      world, projectiles, puffs, particles, camera, selection, drag, formationPreview,
+      world, projectiles, puffs, particles, damageTexts, camera, selection, drag, formationPreview,
       { showHealthBars: false, showMovePreview: false }, dt,
     );
 

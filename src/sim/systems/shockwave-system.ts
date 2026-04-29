@@ -6,6 +6,7 @@ import type { BloodSplats } from '../blood-splats';
 import type { Debris } from '../debris';
 import { type Shockwaves, freeShockwave, isHit, setHit } from '../../fx/shockwaves';
 import { applyHit, gibCorpse } from './combat-events';
+import type { DamageTexts } from '../../fx/damage-texts/damage-texts';
 
 const SCRATCH = new Int32Array(2048);
 
@@ -22,6 +23,7 @@ export function updateShockwaves(
   splats: BloodSplats | undefined,
   debris: Debris,
   dt: number,
+  damageTexts?: DamageTexts,
 ): void {
   for (let w = 0; w < sw.capacity; w++) {
     if (sw.alive[w] === 0) continue;
@@ -85,6 +87,7 @@ export function updateShockwaves(
         splats,
         debris,
         attackerId,
+        damageTexts,
       );
     }
 

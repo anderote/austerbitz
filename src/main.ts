@@ -31,8 +31,8 @@ import { createHud } from './ui/hud';
 import { createSelectionPanel } from './ui/selection-panel';
 import { createCannonAmmoPanel } from './ui/cannon-ammo-panel';
 import { createStatsCard } from './ui/stats-card';
-import { createBuildMenu } from './ui/build-menu';
 import { createScaleBar } from './ui/scale-bar';
+import { createScenarioBar } from './ui/scenario-bar';
 import { createWindIndicator } from './ui/wind-indicator';
 import { createMinimap } from './ui/minimap';
 import { createControlGroupsPanel } from './ui/control-groups-panel';
@@ -42,6 +42,7 @@ import { createPlacementInfo } from './ui/placement-info';
 import { createMovePreview } from './ui/move-preview';
 import { createMusicPlayer } from './ui/music-player';
 import { createParticles, updateParticles } from './particles/particles';
+import { createDamageTexts, updateDamageTexts } from './fx/damage-texts/damage-texts';
 import { createPuffs, updatePuffs } from './puffs/puffs';
 import { coalesceStep } from './puffs/coalesce';
 import { getProfileByIndex } from './puffs/profile';
@@ -51,7 +52,7 @@ import { tickAmbientClouds, type AmbientCloudConfig } from './puffs/ambient-clou
 import { createProjectiles } from './sim/projectiles';
 import { clearBloodSplats } from './sim/blood-splats';
 import { clearSfxRequests } from './sim/sfx-requests';
-import { initSfx, playSfx } from './audio/sfx';
+import { initSfx, playSfx, setSfxMuted } from './audio/sfx';
 import { loadPoseAtlas } from './render/poses/atlas';
 import { loadDebrisAtlas } from './render/debris-atlas';
 import { loadKits } from './render/poses/kit-loader';
@@ -140,6 +141,7 @@ const cloudCfg: AmbientCloudConfig = {
 };
 const particles = createParticles(PARTICLE_CAPACITY);
 const puffs = createPuffs(PUFF_CAPACITY);
+const damageTexts = createDamageTexts(256);
 const windState = createWindState();
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 const fireOrders: FireOrders = new Map();
@@ -147,8 +149,8 @@ const combatSystem = createCombatSystem(fireOrders);
 const stateSystem: System = (w, dt) =>
   tickStates(w.entities, projectiles, particles, puffs, w.rng, fireOrders, dt, w.tickCount, w.fireSignal, w.grid);
 const projectileSystem: System = (w, dt) => {
-  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.shockwaves, w.debris, dt, w.bloodSplats, w.shakeRequests, w.craterSplats, w.sfxRequests);
-  updateShockwaves(w.shockwaves, w.entities, w.grid, particles, w.rng, w.bloodSplats, w.debris, dt);
+  tickProjectiles(projectiles, w.entities, w.grid, puffs, particles, w.rng, w.shockwaves, w.debris, dt, w.bloodSplats, w.shakeRequests, w.craterSplats, w.sfxRequests, damageTexts);
+  updateShockwaves(w.shockwaves, w.entities, w.grid, particles, w.rng, w.bloodSplats, w.debris, dt, damageTexts);
 };
 const ragdollSystem: System = (w, dt) => tickRagdoll(w.entities, dt);
 const debrisSystem: System = (w, dt) => tickDebris(w.debris, dt);
@@ -333,11 +335,23 @@ camera.center.y = cy;
 camera.zoom = 12;
 
 const overlay = createOverlay();
+let showHealthBarsOverride = false;
+const scenarioBar = createScenarioBar(overlay, {
+  scenarioId: 'line-battles',
+  scenarios: [
+    { id: 'line-battles', label: 'Line Battles', url: 'line-battles.html' },
+    { id: 'skirmish', label: 'Skirmish Defense', url: 'skirmish.html' },
+  ],
+  options: { canShowHealthBars: true, canPause: false, canReset: false },
+  callbacks: {
+    onShowHealthBarsToggle: (on) => { showHealthBarsOverride = on; },
+    onSoundToggle: (m) => setSfxMuted(m),
+  },
+});
 const hud = createHud(overlay);
 const selPanel = createSelectionPanel(overlay);
 const cannonAmmoPanel = createCannonAmmoPanel(overlay);
 const statsCard = createStatsCard(overlay);
-const buildMenu = createBuildMenu(overlay);
 const scaleBar = createScaleBar(overlay);
 const windIndicator = createWindIndicator(overlay);
 const minimap = createMinimap(overlay, map.size, camera);
@@ -346,7 +360,7 @@ const fcPanel = createFormationControlsPanel(overlay);
 const groupBadges = createGroupBadges(overlay);
 const placementInfo = createPlacementInfo(overlay);
 const movePreview = createMovePreview(overlay);
-createMusicPlayer(overlay);
+createMusicPlayer(scenarioBar.musicSlot);
 const perfPanel = createPerfPanel(overlay, input);
 
 const controller = createSelectionController({
@@ -388,6 +402,7 @@ function frame(t: number) {
   windIndicator.update(wind.x, wind.y);
   profiler.time('puffs/coalesce', () => coalesceStep(puffs, dt, world.rng, getProfileByIndex));
   profiler.time('particles/update', () => updateParticles(particles, dt, world.bloodSplats));
+  profiler.time('damage-texts/update', () => updateDamageTexts(damageTexts, dt));
   // Drain sim-queued blood splats into the GPU stain pass.
   profiler.begin('blood/drain');
   const bs = world.bloodSplats;
@@ -402,11 +417,12 @@ function frame(t: number) {
     playSfx(sfx.name[i]!, sfx.x[i]!, sfx.y[i]!, camera);
   }
   clearSfxRequests(sfx);
-  const showHealthBars = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+  const altHeld = input.state.keys.has('AltLeft') || input.state.keys.has('AltRight');
+  const showHealthBars = altHeld || showHealthBarsOverride;
   const showMovePreview = input.state.keys.has('Space');
   const formationPreview = controller.formationPreview();
   profiler.time('render/all', () => {
-    renderer.render(world, projectiles, puffs, particles, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview }, dt);
+    renderer.render(world, projectiles, puffs, particles, damageTexts, camera, selection, drag, formationPreview, { showHealthBars, showMovePreview }, dt);
   });
   hud.update(smoothedFps, world, controller.cursorMode);
   placementInfo.update(world, camera, selection, formationPreview);
@@ -414,7 +430,7 @@ function frame(t: number) {
   selPanel.update(world, selection);
   cannonAmmoPanel.update(world, selection);
   statsCard.update(world, selection);
-  buildMenu.update();
+  scenarioBar.update(world);
   scaleBar.update(camera);
   minimap.update(world, camera);
   cgPanel.update(world, controlGroups);

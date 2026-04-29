@@ -8,6 +8,7 @@ import type { Debris } from '../debris';
 import { spawnGibs } from './debris-emit';
 import { EMPTY_KIT_GIB_TABLE, type KitGibTable } from '../kit-gib-table';
 import { effectiveArmor, promote } from '../veterancy';
+import { spawnDamageText, type DamageTexts } from '../../fx/damage-texts/damage-texts';
 
 /**
  * Module-level pointer to the per-kit gib lookup. Built once at world bootstrap
@@ -83,8 +84,13 @@ export function enterDying(e: Entities, id: number): void {
  * updateParticles in particles.ts). Direction (impX, impY) is forwarded to
  * spawnBlood so the spray cones forward along the projectile's travel.
  *
- * The trailing `splats` parameter is unused; it's retained for call-site
- * compatibility (projectile-system / explosion still pass it through).
+ * The `_splats` parameter is unused; it's retained for call-site compatibility
+ * (projectile-system / explosion still pass it through).
+ *
+ * The trailing `damageTexts` parameter is purely visual — when provided, a
+ * floating damage number is spawned above the victim. Tests / lab harnesses
+ * may pass `undefined` to skip the spawn; the sim-side behaviour is identical
+ * either way.
  */
 export function applyHit(
   e: Entities,
@@ -99,6 +105,7 @@ export function applyHit(
   _splats: BloodSplats | undefined,
   debris: Debris,
   attackerId: number,
+  damageTexts?: DamageTexts,
 ): void {
   if (e.alive[id] === 0) return;
   if (isDead(e, id)) return;
@@ -106,6 +113,16 @@ export function applyHit(
   const unitKind = getUnitKindByIndex(e.kindId[id]!);
   const effArmor = effectiveArmor(e, id, unitKind.baseStats.armor);
   const effDmg = Math.max(1, dmg - effArmor);
+
+  // Visual: floating damage number above the victim. Skipped when no pool
+  // was supplied (tests, lab harness). No effect on sim state.
+  // World Y is screen-down (see camera.ts), so "above the head" subtracts.
+  if (damageTexts !== undefined) {
+    const px0 = e.posX[id]!;
+    const py0 = e.posY[id]!;
+    const above = py0 - unitKind.placeholderSize.h * 0.5 - 0.3;
+    spawnDamageText(damageTexts, px0, above, effDmg);
+  }
 
   // Attacker-validity guard — computed once and reused for damage credit
   // (every hit) and kill / XP credit (lethal only).

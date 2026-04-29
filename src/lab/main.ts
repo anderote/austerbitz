@@ -6,6 +6,7 @@ import { createCameraControls } from '../input/camera-controls';
 import { createWorld, rebuildGrid } from '../sim/world';
 import { createParticles, updateParticles } from '../particles/particles';
 import { createPuffs, updatePuffs } from '../puffs/puffs';
+import { createDamageTexts, updateDamageTexts } from '../fx/damage-texts/damage-texts';
 import { coalesceStep } from '../puffs/coalesce';
 import { getProfileByIndex } from '../puffs/profile';
 import { tickAmbientClouds, type AmbientCloudConfig } from '../puffs/ambient-clouds';
@@ -99,6 +100,7 @@ const cloudCfg: AmbientCloudConfig = {
 };
 const particles = createParticles(PARTICLE_CAPACITY);
 const puffs = createPuffs(PUFF_CAPACITY);
+const damageTexts = createDamageTexts(256);
 const projectiles = createProjectiles(PROJECTILE_CAPACITY);
 
 // Camera bounds: lab is small, anchored around origin. Map size is 200, but we
@@ -185,8 +187,8 @@ function frame(t: number) {
   movementSystem(world, dt);
   facingSystem(world, dt);
   tickStates(world.entities, projectiles, particles, puffs, world.rng, fireOrders, dt, world.tickCount, world.fireSignal, world.grid);
-  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests);
-  updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt);
+  tickProjectiles(projectiles, world.entities, world.grid, puffs, particles, world.rng, world.shockwaves, world.debris, dt, world.bloodSplats, world.shakeRequests, world.craterSplats, world.sfxRequests, damageTexts);
+  updateShockwaves(world.shockwaves, world.entities, world.grid, particles, world.rng, world.bloodSplats, world.debris, dt, damageTexts);
   tickRagdoll(world.entities, dt);
   tickDebris(world.debris, dt, puffs, world.rng);
   deathDropsSystem(world, dt);
@@ -206,6 +208,7 @@ function frame(t: number) {
   updatePuffs(puffs, dt);
   coalesceStep(puffs, dt, world.rng, getProfileByIndex);
   updateParticles(particles, dt, world.bloodSplats);
+  updateDamageTexts(damageTexts, dt);
 
   // Drain sim-queued blood splats into the GPU stain pass.
   const bs = world.bloodSplats;
@@ -220,7 +223,7 @@ function frame(t: number) {
   }
   clearSfxRequests(sfx);
 
-  renderer.render(world, projectiles, puffs, particles, camera, selection, drag, null, { showHealthBars: false, showMovePreview: false }, dt);
+  renderer.render(world, projectiles, puffs, particles, damageTexts, camera, selection, drag, null, { showHealthBars: false, showMovePreview: false }, dt);
 
   ui.update({
     fps: smoothedFps,
