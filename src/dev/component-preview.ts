@@ -137,6 +137,7 @@ const btnMirror = document.getElementById('btn-mirror') as HTMLButtonElement | n
 const btnRotate = document.getElementById('btn-rotate') as HTMLButtonElement | null;
 const btnDeleteVariant = document.getElementById('btn-delete-variant') as HTMLButtonElement | null;
 const btnSaveKit = document.getElementById('btn-save-kit') as HTMLButtonElement | null;
+const btnSaveVariant = document.getElementById('btn-save-variant') as HTMLButtonElement | null;
 const toastEl = document.getElementById('toast');
 
 const componentsById = new Map<string, ComponentEntry>();
@@ -727,10 +728,34 @@ function refreshVariantsStrip(): void {
   variantsStrip.setContent(layers, layerPrefix, currentVariants(), selectedVariantIdx);
 }
 
+function currentWeaponLayerId(): string | null {
+  if (!currentKitId) return null;
+  const kit = kitsById.get(currentKitId);
+  const layerPrefix = kit?.weapon?.layerPrefix;
+  if (!layerPrefix) return null;
+  const v = getSelectedVariant();
+  const src = v?.src ?? currentFacing;
+  return `${layerPrefix}-${facingToSuffix(src)}`;
+}
+
 function refreshPaintLayers(): void {
   if (!paintTool) return;
   const layerIds = layersForFacing(currentFacing).map((e) => e.id);
-  paintTool.setActiveLayers(layerIds);
+  const weaponLayerId = currentWeaponLayerId();
+  const preferred = weaponLayerId && layerIds.includes(weaponLayerId) ? weaponLayerId : null;
+  paintTool.setActiveLayers(layerIds, preferred);
+  updateLayerToolEnabled();
+}
+
+function updateLayerToolEnabled(): void {
+  const weaponId = currentWeaponLayerId();
+  const active = paintTool?.state.activeLayer ?? null;
+  const isWeaponLayer = weaponId !== null && active === weaponId;
+  const panel = document.getElementById('weapon-edit-strip');
+  if (panel) panel.classList.toggle('disabled', !isWeaponLayer);
+  if (btnMirror) btnMirror.disabled = !isWeaponLayer;
+  if (btnRotate) btnRotate.disabled = !isWeaponLayer;
+  if (btnDeleteVariant) btnDeleteVariant.disabled = !isWeaponLayer;
 }
 
 /**
@@ -1145,23 +1170,30 @@ function initEvents() {
     void renderPreview();
   });
 
-  btnSaveKit?.addEventListener('click', () => {
+  const triggerSaveKit = (): void => {
     if (!currentKitId) return;
     const kit = kitsById.get(currentKitId);
     if (!kit) return;
     void saveKitToServer(kit);
-  });
+  };
+  btnSaveKit?.addEventListener('click', triggerSaveKit);
+  btnSaveVariant?.addEventListener('click', triggerSaveKit);
 
-  // Keyboard nudges — active only while a variant is selected, and not while
-  // focus is on a form control.
+  // Keyboard handling — nudges (arrows) require a selected weapon variant;
+  // 'S' triggers Save Variant. Both ignore form-control focus.
   document.addEventListener('keydown', (ev) => {
-    const v = getSelectedVariant();
-    if (!v) return;
     const target = ev.target as Element | null;
     if (target) {
       const tag = target.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     }
+    if ((ev.key === 's' || ev.key === 'S') && !ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+      ev.preventDefault();
+      triggerSaveKit();
+      return;
+    }
+    const v = getSelectedVariant();
+    if (!v) return;
     const step = ev.shiftKey ? 8 : 1;
     let handled = false;
     switch (ev.key) {
@@ -1305,6 +1337,7 @@ async function main() {
       refreshVariantsStrip();
       updateEditStrip();
       updateSourceGridHighlight();
+      refreshPaintLayers();
       void renderPreview();
     },
     onAddVariant: () => {
@@ -1315,6 +1348,7 @@ async function main() {
       list.push({ src: currentFacing, x: 0, y: 0, rot: 0 });
       selectedVariantIdx = list.length - 1;
       refreshVariantsStrip();
+      refreshPaintLayers();
       void renderPreview();
     },
   });
@@ -1323,6 +1357,7 @@ async function main() {
   paintTool = mountPaintTool({
     getTree: () => pixelEdits,
     onChange: () => void renderPreview(),
+    onLayerChange: () => updateLayerToolEnabled(),
     showToast,
   });
   refreshPaintLayers();

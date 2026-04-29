@@ -253,7 +253,73 @@
       }
       .composite-column {
         align-self: start;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
+      .save-variant-button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: #16a34a;
+        border: 1px solid #15803d;
+        color: #ffffff;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      .save-variant-button:hover { background: #15803d; }
+      .save-variant-button:disabled { opacity: 0.45; cursor: not-allowed; }
+      .save-variant-button .hotkey-hint {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 10px;
+        font-weight: 500;
+        padding: 2px 6px;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+        letter-spacing: 0;
+      }
+      .paint-layer-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        max-height: 220px;
+        overflow-y: auto;
+        background: #f6f3ec;
+        border: 1px solid #d8d3c5;
+        border-radius: 4px;
+        padding: 4px;
+      }
+      .paint-layer-item {
+        display: flex;
+        align-items: center;
+        padding: 5px 8px;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        cursor: pointer;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 11px;
+        color: #3f3a31;
+        text-align: left;
+      }
+      .paint-layer-item:hover { background: #ece7d8; }
+      .paint-layer-item.active {
+        background: #e0e9f7;
+        border-color: #2563eb;
+        color: #1f1d1a;
+      }
+      .paint-layer-item.is-weapon::after {
+        content: '⚔';
+        margin-left: auto;
+        color: #6b6452;
+        font-size: 11px;
+      }
+      .paint-layer-item.active.is-weapon::after { color: #2563eb; }
       .paint-tools-panel {
         background: #ffffff;
         border: 1px solid #d8d3c5;
@@ -408,9 +474,21 @@
         min-width: 76px;
       }
 
-      .weapon-edit-panel { min-width: 200px; }
-      #weapon-edit-strip {
-        display: flex; flex-direction: column; gap: 8px; font-size: 12px;
+      .weapon-edit-panel {
+        background: #ffffff;
+        border: 1px solid #d8d3c5;
+        border-radius: 6px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 12px;
+      }
+      .weapon-edit-panel.disabled { opacity: 0.55; }
+      .weapon-edit-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
       #weapon-edit-thumb {
         width: 40px; height: 40px;
@@ -418,14 +496,18 @@
         border: 1px solid #d8d3c5;
         border-radius: 4px;
         image-rendering: pixelated;
+        flex-shrink: 0;
       }
       #weapon-edit-stats {
         font-family: ui-monospace, Menlo, monospace;
         font-size: 11px; color: #3f3a31; line-height: 1.5;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 10px;
       }
       #weapon-edit-stats .stat-key { color: #978f7c; }
       #weapon-edit-strip .button-row {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;
       }
       #weapon-edit-strip button {
         padding: 6px 8px;
@@ -588,13 +670,39 @@
         </div>
 
         <div class="labeled-panel composite-column">
+          <button id="btn-save-variant" class="save-variant-button" type="button">
+            <span>Save Variant</span>
+            <span class="hotkey-hint">S</span>
+          </button>
           <h2>Composite</h2>
           <div class="preview-wrap composite">
             <canvas id="composite-preview-canvas" width="32" height="36"></canvas>
           </div>
+          <div class="weapon-edit-panel" id="weapon-edit-strip">
+            <h2>Layer Tools</h2>
+            <div class="weapon-edit-row">
+              <canvas id="weapon-edit-thumb" width="32" height="32"></canvas>
+              <div id="weapon-edit-stats">
+                <div><span class="stat-key">x:</span> <span id="stat-x">—</span></div>
+                <div><span class="stat-key">y:</span> <span id="stat-y">—</span></div>
+                <div><span class="stat-key">rot:</span> <span id="stat-rot">—</span></div>
+                <div><span class="stat-key">flipX:</span> <span id="stat-flipx">—</span></div>
+              </div>
+            </div>
+            <div class="button-row">
+              <button id="btn-mirror" type="button">Mirror</button>
+              <button id="btn-rotate" type="button">Rotate 90&deg;</button>
+              <button id="btn-delete-variant" type="button">Delete</button>
+            </div>
+            <div id="weapon-edit-help">
+              Arrow keys: nudge 1px &middot; Shift+Arrow: nudge 8px
+            </div>
+          </div>
         </div>
 
         <div class="paint-tools-panel" id="paint-tools-panel">
+          <h2>Layers</h2>
+          <div class="paint-layer-list" id="paint-layer-list"></div>
           <h2>Palette</h2>
           <div class="palette-rows">
             <div class="palette-row" id="palette-row-primary">
@@ -620,42 +728,20 @@
             <label><input type="radio" name="paint-mode" value="brush" checked> Brush</label>
             <label><input type="radio" name="paint-mode" value="erase"> Erase</label>
           </div>
-          <label class="paint-layer-row">
-            Layer
-            <select id="paint-layer-select"></select>
-          </label>
           <button id="btn-save-edits" class="primary" type="button">Save Edits</button>
         </div>
       </section>
 
-      <!-- BOTTOM: variants strip + weapon edit strip -->
+      <!-- BOTTOM: variants strip -->
       <section class="bottom-row">
         <div class="labeled-panel variants-panel">
           <h2>Variants</h2>
           <div class="variants-strip" id="variants-strip"></div>
         </div>
-        <div class="labeled-panel weapon-edit-panel">
-          <h2>Weapon Edit</h2>
-          <div id="weapon-edit-strip">
-            <canvas id="weapon-edit-thumb" width="32" height="32"></canvas>
-            <div id="weapon-edit-stats">
-              <div><span class="stat-key">x:</span> <span id="stat-x">—</span></div>
-              <div><span class="stat-key">y:</span> <span id="stat-y">—</span></div>
-              <div><span class="stat-key">rot:</span> <span id="stat-rot">—</span></div>
-              <div><span class="stat-key">flipX:</span> <span id="stat-flipx">—</span></div>
-            </div>
-            <div class="button-row">
-              <button id="btn-mirror" type="button">Mirror</button>
-              <button id="btn-rotate" type="button">Rotate 90&deg;</button>
-              <button id="btn-save-kit" class="primary" type="button">Save Kit</button>
-              <button id="btn-delete-variant" type="button">Delete</button>
-            </div>
-            <div id="weapon-edit-help">
-              Arrow keys: nudge 1px &middot; Shift+Arrow: nudge 8px
-            </div>
-          </div>
-        </div>
       </section>
+
+      <!-- Hidden legacy save-kit button: still wired to the save-kit handler so existing logic keeps working. -->
+      <button id="btn-save-kit" type="button" hidden></button>
 
       <div class="info-card" id="info-card"></div>
 

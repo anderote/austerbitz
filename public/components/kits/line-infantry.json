@@ -196,9 +196,9 @@
         ],
         "weapons": [
           {
-            "src": "NW",
-            "x": -1,
-            "y": 1,
+            "src": "N",
+            "x": -7,
+            "y": 0,
             "rot": 0
           }
         ]
@@ -1431,11 +1431,26 @@
   "weapon": {
     "layerPrefix": "musket-brown-bess"
   },
-  "gibTint": [240, 230, 210],
+  "gibTint": [
+    240,
+    230,
+    210
+  ],
   "gibChunks": {
-    "arm": ["arm-uniformed", "hand"],
-    "leg": ["leg-trousered", "boot"],
-    "misc": ["musket-stock", "cartridge-box", "epaulette", "finger"]
+    "arm": [
+      "arm-uniformed",
+      "hand"
+    ],
+    "leg": [
+      "leg-trousered",
+      "boot"
+    ],
+    "misc": [
+      "musket-stock",
+      "cartridge-box",
+      "epaulette",
+      "finger"
+    ]
   },
   "head": {
     "layerPrefix": "shako-standard",
