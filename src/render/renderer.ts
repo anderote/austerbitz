@@ -30,6 +30,16 @@ import { clearShakeRequests } from '../sim/shake-requests';
 import { clearCraterSplats } from '../sim/crater-splats';
 import { createRng } from '../util/rng';
 import { profiler } from '../dev/profiler';
+import { createTrajectoryPreviewPass, type TrajectoryPreviewPass } from './passes/trajectory-preview-pass';
+import { cannon12Solid } from '../data/weapons/cannon-12-solid';
+import { cannon12Shell } from '../data/weapons/cannon-12-shell';
+import { barrelTip } from '../fx/barrel';
+import { getUnitKindByIndex } from '../data/units';
+
+const GAME_GRAVITY = 18;
+const MAX_TRAJ_VERTS = 8192;
+const trajectoryScratchPos = new Float32Array(MAX_TRAJ_VERTS * 2);
+const trajectoryScratchCol = new Float32Array(MAX_TRAJ_VERTS * 3);
 
 const ABOVE_SOLDIER_MASK =
   (1 << ParticleClass.Dust) |
@@ -62,6 +72,7 @@ export interface Renderer {
   bloodStain: BloodStainPass;
   craterStain: CraterStainPass;
   ringPass: RingPass;
+  trajectoryPreview: TrajectoryPreviewPass;
   /**
    * Swap the sprite-pass atlas texture mid-session. Used by the dev-mode
    * live-reload watcher; production builds never call this.
@@ -125,6 +136,7 @@ export function createRenderer(
   const grassTuftsPass: GrassTuftsPass | null = map ? createGrassTuftsPass(gl, map) : null;
   const treesPass: TreesPass | null = map ? createTreesPass(gl, map) : null;
   const healthBarPass = createHealthBarPass(gl, capacity);
+  const trajectoryPreviewPass = createTrajectoryPreviewPass(gl);
 
   // Camera shake state — owned by the renderer, invisible to the sim.
   const cameraShake = createCameraShake();
@@ -144,6 +156,7 @@ export function createRenderer(
     bloodStain,
     craterStain,
     ringPass,
+    trajectoryPreview: trajectoryPreviewPass,
     resize() {
       resizeToDisplay(gl, canvas);
     },
@@ -214,6 +227,51 @@ export function createRenderer(
       profiler.begin('render/puffs'); puffsPass.draw(puffs, cam); profiler.end('render/puffs');
       profiler.begin('render/particles'); particlesPass.draw(particlePool, cam, ABOVE_SOLDIER_MASK); profiler.end('render/particles');
       profiler.begin('render/rings'); ringPass.draw(particlePool, cam); profiler.end('render/rings');
+
+      // Trajectory preview for selected cannons (white dashed arc, no canister).
+      profiler.begin('render/trajectory-preview');
+      {
+        const e = world.entities;
+        let v = 0;
+        const DASH = 0.6, GAP = 0.6, STEP = DASH + GAP;
+        for (const id of sel.ids) {
+          if (e.alive[id] !== 1) continue;
+          const kind = getUnitKindByIndex(e.kindId[id]!);
+          if (kind.category !== 'artillery') continue;
+          const ammo = e.cannonAmmo[id]!;
+          if (ammo === 2) continue; // canister: no preview
+          const profile = ammo === 0 ? cannon12Solid : cannon12Shell;
+          const tip = barrelTip(e, id);
+          const launchH = profile.projectile.launchHeight ?? 0;
+          const muz = profile.projectile.muzzleVelocity;
+          const aim = e.cannonElevationDeg[id]!;
+          const elev = aim * Math.PI / 180;
+          const vh = muz * Math.cos(elev);
+          const vv = muz * Math.sin(elev);
+          const tof = (vv + Math.sqrt(vv * vv + 2 * GAME_GRAVITY * launchH)) / GAME_GRAVITY;
+          const range = vh * tof;
+          if (range <= 0) continue;
+          for (let s = 0; s + DASH <= range && v + 2 <= MAX_TRAJ_VERTS; s += STEP) {
+            const t1 = (s / range) * tof;
+            const t2 = ((s + DASH) / range) * tof;
+            const z1 = Math.max(0, launchH + vv * t1 - 0.5 * GAME_GRAVITY * t1 * t1);
+            const z2 = Math.max(0, launchH + vv * t2 - 0.5 * GAME_GRAVITY * t2 * t2);
+            const x1 = tip.x + tip.dirX * s;
+            const y1 = tip.y + tip.dirY * s - z1;
+            const x2 = tip.x + tip.dirX * (s + DASH);
+            const y2 = tip.y + tip.dirY * (s + DASH) - z2;
+            trajectoryScratchPos[v * 2 + 0] = x1; trajectoryScratchPos[v * 2 + 1] = y1;
+            trajectoryScratchCol[v * 3 + 0] = 1; trajectoryScratchCol[v * 3 + 1] = 1; trajectoryScratchCol[v * 3 + 2] = 1;
+            v++;
+            trajectoryScratchPos[v * 2 + 0] = x2; trajectoryScratchPos[v * 2 + 1] = y2;
+            trajectoryScratchCol[v * 3 + 0] = 1; trajectoryScratchCol[v * 3 + 1] = 1; trajectoryScratchCol[v * 3 + 2] = 1;
+            v++;
+          }
+        }
+        if (v > 0) trajectoryPreviewPass.draw(cam, trajectoryScratchPos, trajectoryScratchCol, v);
+      }
+      profiler.end('render/trajectory-preview');
+
       profiler.begin('render/selection'); selectionPass.draw(world, cam, sel, drag, formation); profiler.end('render/selection');
       if (opts.showMovePreview) {
         profiler.begin('render/move-preview');

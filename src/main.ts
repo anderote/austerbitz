@@ -346,7 +346,7 @@ const perfPanel = createPerfPanel(overlay, input);
 
 const controller = createSelectionController({
   canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
-  particles, movePreview,
+  particles, movePreview, projectiles, puffs,
 });
 
 let lastT = performance.now();
