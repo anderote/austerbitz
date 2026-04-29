@@ -113,7 +113,7 @@ async function start(): Promise<void> {
   const overlay = createOverlay();
   const controller = createSelectionController({
     canvas, overlayRoot: overlay, camera, world, selection, drag, formationDrag, controlGroups,
-    particles,
+    particles, projectiles, puffs,
   });
 
   // Spawn the initial scene.

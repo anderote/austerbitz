@@ -148,6 +148,11 @@ export interface Entities {
   // pass routes through the matching `--no-<part>` body variant when set.
   partLost: Uint8Array;
 
+  // Cannon manual aim/fire
+  cannonElevationDeg: Float32Array;  // default 18°
+  cannonAmmo: Uint8Array;            // 0=solid 1=shell 2=canister
+  manualControlled: Uint8Array;      // 1 when under player manual control (skip auto-fire)
+
   // Free-list
   freeListHead: number;
   freeListNext: Int32Array;  // -1 = end of list
@@ -213,6 +218,9 @@ export function createEntities(capacity: number): Entities {
     bodyRot: new Float32Array(capacity),
     weaponDropped: new Uint8Array(capacity),
     partLost: new Uint8Array(capacity),
+    cannonElevationDeg: new Float32Array(capacity).fill(18),
+    cannonAmmo: new Uint8Array(capacity),
+    manualControlled: new Uint8Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -274,6 +282,9 @@ export function allocEntity(e: Entities): number {
   e.bodyRot[id] = 0;
   e.weaponDropped[id] = 0;
   e.partLost[id] = 0;
+  e.cannonElevationDeg[id] = 18;
+  e.cannonAmmo[id] = 0;
+  e.manualControlled[id] = 0;
   return id;
 }
 

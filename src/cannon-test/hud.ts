@@ -46,10 +46,11 @@ export function createCannonTestHud(
     <div style="line-height:1.6">
       <b>WASD</b> — Pan camera<br>
       <i>Drag-select</i> — Select units<br>
-      <i>Right-click</i> — Attack-move order<br>
-      <b>Space</b> — Pause toggle<br>
-      <b>R</b> — Reset<br>
-      <b>.</b> — Step frame
+      <i>Right-click</i> — Attack-move<br>
+      <b>← →</b> aim · <b>↑ ↓</b> elevation<br>
+      <b>Z X C</b> — load solid/shell/canister<br>
+      <b>Space</b> — Fire selected cannons<br>
+      <b>P</b> — Pause · <b>R</b> Reset · <b>.</b> Step
     </div>
   `;
   root.appendChild(legend);
@@ -107,7 +108,7 @@ export function createCannonTestHud(
   simGroup.appendChild(makeButton('[R] Reset', handlers.reset));
 
   const pauseBtn = makeToggleButton(
-    '[Space] Pause', '[Space] Resume',
+    '[P] Pause', '[P] Resume',
     toggles.isPaused,
     handlers.togglePause,
   );
@@ -135,10 +136,9 @@ export function createCannonTestHud(
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     if (e.repeat) return;
     switch (e.key) {
-      case ' ':
-        e.preventDefault();
+      case 'p': case 'P':
         handlers.togglePause();
-        pauseBtn.textContent = toggles.isPaused() ? '[Space] Resume' : '[Space] Pause';
+        pauseBtn.textContent = toggles.isPaused() ? '[P] Resume' : '[P] Pause';
         pauseBtn.classList.toggle('toggle-on', toggles.isPaused());
         break;
       case 'r': case 'R': handlers.reset(); break;

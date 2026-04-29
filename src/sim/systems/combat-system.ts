@@ -62,6 +62,7 @@ export function createCombatSystem(fireOrders: FireOrders): System {
     for (let n = 0; n < e.count; n++) {
       const id = e.aliveIds[n]!;
       if (e.state[id] !== EntityState.Idle) continue;
+      if (e.manualControlled[id] === 1) continue;
       const vx = e.velX[id]!;
       const vy = e.velY[id]!;
       if (vx * vx + vy * vy > VEL_EPS_SQ) continue;

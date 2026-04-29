@@ -15,6 +15,10 @@ import {
 import type { Particles } from '../particles/particles';
 import { emitOrderPuff } from '../particles/emitters';
 import type { Vec2 } from '../util/math';
+import type { Projectiles } from '../sim/projectiles';
+import type { Puffs } from '../puffs/puffs';
+import { fireCannonSolid, fireCannonShell, fireCannonCanister } from '../sim/cannon-fire';
+import { getUnitKindByIndex } from '../data/units';
 
 export type CursorMode = 'normal' | 'attack-move';
 
@@ -31,6 +35,10 @@ export interface SelectionControllerDeps {
   particles?: Particles;
   /** Optional — when present, click-move targets are previewed at each unit's destination. */
   movePreview?: { add(targets: Vec2[]): void };
+  /** Optional — when present, Space fires selected cannons manually. */
+  projectiles?: Projectiles;
+  /** Optional — puffs required for cannon muzzle smoke on manual fire. */
+  puffs?: Puffs;
 }
 
 export interface SelectionController {
@@ -81,6 +89,50 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
 
   function puff(x: number, y: number) {
     if (deps.particles) emitOrderPuff(deps.particles, x, y);
+  }
+
+  const aimKeysHeld = new Set<string>();
+
+  // Cannon helpers
+  const AIM_RATE_DEG = 30; // degrees per second
+  const ROT_RATE = AIM_RATE_DEG * Math.PI / 180; // radians per second
+
+  function eachSelectedCannon(callback: (id: number) => void): void {
+    const e = world.entities;
+    for (const id of selection.ids) {
+      if (e.alive[id] !== 1) continue;
+      const kind = getUnitKindByIndex(e.kindId[id]!);
+      if (kind.category !== 'artillery') continue;
+      callback(id);
+    }
+  }
+
+  function rotateCannonAim(id: number, deltaRad: number): void {
+    const e = world.entities;
+    const fx = e.facingIntentX[id]!;
+    const fy = e.facingIntentY[id]!;
+    const cos = Math.cos(deltaRad);
+    const sin = Math.sin(deltaRad);
+    const nx = fx * cos - fy * sin;
+    const ny = fx * sin + fy * cos;
+    const len = Math.hypot(nx, ny);
+    e.facingIntentX[id] = len > 1e-6 ? nx / len : nx;
+    e.facingIntentY[id] = len > 1e-6 ? ny / len : ny;
+    const angle = Math.atan2(ny, nx);
+    const oct = (((Math.round(angle / (Math.PI / 4))) % 8) + 8) % 8;
+    e.facing[id] = oct;
+    e.restFacing[id] = oct;
+  }
+
+  function syncManualControlled(): void {
+    const e = world.entities;
+    for (let i = 0; i < e.capacity; i++) e.manualControlled[i] = 0;
+    for (const id of selection.ids) {
+      if (e.alive[id] === 1) {
+        const kind = getUnitKindByIndex(e.kindId[id]!);
+        if (kind.category === 'artillery') e.manualControlled[id] = 1;
+      }
+    }
   }
 
   let cursorMode: CursorMode = 'normal';
@@ -535,6 +587,57 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
       return;
     }
 
+    // Cannon-specific controls — only active when cannons are selected
+    if (e.code === 'Space') {
+      if (deps.projectiles && deps.puffs && deps.particles) {
+        const { projectiles: proj, puffs: pf, particles: pts } = deps;
+        let hasCannon = false;
+        eachSelectedCannon(() => { hasCannon = true; });
+        if (hasCannon) {
+          const ent = world.entities;
+          eachSelectedCannon((id) => {
+            const elev = ent.cannonElevationDeg[id]!;
+            const ammo = ent.cannonAmmo[id]!;
+            if (ammo === 0) {
+              fireCannonSolid(ent, proj, pts, pf, world.rng, id, elev, world.sfxRequests);
+            } else if (ammo === 1) {
+              fireCannonShell(ent, proj, pts, pf, world.rng, id, elev, world.sfxRequests);
+            } else {
+              fireCannonCanister(ent, proj, pf, world.rng, id, world.sfxRequests);
+            }
+          });
+          return;
+        }
+      }
+    }
+
+    // Ammo selection: Z=solid, X=shell, C=canister
+    if (e.code === 'KeyZ') {
+      eachSelectedCannon((id) => { world.entities.cannonAmmo[id] = 0; });
+      return;
+    }
+    if (e.code === 'KeyX') {
+      eachSelectedCannon((id) => { world.entities.cannonAmmo[id] = 1; });
+      return;
+    }
+    if (e.code === 'KeyC') {
+      eachSelectedCannon((id) => { world.entities.cannonAmmo[id] = 2; });
+      return;
+    }
+
+    // Arrow keys for aim: held state tracked, update applied in update()
+    if (
+      e.code === 'ArrowLeft' || e.code === 'ArrowRight' ||
+      e.code === 'ArrowUp' || e.code === 'ArrowDown'
+    ) {
+      let hasCannon = false;
+      eachSelectedCannon(() => { hasCannon = true; });
+      if (hasCannon) {
+        aimKeysHeld.add(e.code);
+        return;
+      }
+    }
+
   }
 
   function onKeyUp(e: { key: string; code: string }): void {
@@ -542,6 +645,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     if (e.code === 'KeyF') {
       clearGridHold();
     }
+    aimKeysHeld.delete(e.code);
   }
 
   function onBlur(): void {
@@ -554,6 +658,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     ctrlHeld = false;
     lastCursorScreen = null;
     lastRightClick = null;
+    aimKeysHeld.clear();
   }
 
   // DOM bindings — narrow event types pass through to the pure handlers above.
@@ -608,7 +713,7 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
     get lockedRanks() { return lockedRanks; },
     get runMode() { return runMode; },
     formationPreview,
-    update(_dt) {
+    update(dt) {
       const e = world.entities;
       for (const id of selection.ids) {
         if (e.alive[id] !== 1 || isDead(e, id)) selection.ids.delete(id);
@@ -628,6 +733,26 @@ export function createSelectionController(deps: SelectionControllerDeps): Select
         tightHeld = false;
         clearGridHold();
         lastSelectionSig = sig;
+      }
+
+      // Sync manualControlled flag — artillery units that are selected get manual control,
+      // others are cleared. O(capacity) but capacity is small.
+      syncManualControlled();
+
+      // Apply held aim keys for selected cannons
+      if (aimKeysHeld.size > 0 && dt > 0) {
+        const rotDelta = ROT_RATE * dt;
+        const elevDelta = AIM_RATE_DEG * dt;
+        eachSelectedCannon((id) => {
+          if (aimKeysHeld.has('ArrowLeft')) rotateCannonAim(id, rotDelta);
+          if (aimKeysHeld.has('ArrowRight')) rotateCannonAim(id, -rotDelta);
+          if (aimKeysHeld.has('ArrowUp')) {
+            e.cannonElevationDeg[id] = Math.min(45, (e.cannonElevationDeg[id] ?? 12) + elevDelta);
+          }
+          if (aimKeysHeld.has('ArrowDown')) {
+            e.cannonElevationDeg[id] = Math.max(2, (e.cannonElevationDeg[id] ?? 12) - elevDelta);
+          }
+        });
       }
 
       // F = hurry. Each frame F is held, push every selected unit toward the
