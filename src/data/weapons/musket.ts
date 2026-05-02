@@ -24,5 +24,7 @@ export const musket: WeaponProfile = {
     critMul: 2.0,
     accuracySpreadRad: (4 * Math.PI) / 180,
     maxLife: 2.0,
+    rangeFalloff: { nearM: 8, decayK: 0.035, minMul: 0.05 },
+    pierce: { minDamageFrac: 0.35, perTargetMul: 0.55 },
   },
 };

@@ -79,9 +79,17 @@ export interface WeaponProfile {
     horizontalDampingPerRicochet?: number;
     groundFriction?: number;    // /s
     rollStopSpeed?: number;     // m/s
-    perHitDamageFalloff?: number;
-    perHitVelocityFalloff?: number;
-    freeBelowDamage?: number;
+    /**
+     * Range falloff: at hit time, applied damage = damage * exp(-decayK * max(0, dist - nearM)),
+     * floored at minMul. Omit ⇒ no falloff.
+     */
+    rangeFalloff?: { nearM: number; decayK: number; minMul: number };
+    /**
+     * Pierce: after each hit, carried damage *= perTargetMul (and velocity *= velocityMul);
+     * the projectile is freed once damage drops below `baseDamage * minDamageFrac`.
+     * Omit ⇒ free on first hit.
+     */
+    pierce?: { minDamageFrac: number; perTargetMul: number; velocityMul?: number };
     /** Shell only. */
     fuse?: number;              // s
     explosion?: ExplosionProfile;

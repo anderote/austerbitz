@@ -9,6 +9,20 @@ export const ProjectileKind = {
 } as const;
 export type ProjectileKind = (typeof ProjectileKind)[keyof typeof ProjectileKind];
 
+/**
+ * Optional per-projectile ballistics: range falloff curve params + pierce
+ * config. Omitted (or zeroed) ⇒ no falloff (`mul = 1`) and free-on-first-hit
+ * (the original behaviour).
+ */
+export interface BallisticsParams {
+  falloffNearM?: number;
+  falloffDecayK?: number;     // 0 = disabled
+  falloffMinMul?: number;     // default 0
+  pierceMinDamage?: number;   // 0 = disabled (free on first hit)
+  piercePerTargetMul?: number;
+  pierceVelMul?: number;      // default 1
+}
+
 export interface Projectiles {
   capacity: number;
   count: number;                 // live count
@@ -30,6 +44,18 @@ export interface Projectiles {
   ricochets: Uint8Array;         // remaining bounces (solid-shot)
   fuseT: Float32Array;           // shell fuse countdown (else unused)
   crit: Uint8Array;              // 1 = was rolled as a critical hit at fire time
+  // Range falloff: damage at hit time scales by exp(-decayK * max(0, dist - nearM)),
+  // floored at minMul. decayK == 0 disables falloff.
+  spawnX: Float32Array;
+  spawnY: Float32Array;
+  falloffNearM: Float32Array;
+  falloffDecayK: Float32Array;
+  falloffMinMul: Float32Array;
+  // Pierce: after each hit, damage *= piercePerTargetMul and velocity *= pierceVelMul;
+  // free once damage drops below pierceMinDamage. piercePerTargetMul == 0 ⇒ free on first hit.
+  pierceMinDamage: Float32Array;
+  piercePerTargetMul: Float32Array;
+  pierceVelMul: Float32Array;
 
   // Free-list
   freeListHead: number;
@@ -62,6 +88,14 @@ export function createProjectiles(capacity: number): Projectiles {
     ricochets: new Uint8Array(capacity),
     fuseT: new Float32Array(capacity),
     crit: new Uint8Array(capacity),
+    spawnX: new Float32Array(capacity),
+    spawnY: new Float32Array(capacity),
+    falloffNearM: new Float32Array(capacity),
+    falloffDecayK: new Float32Array(capacity),
+    falloffMinMul: new Float32Array(capacity),
+    pierceMinDamage: new Float32Array(capacity),
+    piercePerTargetMul: new Float32Array(capacity),
+    pierceVelMul: new Float32Array(capacity),
     freeListHead: 0,
     freeListNext,
   };
@@ -86,6 +120,14 @@ export function allocProjectile(p: Projectiles): number {
   p.ricochets[id] = 0;
   p.fuseT[id] = 0;
   p.crit[id] = 0;
+  p.spawnX[id] = 0;
+  p.spawnY[id] = 0;
+  p.falloffNearM[id] = 0;
+  p.falloffDecayK[id] = 0;       // 0 ⇒ falloff disabled
+  p.falloffMinMul[id] = 0;
+  p.pierceMinDamage[id] = 0;
+  p.piercePerTargetMul[id] = 0;  // 0 ⇒ free on first hit
+  p.pierceVelMul[id] = 1;
   return id;
 }
 
@@ -95,6 +137,22 @@ export function freeProjectile(p: Projectiles, id: number): void {
   p.count--;
   p.freeListNext[id] = p.freeListHead;
   p.freeListHead = id;
+}
+
+function writeBallistics(
+  p: Projectiles,
+  id: number,
+  ox: number, oy: number,
+  b: BallisticsParams | undefined,
+): void {
+  p.spawnX[id] = ox;
+  p.spawnY[id] = oy;
+  p.falloffNearM[id] = b?.falloffNearM ?? 0;
+  p.falloffDecayK[id] = b?.falloffDecayK ?? 0;
+  p.falloffMinMul[id] = b?.falloffMinMul ?? 0;
+  p.pierceMinDamage[id] = b?.pierceMinDamage ?? 0;
+  p.piercePerTargetMul[id] = b?.piercePerTargetMul ?? 0;
+  p.pierceVelMul[id] = b?.pierceVelMul ?? 1;
 }
 
 export function spawnMusketBall(
@@ -108,6 +166,7 @@ export function spawnMusketBall(
   maxLife: number,
   ownerId: number,
   crit: 0 | 1 = 0,
+  ballistics?: BallisticsParams,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -128,6 +187,7 @@ export function spawnMusketBall(
   p.fuseT[id] = 0;
   p.ownerId[id] = ownerId;
   p.crit[id] = crit;
+  writeBallistics(p, id, ox, oy, ballistics);
   return id;
 }
 
@@ -142,6 +202,7 @@ export function spawnSolidShot(
   ricochets: number,
   ownerId: number,
   crit: 0 | 1 = 0,
+  ballistics?: BallisticsParams,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -162,6 +223,7 @@ export function spawnSolidShot(
   p.fuseT[id] = 0;
   p.ownerId[id] = ownerId;
   p.crit[id] = crit;
+  writeBallistics(p, id, ox, oy, ballistics);
   return id;
 }
 
@@ -176,6 +238,7 @@ export function spawnShell(
   fuseT: number,
   ownerId: number,
   crit: 0 | 1 = 0,
+  ballistics?: BallisticsParams,
 ): number {
   const id = allocProjectile(p);
   if (id === -1) return -1;
@@ -196,6 +259,7 @@ export function spawnShell(
   p.fuseT[id] = fuseT;
   p.ownerId[id] = ownerId;
   p.crit[id] = crit;
+  writeBallistics(p, id, ox, oy, ballistics);
   return id;
 }
 

@@ -35,8 +35,8 @@ export const cannon12Solid: WeaponProfile = {
     horizontalDampingPerRicochet: 0.7,
     groundFriction: 1.5,
     rollStopSpeed: 3,
-    perHitDamageFalloff: 0.6,
-    perHitVelocityFalloff: 0.85,
-    freeBelowDamage: 5,
+    rangeFalloff: { nearM: 40, decayK: 0.005, minMul: 0.5 },
+    // 5/80 reproduces the prior 5-absolute floor against the 80 base damage.
+    pierce: { minDamageFrac: 5 / 80, perTargetMul: 0.6, velocityMul: 0.85 },
   },
 };

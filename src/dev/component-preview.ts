@@ -740,22 +740,22 @@ function currentWeaponLayerId(): string | null {
 
 function refreshPaintLayers(): void {
   if (!paintTool) return;
-  const layerIds = layersForFacing(currentFacing).map((e) => e.id);
+  const baseLayerIds = layersForFacing(currentFacing).map((e) => e.id);
   const weaponLayerId = currentWeaponLayerId();
-  const preferred = weaponLayerId && layerIds.includes(weaponLayerId) ? weaponLayerId : null;
-  paintTool.setActiveLayers(layerIds, preferred);
+  const layerIds = weaponLayerId && !baseLayerIds.includes(weaponLayerId)
+    ? [weaponLayerId, ...baseLayerIds]
+    : baseLayerIds;
+  paintTool.setActiveLayers(layerIds, weaponLayerId);
   updateLayerToolEnabled();
 }
 
 function updateLayerToolEnabled(): void {
-  const weaponId = currentWeaponLayerId();
-  const active = paintTool?.state.activeLayer ?? null;
-  const isWeaponLayer = weaponId !== null && active === weaponId;
+  const hasVariant = getSelectedVariant() !== null;
   const panel = document.getElementById('weapon-edit-strip');
-  if (panel) panel.classList.toggle('disabled', !isWeaponLayer);
-  if (btnMirror) btnMirror.disabled = !isWeaponLayer;
-  if (btnRotate) btnRotate.disabled = !isWeaponLayer;
-  if (btnDeleteVariant) btnDeleteVariant.disabled = !isWeaponLayer;
+  if (panel) panel.classList.toggle('disabled', !hasVariant);
+  if (btnMirror) btnMirror.disabled = !hasVariant;
+  if (btnRotate) btnRotate.disabled = !hasVariant;
+  if (btnDeleteVariant) btnDeleteVariant.disabled = !hasVariant;
 }
 
 /**

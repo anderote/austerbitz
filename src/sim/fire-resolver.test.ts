@@ -204,6 +204,27 @@ describe('resolveFire', () => {
     expect(projectiles.damage[0]).toBeLessThanOrEqual(expectedMean * 1.34);
   });
 
+  it('firing a musket records spawnX/Y at the barrel tip on the projectile', () => {
+    const e = createEntities(8);
+    const projectiles = createProjectiles(16);
+    const particles = createParticles(256);
+    const puffs = createPuffs(64);
+    const rng = createRng(42);
+
+    const id = allocEntity(e);
+    e.kindId[id] = getUnitKindIndex('line-infantry');
+    e.posX[id] = 10;
+    e.posY[id] = -3;
+    e.facing[id] = 0; // east
+    e.team[id] = 1;
+
+    const ok = resolveFire(e, projectiles, particles, puffs, rng, id, 50, 0);
+    expect(ok).toBe(true);
+    // spawnX/Y should match the spawned projectile's posX/Y (barrel tip).
+    expect(projectiles.spawnX[0]).toBeCloseTo(projectiles.posX[0]!, 5);
+    expect(projectiles.spawnY[0]).toBeCloseTo(projectiles.posY[0]!, 5);
+  });
+
   it('musket recoil sets a render-only peak offset opposite the shot direction; sim pos/vel untouched', () => {
     const e = createEntities(8);
     const projectiles = createProjectiles(16);

@@ -188,6 +188,70 @@ describe('ProjectileKind enum', () => {
   });
 });
 
+describe('projectiles — ballistics defaults', () => {
+  it('alloc resets falloff/pierce to disabled defaults', () => {
+    const p = createProjectiles(4);
+    const id = allocProjectile(p);
+    expect(p.spawnX[id]).toBe(0);
+    expect(p.spawnY[id]).toBe(0);
+    expect(p.falloffNearM[id]).toBe(0);
+    expect(p.falloffDecayK[id]).toBe(0);
+    expect(p.falloffMinMul[id]).toBe(0);
+    expect(p.pierceMinDamage[id]).toBe(0);
+    expect(p.piercePerTargetMul[id]).toBe(0);
+    expect(p.pierceVelMul[id]).toBe(1);
+  });
+
+  it('spawnMusketBall with no BallisticsParams writes spawn=origin and falloff/pierce defaults', () => {
+    const p = createProjectiles(4);
+    const id = spawnMusketBall(p, 5, 7, 1, 0, 0, 12, 80, 0.03, 1.5, -1);
+    expect(p.spawnX[id]).toBe(5);
+    expect(p.spawnY[id]).toBe(7);
+    expect(p.falloffDecayK[id]).toBe(0);
+    expect(p.piercePerTargetMul[id]).toBe(0);
+    expect(p.pierceVelMul[id]).toBe(1);
+  });
+
+  it('spawnMusketBall writes ballistics through to SoA fields', () => {
+    const p = createProjectiles(4);
+    const id = spawnMusketBall(
+      p, 5, 7, 1, 0, 0, 12, 80, 0.03, 1.5, -1, 0,
+      { falloffNearM: 8, falloffDecayK: 0.035, falloffMinMul: 0.05,
+        pierceMinDamage: 4, piercePerTargetMul: 0.55, pierceVelMul: 0.9 },
+    );
+    expect(p.spawnX[id]).toBe(5);
+    expect(p.spawnY[id]).toBe(7);
+    expect(p.falloffNearM[id]).toBeCloseTo(8, 5);
+    expect(p.falloffDecayK[id]).toBeCloseTo(0.035, 5);
+    expect(p.falloffMinMul[id]).toBeCloseTo(0.05, 5);
+    expect(p.pierceMinDamage[id]).toBeCloseTo(4, 5);
+    expect(p.piercePerTargetMul[id]).toBeCloseTo(0.55, 5);
+    expect(p.pierceVelMul[id]).toBeCloseTo(0.9, 5);
+  });
+
+  it('spawnSolidShot writes spawnX/Y from origin and ballistics through', () => {
+    const p = createProjectiles(4);
+    const id = spawnSolidShot(
+      p, 1, 2, 0.7, 200, 50, 30, 0, 80, 6, 4, 3, -1, 0,
+      { falloffNearM: 40, falloffDecayK: 0.005, falloffMinMul: 0.5,
+        pierceMinDamage: 5, piercePerTargetMul: 0.6, pierceVelMul: 0.85 },
+    );
+    expect(p.spawnX[id]).toBe(1);
+    expect(p.spawnY[id]).toBe(2);
+    expect(p.falloffNearM[id]).toBeCloseTo(40, 5);
+    expect(p.piercePerTargetMul[id]).toBeCloseTo(0.6, 5);
+    expect(p.pierceVelMul[id]).toBeCloseTo(0.85, 5);
+  });
+
+  it('spawnShell with no ballistics still records spawn position', () => {
+    const p = createProjectiles(4);
+    const id = spawnShell(p, 3, 4, 0.7, 180, 0, 40, 1, 60, 6, 5, 1.5, -1);
+    expect(p.spawnX[id]).toBe(3);
+    expect(p.spawnY[id]).toBe(4);
+    expect(p.falloffDecayK[id]).toBe(0);
+  });
+});
+
 describe('projectiles — ownerId', () => {
   it('alloc resets ownerId to -1', () => {
     const p = createProjectiles(4);

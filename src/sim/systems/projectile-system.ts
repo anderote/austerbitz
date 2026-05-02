@@ -1,4 +1,5 @@
 import { freeProjectile, ProjectileKind, type Projectiles } from '../projectiles';
+import { rangeFalloffMul } from '../range-falloff';
 import { isDead, type Entities } from '../entities';
 import { gridSweptQuery, type Grid } from '../spatial/grid';
 import type { Particles } from '../../particles/particles';
@@ -43,12 +44,6 @@ const RICOCHET_REST_Z_STEEP = 0.15;
 const RICOCHET_DAMP_XY_GRAZE = 0.95;
 /** Horizontal damping at the plant threshold. */
 const RICOCHET_DAMP_XY_STEEP = 0.55;
-/** Solid-shot damage falloff per entity it plows through. */
-const SOLID_SHOT_DAMAGE_FALLOFF = 0.6;
-/** Solid-shot velocity falloff per entity it plows through. */
-const SOLID_SHOT_VELOCITY_FALLOFF = 0.85;
-/** Solid-shot is freed once damage drops below this. */
-const SOLID_SHOT_FREE_BELOW_DAMAGE = 5;
 
 /**
  * Module-level scratch buffer for swept-grid candidate ids. `gridSweptQuery`
@@ -293,24 +288,33 @@ export function tickProjectiles(
         const impX = p.velX[i]! * p.mass[i]!;
         const impY = p.velY[i]! * p.mass[i]!;
         const hitKind = kind === ProjectileKind.Musket ? 'musket' : 'cannon';
-        applyHit(entities, particles, rng, id, p.damage[i]!, impX, impY, hitKind, splats, debris, p.ownerId[i]!, damageTexts, p.crit[i] as 0 | 1);
 
-        if (kind === ProjectileKind.Musket) {
+        // Range falloff: re-evaluated each hit against current spawn-distance.
+        const dx = p.posX[i]! - p.spawnX[i]!;
+        const dy = p.posY[i]! - p.spawnY[i]!;
+        const dist = Math.hypot(dx, dy);
+        const fmul = rangeFalloffMul(dist, p.falloffNearM[i]!, p.falloffDecayK[i]!, p.falloffMinMul[i]!);
+        const dmg = p.damage[i]! * fmul;
+        applyHit(entities, particles, rng, id, dmg, impX, impY, hitKind, splats, debris, p.ownerId[i]!, damageTexts, p.crit[i] as 0 | 1);
+
+        // Pierce: piercePerTargetMul == 0 ⇒ free on first hit (the original
+        // musket behaviour). Otherwise bleed damage and (optionally) velocity
+        // and continue plowing until below the per-projectile floor.
+        if (p.piercePerTargetMul[i]! > 0) {
+          p.damage[i] = p.damage[i]! * p.piercePerTargetMul[i]!;
+          p.velX[i] = p.velX[i]! * p.pierceVelMul[i]!;
+          p.velY[i] = p.velY[i]! * p.pierceVelMul[i]!;
+          if (p.damage[i]! < p.pierceMinDamage[i]!) {
+            freeProjectile(p, i);
+            freed = true;
+            break;
+          }
+          // continue inspecting next candidate
+        } else {
           freeProjectile(p, i);
           freed = true;
           break;
         }
-
-        // SolidShot — bleed damage + velocity, free if too weak, else plow on.
-        p.damage[i] = p.damage[i]! * SOLID_SHOT_DAMAGE_FALLOFF;
-        p.velX[i] = p.velX[i]! * SOLID_SHOT_VELOCITY_FALLOFF;
-        p.velY[i] = p.velY[i]! * SOLID_SHOT_VELOCITY_FALLOFF;
-        if (p.damage[i]! < SOLID_SHOT_FREE_BELOW_DAMAGE) {
-          freeProjectile(p, i);
-          freed = true;
-          break;
-        }
-        // continue inspecting next candidate
       }
       if (freed) continue;
     }

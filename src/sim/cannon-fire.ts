@@ -1,8 +1,9 @@
 import { barrelTip } from '../fx/barrel';
-import { spawnSolidShot, spawnShell, spawnCanister, type Projectiles } from './projectiles';
+import { spawnSolidShot, spawnShell, spawnCanister, type BallisticsParams, type Projectiles } from './projectiles';
 import { cannon12Solid } from '../data/weapons/cannon-12-solid';
 import { cannon12Shell } from '../data/weapons/cannon-12-shell';
 import { cannon12Canister } from '../data/weapons/cannon-12-canister';
+import type { WeaponProfile } from '../data/weapons/types';
 import { emitMuzzleFx } from '../particles/emitters';
 import { emitPuffMuzzleSpray } from '../puffs/emit';
 import type { Entities } from './entities';
@@ -12,6 +13,24 @@ import type { Rng } from '../util/rng';
 import { RECOIL_T } from './fire-resolver';
 import { rollDamage } from './damage-roll';
 import { pushSfxRequest, type SfxRequests } from './sfx-requests';
+
+function ballisticsFromWeapon(weapon: WeaponProfile): BallisticsParams | undefined {
+  const rf = weapon.projectile.rangeFalloff;
+  const pi = weapon.projectile.pierce;
+  if (!rf && !pi) return undefined;
+  const out: BallisticsParams = {};
+  if (rf) {
+    out.falloffNearM = rf.nearM;
+    out.falloffDecayK = rf.decayK;
+    out.falloffMinMul = rf.minMul;
+  }
+  if (pi) {
+    out.pierceMinDamage = weapon.projectile.damage * pi.minDamageFrac;
+    out.piercePerTargetMul = pi.perTargetMul;
+    out.pierceVelMul = pi.velocityMul ?? 1;
+  }
+  return out;
+}
 
 function applyMuzzleFxAndRecoil(
   e: Entities,
@@ -83,6 +102,7 @@ export function fireCannonSolid(
     cannon12Solid.projectile.ricochetCount ?? 0,
     cannonId,
     solidRoll.crit ? 1 : 0,
+    ballisticsFromWeapon(cannon12Solid),
   );
   applyMuzzleFxAndRecoil(
     entities, particles, puffs, rng, cannonId,
@@ -124,6 +144,7 @@ export function fireCannonShell(
     cannon12Shell.projectile.fuse ?? 1.5,
     cannonId,
     shellRoll.crit ? 1 : 0,
+    ballisticsFromWeapon(cannon12Shell),
   );
   applyMuzzleFxAndRecoil(
     entities, particles, puffs, rng, cannonId,

@@ -181,6 +181,9 @@ describe('tickProjectiles — entity collision', () => {
       50, 0, 0,
       /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
       /*ownerId*/ -1,
+      /*crit*/ 0,
+      // Reproduce the prior hardcoded SOLID_SHOT_* constants via the ballistics block.
+      { piercePerTargetMul: 0.6, pierceVelMul: 0.85, pierceMinDamage: 5 },
     );
 
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.2);
@@ -205,6 +208,113 @@ describe('tickProjectiles — entity collision', () => {
     tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.2);
 
     expect(s.entities.hp[target]).toBe(60);
+  });
+});
+
+describe('tickProjectiles — range falloff & pierce', () => {
+  it('musket with falloff applies reduced damage at long range', () => {
+    const s = setup();
+    // Place target at x=50; ball spawns at x=0. Step the sim with small dt so
+    // the segment endpoint (where falloff is evaluated) lands at the target.
+    const target = placeLineInfantry(s, 50, 0, /*team*/ 2, /*hp*/ 100);
+    spawnMusketBall(
+      s.projectiles, 0, 0, 1, 0,
+      /*team*/ 1, /*dmg*/ 80, /*v*/ 50, /*mass*/ 0.03, /*life*/ 2.0,
+      /*ownerId*/ -1, /*crit*/ 0,
+      // Musket falloff curve from spec: nearM=8, decayK=0.035, minMul=0.05.
+      { falloffNearM: 8, falloffDecayK: 0.035, falloffMinMul: 0.05 },
+    );
+
+    // 1/60 ticks until impact: ball travels at 50 m/s, so reach in ~1.0 s.
+    for (let i = 0; i < 70; i++) {
+      tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 1 / 60);
+      if (s.entities.hp[target]! < 100) break;
+    }
+
+    // At ~50 m the multiplier ≈ exp(-0.035 * 42) ≈ 0.231 → damage ≈ 18.5 → hp ≈ 81.5.
+    expect(s.entities.hp[target]).toBeGreaterThan(70);
+    expect(s.entities.hp[target]).toBeLessThan(90);
+  });
+
+  it('musket with falloff applies near-full damage at point-blank', () => {
+    const s = setup();
+    const target = placeLineInfantry(s, 5, 0, /*team*/ 2, /*hp*/ 100);
+    spawnMusketBall(
+      s.projectiles, 0, 0, 1, 0,
+      /*team*/ 1, /*dmg*/ 80, /*v*/ 200, /*mass*/ 0.03, /*life*/ 1.0,
+      /*ownerId*/ -1, /*crit*/ 0,
+      { falloffNearM: 8, falloffDecayK: 0.035, falloffMinMul: 0.05 },
+    );
+
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.05);
+
+    // Within nearM (8 m) → no falloff. Damage 80 minus line-infantry armor (≈5).
+    expect(s.entities.hp[target]).toBeLessThan(30);
+    expect(s.entities.hp[target]).toBeGreaterThan(15);
+  });
+
+  it('musket with pierce hits two stacked targets and frees on the second', () => {
+    const s = setup();
+    const a = placeLineInfantry(s, 3, 0, /*team*/ 2, /*hp*/ 100);
+    const b = placeLineInfantry(s, 5, 0, /*team*/ 2, /*hp*/ 100);
+    const pid = spawnMusketBall(
+      s.projectiles, 0, 0, 1, 0,
+      /*team*/ 1, /*dmg*/ 80, /*v*/ 200, /*mass*/ 0.03, /*life*/ 1.0,
+      /*ownerId*/ -1, /*crit*/ 0,
+      // pierceMinDamage = 80 * 0.35 = 28; perTargetMul = 0.55 → after 1 hit: 44; after 2: 24.2 < 28.
+      { piercePerTargetMul: 0.55, pierceMinDamage: 80 * 0.35, pierceVelMul: 1 },
+    );
+
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.05);
+
+    expect(s.entities.hp[a]).toBeLessThan(100);
+    expect(s.entities.hp[b]).toBeLessThan(100);
+    // Both got hit; projectile should be freed after the second hit.
+    expect(s.projectiles.alive[pid]).toBe(0);
+  });
+
+  it('musket with pierce stops after carried damage drops below the floor', () => {
+    const s = setup();
+    const a = placeLineInfantry(s, 3, 0, /*team*/ 2, /*hp*/ 100);
+    const b = placeLineInfantry(s, 5, 0, /*team*/ 2, /*hp*/ 100);
+    const c = placeLineInfantry(s, 7, 0, /*team*/ 2, /*hp*/ 100);
+    spawnMusketBall(
+      s.projectiles, 0, 0, 1, 0,
+      /*team*/ 1, /*dmg*/ 80, /*v*/ 200, /*mass*/ 0.03, /*life*/ 1.0,
+      /*ownerId*/ -1, /*crit*/ 0,
+      { piercePerTargetMul: 0.55, pierceMinDamage: 80 * 0.35, pierceVelMul: 1 },
+    );
+
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.05);
+
+    // First two stacked targets are hit; the third is not (ball freed before reaching it).
+    expect(s.entities.hp[a]).toBeLessThan(100);
+    expect(s.entities.hp[b]).toBeLessThan(100);
+    expect(s.entities.hp[c]).toBe(100);
+  });
+
+  it('solid-shot via pierce block bleeds damage and velocity per hit (regression-pin)', () => {
+    const s = setup();
+    const a = placeLineInfantry(s, 3, 0, /*team*/ 2, /*hp*/ 200);
+    const b = placeLineInfantry(s, 5, 0, /*team*/ 2, /*hp*/ 200);
+    const pid = spawnSolidShot(
+      s.projectiles,
+      0, 0, 1.0,
+      50, 0, 0,
+      /*team*/ 1, /*dmg*/ 80, /*mass*/ 6, /*life*/ 6, /*ricochets*/ 3,
+      /*ownerId*/ -1, /*crit*/ 0,
+      // Reproduce the prior hardcoded SOLID_SHOT_* constants.
+      { piercePerTargetMul: 0.6, pierceVelMul: 0.85, pierceMinDamage: 5 },
+    );
+
+    tickProjectiles(s.projectiles, s.entities, s.grid, s.puffs, s.particles, s.rng, s.shockwaves, s.debris, 0.2);
+
+    expect(s.entities.hp[a]).toBeLessThan(200);
+    expect(s.entities.hp[b]).toBeLessThan(200);
+    // After two hits: damage = 80 * 0.6 * 0.6 = 28.8.
+    expect(s.projectiles.damage[pid]).toBeCloseTo(80 * 0.6 * 0.6, 1);
+    // Velocity damped twice: 50 * 0.85 * 0.85 = 36.125.
+    expect(s.projectiles.velX[pid]).toBeCloseTo(50 * 0.85 * 0.85, 1);
   });
 });
 

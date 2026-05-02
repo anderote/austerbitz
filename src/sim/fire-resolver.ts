@@ -3,8 +3,10 @@ import {
   spawnMusketBall,
   spawnSolidShot,
   spawnShell,
+  type BallisticsParams,
   type Projectiles,
 } from './projectiles';
+import type { WeaponProfile } from '../data/weapons/types';
 import type { Particles } from '../particles/particles';
 import { emitMuzzleFx } from '../particles/emitters';
 import { emitPuffMuzzleSpray } from '../puffs/emit';
@@ -27,6 +29,29 @@ export const RECOIL_T = 0.9;
 export const RECOIL_PUSH_END = 0.15;
 /** Fraction of `RECOIL_T` at which the hold ends and the return begins. */
 export const RECOIL_HOLD_END = 0.3;
+
+/**
+ * Build a BallisticsParams from a weapon profile. `baseDamage` is the
+ * unrolled `kind.baseStats.weaponDamage` so the pierce floor stays stable
+ * across crit/variance rolls.
+ */
+function ballisticsFromWeapon(weapon: WeaponProfile, baseDamage: number): BallisticsParams | undefined {
+  const rf = weapon.projectile.rangeFalloff;
+  const pi = weapon.projectile.pierce;
+  if (!rf && !pi) return undefined;
+  const out: BallisticsParams = {};
+  if (rf) {
+    out.falloffNearM = rf.nearM;
+    out.falloffDecayK = rf.decayK;
+    out.falloffMinMul = rf.minMul;
+  }
+  if (pi) {
+    out.pierceMinDamage = baseDamage * pi.minDamageFrac;
+    out.piercePerTargetMul = pi.perTargetMul;
+    out.pierceVelMul = pi.velocityMul ?? 1;
+  }
+  return out;
+}
 
 /**
  * Pure resolver: turn "entity `id` is firing at (targetX, targetY)" into a
@@ -94,6 +119,7 @@ export function resolveFire(
       weapon.projectile.maxLife,
       id,
       roll.crit ? 1 : 0,
+      ballisticsFromWeapon(weapon, kind.baseStats.weaponDamage),
     );
 
     if (weapon.muzzle) {
@@ -142,6 +168,7 @@ export function resolveFire(
       rng,
     );
 
+    const cannonBallistics = ballisticsFromWeapon(weapon, kind.baseStats.weaponDamage);
     if (weapon.kind === 'solid-shot') {
       spawnSolidShot(
         projectiles,
@@ -154,6 +181,7 @@ export function resolveFire(
         weapon.projectile.ricochetCount ?? 0,
         id,
         cannonRoll.crit ? 1 : 0,
+        cannonBallistics,
       );
     } else {
       spawnShell(
@@ -167,6 +195,7 @@ export function resolveFire(
         weapon.projectile.fuse ?? 1.5,
         id,
         cannonRoll.crit ? 1 : 0,
+        cannonBallistics,
       );
     }
 

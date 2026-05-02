@@ -810,10 +810,9 @@
         "layers": [],
         "weapons": [
           {
-            "src": "NW",
-            "transform": "flipY",
-            "x": 6,
-            "y": 8,
+            "src": "N",
+            "x": 8,
+            "y": -2,
             "rot": 0,
             "flipX": true
           }
@@ -848,8 +847,8 @@
         "weapons": [
           {
             "src": "N",
-            "x": -8,
-            "y": 1,
+            "x": -7,
+            "y": -3,
             "rot": 0
           }
         ]
@@ -882,8 +881,7 @@
         "weapons": [
           {
             "src": "NW",
-            "transform": "flipX",
-            "x": 7,
+            "x": -1,
             "y": 2,
             "rot": 0
           }
